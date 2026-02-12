@@ -1,0 +1,63 @@
+# Build and output artifacts
+build/
+cmake-build-*/
+out/
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+*.uf2
+*.map
+*.d
+
+# Dependencies
+third_party/
+vendor/
+external/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# CMake generated
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+compile_commands.json
+
+# Artifacts and releases
+artifacts/
+release/
+*.zip
+*.tar.gz
+
+# Test outputs
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+config/local_*
+
+# Temporary files
+*.tmp
+*.bak
+*.log

@@ -1,0 +1,22 @@
+# Who reviews what
+
+# Documentation
+docs/                   @project-lead @maintainer1
+CONTRIBUTING.md         @project-lead
+
+# Core control
+src/control/           @control-expert @reviewer1
+src/dynamics/          @control-expert @reviewer1
+
+# Tasks & RTOS
+src/tasks/             @freertos-expert @reviewer2
+config/FreeRTOS*       @freertos-expert @reviewer2
+
+# Hardware drivers
+src/drivers/           @hardware-expert @reviewer3
+
+# Tests
+tests/                 @control-expert @reviewer1 @reviewer2
+
+# CI/CD
+.github/workflows/     @project-lead
