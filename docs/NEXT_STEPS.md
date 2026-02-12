@@ -44,6 +44,41 @@
 
 ## Next Steps (In Order of Priority)
 
+## Branching Policy
+
+Follow this branching workflow for all future development.
+
+- **Primary branches**:
+   - `main`: stable production-ready code. Only merge to `main` when `dev` is validated.
+   - `dev`: active development branch. All new feature branches must be created from `dev`.
+
+- **Creating feature or fix branches**:
+   - Use a clear prefix and short name, e.g. `feature/imu-driver`, `fix/telemetry-packet`.
+   - Always create from `dev`:
+
+```bash
+git checkout dev
+git pull origin dev   # if remote exists
+git checkout -b feature/<short-name>
+```
+
+- **Workflow**:
+   1. Implement changes on your feature branch and keep commits small and focused.
+ 2. Open a pull request targeting `dev` (not `main`) when ready for review.
+ 3. After review and CI passing, merge the feature branch into `dev`.
+ 4. When `dev` reaches a stable state (release candidate), create a PR from `dev` → `main`.
+ 5. Protect `main` on the remote (recommended): require PR review and passing CI before merge.
+
+- **Naming conventions** (recommended):
+   - `feature/<short-description>`
+   - `fix/<short-description>`
+   - `chore/<short-description>`
+
+- **Notes**:
+   - If you work offline without a remote, keep the same branch discipline locally: create branches from `dev` and merge back to `dev` when complete.
+   - To set `dev` as the default branch on GitHub, change it in the repository settings or use `gh repo edit --default-branch dev`.
+
+
 ### Phase 2: Pico SDK Integration
 - [ ] Set up Pico SDK environment (`PICO_SDK_PATH`)
 - [ ] Replace FreeRTOS stubs with actual Pico SDK FreeRTOS
