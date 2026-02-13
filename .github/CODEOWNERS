@@ -1,8 +1,8 @@
 # Who reviews what
 
 # Documentation
-docs/                   @project-lead @maintainer1
-CONTRIBUTING.md         @project-lead
+docs/                   @LucasMed @maintainer1
+CONTRIBUTING.md         @LucasMed
 
 # Core control
 src/control/           @control-expert @reviewer1
@@ -19,4 +19,4 @@ src/drivers/           @hardware-expert @reviewer3
 tests/                 @control-expert @reviewer1 @reviewer2
 
 # CI/CD
-.github/workflows/     @project-lead
+.github/workflows/     @LucasMed
