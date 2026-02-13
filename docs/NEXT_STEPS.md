@@ -63,7 +63,7 @@ git checkout -b feature/<short-name>
 ```
 
 - **Workflow**:
-   1. Implement changes on your feature branch and keep commits small and focused.
+ 1. Implement changes on your feature branch and keep commits small and focused.
  2. Open a pull request targeting `dev` (not `main`) when ready for review.
  3. After review and CI passing, merge the feature branch into `dev`.
  4. When `dev` reaches a stable state (release candidate), create a PR from `dev` → `main`.

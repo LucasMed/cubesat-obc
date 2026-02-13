@@ -6,7 +6,7 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 
 **Status:** Skeleton v0.1.0 - Ready for Pico SDK integration and hardware development  
 **License:** MIT  
-**Maintainers:** [Your Team]
+**Maintainers:** ExArsultre
 
 ---
 
