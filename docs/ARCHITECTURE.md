@@ -12,33 +12,33 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      CubeSat OBC (RP2040)                        │
+│                      CubeSat OBC (RP2040)                       │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────┐      ┌─────────────┐      ┌──────────────┐   │
-│  │   SENSORS    │      │  CONTROL    │      │  ACTUATORS   │   │
-│  ├──────────────┤      ├─────────────┤      ├──────────────┤   │
+│                                                                 │
+│  ┌──────────────┐      ┌─────────────┐      ┌──────────────┐    │
+│  │   SENSORS    │      │  CONTROL    │      │  ACTUATORS   │    │
+│  ├──────────────┤      ├─────────────┤      ├──────────────┤    │
 │  │ • IMU(I2C)   │─────▶│ • PID Ctrl  │─────▶│ • RW Motors  │   │
-│  │ • Temp (I2C) │      │ • Attitude  │      │ • Magnetorq  │   │
-│  │ • Vbatt(ADC) │      │   Dynamics  │      │   (PWM/SPI)  │   │
-│  └──────────────┘      └─────────────┘      └──────────────┘   │
-│         ▲                      │                      ▲           │
-│         │                      ▼                      │           │
-│         │            ┌──────────────────┐            │           │
-│         └────────────│  SYSTEM STATE    │────────────┘           │
-│                      │ (Shared Memory)  │                        │
-│                      └──────────────────┘                        │
-│                              ▲                                    │
-│         ┌────────────────────┼────────────────────┐              │
-│         │                    │                    │              │
-│         ▼                    ▼                    ▼              │
-│  ┌────────────┐    ┌──────────────┐    ┌──────────────┐        │
-│  │ FreeRTOS   │    │   TELEMETRY  │    │ HEALTH MON.  │        │
-│  │  TASKS     │    │  (WiFi/UART) │    │  (Watchdog)  │        │
-│  └────────────┘    └──────────────┘    └──────────────┘        │
-│   • SensorRead              │                    │               │
+│  │ • Temp (I2C) │      │ • Attitude  │      │ • Magnetorq  │    │
+│  │ • Vbatt(ADC) │      │   Dynamics  │      │   (PWM/SPI)  │    │
+│  └──────────────┘      └─────────────┘      └──────────────┘    │
+│         ▲                      │                      ▲         │
+│         │                      ▼                      │         │
+│         │            ┌──────────────────┐            │          │
+│         └────────────│  SYSTEM STATE    │────────────┘          │
+│                      │ (Shared Memory)  │                       │
+│                      └──────────────────┘                       │
+│                              ▲                                  │
+│         ┌────────────────────┼────────────────────┐             │
+│         │                    │                    │             │
+│         ▼                    ▼                    ▼             │
+│  ┌────────────┐    ┌──────────────┐    ┌──────────────┐         │
+│  │ FreeRTOS   │    │   TELEMETRY  │    │ HEALTH MON.  │         │
+│  │  TASKS     │    │  (WiFi/UART) │    │  (Watchdog)  │         │
+│  └────────────┘    └──────────────┘    └──────────────┘         │
+│   • SensorRead              │                    │              │
 │   • AttitudeCtrl       ┌────────┐           ┌────────┐          │
-│   • Telemetry  ───────│CYW43   │           │Watchdog│          │
+│   • Telemetry   ───────│CYW43   │           │Watchdog│          │
 │   • HealthMon          │(WiFi)  │           │ (boot) │          │
 │                        └────────┘           └────────┘          │
 └─────────────────────────────────────────────────────────────────┘
@@ -114,14 +114,14 @@ SensorRead (10 Hz):
   IMU ──(I2C)──▶ mpu6050_read() ──▶ system_state.imu_data ┐
   Temp ─(I2C)─▶ temp_read()     ──▶ system_state.temp     │
   Vbatt(ADC)───▶ adc_read()     ──▶ system_state.vbatt    │
-                                                            │
+                                                           │
 AttitudeControl (20 Hz):                         ╔═════════╩═════════╗
   system_state.imu_data                          ║ SYSTEM STATE      ║
-  system_state.control_gains ──▶ pid_update()  ──║ (shared memory)   ║
-  ──▶ attitude_control()                         ║                   ║
-  ──▶ system_state.control_torque                ║ RW Rate Cmds (Hz) ║
-           │                                      ║ Magnetorq Cmds    ║
-           ▼                                      ║ Attitude (Euler)  ║
+  system_state.control_gains ──▶ pid_update() ──║ (shared memory)   ║
+  ──▶ attitude_control()                        ║                   ║
+  ──▶ system_state.control_torque               ║ RW Rate Cmds (Hz) ║
+           │                                     ║ Magnetorq Cmds    ║
+           ▼                                     ║ Attitude (Euler)  ║
   Actuator Models:                               ║ Angular Rates     ║
   rw_apply_torque()       (momentum change)      ║ Sensor Readings   ║
   magnetorquer_dipole()                          ╚═══════════════════╝
