@@ -29,6 +29,39 @@ project(cubesat_obc C CXX ASM)
 if(PICO_BUILD)
     pico_sdk_init()
     message(STATUS "Pico SDK initialized for RP2040")
+    
+    # Set FreeRTOS kernel path
+    set(FREERTOS_KERNEL_PATH ${PICO_SDK_PATH}/lib/FreeRTOS-Kernel)
+    message(STATUS "FreeRTOS Kernel Path: ${FREERTOS_KERNEL_PATH}")
+    
+    # Create FreeRTOS config target (required before including FreeRTOS CMake)
+    # This tells FreeRTOS where to find the FreeRTOSConfig.h file
+    add_library(freertos_config INTERFACE)
+    target_include_directories(freertos_config SYSTEM
+        INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/config
+    )
+    target_compile_definitions(freertos_config
+        INTERFACE
+        projCOVERAGE_TEST=0
+    )
+    # Also add the config to all compiled target interface for SDK config headers
+    target_include_directories(freertos_config SYSTEM INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/config
+    )
+    message(STATUS "FreeRTOS config target created (includes ./config/FreeRTOSConfig.h)")
+    
+    # Include FreeRTOS kernel port for RP2040 (works with RP2350 also)
+    # Add the RP2040 FreeRTOS port subdirectory directly
+    # This will add the real FreeRTOS kernel and link libraries
+    set(FREERTOS_CONFIG_FILE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config)
+    set(FREERTOS_PORT_BINARY_PATH "${CMAKE_BINARY_DIR}/freertos_kernel_rp2040")
+    add_subdirectory(
+        ${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040
+        ${FREERTOS_PORT_BINARY_PATH}
+        EXCLUDE_FROM_ALL
+    )
+    message(STATUS "FreeRTOS Kernel integrated (RP2040 port for Pico 2W)")
 endif()
 
 # Enable testing support (only for host builds)

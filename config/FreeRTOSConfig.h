@@ -4,11 +4,12 @@
 
 /**
  * RP2040/Pico 2W Specific Notes:
- * - CPU: ARM Cortex-M0+ dual-core @ ~125 MHz
- * - RAM: 264 KB total SRAM
+ * - CPU: ARM Cortex-M33 dual-core @ ~150 MHz  
+ * - RAM: 520 KB total SRAM
  * - Tick rate: 1000 Hz (1ms resolution, common for RTOS)
  * - Heap: Set to 32 KB (typical for Pico projects with FreeRTOS)
  * - Priority levels: 5 (0=lowest/idle, 4=highest)
+ * - SMP: Dual-core support enabled
  */
 
 // =========================================================================
@@ -19,6 +20,7 @@
 #define configTICK_RATE_HZ                      1000    // 1000 Hz = 1ms tick
 #define configMAX_PRIORITIES                    5       // Priority range: 0-4
 #define configUSE_TIME_SLICING                  1       // Tasks of same priority share time
+#define configNUMBER_OF_CORES                   2       // RP2350 is dual-core
 
 // =========================================================================
 // Memory Configuration
@@ -26,8 +28,8 @@
 
 /**
  * Heap size: 32 KB (32768 bytes)
- * RP2040 has 264 KB total SRAM. SDK typically uses ~100 KB for other subsystems,
- * leaving ~160 KB for user code + heap. 32 KB heap allows ~130 KB for other code.
+ * RP2350 has 520 KB total SRAM. SDK typically uses ~100 KB for other subsystems,
+ * leaving ~420 KB  for user code + heap. 32 KB heap allows ~390 KB for other code.
  */
 #define configTOTAL_HEAP_SIZE                   (32768)
 
@@ -86,6 +88,14 @@
 #define configTIMER_QUEUE_LENGTH                10
 
 // =========================================================================
+// Pico SDK Interop (SMP support for dual-core)
+// =========================================================================
+
+#define configSUPPORT_PICO_SYNC_INTEROP         1       // Support Pico SDK sync primitives
+#define configUSE_CORE_AFFINITY                    1       // Required for SMP and flash safe execute
+#define configUSE_TASK_AFFINTY_SET             1       // Enable task affinity set API
+
+// =========================================================================
 // Task API Includes (reduce footprint by including only what we use)
 // =========================================================================
 
@@ -98,6 +108,8 @@
 #define INCLUDE_xTaskGetSchedulerState          1
 #define INCLUDE_xTaskGetIdleTaskHandle          1
 #define INCLUDE_eTaskGetState                   1
+#define INCLUDE_xTaskCreateAffinitySet          1  // Required for SMP core affinity
 
 #endif // FREERTOS_CONFIG_H
+
 

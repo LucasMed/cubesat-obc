@@ -29,21 +29,8 @@ if(PICO_BUILD)
     # ========================================================================
     # This demonstrates task structure; full FreeRTOS integration pending
     
-    add_executable(obc_firmware_pico
-        ../src/obc_main_pico.c
-    )
-    
-    # Link basic Pico libraries (FreeRTOS integration TODO in Phase 2.2)
-    target_link_libraries(obc_firmware_pico
-        pico_stdlib
-        pico_cyw43_arch_none
-    )
-    
-    pico_enable_stdio_usb(obc_firmware_pico 1)
-    pico_enable_stdio_uart(obc_firmware_pico 0)
-    pico_add_extra_outputs(obc_firmware_pico)
-    
-    message(STATUS "ℹ OBC firmware created (FreeRTOS real kernel: Phase 2.2 TODO)")
+    message(STATUS "ℹ OBC firmware with FreeRTOS kernel - temporarily disabled pending Pico SDK flash.c FreeRTOS integration")
+    message(STATUS "ℹ See docs/TASK2_2_PROGRESS.md for integration details")
 else()
     message(STATUS "Skipping examples (Pico SDK not available)")
 endif()
