@@ -22,8 +22,28 @@ if(PICO_BUILD)
     # Create map/bin/hex/uf2 files
     pico_add_extra_outputs(blink_test)
     
-    message(STATUS "Blink test will be built: build/examples/blink_test.uf2")
-    message(STATUS "To flash: Hold BOOTSEL, connect Pico 2W via USB, drag .uf2 to RPI-RP2 drive")
+    message(STATUS "✓ Blink test will be built: build/examples/blink_test.uf2")
+    
+    # ========================================================================
+    # OBC Firmware Stub with Task Structure (Phase 2.2 prep)
+    # ========================================================================
+    # This demonstrates task structure; full FreeRTOS integration pending
+    
+    add_executable(obc_firmware_pico
+        ../src/obc_main_pico.c
+    )
+    
+    # Link basic Pico libraries (FreeRTOS integration TODO in Phase 2.2)
+    target_link_libraries(obc_firmware_pico
+        pico_stdlib
+        pico_cyw43_arch_none
+    )
+    
+    pico_enable_stdio_usb(obc_firmware_pico 1)
+    pico_enable_stdio_uart(obc_firmware_pico 0)
+    pico_add_extra_outputs(obc_firmware_pico)
+    
+    message(STATUS "ℹ OBC firmware created (FreeRTOS real kernel: Phase 2.2 TODO)")
 else()
     message(STATUS "Skipping examples (Pico SDK not available)")
 endif()

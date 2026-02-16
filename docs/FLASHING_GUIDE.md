@@ -14,12 +14,12 @@ The LED on **Pico 2W** is controlled through the **CYW43 WiFi chip**, not direct
 ## Build Instructions
 
 ### Prerequisites
-- Pico SDK installed at `/home/ljm/pico-sdk`
+- Pico SDK installed at `/home/pico-sdk`
 - Pico 2W board (with USB cable)
 
 ### Step 1: Build
 ```bash
-cd /home/ljm/Dev/cubesat-obc
+cd cubesat-obc
 rm -rf build && mkdir build && cd build
 cmake ..
 cmake --build . -- -j$(nproc)
