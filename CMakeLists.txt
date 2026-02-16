@@ -8,6 +8,9 @@ if(PICO_ENABLED AND DEFINED ENV{PICO_SDK_PATH})
     set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
     message(STATUS "Pico SDK enabled at: ${PICO_SDK_PATH}")
     
+    # Set board BEFORE including SDK
+    set(PICO_BOARD pico2_w)
+    
     # Pull in Pico SDK
     include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
     set(PICO_BUILD TRUE)
