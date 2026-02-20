@@ -19,3 +19,17 @@ add_executable(test_actuators
 )
 target_include_directories(test_actuators PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 add_test(NAME actuators_test COMMAND test_actuators)
+
+add_executable(test_tasks
+    test_tasks.c
+)
+target_include_directories(test_tasks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+target_link_libraries(test_tasks 
+    tasks_lib
+    control_lib
+    dynamics_lib
+    drivers_lib
+    actuators_lib
+    core_lib
+)
+add_test(NAME tasks_test COMMAND test_tasks)

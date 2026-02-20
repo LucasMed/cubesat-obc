@@ -1,55 +1,72 @@
+/**
+ * @file obc_main.c
+ * @brief CubeSat OBC Main Entry Point
+ * 
+ * Supports both host simulation and Pico 2W hardware builds.
+ */
+
+#include <stdio.h>
+#include "FreeRTOS.h"
+#include "task.h"
+
+// Project headers
 #include "config.h"
 #include "sensor_read_task.h"
 #include "attitude_control_task.h"
 #include "telemetry_task.h"
 #include "health_monitor_task.h"
-#include <stdio.h>
-#include "FreeRTOS.h"
-#include "task.h"
+
+#ifdef PICO_BUILD
+#include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
+
+// LED Blink Helper (for diagnostics on hardware)
+void vLedBlinkTask(void *pvParameters) {
+    for (;;) {
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+        vTaskDelay(pdMS_TO_TICKS(200));
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+        vTaskDelay(pdMS_TO_TICKS(800));
+    }
+}
+#endif
 
 int main(void) {
-    printf("=== CubeSat OBC Firmware ===\n");
-    printf("Initializing FreeRTOS...\n");
+#ifdef PICO_BUILD
+    stdio_init_all();
+    
+    printf("\n=====================================\n");
+    printf("  CubeSat OBC - Pico 2W Firmware\n");
+    printf("  FreeRTOS Real Kernel\n");
+    printf("=====================================\n\n");
+    
+    if (cyw43_arch_init()) {
+        printf("ERROR: CYW43 initialization failed!\n");
+        return -1;
+    }
+#else
+    printf("=== CubeSat OBC Firmware (Host Simulation) ===\n");
+#endif
 
-    // Create sensor read task (HIGH priority, 10 Hz)
+    printf("Creating FreeRTOS tasks...\n");
+
+#ifdef PICO_BUILD
+    // LED blink task (diagnostic on hardware)
     xTaskCreate(
-        vSensorReadTask,
-        "SensorRead",
-        512,
+        vLedBlinkTask,
+        "LEDBlink",
+        256,
         NULL,
-        4,  // High priority
+        tskIDLE_PRIORITY + 2,
         NULL
     );
+#endif
 
-    // Create attitude control task (HIGH priority, 20 Hz)
-    xTaskCreate(
-        vAttitudeControlTask,
-        "AttitudeControl",
-        512,
-        NULL,
-        4,  // High priority
-        NULL
-    );
-
-    // Create telemetry task (MEDIUM priority, 1 Hz)
-    xTaskCreate(
-        vTelemetryTask,
-        "Telemetry",
-        512,
-        NULL,
-        3,  // Medium priority
-        NULL
-    );
-
-    // Create health monitor task (LOW priority, ~0.2 Hz)
-    xTaskCreate(
-        vHealthMonitorTask,
-        "HealthMonitor",
-        512,
-        NULL,
-        2,  // Low priority
-        NULL
-    );
+    // OBC Functional Tasks
+    xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
+    xTaskCreate(vAttitudeControlTask, "AttitudeControl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
+    xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+    xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
 
     printf("Starting FreeRTOS scheduler...\n");
     vTaskStartScheduler();
@@ -60,3 +77,22 @@ int main(void) {
 
     return 0;
 }
+
+#ifdef PICO_BUILD
+// ============================================================================
+// FreeRTOS Required Hooks (Pico Hardware Builds)
+// ============================================================================
+
+void vApplicationTickHook(void) {}
+void vApplicationIdleHook(void) {}
+
+void vApplicationMallocFailedHook(void) {
+    printf("FATAL: FreeRTOS malloc failed!\n");
+    for (;;);
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName) {
+    printf("FATAL: Stack overflow in task '%s'!\n", pcTaskName);
+    for (;;);
+}
+#endif

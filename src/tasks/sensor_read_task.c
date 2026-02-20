@@ -4,6 +4,12 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+// Core logic for sensor reading (independent of FreeRTOS task loop)
+void vSensorReadTask_Step(void) {
+    // Read IMU (simulated or real)
+    // printf("[sensor_read_task] Reading sensors...\n");
+}
+
 // Sensor read task: reads IMU at 10 Hz
 void vSensorReadTask(void *pvParameters) {
     (void)pvParameters;
@@ -13,9 +19,7 @@ void vSensorReadTask(void *pvParameters) {
     printf("[sensor_read_task] Started\n");
 
     while (1) {
-        // Read IMU (simulated)
-        // In real code: call mpu6050_read(&roll, &pitch, &yaw)
-
+        vSensorReadTask_Step();
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }

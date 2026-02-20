@@ -51,7 +51,7 @@
 // Assertions for debugging
 #define configASSERT(x)                                 \
     if ((x) == 0) {                                     \
-        taskDISABLE_INTERRUPTS();                       \
+        __asm volatile ("cpsid i" : : : "memory");      \
         for(;;);                                        \
     }
 
@@ -109,6 +109,36 @@
 #define INCLUDE_xTaskGetIdleTaskHandle          1
 #define INCLUDE_eTaskGetState                   1
 #define INCLUDE_xTaskCreateAffinitySet          1  // Required for SMP core affinity
+#define INCLUDE_xEventGroupSetBitsFromISR       1  // Required for SMP port
+#define INCLUDE_xTimerPendFunctionCall          1  // Required for xEventGroupSetBitsFromISR
+
+// =========================================================================
+// Missing Definitions for Pico SDK SMP Port
+// =========================================================================
+
+#define configUSE_16_BIT_TICKS                  0
+#define configUSE_IDLE_HOOK                     1
+#define configUSE_TICK_HOOK                     1
+#define configUSE_MALLOC_FAILED_HOOK            1
+#define configCHECK_FOR_STACK_OVERFLOW          2
+#define configUSE_PASSIVE_IDLE_HOOK             0
+
+// Hardware specific
+#define configCPU_CLOCK_HZ                      ( 150000000UL )
+
+#define configUSE_EVENT_GROUPS                  1
+
+// =========================================================================
+// RP2350 Compatibility (for the RP2040 FreeRTOS port)
+// =========================================================================
+
+#ifndef SIO_IRQ_PROC0
+    #if defined(__ARM_ARCH_8M_MAIN__) || defined(__riscv) || defined(PICO_RP2350)
+        // RP2350 both cores use SIO_IRQ_FIFO (25)
+        // This hack ensures (SIO_IRQ_PROC0 + core_num) always equals 25
+        #define SIO_IRQ_PROC0 (25 - (int)(*(volatile uint32_t*)0xd0000000))
+    #endif
+#endif
 
 #endif // FREERTOS_CONFIG_H
 

@@ -22,15 +22,45 @@ if(PICO_BUILD)
     # Create map/bin/hex/uf2 files
     pico_add_extra_outputs(blink_test)
     
-    message(STATUS "✓ Blink test will be built: build/examples/blink_test.uf2")
+    message(STATUS "Blink test will be built: build/examples/blink_test.uf2")
     
     # ========================================================================
-    # OBC Firmware Stub with Task Structure (Phase 2.2 prep)
+    # OBC Firmware with Real FreeRTOS (Phase 2.2)
     # ========================================================================
-    # This demonstrates task structure; full FreeRTOS integration pending
-    
-    message(STATUS "ℹ OBC firmware with FreeRTOS kernel - temporarily disabled pending Pico SDK flash.c FreeRTOS integration")
-    message(STATUS "ℹ See docs/TASK2_2_PROGRESS.md for integration details")
+    add_executable(obc_firmware_pico
+        ${CMAKE_SOURCE_DIR}/src/obc_main.c
+    )
+
+    target_link_libraries(obc_firmware_pico
+        pico_stdlib
+        pico_cyw43_arch_none
+        FreeRTOS-Kernel
+        FreeRTOS-Kernel-Heap4
+        tasks_lib
+        core_lib
+        drivers_lib
+        actuators_lib
+        control_lib
+        dynamics_lib
+    )
+
+    target_compile_definitions(obc_firmware_pico PRIVATE
+        PICO_FLASH_SAFE_EXECUTE_SUPPORT_FREERTOS_SMP=1
+        LIB_FREERTOS_KERNEL=1
+    )
+
+    target_include_directories(obc_firmware_pico PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/config
+        $ENV{PICO_SDK_PATH}/lib/FreeRTOS-Kernel/include
+        $ENV{PICO_SDK_PATH}/lib/FreeRTOS-Kernel/portable/ThirdParty/GCC/RP2040/include
+    )
+
+    pico_enable_stdio_usb(obc_firmware_pico 1)
+    pico_enable_stdio_uart(obc_firmware_pico 0)
+    pico_add_extra_outputs(obc_firmware_pico)
+
+    message(STATUS "OBC firmware will be built: build/examples/obc_firmware_pico.uf2")
 else()
     message(STATUS "Skipping examples (Pico SDK not available)")
 endif()
