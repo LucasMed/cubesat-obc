@@ -29,6 +29,7 @@ if(PICO_BUILD)
     # ========================================================================
     add_executable(obc_firmware_pico
         ${CMAKE_SOURCE_DIR}/src/obc_main.c
+        ${CMAKE_SOURCE_DIR}/src/freertos_hooks.c
     )
 
     target_link_libraries(obc_firmware_pico

@@ -79,20 +79,5 @@ int main(void) {
 }
 
 #ifdef PICO_BUILD
-// ============================================================================
-// FreeRTOS Required Hooks (Pico Hardware Builds)
-// ============================================================================
-
-void vApplicationTickHook(void) {}
-void vApplicationIdleHook(void) {}
-
-void vApplicationMallocFailedHook(void) {
-    printf("FATAL: FreeRTOS malloc failed!\n");
-    for (;;);
-}
-
-void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName) {
-    printf("FATAL: Stack overflow in task '%s'!\n", pcTaskName);
-    for (;;);
-}
+// FreeRTOS hooks moved to freertos_hooks.c
 #endif
