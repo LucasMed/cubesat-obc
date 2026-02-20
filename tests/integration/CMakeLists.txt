@@ -21,9 +21,9 @@ else()
         FreeRTOS-Kernel-Heap4
     )
     
-    # Enable USB output for test logging
+    # Enable both USB and UART output for test logging
     pico_enable_stdio_usb(test_i2c_hardware 1)
-    pico_enable_stdio_uart(test_i2c_hardware 0)
+    pico_enable_stdio_uart(test_i2c_hardware 1)
     pico_add_extra_outputs(test_i2c_hardware)
     
     message(STATUS "Hardware I2C test will be built: build/tests/integration/test_i2c_hardware.uf2")

@@ -31,11 +31,11 @@
  * RP2350 has 520 KB total SRAM. SDK typically uses ~100 KB for other subsystems,
  * leaving ~420 KB  for user code + heap. 32 KB heap allows ~390 KB for other code.
  */
-#define configTOTAL_HEAP_SIZE                   (32768)
+#define configTOTAL_HEAP_SIZE                   (131072) // 128 KB
 
 // Stack size defaults (in words, typically 4 bytes per word on ARM)
-#define configMINIMAL_STACK_SIZE                (128)   // Absolute minimum (512 bytes)
-#define configTIMER_TASK_STACK_DEPTH            (256)   // Timer task stack (1024 bytes)
+#define configMINIMAL_STACK_SIZE                (1024)  // 4KB - massive headroom
+#define configTIMER_TASK_STACK_DEPTH            (512)   // 2KB
 
 // Support dynamic memory allocation (standard for FreeRTOS)
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
@@ -117,8 +117,8 @@
 // =========================================================================
 
 #define configUSE_16_BIT_TICKS                  0
-#define configUSE_IDLE_HOOK                     1
-#define configUSE_TICK_HOOK                     1
+#define configUSE_IDLE_HOOK                     0
+#define configUSE_TICK_HOOK                     0
 #define configUSE_MALLOC_FAILED_HOOK            1
 #define configCHECK_FOR_STACK_OVERFLOW          2
 #define configUSE_PASSIVE_IDLE_HOOK             0

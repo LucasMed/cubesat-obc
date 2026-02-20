@@ -5,34 +5,26 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-02-20
 
 ### Added
-- Real FreeRTOS kernel integration for RP2350 dual-core SMP
-- Pico SDK integration with CMake conditional build
-- Blink test validated on Pico 2W hardware (CYW43 LED control)
-- FreeRTOSConfig.h enhanced for RP2350 (32 KB heap, 1000 Hz tick, dual-core)
-- Documentation: `docs/design/SYSTEM_DESIGN.md` — system design document
-- Documentation: `docs/requirements/SOFTWARE_REQUIREMENTS.md` — requirements spec
-- Documentation: `docs/standards/CODING_STANDARDS.md` — full coding standards
-- Documentation: `docs/test_plans/TEST_PLANS.md` — test plans and coverage
-- Documentation: `docs/release/RELEASE_NOTES.md` — release notes per version
-- Documentation: `docs/PROJECT_PROGRESS.md` — consolidated project progress
+- MPU6050 IMU driver and onboard Temperature sensor driver (Pico ADC4)
+- Thread-safe system state management using FreeRTOS mutexes
+- High-resolution task jitter telemetry (µs precision)
+- Integrated sensor-to-control loop in `obc_main.c`
 
 ### Changed
-- `BUILD_GUIDE.md` expanded with Pico SDK setup, flashing, and troubleshooting
-- `CODING_STANDARDS.md` now links to full standards document
-- `README.md` updated with Phase 2 status and expanded docs table
+- Increased `configMINIMAL_STACK_SIZE` to 4KB and `configTOTAL_HEAP_SIZE` to 128KB for SMP/USB stability
+- Forced `-mfloat-abi=soft` to ensure FreeRTOS SMP compatibility on RP2350
+- Enabled UART0 and USB CDC stdio with FreeRTOS-aware initialization
+- Fixed `pico_flash` header shadowing issues
 
-### Removed
-- `TASK2_2_PROGRESS.md` — obsolete task progress report
-- `TASK2_2_COMPLETION_REPORT.md` — redundant with git history
-- `TASK2_2B_VALIDATION.md` — consolidated into FLASHING_GUIDE
-- `TASK2_2B_VALIDATION_REPORT.md` — unfilled template
-- `NEXT_STEPS.md` — replaced by `PROJECT_PROGRESS.md`
+### Fixed
+- Resolved `FATAL: Stack overflow in task 'IDLE0'` caused by FPU context switching mismatch
+- Resolved USB CDC enumeration issues on boot
 
 ### Known Issues
-- `pico_flash` library conflicts with FreeRTOS headers — OBC firmware task scheduling pending
+- Power consumption baseline measurement pending final hardware sign-off
 
 ## [0.1.0] - 2026-02-12
 

@@ -4,41 +4,43 @@
 #include "attitude_control_task.h"
 #include "telemetry_task.h"
 #include "health_monitor_task.h"
+#include "system_state.h"
 
-void test_sensor_read_step(void) {
-    printf("Running test_sensor_read_step...\n");
-    // Call the step function
+void test_system_integration(void) {
+    printf("Running test_system_integration...\n");
+    
+    // 1. Initialize State
+    system_state_init();
+    
+    // 2. Initial state check
+    system_state_t state;
+    system_state_get(&state);
+    assert(state.imu_valid == false);
+    assert(state.temp_valid == false);
+
+    // 3. Run sensor read step (uses host i2c/temp mocks)
     vSensorReadTask_Step();
-    // For now, it just doesn't crash.
-    // In the future, we can check system_state updates.
-    printf("test_sensor_read_step passed\n");
-}
+    
+    // 4. Verify state updated
+    system_state_get(&state);
+    assert(state.imu_valid == true);
+    assert(state.temp_valid == true);
+    // Based on host mocks: ID 0x68 means mock IMU is "working"
+    // Mock temp is 25.0f
+    assert(state.temp == 25.0f);
 
-void test_attitude_control_step(void) {
-    printf("Running test_attitude_control_step...\n");
+    // 5. Run control and telemetry steps
     vAttitudeControlTask_Step();
-    printf("test_attitude_control_step passed\n");
-}
-
-void test_telemetry_step(void) {
-    printf("Running test_telemetry_step...\n");
     vTelemetryTask_Step();
-    printf("test_telemetry_step passed\n");
-}
-
-void test_health_monitor_step(void) {
-    printf("Running test_health_monitor_step...\n");
     vHealthMonitorTask_Step();
-    printf("test_health_monitor_step passed\n");
+
+    printf("test_system_integration passed\n");
 }
 
 int main(void) {
     printf("=== OBC Tasks Unit Tests ===\n");
     
-    test_sensor_read_step();
-    test_attitude_control_step();
-    test_telemetry_step();
-    test_health_monitor_step();
+    test_system_integration();
     
     printf("All tasks tests passed!\n");
     return 0;

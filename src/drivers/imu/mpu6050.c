@@ -23,7 +23,7 @@ int mpu6050_init(void) {
     // Check Who Am I
     uint8_t id;
     if (i2c_bus_write_read(MPU6050_ADDR, (uint8_t[]){MPU6050_WHO_AM_I}, 1, &id, 1) < 0) {
-        printf("mpu6050: I2C error during init\n");
+        printf("mpu6050: Sensor not detected on I2C bus\n");
         return -1;
     }
     

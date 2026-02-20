@@ -16,17 +16,21 @@
 - CI/CD via GitHub Actions
 - Documentation framework established
 
-### Phase 2: Pico SDK Integration 🔄 (In Progress)
+### Phase 2: Pico SDK Integration ✅ (2026-02-20)
+- Full integration of Pico SDK with FreeRTOS SMP
+- Thread-safe system state management
+- I2C master driver and MPU6050/Temperature sensor support
+- Resolved critical FPU incompatibility (forced `-mfloat-abi=soft`)
+- Verified real-time timing (Jitter: ±22 µs @ 20 Hz)
+- Robust USB CDC and UART diagnostics
 
 | Task | Status | Date | Notes |
 |------|--------|------|-------|
 | 2.1 — Pico SDK Setup | ✅ | 2026-02-16 | SDK integrated, blink test on HW |
-| 2.2a — FreeRTOS Kernel | ✅ | 2026-02-16 | Real kernel, dual-core SMP config |
-| 2.2b — HW Validation | ✅ | 2026-02-16 | LED blink verified on Pico 2W |
-| 2.2c — flash.c Fix | ⏳ | — | Blocker: `pico_flash` + FreeRTOS headers |
-| 2.3 — I2C Drivers | ⏳ | — | MPU6050, temperature sensor |
-| 2.4 — System Integration | ⏳ | — | End-to-end control loop |
-| 2.5 — HW Validation | ⏳ | — | Timing, power, sensor checks |
+| 2.2 — FreeRTOS Port | ✅ | 2026-02-20 | SMP supported, flash.c fix applied |
+| 2.3 — I2C Drivers | ✅ | 2026-02-20 | MPU6050 & Temp sensor drivers |
+| 2.4 — System Integration | ✅ | 2026-02-20 | End-to-end control loop stable |
+| 2.5 — HW Validation | ✅ | 2026-02-20 | Jitter confirmed ±22µs, stable USB |
 
 ---
 
@@ -42,10 +46,10 @@
 
 ## Immediate Next Steps
 
-1. **Resolve flash.c blocker** — Integrate proper FreeRTOS-SMP library for real hardware builds
-2. **Task 2.3: I2C Drivers** — Implement `mpu6050_pico.c` and `temperature_pico.c`
-3. **Task 2.4: System Integration** — End-to-end control loop with real sensor data
-4. **Task 2.5: HW Validation** — Timing, power profiling, sensor checks
+1. **Task 3.1: Telemetry Refactor** — Implement CSP (CubeSat Space Protocol) over UART
+2. **Task 3.2: Remote Command Uplink** — Basic C&DH command processing
+3. **Task 4.1: Extended Kalman Filter** — Integrate IMU with dynamics model
+4. **Power Monitoring** — (Pending) Integrate hardware current/voltage sensors
 
 ---
 
@@ -54,8 +58,8 @@
 | Phase | Target | Description | Status |
 |-------|--------|-------------|--------|
 | 1 — Skeleton | Feb 2026 | Architecture, FreeRTOS stubs, PID, tests | ✅ Complete |
-| 2 — Pico SDK | Mar 2026 | Real FreeRTOS, I2C drivers, HW testing | 🔄 ~40% |
-| 3 — Communication | Q2 2026 | WiFi/lwIP, telemetry, UART | ⏳ Pending |
+| 2 — Pico SDK | Feb 2026 | Real FreeRTOS, I2C drivers, HW testing | ✅ Complete |
+| 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | 🔄 0% |
 | 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | ⏳ Pending |
 | 5 — Flight Ready | Q3 2026 | Watchdog, safe states, logging | ⏳ Pending |
 

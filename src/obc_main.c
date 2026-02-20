@@ -15,6 +15,10 @@
 #include "attitude_control_task.h"
 #include "telemetry_task.h"
 #include "health_monitor_task.h"
+#include "system_state.h"
+#include "drivers/i2c_interface.h"
+#include "drivers/imu/mpu6050.h"
+#include "drivers/temperature.h"
 
 #ifdef PICO_BUILD
 #include "pico/stdlib.h"
@@ -44,11 +48,40 @@ int main(void) {
         printf("ERROR: CYW43 initialization failed!\n");
         return -1;
     }
+
+    // Wait for USB connection (optional but helpful for Putty/Minicom)
+    // Giving 2 seconds for the host to detect the device
+    for (int i = 0; i < 20; i++) {
+        printf(".");
+        sleep_ms(100);
+    }
+    printf("\nUSB Connected / Startup delay finished.\n");
 #else
     printf("=== CubeSat OBC Firmware (Host Simulation) ===\n");
 #endif
 
+    // Initialize System State
+    printf("Initializing system state...\n");
+    fflush(stdout);
+    system_state_init();
+
+#ifdef PICO_BUILD
+    // Initialize I2C Bus
+    printf("Initializing I2C bus...\n");
+    fflush(stdout);
+    i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN, 400000);
+#endif
+
+    // Initialize Sensors
+    printf("Initializing sensors...\n");
+    fflush(stdout);
+    int imu_res = mpu6050_init();
+    int temp_res = temperature_init();
+    
+    system_state_set_available(imu_res == 0, temp_res == 0);
+
     printf("Creating FreeRTOS tasks...\n");
+    fflush(stdout);
 
 #ifdef PICO_BUILD
     // LED blink task (diagnostic on hardware)
@@ -69,6 +102,9 @@ int main(void) {
     xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
 
     printf("Starting FreeRTOS scheduler...\n");
+    fflush(stdout);
+    sleep_ms(100); // Small pause to let serial buffers clear
+
     vTaskStartScheduler();
 
     // Should never reach here

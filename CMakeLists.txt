@@ -62,6 +62,10 @@ if(PICO_BUILD)
         INCLUDE_xTimerPendFunctionCall=1
     )
 
+    # Force software floating point because the RP2040 FreeRTOS port
+    # does not handle FPU context switching on RP2350.
+    add_compile_options(-mfloat-abi=soft)
+
     # Include FreeRTOS kernel port for RP2040 (works with RP2350 also)
     set(FREERTOS_CONFIG_FILE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config)
     set(FREERTOS_PORT_BINARY_PATH "${CMAKE_BINARY_DIR}/freertos_kernel_rp2040")

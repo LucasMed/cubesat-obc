@@ -4,11 +4,17 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "system_state.h"
+
 // Core logic for telemetry (independent of FreeRTOS task loop)
 void vTelemetryTask_Step(void) {
-    // Package telemetry and transmit via WiFi/UART
-    // In real code: gather attitude, rates, actuator state, power info, etc.
-    printf("[telemetry_task] Sending telemetry frame\n");
+    system_state_t state;
+    system_state_get(&state);
+
+    printf("[telemetry] ATT[%.1f, %.1f, %.1f] GYRO[%.1f, %.1f, %.1f] TEMP[%.1f C]\n",
+           state.attitude[0], state.attitude[1], state.attitude[2],
+           state.rates[0], state.rates[1], state.rates[2],
+           state.temp);
 }
 
 // Telemetry task: sends telemetry at 1 Hz
