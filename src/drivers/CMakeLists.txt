@@ -6,6 +6,7 @@ if(PICO_BUILD)
     list(APPEND DRIVER_SOURCES 
         i2c/pico_i2c.c
         temperature/pico_temp.c
+        uart/pico_usart.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
@@ -23,6 +24,8 @@ if(PICO_BUILD)
         pico_stdlib 
         hardware_i2c 
         hardware_adc
+        hardware_uart
         FreeRTOS-Kernel
+        csp
     )
 endif()

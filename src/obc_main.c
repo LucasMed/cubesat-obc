@@ -16,6 +16,7 @@
 #include "telemetry_task.h"
 #include "health_monitor_task.h"
 #include "system_state.h"
+#include "comm_init.h"
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/temperature.h"
@@ -64,6 +65,9 @@ int main(void) {
     printf("Initializing system state...\n");
     fflush(stdout);
     system_state_init();
+
+    // Initialize Communications
+    comm_init();
 
 #ifdef PICO_BUILD
     // Initialize I2C Bus
