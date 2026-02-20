@@ -60,6 +60,7 @@ if(PICO_BUILD)
         configUSE_TIMERS=1
         INCLUDE_xEventGroupSetBitsFromISR=1
         INCLUDE_xTimerPendFunctionCall=1
+        PICO_BUILD=1
     )
 
     # Force software floating point because the RP2040 FreeRTOS port

@@ -103,7 +103,9 @@ int main(void) {
 
     printf("Starting FreeRTOS scheduler...\n");
     fflush(stdout);
+#ifdef PICO_BUILD
     sleep_ms(100); // Small pause to let serial buffers clear
+#endif
 
     vTaskStartScheduler();
 
