@@ -13,7 +13,6 @@ out/
 *.d
 
 # Dependencies
-third_party/
 vendor/
 external/
 
