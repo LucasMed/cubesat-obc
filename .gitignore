@@ -1,5 +1,6 @@
 # Build and output artifacts
 build/
+build_host/
 cmake-build-*/
 out/
 *.o

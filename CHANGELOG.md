@@ -5,32 +5,26 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-02-20
 
 ### Added
-- FreeRTOS integration with 4 concurrent tasks (sensor read, attitude control, telemetry, health monitor)
-- PID controller for attitude control (3-axis: roll, pitch, yaw)
-- Attitude dynamics simulator using Euler integration
-- Reaction wheel and magnetorquer actuator models
-- Unit test suite (3 tests: PID, dynamics, actuators) - 100% passing
-- GitHub Actions CI/CD pipeline
-- Comprehensive coding standards and documentation
-- Build scripts and static analysis tooling
+- MPU6050 IMU driver and onboard Temperature sensor driver (Pico ADC4)
+- Thread-safe system state management using FreeRTOS mutexes
+- High-resolution task jitter telemetry (µs precision)
+- Integrated sensor-to-control loop in `obc_main.c`
 
 ### Changed
-- None yet
-
-### Deprecated
-- None yet
-
-### Removed
-- None yet
+- Increased `configMINIMAL_STACK_SIZE` to 4KB and `configTOTAL_HEAP_SIZE` to 128KB for SMP/USB stability
+- Forced `-mfloat-abi=soft` to ensure FreeRTOS SMP compatibility on RP2350
+- Enabled UART0 and USB CDC stdio with FreeRTOS-aware initialization
+- Fixed `pico_flash` header shadowing issues
 
 ### Fixed
-- None yet
+- Resolved `FATAL: Stack overflow in task 'IDLE0'` caused by FPU context switching mismatch
+- Resolved USB CDC enumeration issues on boot
 
-### Security
-- No security issues identified yet
+### Known Issues
+- Power consumption baseline measurement pending final hardware sign-off
 
 ## [0.1.0] - 2026-02-12
 

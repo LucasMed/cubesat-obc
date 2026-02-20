@@ -4,7 +4,7 @@
 
 Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace software standards. Designed for Pico 2W with extensibility to flight-ready systems.
 
-**Status:** Skeleton v0.1.0 - Ready for Pico SDK integration and hardware development  
+**Status:** v0.2.0-dev — Phase 2 (Pico SDK Integration) in progress  
 **License:** MIT  
 **Maintainers:** ExArsultre
 
@@ -164,8 +164,14 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 |----------|----------|---------|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Developers | How to contribute, code style, testing |
 | [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | Developers | MISRA-like conventions, naming, safety |
-| [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md) | Users | Build setup, dependencies, troubleshooting |
-| [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Project Leads | Roadmap, phase planning, verification |
+| [docs/standards/CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Developers | Full coding standards reference |
+| [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md) | Users | Build setup, Pico SDK, flashing, troubleshooting |
+| [docs/PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md) | Project Leads | Roadmap, current status, blockers |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Engineers | System design, data flow, decisions |
+| [docs/design/SYSTEM_DESIGN.md](docs/design/SYSTEM_DESIGN.md) | Engineers | Detailed system design document |
+| [docs/requirements/SOFTWARE_REQUIREMENTS.md](docs/requirements/SOFTWARE_REQUIREMENTS.md) | Engineers | Requirements specification (FR, NFR, IR) |
+| [docs/test_plans/TEST_PLANS.md](docs/test_plans/TEST_PLANS.md) | QA/Test | Test plans, coverage, execution |
+| [docs/release/RELEASE_NOTES.md](docs/release/RELEASE_NOTES.md) | Everyone | Release notes per version |
 | [CHANGELOG.md](CHANGELOG.md) | Everyone | Version history, features, status |
 | [LICENSE](LICENSE) | Legal | MIT License terms |
 
@@ -232,13 +238,13 @@ cmake --build build --verbose
 | Area | Status | Notes |
 |------|--------|-------|
 | Architecture | ✅ Complete | ECSS-Q-ST-80C compliant |
-| FreeRTOS | ✅ Complete | Stubs on host, ready for Pico SDK |
+| FreeRTOS | ✅ Real Kernel | Integrated on RP2350, dual-core SMP |
+| Pico SDK | ✅ Integrated | Blink test validated on hardware |
 | Control System | ✅ Functional | PID + dynamics working |
-| Tests | ✅ Complete | 3/3 passing, 100% |
-| Documentation | ✅ Complete | Coding standards, guides, API |
-| Pico SDK | 🔄 Pending | Next priority |
-| Sensors | 🔄 Pending | MPU6050, TMP102 drivers |
-| WiFi/Telemetry | 🔄 Pending | Phase 3 |
+| Tests | ✅ Complete | 3/3 unit tests passing (100%) |
+| Documentation | ✅ Complete | Design, requirements, standards, test plans |
+| I2C Drivers | 🔄 In Progress | MPU6050, TMP102 — Task 2.3 |
+| WiFi/Telemetry | ⏳ Pending | Phase 3 |
 
 ---
 
@@ -297,7 +303,7 @@ Built with:
 
 ---
 
-**Last Updated:** 2026-02-12  
-**Version:** 0.1.0 (Skeleton)
+**Last Updated:** 2026-02-20  
+**Version:** 0.2.0-dev (Phase 2 — Pico SDK Integration)
 
 ⭐ If you find this project useful, please star us on GitHub!

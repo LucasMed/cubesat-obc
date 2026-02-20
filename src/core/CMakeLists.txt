@@ -3,3 +3,7 @@ add_library(core_lib
 )
 
 target_include_directories(core_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+
+if(PICO_BUILD)
+    target_link_libraries(core_lib PUBLIC FreeRTOS-Kernel)
+endif()

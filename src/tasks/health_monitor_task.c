@@ -4,6 +4,12 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+// Core logic for health monitoring (independent of FreeRTOS task loop)
+void vHealthMonitorTask_Step(void) {
+    // Check system health: memory, actuator saturation, power, temps
+    printf("[health_monitor_task] Health check\n");
+}
+
 // Health monitor task: monitors system every 5 seconds
 void vHealthMonitorTask(void *pvParameters) {
     (void)pvParameters;
@@ -13,9 +19,7 @@ void vHealthMonitorTask(void *pvParameters) {
     printf("[health_monitor_task] Started\n");
 
     while (1) {
-        // Check system health: memory, actuator saturation, power, temps
-        printf("[health_monitor_task] Health check\n");
-
+        vHealthMonitorTask_Step();
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
