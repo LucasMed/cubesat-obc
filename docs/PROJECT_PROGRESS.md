@@ -32,6 +32,15 @@
 | 2.4 — System Integration | ✅ | 2026-02-20 | End-to-end control loop stable |
 | 2.5 — HW Validation | ✅ | 2026-02-20 | Jitter confirmed ±22µs, stable USB |
 
+### Phase 3: Communication & Telemetry (Completed Feb 2026)
+- **Goal**: Integrate `libcsp` for binary telemetry and remote command handling.
+- **Outcomes**:
+  - Successfully compiled `libcsp` for FreeRTOS SMP on RP2350.
+  - Implemented `pico_usart` to bridge CSP to UART1 via KISS framing.
+  - Refactored `telemetry_task` to emit packed binary packets at 1 Hz.
+  - Created `command_task` listening on Port 20 for Echo and Reboot commands.
+  - Defined strict interface specifications in `PHASE3_COMM_SPEC.md`.
+
 ---
 
 ## Active Blockers
@@ -46,9 +55,6 @@
 
 ## Immediate Next Steps
 
-1. **Task 3.1: Telemetry Refactor** — Implement CSP (CubeSat Space Protocol) over UART
-2. **Task 3.2: Remote Command Uplink** — Basic C&DH command processing
-3. **Task 4.1: Extended Kalman Filter** — Integrate IMU with dynamics model
 4. **Power Monitoring** — (Pending) Integrate hardware current/voltage sensors
 
 ---

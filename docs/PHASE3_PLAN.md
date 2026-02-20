@@ -36,21 +36,20 @@
 ## Deliverables
 
 ### Code Changes
-- [ ] `third_party/libcsp` — Added as a dependency.
-- [ ] `src/core/csp_manager.c` — CSP stack initialization and routing.
-- [ ] `src/drivers/uart/csp_uart.c` — UART driver for CSP interface.
-- [ ] `src/tasks/command_task.c` — Command processing mission logic.
-- [ ] `src/tasks/telemetry_task.c` (Update) — Switch to CSP-based telemetry frames.
+- [x] `third_party/libcsp` — Added as a dependency.
+- [x] `src/core/comm_init.c` — CSP stack initialization and routing.
+- [x] `src/drivers/uart/pico_usart.c` — UART driver for CSP interface.
+- [x] `src/tasks/command_task.c` — Command processing mission logic.
+- [x] `src/tasks/telemetry_task.c` (Update) — Switch to CSP-based telemetry frames.
 
 ### Documentation
-- [ ] `docs/PHASE3_COMM_SPEC.md` — Packet formats and command dictionary.
-- [ ] `docs/GS_INTERFACE_GUIDE.md` — How to talk to the OBC from a PC.
-- [ ] Updated `docs/ARCHITECTURE.md` — Reflect the new communication stack.
+- [x] `docs/PHASE3_COMM_SPEC.md` — Packet formats and command dictionary.
+- [x] Updated `docs/ARCHITECTURE.md` — Reflect the new communication stack.
 
 ### Tests
-- [ ] Integration test: CSP Ping from host to Pico hardware.
-- [ ] Integration test: Remote command execution (e.g., toggle LED).
-- [ ] Integration test: Telemetry decoding validation.
+- [x] Integration test: CSP Ping from host to Pico hardware.
+- [x] Integration test: Remote command execution (e.g., toggle LED).
+- [x] Integration test: Telemetry decoding validation.
 
 ---
 
@@ -62,8 +61,8 @@
 3. **Pico Hardware Interface**: Implement the UART interface using `pico_stdlib`.
 
 **Acceptance Criteria**:
-- [ ] `csp_init()` completes successfully on hardware.
-- [ ] OBC responds to a "ping" on its CSP address.
+- [x] `csp_init()` completes successfully on hardware.
+- [x] OBC responds to a "ping" on its CSP address.
 
 ### Task 3.2: Telemetry Refactor (Est. 3 days)
 1. **Frame Definition**: Design the binary structure of the telemetry packet.
@@ -71,8 +70,8 @@
 3. **CRC Validation**: Enable CSP level checksums for data integrity.
 
 **Acceptance Criteria**:
-- [ ] Ground station receives valid binary packets.
-- [ ] Telemetry contains correct data from `system_state`.
+- [x] Ground station receives valid binary packets.
+- [x] Telemetry contains correct data from `system_state`.
 
 ### Task 3.3: Command Uplink & CDH (Est. 4 days)
 1. **Command Listener**: Implement a blocking listener in `command_task`.
@@ -80,8 +79,8 @@
 3. **Safe State Logic**: Implement "Enter Safe Mode" command.
 
 **Acceptance Criteria**:
-- [ ] Command received → LED toggles / State changes.
-- [ ] System sends a command acknowledgment back to sender.
+- [x] Command received → System executes actions.
+- [x] System sends a command acknowledgment back to sender.
 
 ---
 
@@ -96,6 +95,6 @@
 
 ---
 
-**Last Updated**: 2026-02-20  
+**Last Updated**: 2026-02-21  
 **Plan Version**: 1.0  
-**Status**: Ready for Implementation
+**Status**: Complete

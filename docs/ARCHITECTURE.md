@@ -98,10 +98,12 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **Design**: Priority levels (HIGH/MEDIUM/LOW) prevent starvation
 - **Files**: 4 task implementations + task headers
 
-### 7. **Communication** (`src/drivers/comms/` - Phase 3)
-- **WiFi** (CYW43): Primary telemetry link
-- **UART**: Debug logging and fallback link
-- **Protocol**: Simple ASCII + fixed-size packets (future: CRC)
+### 7. **Communication** (`third_party/libcsp/`, `src/core/comm_init.c` - Phase 3)
+- **Protocol**: CubeSat Space Protocol (CSP) v2
+- **Physical Layer**: UART1 acts as the primary telemetry/command link via KISS framing.
+- **Telemetry Task** (Port 10): Emits 1 Hz packed binary `csp_telemetry_packet_t` over CSP (connection-less).
+- **Command Task** (Port 20): Listens for uplink commands (Echo, Reboot, Set Mode).
+- **UART0**: Retained for ASCII debug logging.
 
 ---
 
@@ -274,6 +276,6 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 ---
 
-**Last Updated**: 2026-02-20  
+**Last Updated**: 2026-02-21  
 **Author**: OBC Development Team  
-**Status**: Hardware Validated (Phase 2 Complete)
+**Status**: Phase 3 (Communication & Telemetry) Complete
