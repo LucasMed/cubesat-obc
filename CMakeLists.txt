@@ -98,6 +98,49 @@ if(NOT PICO_BUILD)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/host)
 endif()
 
+# Add libcsp (Task 3.1)
+if(PICO_BUILD)
+    # Force libcsp to use FreeRTOS port
+    set(CSP_FREERTOS ON CACHE BOOL "Use FreeRTOS arch" FORCE)
+    set(CSP_POSIX OFF CACHE BOOL "Use POSIX arch" FORCE)
+    set(CSP_USE_RTABLE ON CACHE BOOL "Use routing table")
+    set(CSP_HAVE_STDIO ON CACHE BOOL "OS provides C Standard I/O functions")
+    
+    # libcsp expects 'freertos_kernel' target name
+    if(NOT TARGET freertos_kernel)
+        add_library(freertos_kernel INTERFACE)
+        target_link_libraries(freertos_kernel INTERFACE FreeRTOS-Kernel)
+    endif()
+    if(NOT TARGET FreeRTOS-Kernel-Config)
+        # Ensure it exists as a target if not already
+        add_library(FreeRTOS-Kernel-Config INTERFACE)
+    endif()
+else()
+    set(CSP_POSIX ON CACHE BOOL "Use POSIX arch" FORCE)
+    set(CSP_FREERTOS OFF CACHE BOOL "Use FreeRTOS arch" FORCE)
+endif()
+
+# Only add libcsp if it exists
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libcsp/CMakeLists.txt")
+    # Disable libcsp's internal unittests and samples to speed up build
+    set(CSP_BUILD_SAMPLES OFF CACHE BOOL "Build CSP samples")
+    
+    add_subdirectory(third_party/libcsp EXCLUDE_FROM_ALL)
+    message(STATUS "libcsp integrated from third_party/libcsp")
+    
+    # After adding the subdirectory, we can customize the 'csp' target
+    if(PICO_BUILD)
+        # Link libcsp with Pico SDK and FreeRTOS config so it can find pico.h and FreeRTOSConfig.h
+        target_link_libraries(csp PRIVATE pico_stdlib FreeRTOS-Kernel-Config)
+        # Also ensure it has FreeRTOS kernel includes
+        target_link_libraries(csp PRIVATE FreeRTOS-Kernel)
+        # Provide compatible endian.h (Task 3.1 fix)
+        target_include_directories(csp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/pico_compat)
+    endif()
+else()
+    message(WARNING "libcsp not found in third_party/libcsp. Run 'git submodule update --init' if needed.")
+endif()
+
 # Add main sources
 add_subdirectory(src)
 
