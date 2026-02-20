@@ -10,6 +10,49 @@
 #include "hardware/watchdog.h"
 #endif
 
+void process_command_packet(csp_conn_t *conn, csp_packet_t *packet) {    
+    // Check length to ensure we can read cmd_id
+    if (packet->length < 1) {
+        csp_buffer_free(packet);
+        return;
+    }
+
+    csp_command_packet_t *cmd = (csp_command_packet_t *)packet->data;
+    printf("[command_task] Received CMD_ID=%d from Addr=%d\n", cmd->cmd_id, csp_conn_src(conn));
+
+    switch (cmd->cmd_id) {
+        case CMD_ECHO:
+            printf("[command_task] Executing ECHO command (payload '%.*s')\n", packet->length - 1, cmd->payload);
+            // Echo back the same packet
+            csp_send(conn, packet);
+            packet = NULL; // csp_send frees the packet or takes ownership
+            break;
+        
+        case CMD_REBOOT:
+            printf("[command_task] Executing REBOOT command. Rebooting system...\n");
+            vTaskDelay(pdMS_TO_TICKS(100)); // allow logs to flush
+            #ifdef PICO_BUILD
+            watchdog_reboot(0, 0, 10);
+            #else
+            printf("Simulating reboot on host.\n");
+            #endif
+            break;
+        
+        case CMD_SET_MODE:
+            printf("[command_task] Executing SET_MODE (mode=%d). Not fully implemented yet.\n", cmd->payload[0]);
+            break;
+
+        default:
+            printf("[command_task] Unknown command id %d. Dropping packet.\n", cmd->cmd_id);
+            break;
+    }
+
+    // If packet was not sent (which transfers ownership), free it.
+    if (packet != NULL) {
+        csp_buffer_free(packet);
+    }
+}
+
 // Command task: listens for incoming commands on COMMAND_PORT
 void vCommandTask(void *pvParameters) {
     (void)pvParameters;
@@ -32,49 +75,7 @@ void vCommandTask(void *pvParameters) {
 
         csp_packet_t *packet;
         while ((packet = csp_read(conn, 50)) != NULL) {
-            // Check length to ensure we can read cmd_id
-            if (packet->length < 1) {
-                csp_buffer_free(packet);
-                continue;
-            }
-
-            csp_command_packet_t *cmd = (csp_command_packet_t *)packet->data;
-            printf("[command_task] Received CMD_ID=%d from Addr=%d\n", cmd->cmd_id, csp_conn_src(conn));
-
-            switch (cmd->cmd_id) {
-                case CMD_ECHO:
-                    printf("[command_task] Executing ECHO command (payload '%.*s')\n", packet->length - 1, cmd->payload);
-                    // Echo back the same packet
-                    csp_send(conn, packet);
-                    packet = NULL; // csp_send frees the packet or takes ownership
-                    break;
-                
-                case CMD_REBOOT:
-                    printf("[command_task] Executing REBOOT command. Rebooting system...\n");
-                    csp_buffer_free(packet);
-                    vTaskDelay(pdMS_TO_TICKS(100)); // allow logs to flush
-                    #ifdef PICO_BUILD
-                    watchdog_reboot(0, 0, 10);
-                    #else
-                    printf("Simulating reboot on host.\n");
-                    #endif
-                    break;
-                
-                case CMD_SET_MODE:
-                    printf("[command_task] Executing SET_MODE (mode=%d). Not fully implemented yet.\n", cmd->payload[0]);
-                    csp_buffer_free(packet);
-                    break;
-
-                default:
-                    printf("[command_task] Unknown command id %d. Dropping packet.\n", cmd->cmd_id);
-                    csp_buffer_free(packet);
-                    break;
-            }
-
-            // If packet was not sent (which transfers ownership), free it.
-            if (packet != NULL) {
-                csp_buffer_free(packet);
-            }
+            process_command_packet(conn, packet);
         }
         
         csp_close(conn);

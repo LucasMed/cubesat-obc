@@ -5,12 +5,14 @@
 #include "telemetry_task.h"
 #include "health_monitor_task.h"
 #include "system_state.h"
+#include <csp/csp.h>
 
 void test_system_integration(void) {
     printf("Running test_system_integration...\n");
     
     // 1. Initialize State
     system_state_init();
+    csp_init();
     
     // 2. Initial state check
     system_state_t state;

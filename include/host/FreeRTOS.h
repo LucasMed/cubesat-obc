@@ -11,14 +11,23 @@ typedef void (*TaskFunction_t)(void *);
 typedef void *TaskHandle_t;
 
 #define pdMS_TO_TICKS(xTimeInMs) (xTimeInMs)
+#define portTICK_PERIOD_MS 1
 #define pdTRUE  1
 #define pdFALSE 0
 
 // Stub implementations
+#ifndef vTaskDelayUntil
 #define vTaskDelayUntil(pxPreviousWakeTime, xTimeIncrement) \
     do { *pxPreviousWakeTime += xTimeIncrement; } while(0)
+#endif
 
+#ifndef vTaskDelay
+#define vTaskDelay(xTicksToDelay) do {} while(0)
+#endif
+
+#ifndef xTaskGetTickCount
 #define xTaskGetTickCount() 0
+#endif
 
 #define vTaskStartScheduler() do { printf("[FreeRTOS] Scheduler stub (no actual RTOS on host)\\n"); } while(0)
 

@@ -84,6 +84,8 @@ endif()
 # Enable testing support (only for host builds)
 if(NOT PICO_BUILD)
     enable_testing()
+    add_compile_options(--coverage -O0 -g)
+    add_link_options(--coverage)
 endif()
 
 # C standard and compiler flags
@@ -99,11 +101,12 @@ if(NOT PICO_BUILD)
 endif()
 
 # Add libcsp (Task 3.1)
+set(CSP_USE_RTABLE ON CACHE BOOL "Use routing table" FORCE)
+
 if(PICO_BUILD)
     # Force libcsp to use FreeRTOS port
     set(CSP_FREERTOS ON CACHE BOOL "Use FreeRTOS arch" FORCE)
     set(CSP_POSIX OFF CACHE BOOL "Use POSIX arch" FORCE)
-    set(CSP_USE_RTABLE ON CACHE BOOL "Use routing table")
     set(CSP_HAVE_STDIO ON CACHE BOOL "OS provides C Standard I/O functions")
     
     # libcsp expects 'freertos_kernel' target name

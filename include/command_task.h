@@ -19,4 +19,7 @@ typedef struct __attribute__((packed)) {
 
 void vCommandTask(void *pvParameters);
 
+#include <csp/csp.h>
+void process_command_packet(csp_conn_t *conn, csp_packet_t *packet);
+
 #endif // COMMAND_TASK_H
