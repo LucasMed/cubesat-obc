@@ -4,7 +4,7 @@
 
 Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace software standards. Designed for Pico 2W with extensibility to flight-ready systems.
 
-**Status:** v0.2.0-dev — Phase 2 (Pico SDK Integration) in progress  
+**Status:** v0.3.0-dev — Phase 3 (Communication & Telemetry) Completed
 **License:** MIT  
 **Maintainers:** ExArsultre
 
@@ -31,7 +31,7 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 - **Sensors**: MPU6050 (IMU), TMP102 (temperature), etc.
 
 ### Development Quality
-- ✅ **Unit Tests**: 3 tests (PID, dynamics, actuators) - 100% passing
+- ✅ **Unit Tests**: 8 tests (PID, dynamics, actuators, CSP, telemetry, commands) - 100% passing
 - ✅ **CI/CD**: GitHub Actions with automated build+test
 - ✅ **Static Analysis**: cppcheck integration
 - ✅ **CMake Build**: Reproducible, cross-platform
@@ -67,7 +67,7 @@ cmake --build . -- -j$(nproc)
 ```bash
 cd build
 ctest --output-on-failure
-# Expected: 100% tests passed, 0 tests failed out of 3
+# Expected: 100% tests passed, 0 tests failed out of 8
 ```
 
 ### Run Firmware (Host Stub)
@@ -106,7 +106,7 @@ cubesat-obc/
 │   ├── dynamics/               # Attitude dynamics simulator
 │   └── tasks/                  # FreeRTOS tasks (4 tasks)
 ├── include/                    # Public APIs
-├── tests/unit/                 # Unit tests (3 tests)
+├── tests/unit/                 # Unit tests (8 tests)
 ├── config/                     # FreeRTOS configuration
 ├── docs/                       # Architecture, guides, standards
 ├── scripts/                    # Build, test, analysis scripts
@@ -187,14 +187,14 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - [x] Documentation & standards
 
 ### Phase 2 - Pico SDK Integration
-- [ ] Pico SDK + real FreeRTOS
-- [ ] I2C drivers (MPU6050, TMP102)
-- [ ] Hardware testing
+- [x] Pico SDK + real FreeRTOS
+- [x] I2C drivers (MPU6050, TMP102)
+- [x] Hardware testing
 
-### Phase 3 - Communication
-- [ ] WiFi/lwIP integration
-- [ ] Telemetry protocol
-- [ ] Ground station interface
+### Phase 3 ✅ - Communication
+- [x] libcsp integration
+- [x] Telemetry protocol & packets
+- [x] Remote command decoding (C&DH)
 
 ### Phase 4 - Advanced Control
 - [ ] Kalman filter (attitude estimation)
@@ -244,7 +244,7 @@ cmake --build build --verbose
 | Tests | ✅ Complete | 3/3 unit tests passing (100%) |
 | Documentation | ✅ Complete | Design, requirements, standards, test plans |
 | I2C Drivers | 🔄 In Progress | MPU6050, TMP102 — Task 2.3 |
-| WiFi/Telemetry | ⏳ Pending | Phase 3 |
+| WiFi/Telemetry | ✅ Complete | Phase 3 (libcsp) successfully integrated |
 
 ---
 
@@ -303,7 +303,7 @@ Built with:
 
 ---
 
-**Last Updated:** 2026-02-20  
-**Version:** 0.2.0-dev (Phase 2 — Pico SDK Integration)
+**Last Updated:** 2026-02-22  
+**Version:** 0.3.0-dev (Phase 3 — Communication Completed)
 
 ⭐ If you find this project useful, please star us on GitHub!
