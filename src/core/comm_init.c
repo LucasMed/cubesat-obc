@@ -1,0 +1,47 @@
+#include "comm_init.h"
+#include <csp/csp.h>
+#include <csp/interfaces/csp_if_kiss.h>
+#include <csp/drivers/usart.h>
+#include <stdio.h>
+
+#ifdef PICO_BUILD
+#include "pico/stdlib.h"
+#endif
+
+// OBC Address: 10
+// Ground Station Address: 1
+#define OBC_ADDRESS 10
+#define GN_ADDRESS 1
+
+void comm_init(void) {
+    printf("CSP: Initializing stack...\n");
+    
+    // 1. Init CSP
+    csp_init();
+
+    // 2. Setup UART configuration for KISS
+    csp_usart_conf_t conf = {
+        .device = "uart1",
+        .baudrate = 115200,
+        .databits = 8,
+        .stopbits = 1,
+        .paritysetting = 0
+    };
+
+    // 3. Add KISS interface
+    csp_iface_t * kiss_iface = NULL;
+    int res = csp_usart_open_and_add_kiss_interface(&conf, "KISS", OBC_ADDRESS, &kiss_iface);
+    if (res != CSP_ERR_NONE) {
+        printf("CSP ERROR: Failed to add KISS interface (%d)\n", res);
+        return;
+    }
+
+    // 4. Set routing table
+    // Route for address 1 (Ground Station) goes via KISS interface
+    char rtable[64];
+    snprintf(rtable, sizeof(rtable), "%u/255 KISS", GN_ADDRESS);
+    csp_rtable_load(rtable);
+
+    printf("CSP: Interface KISS added @ address %u\n", OBC_ADDRESS);
+    printf("CSP: Route to GN (%u) configured via KISS\n", GN_ADDRESS);
+}

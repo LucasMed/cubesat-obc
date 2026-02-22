@@ -39,7 +39,7 @@
 
 // Support dynamic memory allocation (standard for FreeRTOS)
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configSUPPORT_STATIC_ALLOCATION         0
+#define configSUPPORT_STATIC_ALLOCATION         1
 
 // =========================================================================
 // Memory Hooks

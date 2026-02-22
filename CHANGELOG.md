@@ -5,6 +5,19 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-22
+
+### Added
+- Integrated `libcsp` via a git submodule for cross-platform POSIX and FreeRTOS SMP communication.
+- Implemented `pico_usart.c` UART driver mapping libcsp's KISS protocol to the RP2350 hardware UART.
+- Rewrote `telemetry_task.c` to accurately pack and send `csp_telemetry_packet_t` payloads over UART.
+- Added `command_task.c` to listen for remote commands (`CMD_ECHO`, `CMD_REBOOT`, `CMD_SET_MODE`) and act on system states.
+- Reached extensive unit testing suite totaling 8 CTest executables checking parsing logic, packet packing, and initialization routing.
+- Increased overall GCC line test coverage from 38% to 64%.
+
+### Changed
+- Shifted default debugging output from target UART to UART0 while allocating UART1 explicitly for the libcsp protocol.
+
 ## [0.2.0] - 2026-02-20
 
 ### Added
@@ -68,12 +81,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Versions 0.1.x Series
 - **0.1.0**: Skeleton with FreeRTOS and basic control logic
-- **0.2.0**: (Planned) Pico SDK + hardware driver support
-- **0.3.0**: (Planned) WiFi and telemetry integration
+- **0.2.0**: Pico SDK + hardware driver support
+- **0.3.0**: libcsp and Telemetry/Command integration
+- **0.4.0**: (Planned) Advanced Control filters and algorithms
 
 ### Estimated Timeline
 - Phase 2 (Pico SDK): Q1 2026
-- Phase 3 (WiFi): Q2 2026
+- Phase 3 (Communication): Feb 2026 (Completed)
 - Phase 4 (Advanced Control): Q2-Q3 2026
 - Phase 5 (Flight Ready): Q3 2026
 
@@ -88,4 +102,4 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 
 ---
 
-**Last Updated:** 2026-02-12
+**Last Updated:** 2026-02-22

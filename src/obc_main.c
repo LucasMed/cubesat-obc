@@ -15,7 +15,9 @@
 #include "attitude_control_task.h"
 #include "telemetry_task.h"
 #include "health_monitor_task.h"
+#include "command_task.h"
 #include "system_state.h"
+#include "comm_init.h"
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/temperature.h"
@@ -65,6 +67,9 @@ int main(void) {
     fflush(stdout);
     system_state_init();
 
+    // Initialize Communications
+    comm_init();
+
 #ifdef PICO_BUILD
     // Initialize I2C Bus
     printf("Initializing I2C bus...\n");
@@ -99,6 +104,7 @@ int main(void) {
     xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
     xTaskCreate(vAttitudeControlTask, "AttitudeControl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
     xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+    xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
     xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
 
     printf("Starting FreeRTOS scheduler...\n");

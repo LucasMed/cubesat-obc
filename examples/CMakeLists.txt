@@ -42,7 +42,10 @@ if(PICO_BUILD)
         FreeRTOS-Kernel-Heap4
         tasks_lib
         core_lib
+        "-Wl,--start-group"
         drivers_lib
+        csp
+        "-Wl,--end-group"
         actuators_lib
         control_lib
         dynamics_lib

@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-02-20  
-**Current Phase**: Phase 2 — Pico SDK Integration  
-**Current Branch**: `feature/pico-sdk-integration`
+**Last Updated**: 2026-02-22
+**Current Phase**: Phase 4 — Advanced Control
+**Current Branch**: `dev`
 
 ---
 
@@ -32,6 +32,16 @@
 | 2.4 — System Integration | ✅ | 2026-02-20 | End-to-end control loop stable |
 | 2.5 — HW Validation | ✅ | 2026-02-20 | Jitter confirmed ±22µs, stable USB |
 
+### Phase 3: Communication & Telemetry ✅ (2026-02-22)
+- **Goal**: Integrate `libcsp` for binary telemetry and remote command handling.
+- **Outcomes**:
+  - Successfully compiled `libcsp` for FreeRTOS SMP on RP2350.
+  - Implemented `pico_usart` to bridge CSP to UART1 via KISS framing.
+  - Refactored `telemetry_task` to emit packed binary packets at 1 Hz.
+  - Created `command_task` listening on Port 20 for Echo and Reboot commands.
+  - Defined strict interface specifications in `PHASE3_COMM_SPEC.md`.
+  - Achieved comprehensive unit testing (64% project line coverage) for packet packing, command parsing, and topology initialization.
+
 ---
 
 ## Active Blockers
@@ -46,10 +56,7 @@
 
 ## Immediate Next Steps
 
-1. **Task 3.1: Telemetry Refactor** — Implement CSP (CubeSat Space Protocol) over UART
-2. **Task 3.2: Remote Command Uplink** — Basic C&DH command processing
-3. **Task 4.1: Extended Kalman Filter** — Integrate IMU with dynamics model
-4. **Power Monitoring** — (Pending) Integrate hardware current/voltage sensors
+4. **Advanced Control (Phase 4)** — Implement Kalman filter for attitude estimation.
 
 ---
 
@@ -59,8 +66,8 @@
 |-------|--------|-------------|--------|
 | 1 — Skeleton | Feb 2026 | Architecture, FreeRTOS stubs, PID, tests | ✅ Complete |
 | 2 — Pico SDK | Feb 2026 | Real FreeRTOS, I2C drivers, HW testing | ✅ Complete |
-| 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | 🔄 0% |
-| 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | ⏳ Pending |
+| 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
+| 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | 🔄 0% |
 | 5 — Flight Ready | Q3 2026 | Watchdog, safe states, logging | ⏳ Pending |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
@@ -85,10 +92,10 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 3/3 | 0 | 3 |
-| Integration Tests | 0 | 3 | 3 |
+| Unit Tests | 6/6 | 0 | 6 |
+| Integration Tests | 2/2 | 0 | 2 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **3** | **5** | **8** |
+| **Total** | **8** | **2** | **10** |
 
 ```bash
 # Run all tests

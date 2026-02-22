@@ -21,6 +21,34 @@ if(NOT PICO_BUILD)
     target_include_directories(test_actuators PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME actuators_test COMMAND test_actuators)
 
+    add_executable(test_telemetry
+        test_telemetry.c
+        ../../src/tasks/telemetry_task.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_telemetry csp)
+    add_test(NAME telemetry_test COMMAND test_telemetry)
+
+    add_executable(test_command
+        test_command.c
+        ../../src/tasks/command_task.c
+    )
+    target_include_directories(test_command PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_command csp)
+    add_test(NAME command_test COMMAND test_command)
+
+    add_executable(test_comm_init
+        test_comm_init.c
+        ../../src/core/comm_init.c
+    )
+    target_include_directories(test_comm_init PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
+        ${CMAKE_BINARY_DIR}/third_party/libcsp/include
+    )
+    add_test(NAME comm_init_test COMMAND test_comm_init)
+
     add_executable(test_tasks
         test_tasks.c
     )
