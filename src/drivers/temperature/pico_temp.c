@@ -18,8 +18,15 @@ float temperature_read(void) {
     // Select the temp sensor input
     adc_select_input(4);
     
+    const int samples = 10;
+    uint32_t sum = 0;
+
     // Read raw ADC value
-    uint16_t raw = adc_read();
+    for (int i = 0; i < samples; i++) {
+        sum += adc_read();
+    }
+
+    uint16_t raw = sum / (float)samples;
     
     // Scale voltage to CELSIUS
     // formula: 27 - (raw_voltage - 0.706) / 0.001721
