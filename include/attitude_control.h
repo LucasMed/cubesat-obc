@@ -4,7 +4,7 @@
 #include "pid.h"
 
 typedef struct {
-    pid_t pid_roll, pid_pitch, pid_yaw;
+    pid_ctrl_t pid_roll, pid_pitch, pid_yaw;
 } attitude_ctrl_t;
 
 void attitude_ctrl_init(attitude_ctrl_t *ac);

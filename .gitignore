@@ -1,6 +1,8 @@
 # Build and output artifacts
 build/
 build_host/
+build_target/
+pico-sdk/
 cmake-build-*/
 out/
 *.o

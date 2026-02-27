@@ -3,7 +3,7 @@
 #include <math.h>
 
 int main(void) {
-    pid_t p;
+    pid_ctrl_t p;
     pid_init(&p, 1.0f, 0.1f, 0.01f);
     float dt = 0.1f;
     float out1 = pid_update(&p, 1.0f, dt);
