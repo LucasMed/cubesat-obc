@@ -1,0 +1,67 @@
+# CubeSat OBC — Clang-Format style configuration
+# Style: Allman braces, 2-space indent, C11 target
+# VS Code C/C++ extension picks this up automatically.
+
+Language: Cpp
+BasedOnStyle: LLVM
+
+# ---- Indentation ----
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 100
+ContinuationIndentWidth: 4
+
+# ---- Brace style: Allman (every brace on its own line) ----
+BreakBeforeBraces: Allman
+
+# ---- Allman sub-options ----
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeWhile: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+
+# ---- Spacing ----
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyParentheses: false
+SpaceBeforeAssignmentOperators: true
+SpaceAfterLogicalNot: false
+SpacesBeforeTrailingComments: 2
+
+# ---- Alignment ----
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignTrailingComments: true
+AlignAfterOpenBracket: Align
+
+# ---- Includes ----
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+
+# ---- Pointers and references ----
+PointerAlignment: Right
+
+# ---- Line breaks ----
+BreakBeforeBinaryOperators: None
+AlwaysBreakAfterReturnType: None
+BreakStringLiterals: false
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+
+# ---- Macros ----
+IndentPPDirectives: BeforeHash
