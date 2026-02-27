@@ -10,17 +10,21 @@
 #include <stdbool.h>
 
 /**
- * @brief Structure holding the global status of the satellite.
+ * @brief Structure holding the raw sensor state of the satellite.
+ *
+ * @note All angular quantities are in **radians / rad/s** (SPEC-2-DLA §2.4).
+ *       Callers that need degrees must convert explicitly.
+ *       Use the Data Layer API (data_layer.h) for thread-safe access.
  */
 typedef struct {
-    float attitude[3];  // Roll, Pitch, Yaw [deg]
-    float rates[3];     // Gyro rates [deg/s]
-    float temp;         // Internal temperature [C]
-    float battery_v;    // Battery voltage [V] (future)
-    bool imu_available; // Hardware detected during boot
-    bool imu_valid;     // Recent data is fresh and valid
-    bool temp_available;
-    bool temp_valid;
+    float attitude[3];   /**< Roll, Pitch, Yaw [rad]         */
+    float rates[3];      /**< Gyro angular rates [rad/s]      */
+    float temp;          /**< Internal temperature [°C]       */
+    float battery_v;     /**< Battery voltage [V]             */
+    bool  imu_available; /**< IMU detected during boot        */
+    bool  imu_valid;     /**< IMU data is fresh and valid     */
+    bool  temp_available;/**< Temp sensor detected during boot*/
+    bool  temp_valid;    /**< Temperature data is fresh       */
 } system_state_t;
 
 /**

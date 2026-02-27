@@ -25,6 +25,7 @@ if(NOT PICO_BUILD)
         test_telemetry.c
         ../../src/tasks/telemetry_task.c
         ../../src/core/system_state.c
+        ../../src/core/data_layer.c
     )
     target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_telemetry csp)
@@ -78,4 +79,13 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_types PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME types_test COMMAND test_types)
+
+    # PR-2 gate: Data Layer Abstraction — read/write round-trip + unit migration.
+    add_executable(test_data_layer
+        test_data_layer.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_data_layer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME data_layer_test COMMAND test_data_layer)
 endif()
