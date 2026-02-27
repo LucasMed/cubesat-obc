@@ -69,4 +69,13 @@ if(NOT PICO_BUILD)
         core_lib
     )
     add_test(NAME tasks_test COMMAND test_tasks)
+
+    # PR-1 gate: compile + invariant check for all Foundation Types headers.
+    # This test has no runtime dependencies — it exercises only the public
+    # header files and verifies enum values, struct sizes, and macro bounds.
+    add_executable(test_types
+        test_types.c
+    )
+    target_include_directories(test_types PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME types_test COMMAND test_types)
 endif()
