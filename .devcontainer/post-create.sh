@@ -9,9 +9,6 @@ echo "=== CubeSat OBC – Dev Container setup ==="
 if [ -d ".git" ]; then
     echo "→ Updating git submodules..."
     git submodule update --init --recursive
-
-    echo "→ Applying third-party patches..."
-    bash scripts/apply_patches.sh
 fi
 
 # Create out-of-source build directory and configure for host (Linux)

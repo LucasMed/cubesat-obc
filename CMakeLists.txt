@@ -120,19 +120,49 @@ else()
     # cache (see generated autoconfig.h), leading to inline stubs that
     # conflicted with our mocks.
     set(CSP_HAVE_STDIO ON CACHE BOOL "OS provides C Standard I/O functions" FORCE)
-    # Ensure csp_hex_dump is compiled as a real symbol into libcsp.so;
-    # without this the inline stub in csp.h may not be materialised and
-    # the linker reports undefined references from within the shared lib.
-    set(CSP_ENABLE_CSP_PRINT ON CACHE BOOL "Enable CSP print / hex dump" FORCE)
 endif()
 
 # Only add libcsp if it exists
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libcsp/CMakeLists.txt")
+    # Ensure Threads::Threads target is available on all platforms (macOS, Linux).
+    # libcsp's examples reference Threads::Threads but libcsp only calls
+    # find_package(Threads) when building on Linux, causing CMake generation
+    # to fail on macOS. We call it here so the target always exists.
+    find_package(Threads REQUIRED)
     # Disable libcsp's internal unittests and samples to speed up build
     set(CSP_BUILD_SAMPLES OFF CACHE BOOL "Build CSP samples")
     
     add_subdirectory(third_party/libcsp EXCLUDE_FROM_ALL)
     message(STATUS "libcsp integrated from third_party/libcsp")
+
+    # Fix Apple Clang incompatibilities in libcsp (third-party code).
+    # libcsp's 'csp_common' INTERFACE target injects -Werror / -Wpedantic
+    # which cause build failures on macOS for GNU extensions used in libcsp.
+    # csp_macro.h has been patched for __noinit and __weak, but we still need
+    # to suppress ##__VA_ARGS__ warnings that -Wpedantic + -Werror rejects.
+    # Strategy: clear csp_common's INTERFACE_COMPILE_OPTIONS (the source of
+    # -Werror/-Wpedantic) and add back only the warnings we want.
+    if(APPLE)
+        # macOS has stricter warnings when compiling libcsp.  We keep
+        # the Ethernet driver disabled on the host since it depends on
+        # linux-specific APIs, but leave the USART code enabled so that
+        # the host firmware executable and unit tests can link.  The
+        # drivers are mocked in tests when necessary.
+        target_compile_definitions(csp PRIVATE
+            CSP_DISABLE_ETHERNET=1
+            # keep USART enabled for host builds
+        )
+        set_property(TARGET csp_common PROPERTY INTERFACE_COMPILE_OPTIONS
+            -Wall -Wextra -Wcast-align -Wmissing-prototypes
+            -Wpointer-arith -Wshadow -Wwrite-strings
+            -Wno-gnu-zero-variadic-macro-arguments
+            -include ${CMAKE_CURRENT_SOURCE_DIR}/include/pico_compat/csp_macos_compat.h
+        )
+        target_include_directories(csp PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/pico_compat
+        )
+        message(STATUS "Applied macOS compatibility patches to libcsp")
+    endif()
 
     # After adding the subdirectory, we can customize the 'csp' target
     if(PICO_BUILD)

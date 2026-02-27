@@ -13,6 +13,12 @@ else()
         i2c/host_i2c.c
         temperature/host_temp.c
     )
+    # When building on macOS we also need a tiny stub for the CSP USART
+    # API.  The real Linux driver is disabled in the third-party library,
+    # so without this the host firmware would fail to link.
+    if(APPLE)
+        list(APPEND DRIVER_SOURCES csp_macos_stub.c)
+    endif()
 endif()
 
 add_library(drivers_lib ${DRIVER_SOURCES})
