@@ -30,55 +30,48 @@ if(PICO_BUILD)
     pico_sdk_init()
     message(STATUS "Pico SDK initialized for RP2040")
     
-    # Set FreeRTOS kernel path
-    set(FREERTOS_KERNEL_PATH ${PICO_SDK_PATH}/lib/FreeRTOS-Kernel)
-    message(STATUS "FreeRTOS Kernel Path: ${FREERTOS_KERNEL_PATH}")
-    
-    # Create FreeRTOS config target (required before including FreeRTOS CMake)
-    # This tells FreeRTOS where to find the FreeRTOSConfig.h file
-    add_library(freertos_config INTERFACE)
-    target_include_directories(freertos_config SYSTEM
-        INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/config
-    )
-    target_compile_definitions(freertos_config
-        INTERFACE
-        projCOVERAGE_TEST=0
-    )
-    # Also add the config to all compiled target interface for SDK config headers
-    target_include_directories(freertos_config SYSTEM INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/config
-    )
-    message(STATUS "FreeRTOS config target created (includes ./config/FreeRTOSConfig.h)")
-    
-    # Global definitions to fix SDK components (like pico_flash) when using FreeRTOS SMP
-    add_compile_definitions(
-        PICO_FLASH_SAFE_EXECUTE_SUPPORT_FREERTOS_SMP=1
-        LIB_FREERTOS_KERNEL=1
-        FREE_RTOS_KERNEL_SMP=1
-        configUSE_EVENT_GROUPS=1
-        configUSE_TIMERS=1
-        INCLUDE_xEventGroupSetBitsFromISR=1
-        INCLUDE_xTimerPendFunctionCall=1
-        PICO_BUILD=1
+    # =====================================================
+    # FreeRTOS (RP2040 / Pico2W)
+    # =====================================================
+
+    set(FREERTOS_KERNEL_PATH
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/FreeRTOS-Kernel
     )
 
-    # Force software floating point because the RP2040 FreeRTOS port
-    # does not handle FPU context switching on RP2350.
-    add_compile_options(-mfloat-abi=soft)
+    message(STATUS "Using standalone FreeRTOS kernel")
 
-    # Include FreeRTOS kernel port for RP2040 (works with RP2350 also)
-    set(FREERTOS_CONFIG_FILE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config)
-    set(FREERTOS_PORT_BINARY_PATH "${CMAKE_BINARY_DIR}/freertos_kernel_rp2040")
-    add_subdirectory(
+    # Kernel library
+    add_library(FreeRTOS-Kernel STATIC
+        ${FREERTOS_KERNEL_PATH}/tasks.c
+        ${FREERTOS_KERNEL_PATH}/queue.c
+        ${FREERTOS_KERNEL_PATH}/list.c
+        ${FREERTOS_KERNEL_PATH}/timers.c
+        ${FREERTOS_KERNEL_PATH}/event_groups.c
+    )
+
+    target_include_directories(FreeRTOS-Kernel PUBLIC
+        ${FREERTOS_KERNEL_PATH}/include
         ${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040
-        ${FREERTOS_PORT_BINARY_PATH}
-        EXCLUDE_FROM_ALL
+        ${CMAKE_CURRENT_SOURCE_DIR}/config
     )
-    # Ensure the kernel picks up our config
-    target_link_libraries(FreeRTOS-Kernel INTERFACE freertos_config)
-    
-    message(STATUS "FreeRTOS Kernel integrated (RP2040 port for Pico 2W)")
+
+    # RP2040 port
+    target_sources(FreeRTOS-Kernel PRIVATE
+        ${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/port.c
+        ${FREERTOS_KERNEL_PATH}/portable/MemMang/heap_4.c
+    )
+
+    target_compile_definitions(FreeRTOS-Kernel PUBLIC
+        PICO_FLASH_SAFE_EXECUTE_SUPPORT_FREERTOS_SMP=1
+        FREE_RTOS_KERNEL_SMP=1
+    )
+
+    target_link_libraries(FreeRTOS-Kernel PUBLIC pico_stdlib)
+
+    add_library(freertos_kernel INTERFACE)
+    target_link_libraries(freertos_kernel INTERFACE FreeRTOS-Kernel)
+
+    message(STATUS "FreeRTOS standalone kernel ready")
 endif()
 
 # Enable testing support (only for host builds)
@@ -121,6 +114,16 @@ if(PICO_BUILD)
 else()
     set(CSP_POSIX ON CACHE BOOL "Use POSIX arch" FORCE)
     set(CSP_FREERTOS OFF CACHE BOOL "Use FreeRTOS arch" FORCE)
+    # Host builds should have standard I/O available so that libcsp
+    # provides non-inline rtable helpers and prints.  Previously the value
+    # was left unset which caused CSP_HAVE_STDIO to default to 0 in the
+    # cache (see generated autoconfig.h), leading to inline stubs that
+    # conflicted with our mocks.
+    set(CSP_HAVE_STDIO ON CACHE BOOL "OS provides C Standard I/O functions" FORCE)
+    # Ensure csp_hex_dump is compiled as a real symbol into libcsp.so;
+    # without this the inline stub in csp.h may not be materialised and
+    # the linker reports undefined references from within the shared lib.
+    set(CSP_ENABLE_CSP_PRINT ON CACHE BOOL "Enable CSP print / hex dump" FORCE)
 endif()
 
 # Only add libcsp if it exists
@@ -130,7 +133,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libcsp/CMakeLists.txt")
     
     add_subdirectory(third_party/libcsp EXCLUDE_FROM_ALL)
     message(STATUS "libcsp integrated from third_party/libcsp")
-    
+
     # After adding the subdirectory, we can customize the 'csp' target
     if(PICO_BUILD)
         # Link libcsp with Pico SDK and FreeRTOS config so it can find pico.h and FreeRTOSConfig.h

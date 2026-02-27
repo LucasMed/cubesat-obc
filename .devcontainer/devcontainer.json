@@ -1,0 +1,79 @@
+{
+    "name": "CubeSat OBC (Linux)",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+            "USERNAME": "vscode",
+            "USER_UID": "1000",
+            "USER_GID": "1000"
+        }
+    },
+    // Mount the workspace into the container
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "workspaceFolder": "/workspace",
+
+    // ----------------------------------------------------------------
+    // VS Code settings inside the container
+    // ----------------------------------------------------------------
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "cmake.buildDirectory": "${workspaceFolder}/build",
+                "cmake.generator": "Ninja",
+                "cmake.configureArgs": [
+                    "-DPICO_ENABLED=OFF"
+                ],
+                "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+                "C_Cpp.default.cStandard": "gnu11",
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "editor.formatOnSave": true
+            },
+            "extensions": [
+                // C/C++ support
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+                // CMake support
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                // Testing
+                "ms-vscode.test-adapter-converter",
+                // Coverage
+                "ryanluker.vscode-coverage-gutters",
+                // Git
+                "eamodio.gitlens",
+                // Copilot
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                // Useful
+                "ms-vscode.hexeditor",
+                "streetsidesoftware.code-spell-checker"
+            ]
+        }
+    },
+
+    // ----------------------------------------------------------------
+    // Port forwards (add as needed, e.g. if running a simulated ground
+    // station service inside the container)
+    // ----------------------------------------------------------------
+    // "forwardPorts": [],
+
+    // ----------------------------------------------------------------
+    // Run once after the container is created
+    // ----------------------------------------------------------------
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+    // ----------------------------------------------------------------
+    // Lifecycle hooks
+    // ----------------------------------------------------------------
+    "remoteUser": "vscode",
+
+    // Allow the container to use the host Docker socket for multi-stage
+    // or cross-compilation scenarios (optional, comment out if not needed)
+    // "mounts": [
+    //     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    // ],
+
+    // Security options – required for coverage instrumentation
+    "runArgs": ["--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"]
+}

@@ -13,30 +13,56 @@ Thank you for your interest in contributing to the CubeSat OBC project! This doc
 
 ### Prerequisites
 
-- Linux, macOS, or WSL (on Windows)
-- `cmake` (3.13+)
-- `gcc` or `clang` (C11 support)
-- `git`
-- Optional: `cppcheck` for static analysis
+The project builds on **Linux** (native, Docker, or VS Code Dev Container).
+
+| Method | Requirements |
+|--------|--------------|
+| Dev Container (recommended) | Docker + VS Code + [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) |
+| Docker | Docker Engine or Docker Desktop |
+| Native Linux | `cmake` 3.13+, `gcc` (C11), `ninja-build`, `git` |
 
 ### Setup Development Environment
+
+#### Option A — VS Code Dev Container
+
+1. Open the repo folder in VS Code
+2. Click **Reopen in Container** when prompted (or F1 → *Dev Containers: Reopen in Container*)
+3. The container automatically:
+   - Installs all dependencies
+   - Runs `git submodule update --init --recursive`
+   - Applies third-party patches (`scripts/apply_patches.sh`)
+   - Configures CMake
+4. Build and test from the integrated terminal:
+   ```bash
+   cmake --build build
+   ctest --test-dir build --output-on-failure
+   ```
+
+#### Option B — Docker (without VS Code)
+
+```bash
+bash run_linux.sh build   # build
+bash run_linux.sh test    # build + test
+bash run_linux.sh shell   # interactive shell
+```
+
+#### Option C — Native Linux
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/cubesat-obc.git
 cd cubesat-obc
 
-# Create build directory
-mkdir -p build && cd build
+# Initialise submodules and apply patches
+git submodule update --init --recursive
+bash scripts/apply_patches.sh
 
-# Configure
-cmake ..
-
-# Build
-cmake --build . -- -j$(nproc)
+# Configure and build
+cmake -B build -DPICO_ENABLED=OFF
+cmake --build build -j$(nproc)
 
 # Run tests
-ctest --output-on-failure
+ctest --test-dir build --output-on-failure
 ```
 
 ### For Pico Hardware Development
@@ -46,8 +72,8 @@ ctest --output-on-failure
 export PICO_SDK_PATH=/path/to/pico-sdk
 
 # Reconfigure and build
-cmake ..
-cmake --build .
+cmake -B build
+cmake --build build
 ```
 
 ## Development Workflow
@@ -75,14 +101,14 @@ git checkout -b feature/your-feature-name
 ### 3. Run Tests Locally
 
 ```bash
-cd build
-ctest --output-on-failure
+# From repo root
+ctest --test-dir build --output-on-failure
 
 # Run static analysis
-../scripts/static_analysis.sh
+bash scripts/static_analysis.sh
 
-# Check build without warnings
-cmake --build . -- VERBOSE=1
+# Verbose build to check for warnings
+cmake --build build --verbose
 ```
 
 ### 4. Commit and Push
@@ -311,11 +337,22 @@ Update:
 - **Discussions**: Questions, ideas, design feedback
 - **Email**: Contact project maintainers
 
+## Third-party Submodules & Patches
+
+The project uses git submodules for `third_party/libcsp` and `third_party/FreeRTOS-Kernel`.
+Libcsp requires a small set of Linux/POSIX compatibility patches stored in `patches/libcsp/`.
+
+The `scripts/apply_patches.sh` script applies them idempotently (safe to run multiple times).
+Dev Container and Docker workflows run this automatically — for native development, run it once after cloning.
+
+See [patches/README.md](patches/README.md) for details on what each patch fixes.
+
 ## Resources
 
 - [Coding Standards](docs/CODING_STANDARDS.md)
 - [Build Guide](docs/BUILD_GUIDE.md)
-- [Architecture](docs/ARCHITECTURE.md) (coming soon)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Patches](patches/README.md)
 - [FreeRTOS Docs](https://www.freertos.org/Documentation/161204_FreeRTOS_Reference_Manual_V10.0.0.pdf)
 
 ---

@@ -19,6 +19,7 @@ external/
 # IDE and editor files
 .vscode/
 .idea/
+.cache/
 *.swp
 *.swo
 *~
@@ -56,6 +57,9 @@ __pycache__/
 .env.local
 .env.*.local
 config/local_*
+
+# Docker Compose named volumes (local only)
+docker-compose.override.yml
 
 # Temporary files
 *.tmp

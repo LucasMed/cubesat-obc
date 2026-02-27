@@ -1,3 +1,6 @@
 [submodule "third_party/libcsp"]
 	path = third_party/libcsp
 	url = https://github.com/libcsp/libcsp.git
+[submodule "third_party/FreeRTOS-Kernel"]
+	path = third_party/FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
