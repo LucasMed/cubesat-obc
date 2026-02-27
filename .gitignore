@@ -61,6 +61,9 @@ config/local_*
 # Docker Compose named volumes (local only)
 docker-compose.override.yml
 
+# Private / local-only documentation (specs, notes — never push)
+docs/private/
+
 # Temporary files
 *.tmp
 *.bak
