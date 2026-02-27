@@ -1,0 +1,74 @@
+# docker-compose.yml
+# Alternative to Dev Containers: run build / test commands in a Linux
+# environment from the macOS terminal without opening VS Code.
+#
+# Usage examples:
+#   docker compose run --rm build           # configure + build
+#   docker compose run --rm test            # build + run all tests
+#   docker compose run --rm coverage        # build + coverage report
+#   docker compose run --rm shell           # interactive shell
+
+version: "3.9"
+
+x-base: &base
+  build:
+    context: .
+    dockerfile: .devcontainer/Dockerfile
+  volumes:
+    - .:/workspace:cached
+    - build-cache:/workspace/build
+  working_dir: /workspace
+  environment:
+    - TERM=xterm-256color
+
+services:
+  # ----------------------------------------------------------------
+  # Configure and build (host / Linux target, no Pico SDK needed)
+  # ----------------------------------------------------------------
+  build:
+    <<: *base
+    command: >
+      bash -c "
+        bash scripts/apply_patches.sh &&
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPICO_ENABLED=OFF &&
+        cmake --build build --parallel
+      "
+
+  # ----------------------------------------------------------------
+  # Run all CTest tests
+  # ----------------------------------------------------------------
+  test:
+    <<: *base
+    command: >
+      bash -c "
+        bash scripts/apply_patches.sh &&
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPICO_ENABLED=OFF &&
+        cmake --build build --parallel &&
+        ctest --test-dir build -V --output-on-failure
+      "
+
+  # ----------------------------------------------------------------
+  # Build + coverage report (HTML output in build/coverage/)
+  # ----------------------------------------------------------------
+  coverage:
+    <<: *base
+    command: >
+      bash -c "
+        bash scripts/apply_patches.sh &&
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPICO_ENABLED=OFF &&
+        cmake --build build --parallel &&
+        ctest --test-dir build -V --output-on-failure &&
+        bash scripts/run_tests.sh
+      "
+
+  # ----------------------------------------------------------------
+  # Interactive shell (useful for debugging)
+  # ----------------------------------------------------------------
+  shell:
+    <<: *base
+    stdin_open: true
+    tty: true
+    command: bash
+
+volumes:
+  build-cache:

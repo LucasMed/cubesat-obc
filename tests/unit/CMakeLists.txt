@@ -32,9 +32,16 @@ if(NOT PICO_BUILD)
 
     add_executable(test_command
         test_command.c
-        ../../src/tasks/command_task.c
+        command_task_test.c
     )
-    target_include_directories(test_command PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_include_directories(test_command PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
+        ${CMAKE_BINARY_DIR}/third_party/libcsp/include
+    )
+    # The command test exercises vCommandTask which uses various CSP
+    # socket functions.  Link the CSP library so those symbols are
+    # satisfied.  Mocks are declared static so they won't collide.
     target_link_libraries(test_command csp)
     add_test(NAME command_test COMMAND test_command)
 

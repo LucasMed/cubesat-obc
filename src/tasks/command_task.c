@@ -5,6 +5,18 @@
 #include "task.h"
 #include <csp/csp.h>
 
+/*
+ * When compiling the unit‑test variant we want command_task.c to call
+ * into mock functions defined by the test harness instead of the real
+ * CSP library.  The wrapper file used by the tests defines CSP_MOCK
+ * before including this C file, causing the macros below to kick in.
+ */
+#ifdef CSP_MOCK
+#define csp_send mock_csp_send
+#define csp_buffer_free mock_csp_buffer_free
+#define csp_conn_src mock_csp_conn_src
+#endif
+
 #ifdef PICO_BUILD
 #include "pico/stdlib.h"
 #include "hardware/watchdog.h"

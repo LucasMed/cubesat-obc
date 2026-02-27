@@ -30,11 +30,13 @@ void vTaskDelay(uint32_t ticks) {
     mock_tick_count += ticks;
 }
 
-// Mock libcsp
-#include <csp/csp.h>
+// Actual file to test
+#include "command_task.h"
 
-int last_freed = 0;
-void csp_buffer_free(void *packet) {
+// Mock libcsp
+
+static int last_freed = 0;
+void mock_csp_buffer_free(void *packet) {
     last_freed++;
     free(packet);
 }
@@ -46,19 +48,16 @@ csp_packet_t *mock_csp_buffer_get(size_t size) {
 }
 #define csp_buffer_get mock_csp_buffer_get
 
-csp_packet_t *last_csp_sent = NULL;
-void csp_send(csp_conn_t *conn, csp_packet_t *packet) {
+static csp_packet_t *last_csp_sent = NULL;
+void mock_csp_send(csp_conn_t *conn, csp_packet_t *packet) {
     last_csp_sent = packet;
     // in real life csp_send takes ownership, so we free it to simulate that taking ownership
     free(packet);
 }
 
-int csp_conn_src(const csp_conn_t *conn) {
+int mock_csp_conn_src(const csp_conn_t *conn) {
     return 1; // Simulated GN Address
 }
-
-// Actual file to test
-#include "command_task.h"
 
 void reset_mocks() {
     last_freed = 0;

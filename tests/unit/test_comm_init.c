@@ -25,7 +25,7 @@ int csp_usart_open_and_add_kiss_interface(const csp_usart_conf_t *conf, const ch
     return usart_mock_return;
 }
 
-int rtable_called = 0;
+static int rtable_called = 0;
 int csp_rtable_load(const char *table) {
     rtable_called++;
     // Expected route: "1/255 KISS"
