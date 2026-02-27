@@ -30,20 +30,24 @@
 static int g_failures = 0;
 
 #define CHECK(cond, msg)                                           \
-    do {                                                           \
-        if (!(cond)) {                                             \
-            printf("FAIL [%s:%d]: %s\n", __FILE__, __LINE__, msg);\
+    do                                                             \
+    {                                                              \
+        if (!(cond))                                               \
+        {                                                          \
+            printf("FAIL [%s:%d]: %s\n", __FILE__, __LINE__, msg); \
             g_failures++;                                          \
         }                                                          \
     } while (0)
 
-#define CHECK_FLOAT(a, b, msg)                                     \
-    do {                                                           \
-        if (fabsf((a) - (b)) > 1e-6f) {                           \
-            printf("FAIL [%s:%d]: %s  (got %.8f, expected %.8f)\n",\
-                   __FILE__, __LINE__, msg, (double)(a), (double)(b));\
-            g_failures++;                                          \
-        }                                                          \
+#define CHECK_FLOAT(a, b, msg)                                         \
+    do                                                                 \
+    {                                                                  \
+        if (fabsf((a) - (b)) > 1e-6f)                                  \
+        {                                                              \
+            printf("FAIL [%s:%d]: %s  (got %.8f, expected %.8f)\n",    \
+                   __FILE__, __LINE__, msg, (double)(a), (double)(b)); \
+            g_failures++;                                              \
+        }                                                              \
     } while (0)
 
 /* ------------------------------------------------------------------ */
@@ -60,15 +64,15 @@ static void test_init(void)
     CHECK(snap.state.attitude[0] == 0.0f, "attitude[0] must be 0 after init");
     CHECK(snap.state.attitude[1] == 0.0f, "attitude[1] must be 0 after init");
     CHECK(snap.state.attitude[2] == 0.0f, "attitude[2] must be 0 after init");
-    CHECK(snap.state.rates[0]    == 0.0f, "rates[0] must be 0 after init");
-    CHECK(snap.state.temp        == 0.0f, "temp must be 0 after init");
-    CHECK(snap.state.imu_valid   == false, "imu_valid must be false after init");
-    CHECK(snap.state.temp_valid  == false, "temp_valid must be false after init");
+    CHECK(snap.state.rates[0] == 0.0f, "rates[0] must be 0 after init");
+    CHECK(snap.state.temp == 0.0f, "temp must be 0 after init");
+    CHECK(snap.state.imu_valid == false, "imu_valid must be false after init");
+    CHECK(snap.state.temp_valid == false, "temp_valid must be false after init");
 
     /* Default mode/energy per spec */
-    CHECK(snap.mode   == FM_BOOT,       "mode must be FM_BOOT after init");
+    CHECK(snap.mode == FM_BOOT, "mode must be FM_BOOT after init");
     CHECK(snap.energy == ENERGY_NOMINAL, "energy must be ENERGY_NOMINAL after init");
-    CHECK(snap.seq    == 0,              "seq must be 0 after init");
+    CHECK(snap.seq == 0, "seq must be 0 after init");
 
     printf("test_init: OK\n");
 }
@@ -82,22 +86,22 @@ static void test_imu_rw(void)
     data_layer_init();
 
     /* Values in radians as per SPEC-2-DLA §2.4 */
-    const float att[3]   = { (float)(M_PI / 6.0),   /* 30 deg in rad */
-                              (float)(M_PI / 4.0),   /* 45 deg in rad */
-                              (float)(M_PI / 3.0) }; /* 60 deg in rad */
-    const float rates[3] = { 0.01f, -0.02f, 0.005f }; /* rad/s */
+    const float att[3] = {(float)(M_PI / 6.0),      /* 30 deg in rad */
+                          (float)(M_PI / 4.0),      /* 45 deg in rad */
+                          (float)(M_PI / 3.0)};     /* 60 deg in rad */
+    const float rates[3] = {0.01f, -0.02f, 0.005f}; /* rad/s */
 
     data_layer_write_imu(att, rates);
 
     dl_snapshot_t snap;
     data_layer_read(&snap);
 
-    CHECK_FLOAT(snap.state.attitude[0], att[0],   "attitude[0] round-trip");
-    CHECK_FLOAT(snap.state.attitude[1], att[1],   "attitude[1] round-trip");
-    CHECK_FLOAT(snap.state.attitude[2], att[2],   "attitude[2] round-trip");
-    CHECK_FLOAT(snap.state.rates[0],    rates[0], "rates[0] round-trip");
-    CHECK_FLOAT(snap.state.rates[1],    rates[1], "rates[1] round-trip");
-    CHECK_FLOAT(snap.state.rates[2],    rates[2], "rates[2] round-trip");
+    CHECK_FLOAT(snap.state.attitude[0], att[0], "attitude[0] round-trip");
+    CHECK_FLOAT(snap.state.attitude[1], att[1], "attitude[1] round-trip");
+    CHECK_FLOAT(snap.state.attitude[2], att[2], "attitude[2] round-trip");
+    CHECK_FLOAT(snap.state.rates[0], rates[0], "rates[0] round-trip");
+    CHECK_FLOAT(snap.state.rates[1], rates[1], "rates[1] round-trip");
+    CHECK_FLOAT(snap.state.rates[2], rates[2], "rates[2] round-trip");
 
     CHECK(snap.state.imu_valid == true, "imu_valid must be true after write");
     CHECK(snap.seq == 1, "seq must be 1 after one IMU write");
@@ -115,8 +119,8 @@ static void test_radians_storage(void)
 
     /* 1 radian is NOT a round number in degrees; verify no conversion
        occurs inside the DLA itself. */
-    const float att[3]   = { 1.0f, 2.0f, 3.0f };
-    const float rates[3] = { 0.1f, 0.2f, 0.3f };
+    const float att[3] = {1.0f, 2.0f, 3.0f};
+    const float rates[3] = {0.1f, 0.2f, 0.3f};
 
     data_layer_write_imu(att, rates);
 
@@ -161,13 +165,13 @@ static void test_sensor_avail(void)
     dl_snapshot_t snap;
     data_layer_read(&snap);
 
-    CHECK(snap.state.imu_available  == true,  "imu_available must be true");
+    CHECK(snap.state.imu_available == true, "imu_available must be true");
     CHECK(snap.state.temp_available == false, "temp_available must be false");
 
     data_layer_set_sensor_avail(false, true);
     data_layer_read(&snap);
-    CHECK(snap.state.imu_available  == false, "imu_available toggled to false");
-    CHECK(snap.state.temp_available == true,  "temp_available toggled to true");
+    CHECK(snap.state.imu_available == false, "imu_available toggled to false");
+    CHECK(snap.state.temp_available == true, "temp_available toggled to true");
 
     printf("test_sensor_avail: OK\n");
 }
@@ -222,7 +226,7 @@ static void test_seq_counter(void)
     data_layer_init();
     CHECK(data_layer_get_seq() == 0, "seq must start at 0");
 
-    const float att[3]   = {0.0f, 0.0f, 0.0f};
+    const float att[3] = {0.0f, 0.0f, 0.0f};
     const float rates[3] = {0.0f, 0.0f, 0.0f};
 
     data_layer_write_imu(att, rates);
@@ -256,23 +260,23 @@ static void test_system_state_shim(void)
 {
     data_layer_init();
 
-    const float att[3]   = { 0.5f, 1.0f, 1.5f };
-    const float rates[3] = { 0.01f, 0.02f, 0.03f };
+    const float att[3] = {0.5f, 1.0f, 1.5f};
+    const float rates[3] = {0.01f, 0.02f, 0.03f};
     system_state_set_imu(att, rates);
     system_state_set_temp(37.0f);
 
     /* DLA read must see the same data written via legacy shim */
     dl_snapshot_t snap;
     data_layer_read(&snap);
-    CHECK_FLOAT(snap.state.attitude[0], 0.5f,  "shim: attitude[0]");
-    CHECK_FLOAT(snap.state.attitude[1], 1.0f,  "shim: attitude[1]");
-    CHECK_FLOAT(snap.state.rates[2],   0.03f, "shim: rates[2]");
-    CHECK_FLOAT(snap.state.temp,       37.0f, "shim: temp");
+    CHECK_FLOAT(snap.state.attitude[0], 0.5f, "shim: attitude[0]");
+    CHECK_FLOAT(snap.state.attitude[1], 1.0f, "shim: attitude[1]");
+    CHECK_FLOAT(snap.state.rates[2], 0.03f, "shim: rates[2]");
+    CHECK_FLOAT(snap.state.temp, 37.0f, "shim: temp");
 
     /* Legacy system_state_get() must also reflect DLA writes */
-    data_layer_set_flight_mode(FM_DETUMBLE);  /* mode change */
-    const float att2[3]   = { 2.0f, 2.1f, 2.2f };
-    const float rates2[3] = { 0.0f, 0.0f, 0.0f };
+    data_layer_set_flight_mode(FM_DETUMBLE); /* mode change */
+    const float att2[3] = {2.0f, 2.1f, 2.2f};
+    const float rates2[3] = {0.0f, 0.0f, 0.0f};
     data_layer_write_imu(att2, rates2);
 
     system_state_t state;
@@ -298,7 +302,8 @@ int main(void)
     test_seq_counter();
     test_system_state_shim();
 
-    if (g_failures == 0) {
+    if (g_failures == 0)
+    {
         printf("All Data Layer checks passed.\n");
         return 0;
     }

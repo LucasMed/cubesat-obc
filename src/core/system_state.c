@@ -35,7 +35,8 @@ void system_state_set_temp(float temp)
 
 void system_state_get(system_state_t *out_state)
 {
-    if (!out_state) return;
+    if (!out_state)
+        return;
     dl_snapshot_t snap;
     data_layer_read(&snap);
     *out_state = snap.state;

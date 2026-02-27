@@ -32,7 +32,8 @@ static dl_snapshot_t g_snapshot;
 static void dl_lock(void)
 {
 #ifdef PICO_BUILD
-    if (g_dl_mutex) {
+    if (g_dl_mutex)
+    {
         xSemaphoreTake(g_dl_mutex, portMAX_DELAY);
     }
 #endif
@@ -41,7 +42,8 @@ static void dl_lock(void)
 static void dl_unlock(void)
 {
 #ifdef PICO_BUILD
-    if (g_dl_mutex) {
+    if (g_dl_mutex)
+    {
         xSemaphoreGive(g_dl_mutex);
     }
 #endif
@@ -54,7 +56,7 @@ static void dl_unlock(void)
 void data_layer_init(void)
 {
     memset(&g_snapshot, 0, sizeof(dl_snapshot_t));
-    g_snapshot.mode   = FM_BOOT;
+    g_snapshot.mode = FM_BOOT;
     g_snapshot.energy = ENERGY_NOMINAL;
 
 #ifdef PICO_BUILD
@@ -71,7 +73,8 @@ void data_layer_init(void)
 
 void data_layer_read(dl_snapshot_t *out)
 {
-    if (!out) return;
+    if (!out)
+        return;
     dl_lock();
     memcpy(out, &g_snapshot, sizeof(dl_snapshot_t));
     dl_unlock();
@@ -84,9 +87,10 @@ void data_layer_read(dl_snapshot_t *out)
 void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
 {
     dl_lock();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         g_snapshot.state.attitude[i] = att_rad[i];
-        g_snapshot.state.rates[i]    = rates_rad[i];
+        g_snapshot.state.rates[i] = rates_rad[i];
     }
     g_snapshot.state.imu_valid = true;
     g_snapshot.seq++;
@@ -96,7 +100,7 @@ void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
 void data_layer_write_temp(float temp_c)
 {
     dl_lock();
-    g_snapshot.state.temp       = temp_c;
+    g_snapshot.state.temp = temp_c;
     g_snapshot.state.temp_valid = true;
     g_snapshot.seq++;
     dl_unlock();
@@ -105,7 +109,7 @@ void data_layer_write_temp(float temp_c)
 void data_layer_set_sensor_avail(bool imu, bool temp)
 {
     dl_lock();
-    g_snapshot.state.imu_available  = imu;
+    g_snapshot.state.imu_available = imu;
     g_snapshot.state.temp_available = temp;
     dl_unlock();
 }

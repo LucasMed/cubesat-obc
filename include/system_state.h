@@ -16,15 +16,16 @@
  *       Callers that need degrees must convert explicitly.
  *       Use the Data Layer API (data_layer.h) for thread-safe access.
  */
-typedef struct {
+typedef struct
+{
     float attitude[3];   /**< Roll, Pitch, Yaw [rad]         */
     float rates[3];      /**< Gyro angular rates [rad/s]      */
     float temp;          /**< Internal temperature [°C]       */
     float battery_v;     /**< Battery voltage [V]             */
-    bool  imu_available; /**< IMU detected during boot        */
-    bool  imu_valid;     /**< IMU data is fresh and valid     */
-    bool  temp_available;/**< Temp sensor detected during boot*/
-    bool  temp_valid;    /**< Temperature data is fresh       */
+    bool imu_available;  /**< IMU detected during boot        */
+    bool imu_valid;      /**< IMU data is fresh and valid     */
+    bool temp_available; /**< Temp sensor detected during boot*/
+    bool temp_valid;     /**< Temperature data is fresh       */
 } system_state_t;
 
 /**
