@@ -100,4 +100,16 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_fmm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME fmm_test COMMAND test_fmm)
+
+    # PR-4 gate: Fault Manager — table, severity, auto-clear, CRITICAL side-effects.
+    # Links real fault_manager + fmm + data_layer so fmm_force_safe() is live.
+    add_executable(test_fault_manager
+        test_fault_manager.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_fault_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME fault_manager_test COMMAND test_fault_manager)
 endif()
