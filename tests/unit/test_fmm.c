@@ -21,11 +21,12 @@
  * behaviour without requiring the full fault_manager implementation (PR-4).
  */
 
-#include "../../include/flight_mode.h"
 #include "../../include/data_layer.h"
 #include "../../include/fault_manager.h"
-#include <stdio.h>
+#include "../../include/flight_mode.h"
+
 #include <stdbool.h>
+#include <stdio.h>
 
 /* ------------------------------------------------------------------ */
 /* Fault-level stub control                                            */
@@ -55,14 +56,14 @@ fault_level_t fault_get_highest_level(void)
 
 static int g_failures = 0;
 
-#define CHECK(cond, msg)                                                \
-  do                                                                    \
-  {                                                                     \
-    if (!(cond))                                                        \
-    {                                                                   \
-      printf("FAIL [%s:%d]: %s\n", __FILE__, __LINE__, (msg));         \
-      g_failures++;                                                     \
-    }                                                                   \
+#define CHECK(cond, msg)                                                                           \
+  do                                                                                               \
+  {                                                                                                \
+    if (!(cond))                                                                                   \
+    {                                                                                              \
+      printf("FAIL [%s:%d]: %s\n", __FILE__, __LINE__, (msg));                                     \
+      g_failures++;                                                                                \
+    }                                                                                              \
   } while (0)
 
 /* Force FMM into a specific mode via data_layer directly (test helper) */

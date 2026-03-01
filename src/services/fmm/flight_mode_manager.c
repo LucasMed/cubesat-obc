@@ -24,9 +24,9 @@
  * Spec ref: SPEC-2-FMM v1.1, SPEC-2 v2.0 §4.1
  */
 
-#include "flight_mode.h"
 #include "data_layer.h"
 #include "fault_manager.h"
+#include "flight_mode.h"
 
 /* ------------------------------------------------------------------ */
 /* Allowed-transition matrix                                           */
@@ -46,11 +46,7 @@ static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
 
 /* Human-readable mode names for logging */
 static const char *const g_mode_names[FM_COUNT] = {
-    "BOOT",
-    "SAFE",
-    "DETUMBLE",
-    "NOMINAL",
-    "DIAGNOSTIC",
+    "BOOT", "SAFE", "DETUMBLE", "NOMINAL", "DIAGNOSTIC",
 };
 
 /* ------------------------------------------------------------------ */
