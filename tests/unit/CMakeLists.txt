@@ -126,4 +126,13 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_eps_monitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME eps_monitor_test COMMAND test_eps_monitor)
+
+    # PR-6 gate: Persistent Logger — ring buffer, class protection, payload,
+    # clear_info, newest-first ordering.  No hardware dependencies.
+    add_executable(test_logger
+        test_logger.c
+        ../../src/services/log/logger.c
+    )
+    target_include_directories(test_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME logger_test COMMAND test_logger)
 endif()
