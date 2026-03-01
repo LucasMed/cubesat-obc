@@ -16,8 +16,8 @@ This matrix maps functional and non-functional requirements to implementation mo
 | **FR-4** | Attitude Control | Command desired attitude and compute torque setpoints | `control/attitude_control.c`, `tasks/attitude_control_task.c` (DLA-migrated PR-8) | `test_attitude_control_task` (FM guard, imu_valid guard), `test_dynamics` | ✅ Ready |
 | **FR-5** | RW Actuation | Apply torque commands to reaction wheel motors (3-axis) | `actuators/reaction_wheel.c` | `test_actuators` (torque-to-momentum conversion) | ✅ 100% Pass |
 | **FR-6** | Magnetorquer Actuation | Apply magnetic dipole commands (3-axis) for de-saturation | `actuators/magnetorquer.c` | `test_actuators` (dipole output validation) | ✅ 100% Pass |
-| **FR-7** | Telemetry TX | Transmit attitude, rates, sensor data to ground station | `tasks/telemetry_task.c`, `drivers/comms/` | `test_telemetry`, Phase 3 integration test | ✅ Phase 3 |
-| **FR-8** | Health Monitoring | Monitor bus voltage, temperature, task health | `tasks/health_monitor_task.c`, `services/eps/eps_monitor.c` | Phase 2 integration test, `test_eps_monitor` | ✅ Ready |
+| **FR-7** | Telemetry TX | Transmit attitude, rates, sensor data to ground station | `tasks/telemetry_task.c` (DLA-migrated PR-9, FM guard, energy flags) | `test_telemetry` (T-TLM-01..06), Phase 3 integration test | ✅ PR-9 |
+| **FR-8** | Health Monitoring | Monitor bus voltage, temperature, task health | `tasks/health_monitor_task.c` (tick-wired PR-10), `services/eps/eps_monitor.c`, `services/fault/fault_manager.c` | `test_health_monitor_task` (T-HM-01..03), `test_eps_monitor` | ✅ PR-10 |
 | **FR-9** | Flight Mode Management | Safe FSM: BOOT→SAFE→NOMINAL→DETUMBLE→DIAGNOSTIC; SAFE from any state | `services/fmm/flight_mode_manager.c`, `include/flight_mode.h` | `test_fmm` (T-FMM-01..11) | ✅ 11/11 PR-3 |
 | **FR-10** | Fault Aggregation | Centralised fault table (32 slots), levels INFO/WARNING/CRITICAL, anti-cascade | `services/fault/fault_manager.c`, `include/fault_manager.h`, `include/fault_ids.h` | `test_fault_manager` (T-FMS-02..04) | ✅ 12/12 PR-4 |
 | **FR-11** | EPS Monitoring | Battery voltage state machine (NOMINAL/LOW/CRITICAL/EMERGENCY) with hysteresis | `services/eps/eps_monitor.c`, `include/eps.h` | `test_eps_monitor` (T-EPS-03..05) | ✅ 12/12 PR-5 |
@@ -179,6 +179,18 @@ SYS-REQ 6: "All CRITICAL events shall be persisted and readable via ground comma
 - **Test IDs**: T-SDM-04..05 (partial coverage)
 - **Result**: **PASS** 8/8
 
+### Test: `test_telemetry` (PR-9)
+- **Scope**: DLA read path, FM guard (FM_SAFE → HK-only), energy state encoding in flags
+- **Requirements Covered**: FR-7 (Telemetry TX), SYS-REQ-3
+- **Test IDs**: T-TLM-01..06
+- **Result**: **PASS** 6/6
+
+### Test: `test_health_monitor_task` (PR-10)
+- **Scope**: Tick wiring — `fault_manager_tick()` and `eps_monitor_tick()` called on every Step
+- **Requirements Covered**: FR-8 (Health Monitoring), FR-10 (Fault Aggregation), SYS-REQ-5
+- **Test IDs**: T-HM-01..03
+- **Result**: **PASS** 3/3
+
 ---
 
 ## Integration Test Planning
@@ -231,7 +243,7 @@ ITest-6: Kalman Filter Attitude Estimation
 | **Phase 2** | Integration Testing (Pico SDK) | FR-1, FR-2, FR-7, NFR-1, NFR-2 | Deadline met in simulation |
 | **Phase 3** | Communication Testing (WiFi/UART) | FR-7, FR-8, NFR-4 | Packets received, power <2W |
 | **Spec-Alignment PRs 1–8** | Unit Testing (host build) | FR-9..12, SYS-REQ-4..6, FR-1/FR-4 DLA path | ✅ 16/16 passing |
-| **Spec-Alignment PRs 9–10** | Unit + Integration Tests | FR-7 (DLA), FR-8 (watchdog), T-FMS-01, T-SAFE-01 | ⏳ Pending |
+| **Spec-Alignment PRs 9–10** | Unit Testing (host build) | FR-7 DLA migration (T-TLM-01..06), FR-8 tick wiring (T-HM-01..03) | ✅ 17/17 passing |
 | **Phase 4** | Sensor Fusion Testing (Kalman) | FR-2, FR-3, FR-4 (enhanced) | Attitude error <5° RMS |
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
 
@@ -241,22 +253,19 @@ ITest-6: Kalman Filter Attitude Estimation
 
 | Gap | Impact | Mitigation | Owner |
 |-----|--------|-----------|-------|
-| PR-9: Telemetry Task not yet migrated to DLA | FR-7 uses stale `system_state_t` path | Implement in PR-9; add FM-gated packet class | SW Team |
-| PR-10: `fault_manager_tick()` not wired to `health_monitor_task` | T-FMS-01 (Fault→SAFE order) untested end-to-end | Implement in PR-10 | SW Team |
-| PR-10: `eps_monitor_tick()` not called from health loop | EPS events not injected in runtime loop | Implement in PR-10 | SW Team |
-| Integration tests T-FMS-01, T-SAFE-01 pending | SAFE-trigger sequence unverified end-to-end | Create `test_fault_safe.c`, `test_safe_trigger.c` in PR-10 | Integration Lead |
+| Integration tests T-FMS-01, T-SAFE-01 pending | SAFE-trigger sequence unverified end-to-end | Create `test_fault_safe.c`, `test_safe_trigger.c` in future sprint | Integration Lead |
 | Kalman filter not yet designed | Attitude determination accuracy unknown | Phase 4 design review required | Control Lead |
 | WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
-| T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after PR-10 | SW Team |
+| T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
 
 ---
 
 ## Summary
 
 - **Total Requirements**: 17 (12 functional, 5 non-functional)
-- **Unit Test Coverage**: 16 tests covering all functional requirements implemented to date (16/16 passing)
+- **Unit Test Coverage**: 17 tests covering all functional requirements implemented to date (17/17 passing)
 - **Integration Test Coverage**: 2 done, 4 planned
-- **Overall Readiness**: 71% (12/17 requirements verified)
+- **Overall Readiness**: 76% (13/17 requirements verified)
 - **Risk Level**: LOW
 
 ---

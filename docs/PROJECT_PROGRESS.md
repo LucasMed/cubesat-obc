@@ -42,10 +42,10 @@
   - Defined strict interface specifications in `PHASE3_COMM_SPEC.md`.
   - Achieved comprehensive unit testing (64% project line coverage) for packet packing, command parsing, and topology initialization.
 
-### Spec-Review Alignment ✅ PRs 1–8 (2026-03-01)
-- **Goal**: Close gaps identified in `GAP_ANALYSIS.md` against SPEC-2 v2.0 / SPEC-3 / SPEC-5.
+### Spec-Review Alignment ✅ PRs 1–10 (2026-03-01)
+- **Goal**: Close gaps identified during the REVISION_PHASE against SPEC-2 v2.0 / SPEC-3 / SPEC-5.
 - **Branch**: `feature/spec-review-alignment`
-- **Outcomes (PRs 1–8 committed, 16/16 tests passing)**:
+- **Outcomes (PRs 1–10 committed, 17/17 tests passing)**:
 
 | PR | Commit | Description | Tests |
 |----|--------|-------------|-------|
@@ -57,17 +57,12 @@
 | PR-6 | `02d779e` | Persistent Logger — 320-entry ring buffer, class filtering | logger_test: 12/12 ✅ |
 | PR-7 | `1763bdd` | Sensor Read Task → DLA (gyro deg/s→rad/s conversion) | sensor_read_task_test: 7/7 ✅ |
 | PR-8 | `9592c7b` | Attitude Control Task → DLA (FM guard + imu_valid guard) | attitude_control_task_test: 8/8 ✅ |
+| PR-9 | `4b89aee` | Telemetry Task → DLA (FM guard, energy state in flags) | telemetry_test: 6/6 ✅ |
+| PR-10 | `e59b91b` | Health Monitor — wire `fault_manager_tick` + `eps_monitor_tick` | health_monitor_task_test: 3/3 ✅ |
 
 - **Active blockers resolved**:
   - `pico_flash` + FreeRTOS conflict — resolved by isolating flash calls behind a weak-symbol HAL stub; host build uses stub.
   - `tasks_lib` missing `core_lib` dependency — fixed in `src/tasks/CMakeLists.txt`.
-
----
-
-## Immediate Next Steps
-
-- **PR-9**: Telemetry Task → DLA migration (FM-gated packet class, EPS integration)
-- **PR-10**: Health Monitor + Watchdog (integrate `fault_manager_tick()`, `eps_monitor_tick()`)
 
 ---
 
@@ -78,7 +73,7 @@
 | 1 — Skeleton | Feb 2026 | Architecture, FreeRTOS stubs, PID, tests | ✅ Complete |
 | 2 — Pico SDK | Feb 2026 | Real FreeRTOS, I2C drivers, HW testing | ✅ Complete |
 | 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
-| Spec Alignment | Mar 2026 | GAP_ANALYSIS PRs 1–10 vs SPEC-2 v2.0 | 🔄 80% (8/10 PRs) |
+| Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
 | 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | ⏳ Pending |
 | 5 — Flight Ready | Q3 2026 | Watchdog, safe states, logging | ⏳ Pending |
 
@@ -104,18 +99,20 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 16/16 | 0 | 16 |
+| Unit Tests | 17/17 | 0 | 17 |
 | Integration Tests | 2/2 | 2 | 4 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **18** | **4** | **22** |
+| **Total** | **19** | **4** | **23** |
 
-**New test targets (PRs 4–8)**:
+**New test targets (PRs 4–10)**:
 - `fmm_test` — 11 cases (flight mode FSM, guard transitions)
 - `fault_manager_test` — 12 cases (T-FMS-02..04 + anti-cascade)
 - `eps_monitor_test` — 12 cases (T-EPS-03..05, Schmidt-trigger)
 - `logger_test` — 12 cases (T-LOG-01..03, class-A eviction)
 - `sensor_read_task_test` — 7 cases (deg→rad, DLA write)
 - `attitude_control_task_test` — 8 cases (FM guard, imu_valid guard)
+- `telemetry_test` — 6 cases (T-TLM-01..06, DLA read, FM guard, energy flags)
+- `health_monitor_task_test` — 3 cases (T-HM-01..03, tick wiring)
 
 ```bash
 # Run all tests

@@ -64,18 +64,21 @@
 
 ---
 
-## v0.4.0 — Spec-Review Alignment — PRs 1–8 (2026-03-01)
+## v0.4.0 — Spec-Review Alignment — PRs 1–10 (2026-03-01)
 
-**Status**: 🔄 In Progress (8/10 PRs committed)  
+**Status**: ✅ Released (10/10 PRs committed)  
 **Branch**: `feature/spec-review-alignment`
 
 ### Highlights
-- Closed SPEC-2 v2.0 gaps: Data Layer, FMM, Fault Manager, EPS Monitor, Logger, Task migrations
-- 16/16 unit tests passing (was 6/6); 0 regressions after each PR
+- Closed all SPEC-2 v2.0 gaps identified in the REVISION_PHASE: Data Layer, FMM, Fault Manager, EPS Monitor, Logger, Task migrations
+- 17/17 unit tests passing (was 6/6); 0 regressions after each PR
 - All new components follow `__attribute__((weak))` HAL pattern for host testability
 - Schmidt-trigger hysteresis in EPS Monitor — avoids flapping on boundary voltages
 - Unified 320-entry ring logger with Class-A (critical) eviction protection
 - Sensor gyro data now stored in rad/s throughout the pipeline (was deg/s)
+- Telemetry Task migrated to DLA with FM guard (FM_SAFE → HK-only) and energy state in flags bits[3:2]
+- Health Monitor now calls `fault_manager_tick()` and `eps_monitor_tick()` on every step
+- `obc_main.c` initialises `fault_manager` and `eps_monitor` before task creation
 
 ### Components
 | PR | Description | Tests | Commit |
@@ -88,10 +91,8 @@
 | PR-6 | Persistent Logger | logger_test: 12/12 ✅ | `02d779e` |
 | PR-7 | Sensor Read Task → DLA | sensor_read_task_test: 7/7 ✅ | `1763bdd` |
 | PR-8 | Attitude Control Task → DLA | attitude_control_task_test: 8/8 ✅ | `9592c7b` |
-
-### Pending in this series
-- PR-9: Telemetry Task → DLA migration
-- PR-10: Health Monitor + Watchdog integration
+| PR-9 | Telemetry Task → DLA + FM guard + energy flags | telemetry_test: 6/6 ✅ | `4b89aee` |
+| PR-10 | Health Monitor tick wiring + `obc_main` init | health_monitor_task_test: 3/3 ✅ | `e59b91b` |
 
 ---
 
