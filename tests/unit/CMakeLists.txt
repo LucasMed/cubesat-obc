@@ -135,4 +135,20 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME logger_test COMMAND test_logger)
+
+    # PR-7 gate: Sensor Read Task DLA migration — verify IMU/temp are written to
+    # DLA, deg/s→rad/s conversion applied, and driver failures handled.
+    # Driver stubs (mpu6050_read_raw, temperature_read) are defined in the test
+    # file; drivers_lib is NOT linked to prevent symbol conflicts.
+    add_executable(test_sensor_read_task
+        test_sensor_read_task.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_sensor_read_task PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    target_link_libraries(test_sensor_read_task m)
+    add_test(NAME sensor_read_task_test COMMAND test_sensor_read_task)
 endif()
