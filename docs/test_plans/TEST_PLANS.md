@@ -1,8 +1,8 @@
 # Test Plans
 
 **Document ID**: TST-001  
-**Version**: 1.0  
-**Last Updated**: 2026-02-20  
+**Version**: 2.0  
+**Last Updated**: 2026-03-01  
 **Status**: Active
 
 ---
@@ -92,21 +92,128 @@
 
 ---
 
-## 4. Validation Tests (Phase 4+ — TBD)
+## 4. Spec-Alignment Tests (PRs 3–8 — ✅ Complete)
 
-### 4.1 Kalman Filter Attitude Estimation
+### 4.1 test_fmm (Flight Mode Manager)
+- **File**: `tests/unit/test_flight_mode_manager.c`
+- **Covers**: FMM FSM (BOOT / SAFE / DETUMBLE / NOMINAL / DIAGNOSTIC)
+- **Test IDs**: T-FMM-01..11
+- **Cases**:
+  - ✅ Boot → SAFE valid transition
+  - ✅ SAFE → NOMINAL allowed
+  - ✅ NOMINAL → DETUMBLE allowed
+  - ✅ NOMINAL → DIAGNOSTIC allowed
+  - ✅ BOOT → NOMINAL rejected (invalid transition)
+  - ✅ `fmm_force_safe()` from any state
+  - ✅ Guard: no reentrancy from same state
+  - ✅ 4 additional edge cases
+- **Result**: PASS 11/11
+
+### 4.2 test_fault_manager (Fault Manager)
+- **File**: `tests/unit/test_fault_manager.c`
+- **Covers**: T-FMS-02, T-FMS-03, T-FMS-04
+- **Cases**:
+  - ✅ `fault_report()` stores event in 32-slot table
+  - ✅ `fault_is_active()` returns correct status
+  - ✅ `fault_clear()` removes event
+  - ✅ `fault_get_event(0)` returns false (ID=0 sentinel guard)
+  - ✅ `fault_get_highest_level()` returns CRITICAL when any CRITICAL active
+  - ✅ CRITICAL fault triggers `fmm_force_safe()` on `fault_manager_tick()`
+  - ✅ WARNING faults auto-clear after 30 ticks
+  - ✅ Anti-cascade: table stays consistent when full
+  - ✅ 4 additional FSM edge cases
+- **Result**: PASS 12/12
+
+### 4.3 test_eps_monitor (EPS Monitor)
+- **File**: `tests/unit/test_eps_monitor.c`
+- **Covers**: T-EPS-03, T-EPS-04, T-EPS-05
+- **Cases**:
+  - ✅ `eps_monitor_tick()` reads HAL and populates snapshot
+  - ✅ Downward voltage transition (NOMINAL→LOW→CRITICAL→EMERGENCY) immediate
+  - ✅ Upward transition requires V > threshold + 0.1 V hysteresis
+  - ✅ No flapping at exact threshold boundary
+  - ✅ `eps_set_power()` does not cut OBC rail
+  - ✅ fmm_force_safe() called when energy state reaches EMERGENCY
+  - ✅ `data_layer_set_energy_state()` called on each state change
+  - ✅ 5 additional edge / boundary cases
+- **Result**: PASS 12/12
+
+### 4.4 test_logger (Persistent Logger)
+- **File**: `tests/unit/test_logger.c`
+- **Covers**: T-LOG-01, T-LOG-02, T-LOG-03
+- **Cases**:
+  - ✅ `log_event()` stores entry in 320-slot ring
+  - ✅ Ring wraps on overflow — oldest Class-C evicted first
+  - ✅ Class-A (CRITICAL) entries never evicted when ring is full
+  - ✅ `log_read_recent()` returns newest-first, skips cleared slots
+  - ✅ `log_clear_info()` nullifies Class-C only
+  - ✅ Event IDs from `log_event_ids.h` stored verbatim
+  - ✅ `get_tick_ms()` host stub provides monotonic timestamps
+  - ✅ 5 additional eviction / ordering edge cases
+- **Result**: PASS 12/12
+
+### 4.5 test_sensor_read_task
+- **File**: `tests/unit/test_sensor_read_task.c`
+- **Covers**: DLA write path, unit conversion
+- **Cases**:
+  - ✅ Task calls `data_layer_write_imu()` with converted gyro (rad/s)
+  - ✅ Gyro deg/s → rad/s conversion: factor `π/180` verified numerically
+  - ✅ `data_layer_write_temp()` populated from HAL
+  - ✅ Task skips write when `imu_available == false`
+  - ✅ Task skips write when `temp_available == false`
+  - ✅ No direct access to `system_state_t` (compile-time isolation)
+  - ✅ 1 additional coverage case
+- **Result**: PASS 7/7
+
+### 4.6 test_attitude_control_task
+- **File**: `tests/unit/test_attitude_control_task.c`
+- **Covers**: FM guard, imu_valid guard, DLA read path
+- **Cases**:
+  - ✅ Task runs (computes torques) in FM_NOMINAL
+  - ✅ Task runs in FM_DIAGNOSTIC
+  - ✅ Task skips (returns immediately) in FM_SAFE
+  - ✅ Task skips in FM_DETUMBLE
+  - ✅ Task skips in FM_BOOT
+  - ✅ Task skips when `imu_valid == false` (even in NOMINAL)
+  - ✅ Task reads `attitude` and `rates` from DLA snapshot
+  - ✅ No direct access to `system_state_t`
+- **Result**: PASS 8/8
+
+---
+
+## 5. Validation Tests (Phase 4+ — TBD)
+
+### 5.1 Kalman Filter Attitude Estimation
 - **Covers**: FR-2 (enhanced)
 - **Expected**: RMS error <5° over 10 min simulation
 - **Status**: ⏳ Pending Phase 4
 
-### 4.2 Power Budget Validation
+### 5.2 Power Budget Validation
 - **Covers**: NFR-4
 - **Expected**: Average power <2 W
 - **Status**: ⏳ Pending Phase 3 (requires hardware measurement)
 
 ---
 
-## 5. Test Execution
+## 6. Test ID Traceability Summary (Spec-Alignment)
+
+| Test ID | Description | File | Status |
+|---------|-------------|------|--------|
+| T-FMM-01..11 | Flight Mode FSM transitions | `test_flight_mode_manager.c` | ✅ 11/11 |
+| T-FMS-02..04 | Fault reporting, CRITICAL→SAFE trigger, anti-cascade | `test_fault_manager.c` | ✅ 12/12 |
+| T-EPS-03..05 | EPS Schmidt-trigger, energy state transitions, SAFE trigger | `test_eps_monitor.c` | ✅ 12/12 |
+| T-LOG-01..03 | Logger ring buffer, Class-A protection, `log_read_recent` | `test_logger.c` | ✅ 12/12 |
+| T-SDM-01..03 (partial) | DLA write from sensor task, unit conversion | `test_sensor_read_task.c` | ✅ 7/7 |
+| T-SDM-04..05 (partial) | DLA read from control task, FM + imu guards | `test_attitude_control_task.c` | ✅ 8/8 |
+
+**Pending test IDs** (PRs 9–10):
+- T-TLM-01..04 — `test_telemetry_task.c` (PR-9)
+- T-FMS-01 — `tests/integration/test_fault_safe.c` (PR-10)
+- T-EPS-02 / T-SAFE-01 — `tests/integration/test_safe_trigger.c` (PR-10)
+
+---
+
+## 7. Test Execution
 
 ### Running Unit Tests
 ```bash
@@ -132,10 +239,12 @@ gcovr -r ../src .
 
 ---
 
-## 6. Test Coverage Summary
+## 8. Test Coverage Summary
 
-| Metric | Current (%) | Target (%) |
-|--------|-------------|------------|
-| Line Coverage | **64%** (179/279) | > 80% |
+| Metric | Phase 3 (%) | Current (Phase SA) | Target (%) |
+|--------|-------------|---------------------|------------|
+| Line Coverage | 64% (179/279) | ~75% (estimated, 16 test targets) | > 80% |
+| Test targets | 6 | 16 | ≥ 18 (after PR-9/10) |
+| Tests passing | 6/6 | 16/16 | 18/18 |
 
 *Note: The test suite was heavily expanded during Phase 3 to cover `telemetry_task.c` (73%), `command_task.c` (58%), and `comm_init.c` (100%). The missing coverage is exclusively restricted to FreeRTOS infinite loop wrappers (`while(1)`) and hardware-specific `#ifdef PICO_BUILD` branches that cannot be executed during host testing.*
