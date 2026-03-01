@@ -151,4 +151,19 @@ if(NOT PICO_BUILD)
     )
     target_link_libraries(test_sensor_read_task m)
     add_test(NAME sensor_read_task_test COMMAND test_sensor_read_task)
+
+    # PR-8 gate: Attitude Control Task DLA migration — FM guard, imu_valid guard,
+    # data passed from DLA to ctrl_update, torque passed to dyn_step.
+    # attitude_ctrl_update / attitude_dynamics_step replaced by instrumented stubs.
+    add_executable(test_attitude_control_task
+        test_attitude_control_task.c
+        ../../src/tasks/attitude_control_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_attitude_control_task PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    target_link_libraries(test_attitude_control_task m)
+    add_test(NAME attitude_control_task_test COMMAND test_attitude_control_task)
 endif()
