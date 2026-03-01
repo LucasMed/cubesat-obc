@@ -88,4 +88,16 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_data_layer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME data_layer_test COMMAND test_data_layer)
+
+    # PR-3 gate: Flight Mode Manager — state machine + fault-block behaviour.
+    # Includes data_layer.c and system_state.c; fault_get_highest_level() is
+    # overridden by a strong symbol in test_fmm.c (weak stub in FMM source).
+    add_executable(test_fmm
+        test_fmm.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_fmm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME fmm_test COMMAND test_fmm)
 endif()
