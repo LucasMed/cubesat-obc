@@ -112,4 +112,18 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_fault_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME fault_manager_test COMMAND test_fault_manager)
+
+    # PR-5 gate: EPS Monitor — voltage classification, hysteresis, fault reports,
+    # rail control.  The test overrides eps_hal_read() with a strong symbol to
+    # inject arbitrary voltage values without hardware.
+    add_executable(test_eps_monitor
+        test_eps_monitor.c
+        ../../src/services/eps/eps_monitor.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_eps_monitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME eps_monitor_test COMMAND test_eps_monitor)
 endif()

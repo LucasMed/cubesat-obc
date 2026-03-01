@@ -114,6 +114,18 @@ void eps_set_power(eps_rail_t rail, bool enable);
  */
 energy_state_t eps_get_energy_state(void);
 
+/**
+ * @brief Evaluate one EPS monitor cycle.
+ *
+ * Reads voltage / current / temperature from the HAL, classifies the
+ * new energy state using hysteresis, updates the Data Layer snapshot,
+ * and raises or clears faults via the Fault Manager.
+ *
+ * Intended to be called every 5 s from the EPS monitor task.
+ * Safe to call from unit tests that override eps_hal_read().
+ */
+void eps_monitor_tick(void);
+
 #ifdef __cplusplus
 }
 #endif
