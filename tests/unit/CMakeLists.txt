@@ -61,13 +61,15 @@ if(NOT PICO_BUILD)
         test_tasks.c
     )
     target_include_directories(test_tasks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_tasks 
+    target_link_libraries(test_tasks
         tasks_lib
         control_lib
         dynamics_lib
         drivers_lib
         actuators_lib
         core_lib
+        fault_lib
+        eps_lib
     )
     add_test(NAME tasks_test COMMAND test_tasks)
 
@@ -166,4 +168,17 @@ if(NOT PICO_BUILD)
     )
     target_link_libraries(test_attitude_control_task m)
     add_test(NAME attitude_control_task_test COMMAND test_attitude_control_task)
+
+    # PR-10 gate: Health Monitor Task — verify fault_manager_tick() and
+    # eps_monitor_tick() are both invoked on every Step call.
+    # Both service tick functions are replaced by strong-symbol stubs defined
+    # in the test file; no service source files are compiled here.
+    add_executable(test_health_monitor_task
+        test_health_monitor_task.c
+        ../../src/tasks/health_monitor_task.c
+    )
+    target_include_directories(test_health_monitor_task PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    add_test(NAME health_monitor_task_test COMMAND test_health_monitor_task)
 endif()

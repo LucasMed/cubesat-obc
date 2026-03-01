@@ -24,6 +24,8 @@ if(NOT PICO_BUILD)
         control_lib
         dynamics_lib
         tasks_lib
+        fault_lib
+        eps_lib
     )
 
     install(TARGETS cubesat_obc_firmware DESTINATION .)
