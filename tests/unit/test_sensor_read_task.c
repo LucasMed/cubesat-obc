@@ -1,6 +1,6 @@
 /**
  * @file test_sensor_read_task.c
- * @brief PR-7 gate: Sensor Read Task DLA-migration correctness checks.
+ * @brief PR-7 / PR-14 gate: Sensor Read Task DLA-migration and EKF fusion checks.
  *
  * Driver functions (mpu6050_read_raw, temperature_read) are replaced by
  * strong-symbol stubs defined here, so no hardware or drivers_lib needed.
@@ -13,6 +13,9 @@
  *   5.  When temp_available == true, temperature IS written to DLA
  *   6.  Both imu_available and temp_available == true: both written
  *   7.  mpu6050_read_raw failure (returns -1): imu_valid stays false
+ *   8.  (T-SRF-08) imu_ekf_valid is set after a successful IMU read
+ *   9.  (T-SRF-09) EKF attitude, bias, uncertainty written to DLA are finite
+ *   10. (T-SRF-10) imu_ekf_valid stays false when mpu6050_read_raw fails
  */
 
 #include "../../include/data_layer.h"
@@ -223,6 +226,64 @@ static void test_imu_read_failure(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 8 (T-SRF-08): imu_ekf_valid set after successful IMU read    */
+/* ------------------------------------------------------------------ */
+
+static void test_ekf_valid_flag_set(void)
+{
+  reset();
+  data_layer_set_sensor_avail(true, false);
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(snap.state.imu_ekf_valid, "imu_ekf_valid must be true after successful IMU read");
+  printf("test_ekf_valid_flag_set: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 9 (T-SRF-09): EKF outputs stored in DLA are finite values    */
+/* ------------------------------------------------------------------ */
+
+static void test_ekf_outputs_finite(void)
+{
+  reset();
+  data_layer_set_sensor_avail(true, false);
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(isfinite(snap.state.attitude[0]), "EKF attitude[0] must be finite");
+  CHECK(isfinite(snap.state.attitude[1]), "EKF attitude[1] must be finite");
+  CHECK(isfinite(snap.state.attitude[2]), "EKF attitude[2] must be finite");
+  CHECK(isfinite(snap.state.gyro_bias[0]), "EKF gyro_bias[0] must be finite");
+  CHECK(isfinite(snap.state.gyro_bias[1]), "EKF gyro_bias[1] must be finite");
+  CHECK(isfinite(snap.state.gyro_bias[2]), "EKF gyro_bias[2] must be finite");
+  CHECK(isfinite(snap.state.att_uncertainty[0]), "EKF att_uncertainty[0] must be finite");
+  CHECK(isfinite(snap.state.att_uncertainty[1]), "EKF att_uncertainty[1] must be finite");
+  CHECK(isfinite(snap.state.att_uncertainty[2]), "EKF att_uncertainty[2] must be finite");
+  printf("test_ekf_outputs_finite: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 10 (T-SRF-10): imu_ekf_valid stays false on driver failure   */
+/* ------------------------------------------------------------------ */
+
+static void test_ekf_valid_not_set_on_failure(void)
+{
+  reset();
+  data_layer_set_sensor_avail(true, false);
+  s_imu_ret = -1; /* force driver failure */
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(!snap.state.imu_ekf_valid,
+        "imu_ekf_valid must remain false when mpu6050_read_raw returns -1");
+  printf("test_ekf_valid_not_set_on_failure: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -235,6 +296,9 @@ int main(void)
   test_temp_available();
   test_both_sensors();
   test_imu_read_failure();
+  test_ekf_valid_flag_set();
+  test_ekf_outputs_finite();
+  test_ekf_valid_not_set_on_failure();
 
   if (g_failures == 0)
   {

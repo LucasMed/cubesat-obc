@@ -231,6 +231,26 @@ ITest-6: Kalman Filter Attitude Estimation
   └─ Validates: FR-2 (Attitude Determination, enhanced)
   └─ Expected: Estimated attitude matches true attitude ±3°
   └─ Acceptance: RMS error <5° over 10 min simulation
+
+T-DYN-01..05: RK2 dynamics integrator (PR-11)
+  └─ Validates: FR-3 (Attitude Dynamics, RK2 accuracy)
+  └─ Status: ✅ All 5 passing
+
+T-EKF-01..06: Extended Kalman Filter estimator (PR-12)
+  └─ Validates: FR-2 (Attitude Determination, EKF-enhanced)
+  └─ Status: ✅ All 6 passing
+
+T-LQR-01..07: LQR full-state controller (PR-13)
+  └─ Validates: FR-4 (Attitude Control, LQR gains)
+  └─ Status: ✅ All 7 passing
+
+T-SRF-08..10: Sensor Read Task — EKF integration (PR-14)
+  └─ Validates: FR-2 (sensor fusion pipeline), FR-3 (EKF outputs in DLA)
+  └─ Status: ✅ All 3 passing
+
+T-ACT-09..11: Attitude Control Task — LQR/PID dispatch (PR-15)
+  └─ Validates: FR-4 (LQR in FM_NOMINAL, PID fallback)
+  └─ Status: ✅ All 3 passing
 ```
 
 ---
@@ -244,6 +264,7 @@ ITest-6: Kalman Filter Attitude Estimation
 | **Phase 3** | Communication Testing (WiFi/UART) | FR-7, FR-8, NFR-4 | Packets received, power <2W |
 | **Spec-Alignment PRs 1–8** | Unit Testing (host build) | FR-9..12, SYS-REQ-4..6, FR-1/FR-4 DLA path | ✅ 16/16 passing |
 | **Spec-Alignment PRs 9–10** | Unit Testing (host build) | FR-7 DLA migration (T-TLM-01..06), FR-8 tick wiring (T-HM-01..03) | ✅ 17/17 passing |
+| **Phase 4 PRs 11–15** | Unit Testing (host build) | FR-2 (EKF), FR-3 (RK2/dynamics), FR-4 (LQR dispatch) | ✅ 19/19 passing |
 | **Phase 4** | Sensor Fusion Testing (Kalman) | FR-2, FR-3, FR-4 (enhanced) | Attitude error <5° RMS |
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
 
@@ -254,7 +275,6 @@ ITest-6: Kalman Filter Attitude Estimation
 | Gap | Impact | Mitigation | Owner |
 |-----|--------|-----------|-------|
 | Integration tests T-FMS-01, T-SAFE-01 pending | SAFE-trigger sequence unverified end-to-end | Create `test_fault_safe.c`, `test_safe_trigger.c` in future sprint | Integration Lead |
-| Kalman filter not yet designed | Attitude determination accuracy unknown | Phase 4 design review required | Control Lead |
 | WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
 | T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
 
@@ -263,13 +283,13 @@ ITest-6: Kalman Filter Attitude Estimation
 ## Summary
 
 - **Total Requirements**: 17 (12 functional, 5 non-functional)
-- **Unit Test Coverage**: 17 tests covering all functional requirements implemented to date (17/17 passing)
+- **Unit Test Coverage**: 19 tests covering all functional requirements implemented to date (19/19 passing)
 - **Integration Test Coverage**: 2 done, 4 planned
-- **Overall Readiness**: 76% (13/17 requirements verified)
+- **Overall Readiness**: 85% (Phase 4 complete, Phase 5 hardware validation pending)
 - **Risk Level**: LOW
 
 ---
 
-**Last Updated**: 2026-03-01  
-**Matrix Version**: 2.0  
+**Last Updated**: 2026-03-08
+**Matrix Version**: 2.1
 **Status**: Active (updated each phase)

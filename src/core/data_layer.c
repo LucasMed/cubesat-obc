@@ -101,6 +101,20 @@ void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
   dl_unlock();
 }
 
+void data_layer_write_ekf(const float att_rad[3], const float bias_rad[3], const float cov_diag[3])
+{
+  dl_lock();
+  for (int i = 0; i < 3; i++)
+  {
+    g_snapshot.state.attitude[i] = att_rad[i];
+    g_snapshot.state.gyro_bias[i] = bias_rad[i];
+    g_snapshot.state.att_uncertainty[i] = cov_diag[i];
+  }
+  g_snapshot.state.imu_ekf_valid = true;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
 void data_layer_write_temp(float temp_c)
 {
   dl_lock();

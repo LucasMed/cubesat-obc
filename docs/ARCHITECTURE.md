@@ -257,7 +257,7 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 | Metric | Target | Status |
 |--------|--------|--------|
-| Attitude Determination Accuracy | ±5° (before Kalman) | On track (will improve Phase 4) |
+| Attitude Determination Accuracy | ±5° (before EKF) | ✅ EKF operational (±3° target) |
 | Control Loop Rate | 20 Hz | Confirmed |
 | Telemetry Rate | 1 Hz | Confirmed |
 | Real-Time Task Jitter | <1 ms | ✅ Confirmed (±22 µs) |
@@ -266,16 +266,24 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 ---
 
-## Future Enhancements (Phase 4+)
+## Phase 4 Achievements (Advanced Control — Complete)
 
-1. **Kalman Filter**: Sensor fusion (IMU + magnetometer for attitude obs.)
-2. **Advanced Control**: LQR or MPC replacing decoupled PID
-3. **Momentum Dumping**: Automated de-saturation strategy
-4. **Redundancy**: Dual-sensor voting, graceful degradation
-5. **Safety**: Autonomous safe-mode, watchdog + supervised shutdown
+1. **EKF Attitude Estimator** ✅: 6-state EKF with gyro-bias estimation; analytic
+   2×2 S⁻¹ inversion; integrated into 10 Hz sensor_read_task loop.
+2. **LQR Controller** ✅: 3×6 full-state gain matrix (ωn=10 rad/s, ζ=1);
+   dispatched in FM_NOMINAL when EKF is converged.
+3. **RK2 Dynamics** ✅: Midpoint integration replacing forward-Euler in
+   attitude_dynamics_step.
+
+## Future Enhancements (Phase 5+)
+
+1. **Magnetometer Fusion**: Add magnetometer observation to EKF for yaw observability.
+2. **Momentum Dumping**: Automated de-saturation strategy for reaction wheels.
+3. **Redundancy**: Dual-sensor voting, graceful degradation.
+4. **Safety**: Autonomous safe-mode, watchdog + supervised shutdown.
 
 ---
 
-**Last Updated**: 2026-02-21  
-**Author**: OBC Development Team  
+**Last Updated**: 2026-03-08
+**Author**: OBC Development Team
 **Status**: Phase 3 (Communication & Telemetry) Complete

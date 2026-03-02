@@ -1,9 +1,8 @@
 /**
  * @file attitude_control_task.c
- * @brief Attitude control task — migrated to Data Layer Abstraction (PR-8).
+ * @brief Attitude control task — LQR / PID mode dispatch (PR-15).
  *
  * All shared state is read exclusively through data_layer.h.
- * The legacy system_state.h API is no longer used here.
  *
  * Flight-mode guard (per SPEC-2-CTRL §4.1):
  *   Control torques are computed ONLY when the flight mode is
@@ -14,7 +13,12 @@
  *   If the IMU data is stale (imu_valid == false) the step is skipped
  *   to avoid computing torques from zeroed attitude/rate data.
  *
- * Spec ref: SPEC-2-CTRL v1.3 §4.1, SPEC-2-DLA v1.6 §2.4
+ * Controller dispatch (PR-15):
+ *   FM_NOMINAL + imu_ekf_valid  → LQR (precise nadir tracking)
+ *   FM_NOMINAL + !imu_ekf_valid → PID fallback (EKF converging)
+ *   FM_DIAGNOSTIC               → PID (diagnostic / tuning mode)
+ *
+ * Spec ref: SPEC-2-CTRL v1.3 §4.1, SPEC-2-DLA v1.6 §2.4, PHASE4_PLAN PR-15
  */
 
 #include "attitude_control_task.h"
@@ -25,6 +29,7 @@
 #include "config.h"
 #include "data_layer.h"
 #include "flight_mode.h"
+#include "lqr.h"
 #include "task.h"
 
 #include <stdio.h>
@@ -35,6 +40,7 @@
 
 static attitude_ctrl_t g_ctrl;
 static attitude_dyn_t g_dyn;
+static lqr_t g_lqr;
 
 // Core logic for attitude control (independent of FreeRTOS task loop)
 void vAttitudeControlTask_Step(void)
@@ -55,12 +61,26 @@ void vAttitudeControlTask_Step(void)
   }
 
   float target[3] = {0.0f, 0.0f, 0.0f}; /* setpoint: nadir-pointing */
-  float outputs[3] = {0.0f, 0.0f, 0.0f};
+  float torque[3] = {0.0f, 0.0f, 0.0f};
   const float dt = 1.0f / CONTROL_LOOP_HZ;
 
-  attitude_ctrl_update(&g_ctrl, target, snap.state.attitude, snap.state.rates, outputs, dt);
+  if (snap.mode == FM_NOMINAL && snap.state.imu_ekf_valid)
+  {
+    /* Precise nadir tracking: use LQR with EKF attitude estimate. */
+    float att_err[3] = {snap.state.attitude[0] - target[0], snap.state.attitude[1] - target[1],
+                        snap.state.attitude[2] - target[2]};
+    lqr_compute(&g_lqr, att_err, snap.state.rates, torque);
+  }
+  else
+  {
+    /* FM_DIAGNOSTIC, or FM_NOMINAL before EKF has converged: use PID. */
+    float outputs[3] = {0.0f, 0.0f, 0.0f};
+    attitude_ctrl_update(&g_ctrl, target, snap.state.attitude, snap.state.rates, outputs, dt);
+    torque[0] = outputs[0];
+    torque[1] = outputs[1];
+    torque[2] = outputs[2];
+  }
 
-  float torque[3] = {outputs[0], outputs[1], outputs[2]};
   attitude_dynamics_step(&g_dyn, torque, dt);
 }
 
@@ -79,9 +99,10 @@ void vAttitudeControlTask(void *pvParameters)
   uint32_t samples = 0;
 #endif
 
-  // Initialize control and dynamics
+  // Initialize control, dynamics, and LQR
   attitude_ctrl_init(&g_ctrl);
   attitude_dynamics_init(&g_dyn);
+  lqr_init(&g_lqr);
 
   printf("[attitude_control_task] Started\n");
 

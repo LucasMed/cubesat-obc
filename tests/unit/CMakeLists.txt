@@ -147,6 +147,7 @@ if(NOT PICO_BUILD)
         ../../src/tasks/sensor_read_task.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/ekf.c
     )
     target_include_directories(test_sensor_read_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -181,4 +182,20 @@ if(NOT PICO_BUILD)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
     add_test(NAME health_monitor_task_test COMMAND test_health_monitor_task)
+
+    add_executable(test_ekf
+        test_ekf.c
+        ../../src/control/ekf.c
+    )
+    target_include_directories(test_ekf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_ekf m)
+    add_test(NAME ekf_test COMMAND test_ekf)
+
+    add_executable(test_lqr
+        test_lqr.c
+        ../../src/control/lqr.c
+        ../../src/dynamics/attitude_dynamics.c
+    )
+    target_include_directories(test_lqr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME lqr_test COMMAND test_lqr)
 endif()

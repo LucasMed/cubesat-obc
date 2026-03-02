@@ -98,6 +98,20 @@ extern "C"
   void data_layer_write_imu(const float att_rad[3], const float rates_rad[3]);
 
   /**
+   * @brief Update EKF outputs in the shared snapshot.
+   *
+   * Called by the sensor read task immediately after each EKF predict+update
+   * cycle.  Stores EKF attitude estimate, gyro bias, and diagonal covariance
+   * back to @ref system_state_t and sets @c imu_ekf_valid = true.
+   *
+   * @param att_rad    EKF attitude estimate [roll, pitch, yaw] in radians [3].
+   * @param bias_rad   EKF gyro-bias estimate [rad/s] [3].
+   * @param cov_diag   EKF diagonal covariance P[0..2][0..2] [rad²] [3].
+   */
+  void data_layer_write_ekf(const float att_rad[3], const float bias_rad[3],
+                            const float cov_diag[3]);
+
+  /**
    * @brief Update temperature reading.
    *
    * @param temp_c  Temperature in degrees Celsius.

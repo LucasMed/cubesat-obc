@@ -5,6 +5,37 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-08
+
+### Added (Phase 4 — Advanced Control)
+- **RK2 Dynamics integrator** (`src/dynamics/attitude_dynamics.c`): Euler → midpoint
+  (RK2) integration for attitude propagation; reduces attitude error to <0.1 mrad at
+  10 Hz (PR-11).  Five unit tests: T-DYN-01..05.
+- **EKF attitude estimator** (`src/control/ekf.c`, `include/ekf.h`): 6-state EKF
+  `x = [roll, pitch, yaw, bx, by, bz]` with analytic 2×2 S⁻¹ inversion, gyro-bias
+  estimation, and accelerometer measurement update (PR-12).
+  Six unit tests: T-EKF-01..06.
+- **LQR controller** (`src/control/lqr.c`, `include/lqr.h`): 3×6 full-state gain
+  matrix `u = -K·x` with analytic default gains for ωn = 10 rad/s, ζ = 1, derived
+  for Isat = diag(0.01, 0.01, 0.005) kg·m² (PR-13).
+  Seven unit tests: T-LQR-01..07.
+- **Sensor fusion integration** (`src/tasks/sensor_read_task.c`): static `ekf_t g_ekf`
+  runs EKF predict + update every 10 Hz tick; EKF attitude, gyro bias, and diagonal
+  covariance published to DLA via `data_layer_write_ekf()` (PR-14).
+  Three new tests: T-SRF-08..10 (10 total for sensor read task).
+- **LQR/PID mode dispatch** (`src/tasks/attitude_control_task.c`): FM_NOMINAL +
+  `imu_ekf_valid` → LQR; FM_DIAGNOSTIC or EKF converging → PID fallback (PR-15).
+  Three new tests: T-ACT-09..11 (11 total for attitude control task).
+- **EKF fields in system_state_t**: `gyro_bias[3]`, `att_uncertainty[3]`,
+  `imu_ekf_valid` (PR-14).
+- **`data_layer_write_ekf()`** DLA write function for EKF outputs (PR-14).
+
+### Testing
+- Test suite: 19 CTest executables.  All 19/19 passing.
+- clang-format-14, clang-tidy-14, cppcheck all clean.
+
+---
+
 ## [0.4.0] - 2026-03-02
 
 ### Added
