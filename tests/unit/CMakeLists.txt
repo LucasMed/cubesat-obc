@@ -198,4 +198,15 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_lqr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME lqr_test COMMAND test_lqr)
+
+    # PR-16 gate: Watchdog HAL — no-crash, host triggered=false, feed-per-step.
+    # test_watchdog.c provides its own watchdog_hal_{init,feed,triggered} stubs
+    # (instrumented for call counting) so watchdog_hal_host.c is NOT compiled here;
+    # strong symbols in the test file take precedence at link time.
+    add_executable(test_watchdog
+        test_watchdog.c
+        ../../src/tasks/health_monitor_task.c
+    )
+    target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME watchdog_test COMMAND test_watchdog)
 endif()

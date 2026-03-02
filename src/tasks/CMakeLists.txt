@@ -12,5 +12,5 @@ target_link_libraries(tasks_lib PRIVATE control_lib dynamics_lib drivers_lib act
 if(PICO_BUILD)
     target_link_libraries(tasks_lib PUBLIC FreeRTOS-Kernel csp hardware_watchdog)
 else()
-    target_link_libraries(tasks_lib PUBLIC csp)
+    target_link_libraries(tasks_lib PUBLIC csp watchdog_hal_lib)
 endif()
