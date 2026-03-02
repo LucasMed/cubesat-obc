@@ -1,8 +1,8 @@
 # Software Requirements Specification
 
 **Document ID**: REQ-001  
-**Version**: 1.0  
-**Last Updated**: 2026-02-20  
+**Version**: 2.0  
+**Last Updated**: 2026-03-08  
 **Status**: Active  
 **Standard**: Based on ECSS-E-ST-10-06C
 
@@ -12,16 +12,18 @@
 
 | ID | Requirement | Priority | Phase | Status |
 |----|------------|----------|-------|--------|
-| **FR-1** | The system shall read 6-DOF IMU data (accel + gyro) via I2C at ≥10 Hz | Must | 2 | ✅ API ready, driver TBD |
-| **FR-2** | The system shall compute Euler angles (roll, pitch, yaw) from sensor data | Must | 1 | ✅ Implemented |
-| **FR-3** | The system shall stabilize angular rates via independent PID loops (3 axes) | Must | 1 | ✅ Implemented, tested |
+| **FR-1** | The system shall read 6-DOF IMU data (accel + gyro) via I2C at ≥10 Hz | Must | 2 | ✅ Implemented, EKF-integrated |
+| **FR-2** | The system shall estimate attitude (roll, pitch, yaw) from sensor data via EKF | Must | 4 | ✅ EKF complete (Phase 4) |
+| **FR-3** | The system shall stabilize angular rates via LQR / PID (3 axes) | Must | 4 | ✅ Implemented (Phase 4) |
 | **FR-4** | The system shall command desired attitude and compute torque setpoints | Must | 1 | ✅ Implemented |
 | **FR-5** | The system shall apply torque commands to reaction wheel motors (3-axis) | Must | 1 | ✅ Implemented, tested |
-| **FR-6** | The system shall apply magnetic dipole commands for de-saturation (3-axis) | Must | 1 | ✅ Implemented, tested |
-| **FR-7** | The system shall transmit attitude, rates, and sensor data to ground station | Must | 3 | ⏳ Pending |
-| **FR-8** | The system shall monitor bus voltage, temperature, and task health | Should | 2 | ✅ API ready |
+| **FR-6** | The system shall apply magnetic dipole commands for de-saturation (3-axis) | Must | 5 | 🔄 PR-17 (momentum dump) |
+| **FR-7** | The system shall transmit attitude, rates, and sensor data to ground station | Must | 3 | ⏳ Stub complete, HW pending |
+| **FR-8** | The system shall monitor bus voltage, temperature, and task health | Should | 2 | ✅ Implemented (Phase SA) |
 | **FR-9** | The system shall support flashing firmware via USB (UF2 format) | Must | 2 | ✅ Verified |
 | **FR-10** | The system shall provide USB CDC serial debug output | Should | 2 | ✅ Verified |
+| **FR-11** | The system shall read 3-axis magnetometer via I2C at ≥10 Hz | Must | 5 | 🔄 PR-18 (HMC5883L stub) |
+| **FR-12** | The system shall feed the hardware watchdog from the health monitor task | Must | 5 | 🔄 PR-16 (watchdog HAL) |
 
 ---
 
@@ -29,10 +31,10 @@
 
 | ID | Requirement | Priority | Phase | Status |
 |----|------------|----------|-------|--------|
-| **NFR-1** | Control loop shall execute at 20 Hz with jitter <10 ms | Must | 2 | TBC — pending task scheduling validation |
-| **NFR-2** | Sensor read task shall execute at 10 Hz | Must | 2 | TBC — pending HW validation |
+| **NFR-1** | Control loop shall execute at 20 Hz with jitter <10 ms | Must | 2 | ✅ Verified ±22 µs (Phase 2) |
+| **NFR-2** | Sensor read task shall execute at 10 Hz | Must | 2 | ✅ Verified (Phase 2) |
 | **NFR-3** | No dynamic memory allocation in flight code (static only) | Must | 1 | ✅ Enforced |
-| **NFR-4** | Average power consumption <2 W during nominal operation | Should | 3 | TBD — requires power profiling |
+| **NFR-4** | Average power consumption <2 W during nominal operation | Should | 3 | ⏳ TBD — requires power profiling on HW |
 | **NFR-5** | Architecture shall support adding new sensors/actuators without core changes | Should | 1 | ✅ HAL pattern |
 | **NFR-6** | Flash footprint <200 KB, SRAM usage <60 KB | Should | 2 | TBC — current blink: 536 KB UF2 |
 | **NFR-7** | System shall boot to operational state within 5 seconds | Should | 2 | TBD |
@@ -57,8 +59,8 @@
 
 | ID | Requirement | Priority | Status |
 |----|------------|----------|--------|
-| **SR-1** | System shall implement watchdog timer for fault recovery | Must | TBD — Phase 5 |
-| **SR-2** | System shall enter safe mode on critical failure detection | Must | TBD — Phase 5 |
+| **SR-1** | System shall implement watchdog timer for fault recovery | Must | 🔄 PR-16 |
+| **SR-2** | System shall enter safe mode on critical failure detection | Must | ✅ FM_SAFE via FMM + fault_manager (Phase SA) |
 | **SR-3** | No hardcoded secrets or credentials in firmware | Must | ✅ Verified |
 | **SR-4** | Bounds checking on all array/buffer accesses | Must | ✅ Enforced |
 | **SR-5** | Stack overflow detection enabled for all tasks | Must | ✅ FreeRTOSConfig.h |
@@ -78,10 +80,10 @@
 
 ## 6. Requirements Status Summary
 
-| Category | Total | Implemented | TBD | TBC |
-|----------|-------|-------------|-----|-----|
-| Functional | 10 | 8 | 1 | 1 |
-| Non-Functional | 8 | 4 | 2 | 2 |
-| Interface | 6 | 1 | 5 | 0 |
-| Safety | 5 | 3 | 2 | 0 |
-| **Total** | **29** | **16** | **10** | **3** |
+| Category | Total | Implemented | In Progress | TBD | TBC |
+|----------|-------|-------------|-------------|-----|-----|
+| Functional | 12 | 9 | 2 | 1 | 0 |
+| Non-Functional | 8 | 5 | 0 | 2 | 1 |
+| Interface | 6 | 1 | 0 | 5 | 0 |
+| Safety | 5 | 4 | 1 | 0 | 0 |
+| **Total** | **31** | **19** | **3** | **8** | **1** |

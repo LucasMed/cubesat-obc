@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
 **Last Updated**: 2026-03-08
-**Current Phase**: Phase 5 — Flight Readiness (branch `feature/phase4-advanced-control` → merge to dev pending)
-**Current Branch**: `feature/phase4-advanced-control`
+**Current Phase**: Phase 5 — Flight Readiness (branch `feature/phase5-flight-ready`)
+**Current Branch**: `feature/phase5-flight-ready`
 
 ---
 
@@ -75,7 +75,7 @@
 | PR-12 | `5812ba1` | EKF estimator (6-state, bias correction) | ekf_test: 6/6 ✅ |
 | PR-13 | `916672d` | LQR controller (3×6 gain matrix) | lqr_test: 7/7 ✅ |
 | PR-14 | `96f969d` | Sensor fusion — EKF integrated into sensor_read_task | sensor_read_task_test: 10/10 ✅ |
-| PR-15 | `(current)` | LQR/PID dispatch in attitude_control_task | attitude_control_task_test: 11/11 ✅ |
+| PR-15 | `254bde1` | LQR/PID dispatch in attitude_control_task | attitude_control_task_test: 11/11 ✅ |
 
 ---
 
@@ -88,7 +88,7 @@
 | 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
 | Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
 | 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
-| 5 — Flight Ready | Q3 2026 | Watchdog, safe states, WiFi, HW drivers | ⏳ Pending |
+| 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | 🔄 In Progress (0/5 PRs) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
@@ -150,4 +150,4 @@ cd build && cmake .. && cmake --build . && ctest --output-on-failure
 - FreeRTOS uses stubs on Linux (no real multitasking)
 - I2C/sensors return zeros (simulated)
 - WiFi/UART not functional on host
-- **Resolution**: Pico SDK integration (Phase 2)
+- **Resolution**: Pico SDK integration (Phase 2) ✅ — Phase 5 adds HAL stubs for all remaining hardware peripherals
