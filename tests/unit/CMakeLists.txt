@@ -189,4 +189,12 @@ if(NOT PICO_BUILD)
     target_include_directories(test_ekf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ekf m)
     add_test(NAME ekf_test COMMAND test_ekf)
+
+    add_executable(test_lqr
+        test_lqr.c
+        ../../src/control/lqr.c
+        ../../src/dynamics/attitude_dynamics.c
+    )
+    target_include_directories(test_lqr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME lqr_test COMMAND test_lqr)
 endif()
