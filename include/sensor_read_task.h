@@ -5,4 +5,4 @@
 void vSensorReadTask(void *pvParameters);
 void vSensorReadTask_Step(void);
 
-#endif // SENSOR_READ_TASK_H
+#endif  // SENSOR_READ_TASK_H

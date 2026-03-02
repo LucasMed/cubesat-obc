@@ -12,29 +12,40 @@ typedef void *TaskHandle_t;
 
 #define pdMS_TO_TICKS(xTimeInMs) (xTimeInMs)
 #define portTICK_PERIOD_MS 1
-#define pdTRUE  1
+#define pdTRUE 1
 #define pdFALSE 0
 
 // Stub implementations
 #ifndef vTaskDelayUntil
-#define vTaskDelayUntil(pxPreviousWakeTime, xTimeIncrement) \
-    do { *pxPreviousWakeTime += xTimeIncrement; } while(0)
+  #define vTaskDelayUntil(pxPreviousWakeTime, xTimeIncrement)                                      \
+    do                                                                                             \
+    {                                                                                              \
+      *pxPreviousWakeTime += xTimeIncrement;                                                       \
+    } while (0)
 #endif
 
 #ifndef vTaskDelay
-#define vTaskDelay(xTicksToDelay) do {} while(0)
+  #define vTaskDelay(xTicksToDelay)                                                                \
+    do                                                                                             \
+    {                                                                                              \
+    } while (0)
 #endif
 
 #ifndef xTaskGetTickCount
-#define xTaskGetTickCount() 0
+  #define xTaskGetTickCount() 0
 #endif
 
-#define vTaskStartScheduler() do { printf("[FreeRTOS] Scheduler stub (no actual RTOS on host)\\n"); } while(0)
+#define vTaskStartScheduler()                                                                      \
+  do                                                                                               \
+  {                                                                                                \
+    printf("[FreeRTOS] Scheduler stub (no actual RTOS on host)\\n");                               \
+  } while (0)
 
 // Task creation stub
-#define xTaskCreate(pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask) \
-    do { \
-        printf("[FreeRTOS] Created task: %s (stub)\\n", (pcName)); \
-    } while(0)
+#define xTaskCreate(pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)     \
+  do                                                                                               \
+  {                                                                                                \
+    printf("[FreeRTOS] Created task: %s (stub)\\n", (pcName));                                     \
+  } while (0)
 
-#endif // FREERTOS_H
+#endif  // FREERTOS_H

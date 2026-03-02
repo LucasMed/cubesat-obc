@@ -18,4 +18,4 @@
 #define DEFAULT_KI 0.01f
 #define DEFAULT_KD 0.1f
 
-#endif // CONFIG_H
+#endif  // CONFIG_H

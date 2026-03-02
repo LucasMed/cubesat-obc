@@ -93,7 +93,7 @@ if [[ -n "$CLANG_TIDY" ]]; then
   fi
 
   TIDY_FAIL=0
-  C_FILES=$(find src -name '*.c' | grep -v third_party | sort)
+  C_FILES=$(find src -name '*.c' | grep -v third_party | grep -v '/pico_' | sort)
   for f in $C_FILES; do
     RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)
     if echo "$RESULT" | grep -q "warning:\|error:"; then

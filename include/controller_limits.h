@@ -17,7 +17,8 @@
 #define CONTROLLER_LIMITS_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /* ------------------------------------------------------------------ */
@@ -25,30 +26,30 @@ extern "C" {
 /* ------------------------------------------------------------------ */
 
 /** Minimum allowed proportional gain.  Must be ≥ 0. */
-#define PID_KP_MIN  0.0f
+#define PID_KP_MIN 0.0f
 
 /** Maximum allowed proportional gain. */
-#define PID_KP_MAX  10.0f
+#define PID_KP_MAX 10.0f
 
 /* ------------------------------------------------------------------ */
 /* PID integral gain (Ki)                                             */
 /* ------------------------------------------------------------------ */
 
 /** Minimum allowed integral gain.  Must be ≥ 0. */
-#define PID_KI_MIN  0.0f
+#define PID_KI_MIN 0.0f
 
 /** Maximum allowed integral gain. */
-#define PID_KI_MAX  5.0f
+#define PID_KI_MAX 5.0f
 
 /* ------------------------------------------------------------------ */
 /* PID derivative gain (Kd)                                           */
 /* ------------------------------------------------------------------ */
 
 /** Minimum allowed derivative gain.  Must be ≥ 0. */
-#define PID_KD_MIN  0.0f
+#define PID_KD_MIN 0.0f
 
 /** Maximum allowed derivative gain. */
-#define PID_KD_MAX  2.0f
+#define PID_KD_MAX 2.0f
 
 /* ------------------------------------------------------------------ */
 /* Control output limits                                               */
@@ -61,10 +62,10 @@ extern "C" {
  * being scaled to physical actuator commands.  1.0 represents 100 %
  * of available actuator authority.
  */
-#define U_MAX  1.0f
+#define U_MAX 1.0f
 
 /** Minimum (most negative) normalised control output. */
-#define U_MIN  (-U_MAX)
+#define U_MIN (-U_MAX)
 
 /* ------------------------------------------------------------------ */
 /* Anti-windup integrator limit                                        */
@@ -77,20 +78,20 @@ extern "C" {
  * intervals.  Expressed in the same normalised units as the setpoint
  * error input.
  */
-#define PID_INTEGRATOR_LIMIT  10.0f
+#define PID_INTEGRATOR_LIMIT 10.0f
 
 /* ------------------------------------------------------------------ */
 /* Sanity-check macros                                                 */
 /* ------------------------------------------------------------------ */
 
 /** Evaluate to 1 if gain @p k is within the Kp valid range. */
-#define PID_KP_VALID(k)  ((k) >= PID_KP_MIN && (k) <= PID_KP_MAX)
+#define PID_KP_VALID(k) ((k) >= PID_KP_MIN && (k) <= PID_KP_MAX)
 
 /** Evaluate to 1 if gain @p k is within the Ki valid range. */
-#define PID_KI_VALID(k)  ((k) >= PID_KI_MIN && (k) <= PID_KI_MAX)
+#define PID_KI_VALID(k) ((k) >= PID_KI_MIN && (k) <= PID_KI_MAX)
 
 /** Evaluate to 1 if gain @p k is within the Kd valid range. */
-#define PID_KD_VALID(k)  ((k) >= PID_KD_MIN && (k) <= PID_KD_MAX)
+#define PID_KD_VALID(k) ((k) >= PID_KD_MIN && (k) <= PID_KD_MAX)
 
 #ifdef __cplusplus
 }
