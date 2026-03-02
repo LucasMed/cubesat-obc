@@ -1,6 +1,6 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-08
+**Last Updated**: 2026-03-12
 **Current Phase**: Phase 5 — Flight Readiness (branch `feature/phase5-flight-ready`)
 **Current Branch**: `feature/phase5-flight-ready`
 
@@ -88,7 +88,7 @@
 | 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
 | Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
 | 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
-| 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | 🔄 In Progress (0/5 PRs) |
+| 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | ✅ Complete (4/4 feature PRs + docs) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
@@ -112,7 +112,7 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 19/19 | 0 | 19 |
+| Unit Tests | 23/23 | 0 | 23 |
 | Integration Tests | 2/2 | 2 | 4 |
 | System Tests | 0 | 2 | 2 |
 | **Total** | **21** | **4** | **25** |

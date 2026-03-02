@@ -5,6 +5,36 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-12
+
+### Added (Phase 5 — Flight Readiness)
+- **Watchdog HAL** (`src/core/watchdog.c`, `include/watchdog.h`): hardware watchdog
+  kick/init/enable via `__attribute__((weak))` HAL stubs; host build issues periodic
+  log messages; `xTaskGetTickCount()`-gated kick called from `vHealthMonitorTask_Step()`
+  (PR-16). Five unit tests: T-WDT-01..05.
+- **Momentum Dump** (`src/control/momentum_dump.c`, `include/momentum_dump.h`): angular
+  momentum magnitude check, FM_DETUMBLE guard, duty-cycle B-dot dump algorithm.  Dump
+  result published to DLA (`data_layer_write_momentum_dump()`); called from
+  `vAttitudeControlTask_Step()` (PR-17). Five unit tests: T-MDT-01..05.
+- **HMC5883L Magnetometer driver** (`src/drivers/hmc5883l.c`, `include/drivers/hmc5883l.h`):
+  I²C 3-axis mag driver with `__attribute__((weak))` HAL stub returning `{25, 0, 42}` µT;
+  `vSensorReadTask_Step()` reads mag, converts to µT, writes to DLA via
+  `data_layer_write_mag()`.  `system_state_t` extended with `mag_field_uT[3]`,
+  `mag_valid`, `mag_timestamp_ms` (PR-18). Four unit tests: T-MAG-01..04.
+- **EKF yaw update via magnetometer** (`src/control/ekf.c` / `include/ekf.h`): scalar
+  yaw measurement update `ekf_update_mag()` using tilt-compensated H=[0,0,1,0,0,0]
+  observation; degenerate-field guard (`|Bh| < 1 µT`); innovation wrapped to `[-π, +π]`;
+  `ekf_t` extended with `float r_mag`; `vSensorReadTask_Step()` calls update after each
+  mag read (PR-19). Six unit tests: T-EKFM-01..06.
+
+### Testing
+- Test suite: **23** CTest executables.  All **23/23** passing.
+- New test targets: `watchdog_test`, `momentum_dump_test`, `hmc5883l_test`,
+  `ekf_mag_test`.
+- cppcheck, clang-format-14 clean on all PR-16..19 files.
+
+---
+
 ## [0.5.0] - 2026-03-08
 
 ### Added (Phase 4 — Advanced Control)
