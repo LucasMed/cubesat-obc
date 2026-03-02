@@ -198,4 +198,53 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_lqr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME lqr_test COMMAND test_lqr)
+
+    # PR-16 gate: Watchdog HAL — no-crash, host triggered=false, feed-per-step.
+    # test_watchdog.c provides its own watchdog_hal_{init,feed,triggered} stubs
+    # (instrumented for call counting) so watchdog_hal_host.c is NOT compiled here;
+    # strong symbols in the test file take precedence at link time.
+    add_executable(test_watchdog
+        test_watchdog.c
+        ../../src/tasks/health_monitor_task.c
+    )
+    target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME watchdog_test COMMAND test_watchdog)
+
+    # PR-17 gate: Momentum Dump — init, degenerate B guard, cross-product accuracy,
+    # threshold logic, gain scaling.  Pure algorithm; no hardware dependency.
+    add_executable(test_momentum_dump
+        test_momentum_dump.c
+        ../../src/services/adcs/momentum_dump.c
+    )
+    target_include_directories(test_momentum_dump PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_momentum_dump m)
+    add_test(NAME momentum_dump_test COMMAND test_momentum_dump)
+
+    # PR-18 gate: HMC5883L magnetometer stub + DLA integration.
+    # Compiles the real host stub so T-MAG-01/02 exercise actual code.
+    # sensor_read_task.c + data_layer.c + ekf.c pulled in for T-MAG-04;
+    # mpu6050 / temperature stubs are defined inside test_hmc5883l.c.
+    add_executable(test_hmc5883l
+        test_hmc5883l.c
+        ../../src/drivers/mag/hmc5883l.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+    )
+    target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_hmc5883l m)
+    add_test(NAME hmc5883l_test COMMAND test_hmc5883l)
+
+    # PR-19 gate: EKF yaw update via magnetometer.
+    # T-EKFM-01..06: no-crash, degenerate field guard, yaw driven to measured
+    # value, innovation wrapping at ±π, covariance reduction, repeated
+    # predict+update_mag convergence test.
+    add_executable(test_ekf_mag
+        test_ekf_mag.c
+        ../../src/control/ekf.c
+    )
+    target_include_directories(test_ekf_mag PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_ekf_mag m)
+    add_test(NAME ekf_mag_test COMMAND test_ekf_mag)
 endif()

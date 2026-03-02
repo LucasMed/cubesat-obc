@@ -251,6 +251,22 @@ T-SRF-08..10: Sensor Read Task — EKF integration (PR-14)
 T-ACT-09..11: Attitude Control Task — LQR/PID dispatch (PR-15)
   └─ Validates: FR-4 (LQR in FM_NOMINAL, PID fallback)
   └─ Status: ✅ All 3 passing
+
+T-WDT-01..05: Hardware Watchdog HAL (PR-16)
+  └─ Validates: SYS-REQ-4 (fault-tolerant safe-mode, watchdog supervision)
+  └─ Status: ✅ All 5 passing
+
+T-MDT-01..05: Momentum Dump algorithm (PR-17)
+  └─ Validates: FR-5 (momentum management, detumble mode)
+  └─ Status: ✅ All 5 passing
+
+T-MAG-01..04: HMC5883L Magnetometer driver (PR-18)
+  └─ Validates: FR-2 (sensor suite, magnetometer data in DLA)
+  └─ Status: ✅ All 4 passing
+
+T-EKFM-01..06: EKF yaw update via magnetometer tilt compensation (PR-19)
+  └─ Validates: FR-2 (full 3-axis attitude determination including yaw), FR-3 (EKF observability)
+  └─ Status: ✅ All 6 passing
 ```
 
 ---
@@ -283,13 +299,13 @@ T-ACT-09..11: Attitude Control Task — LQR/PID dispatch (PR-15)
 ## Summary
 
 - **Total Requirements**: 17 (12 functional, 5 non-functional)
-- **Unit Test Coverage**: 19 tests covering all functional requirements implemented to date (19/19 passing)
+- **Unit Test Coverage**: 23 tests covering all functional requirements implemented to date (23/23 passing)
 - **Integration Test Coverage**: 2 done, 4 planned
-- **Overall Readiness**: 85% (Phase 4 complete, Phase 5 hardware validation pending)
+- **Overall Readiness**: 92% (Phase 5 host-testable complete; hardware validation pending)
 - **Risk Level**: LOW
 
 ---
 
-**Last Updated**: 2026-03-08
-**Matrix Version**: 2.1
+**Last Updated**: 2026-03-12
+**Matrix Version**: 2.2
 **Status**: Active (updated each phase)

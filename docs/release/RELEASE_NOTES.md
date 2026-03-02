@@ -96,27 +96,62 @@
 
 ---
 
-## v0.5.0 — Advanced Control (TBD)
+## v0.5.0 — Advanced Control (2026-03-08)
 
-**Status**: ⏳ Planned — Phase 4  
-**Target**: Q2-Q3 2026
+**Status**: ✅ Released (5/5 PRs committed)  
+**Branch**: `feature/phase4-advanced-control`
 
-### Planned Features
-- Kalman filter for attitude estimation
-- LQR/MPC control law options
-- Momentum dumping strategy
-- Extended unit test suite
+### Highlights
+- 6-state EKF `x = [roll, pitch, yaw, bx, by, bz]` with gyro-bias estimation and
+  accelerometer measurement update (PR-12)
+- RK2 midpoint integrator replaces Euler for attitude dynamics (PR-11)
+- LQR full-state controller `u = -Kx` with ωn=10 rad/s, ζ=1 default gains (PR-13)
+- EKF wired into `sensor_read_task`; LQR/PID dispatch in `attitude_control_task` (PR-14..15)
+- 19 unit tests, all passing
+
+### Components
+| PR | Description | Tests | Commit |
+|----|-------------|-------|--------|
+| PR-11 | RK2 dynamics integrator | dynamics_test: 5/5 ✅ | `93a8559` |
+| PR-12 | EKF estimator (6-state) | ekf_test: 6/6 ✅ | `5812ba1` |
+| PR-13 | LQR controller | lqr_test: 7/7 ✅ | `916672d` |
+| PR-14 | Sensor fusion — EKF in sensor_read_task | sensor_read_task_test: 10/10 ✅ | `96f969d` |
+| PR-15 | LQR/PID dispatch | attitude_control_task_test: 11/11 ✅ | `254bde1` |
+
+---
+
+## v0.6.0 — Flight Readiness Hardware Abstraction (2026-03-12)
+
+**Status**: ✅ Released (4/4 feature PRs + docs committed)  
+**Branch**: `feature/phase5-flight-ready`
+
+### Highlights
+- Hardware watchdog kick wired into `vHealthMonitorTask_Step()` via weak-symbol HAL
+  (PR-16); completes SYS-REQ-4 (fault-tolerant safe-mode re-entry)
+- Momentum dump algorithm with FM_DETUMBLE guard and B-dot duty-cycle law (PR-17)
+- HMC5883L magnetometer driver with I²C HAL stub; mag data published to DLA (PR-18)
+- EKF yaw now observable: tilt-compensated scalar yaw update `ekf_update_mag()` via
+  `H=[0,0,1,0,0,0]`; convergence verified <5° in 10 s simulation (PR-19)
+- 23 unit tests, all 23/23 passing
+- All components host-testable (PICO_ENABLED=OFF), no hardware required
+
+### Components
+| PR | Description | Tests | Commit |
+|----|-------------|-------|--------|
+| PR-16 | Watchdog HAL (kick + enable + HAL stub) | watchdog_test: 5/5 ✅ | `64d5f0e` |
+| PR-17 | Momentum dump (B-dot, FM guard, DLA write) | momentum_dump_test: 5/5 ✅ | `b1bf725` |
+| PR-18 | HMC5883L driver + DLA mag fields | hmc5883l_test: 4/4 ✅ | `cfea46a` |
+| PR-19 | EKF yaw update via magnetometer tilt compensation | ekf_mag_test: 6/6 ✅ | `4ee1213` |
 
 ---
 
 ## v1.0.0 — Flight Ready (TBD)
 
-**Status**: ⏳ Planned — Phase 5  
+**Status**: ⏳ Planned — Full hardware validation  
 **Target**: Q3 2026
 
 ### Planned Features
-- Watchdog timer integration (PR-10 foundation)
-- Autonomous safe-mode transitions (FMM + Fault Manager complete)
-- Configuration management
+- On-hardware integration test suite (real MPU6050 + HMC5883L)
 - Flash-backed persistent logging (Phase 3 logger backend)
-- Flight qualification testing
+- Flight qualification testing (vibration, thermal, radiation)
+- Autonomous safe-mode transition end-to-end test (T-FMS-01, T-SAFE-01)

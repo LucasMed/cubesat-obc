@@ -5,16 +5,20 @@
 #include "eps.h"
 #include "fault_manager.h"
 #include "task.h"
+#include "watchdog_hal.h"
 
 #include <stdio.h>
 
 // Core logic for health monitoring (independent of FreeRTOS task loop)
 void vHealthMonitorTask_Step(void)
 {
-  /* 1. Periodic Fault Manager age / auto-clear pass (1 Hz) */
+  /* 1. Feed the hardware watchdog — must happen every health-monitor tick. */
+  watchdog_hal_feed();
+
+  /* 2. Periodic Fault Manager age / auto-clear pass (1 Hz) */
   fault_manager_tick();
 
-  /* 2. EPS voltage classification, fault raise/clear, rail control */
+  /* 3. EPS voltage classification, fault raise/clear, rail control */
   eps_monitor_tick();
 
   printf("[health_monitor_task] Health check\n");

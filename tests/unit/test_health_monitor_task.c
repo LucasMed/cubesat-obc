@@ -38,6 +38,7 @@ static void mock_vTaskDelayUntil(uint32_t *prev, uint32_t inc)
 
 #include "eps.h"
 #include "fault_manager.h"
+#include "watchdog_hal.h"
 
 static int s_fault_tick_calls = 0;
 static int s_eps_tick_calls = 0;
@@ -49,6 +50,16 @@ void fault_manager_tick(void)
 void eps_monitor_tick(void)
 {
   s_eps_tick_calls++;
+}
+/* Watchdog is a no-op in this test; feed-per-step coverage is in test_watchdog. */
+void watchdog_hal_init(uint32_t timeout_ms)
+{
+  (void)timeout_ms;
+}
+void watchdog_hal_feed(void) {}
+bool watchdog_hal_triggered(void)
+{
+  return false;
 }
 
 /* ---- Unit under test --------------------------------------------------- */

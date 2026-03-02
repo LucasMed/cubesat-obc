@@ -1,16 +1,16 @@
 /**
  * @file test_attitude_control_task.c
- * @brief PR-8 / PR-15 gate: Attitude Control Task DLA-migration and
- *        LQR/PID dispatch correctness checks.
+ * @brief PR-8 / PR-15 / PR-17 gate: Attitude Control Task DLA-migration,
+ *        LQR/PID dispatch, and momentum-dump (FM_DETUMBLE) correctness.
  *
- * attitude_ctrl_update(), attitude_dynamics_step(), lqr_init(), and
- * lqr_compute() are replaced by instrumented strong-symbol stubs so no
- * control_lib / dynamics_lib is needed.
+ * attitude_ctrl_update(), attitude_dynamics_step(), lqr_init(), lqr_compute(),
+ * momentum_dump_init(), momentum_dump_step(), magnetorquer_init(), and
+ * magnetorquer_set_moment() are replaced by instrumented strong-symbol stubs.
  *
  * Tests:
  *   1.  Step is skipped in FM_BOOT  (ctrl_update NOT called)
  *   2.  Step is skipped in FM_SAFE  (ctrl_update NOT called)
- *   3.  Step is skipped in FM_DETUMBLE (ctrl_update NOT called)
+ *   3.  FM_DETUMBLE: ctrl_update NOT called; momentum_dump_step IS called
  *   4.  Step runs in FM_NOMINAL when imu_valid == true
  *   5.  Step runs in FM_DIAGNOSTIC when imu_valid == true
  *   6.  Step is skipped when imu_valid == false even in FM_NOMINAL
@@ -27,6 +27,8 @@
 #include "../../include/data_layer.h"
 #include "../../include/flight_mode.h"
 #include "../../include/lqr.h"
+#include "../../include/magnetorquer.h"
+#include "../../include/momentum_dump.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -112,6 +114,53 @@ void lqr_set_gains(lqr_t *lqr, const float k[3][6])
 }
 
 /* ------------------------------------------------------------------ */
+/* Momentum dump + magnetorquer instrumented stubs                     */
+/* ------------------------------------------------------------------ */
+
+static int s_dump_calls = 0;
+static int s_mtq_set_calls = 0;
+static float s_mtq_moment[3] = {0};
+
+void momentum_dump_init(momentum_dump_t *md, float k_dump)
+{
+  (void)md;
+  (void)k_dump;
+}
+
+void momentum_dump_step(const momentum_dump_t *md, const float B[3], const float L_rw[3],
+                        float dipole_cmd[3])
+{
+  (void)md;
+  (void)B;
+  (void)L_rw;
+  s_dump_calls++;
+  dipole_cmd[0] = 0.0f;
+  dipole_cmd[1] = 0.0f;
+  dipole_cmd[2] = 0.0f;
+}
+
+bool momentum_dump_needed(const float L_rw[3], float threshold)
+{
+  (void)L_rw;
+  (void)threshold;
+  return false;
+}
+
+void magnetorquer_init(magnetorquer_t *mq)
+{
+  (void)mq;
+}
+
+void magnetorquer_set_moment(magnetorquer_t *mq, float mx, float my, float mz)
+{
+  (void)mq;
+  s_mtq_set_calls++;
+  s_mtq_moment[0] = mx;
+  s_mtq_moment[1] = my;
+  s_mtq_moment[2] = mz;
+}
+
+/* ------------------------------------------------------------------ */
 /* Test helpers                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -134,12 +183,15 @@ static void reset_stubs(void)
   s_ctrl_calls = 0;
   s_dyn_calls = 0;
   s_lqr_calls = 0;
+  s_dump_calls = 0;
+  s_mtq_set_calls = 0;
   memset(s_ctrl_target, 0, sizeof(s_ctrl_target));
   memset(s_ctrl_current, 0, sizeof(s_ctrl_current));
   memset(s_ctrl_rates, 0, sizeof(s_ctrl_rates));
   memset(s_dyn_torque, 0, sizeof(s_dyn_torque));
   memset(s_lqr_att_err, 0, sizeof(s_lqr_att_err));
   memset(s_lqr_rate_err, 0, sizeof(s_lqr_rate_err));
+  memset(s_mtq_moment, 0, sizeof(s_mtq_moment));
   s_ctrl_outputs[0] = 1.0f;
   s_ctrl_outputs[1] = 2.0f;
   s_ctrl_outputs[2] = 3.0f;
@@ -195,7 +247,7 @@ static void test_skip_in_fm_safe(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* Test 3: FM_DETUMBLE → control skipped                               */
+/* Test 3: FM_DETUMBLE → PID/LQR skipped; momentum dump IS executed   */
 /* ------------------------------------------------------------------ */
 
 static void test_skip_in_fm_detumble(void)
@@ -206,6 +258,9 @@ static void test_skip_in_fm_detumble(void)
   set_dla_state(FM_DETUMBLE, true, att, rates);
   vAttitudeControlTask_Step();
   CHECK(s_ctrl_calls == 0, "ctrl_update must NOT be called in FM_DETUMBLE");
+  CHECK(s_lqr_calls == 0, "lqr_compute must NOT be called in FM_DETUMBLE");
+  CHECK(s_dump_calls == 1, "momentum_dump_step must be called once in FM_DETUMBLE");
+  CHECK(s_mtq_set_calls == 1, "magnetorquer_set_moment must be called once in FM_DETUMBLE");
   printf("test_skip_in_fm_detumble: OK\n");
 }
 

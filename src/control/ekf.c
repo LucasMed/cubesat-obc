@@ -23,6 +23,10 @@
 #define EKF_Q_BIAS 1e-6f
 /** Measurement noise: accelerometer-derived tilt angles. */
 #define EKF_R_ATT 1e-2f
+/** Magnetometer yaw measurement noise [rad²]. */
+#define EKF_R_MAG 1e-1f
+/** Minimum horizontal field magnitude [µT] for valid yaw update. */
+#define EKF_MAG_EPSILON 1.0f
 /** Initial attitude covariance (large — cold start). */
 #define EKF_P0_ATT 1.0f
 /** Initial bias covariance. */
@@ -118,6 +122,9 @@ void ekf_init(ekf_t *ekf)
   /* Measurement noise R (diagonal) */
   ekf->R[0][0] = EKF_R_ATT;
   ekf->R[1][1] = EKF_R_ATT;
+
+  /* Magnetometer yaw noise */
+  ekf->r_mag = EKF_R_MAG;
 }
 
 void ekf_predict(ekf_t *ekf, const float gyro[3], float dt)
@@ -244,4 +251,74 @@ void ekf_get_bias(const ekf_t *ekf, float bias[3])
   bias[0] = ekf->x[3];
   bias[1] = ekf->x[4];
   bias[2] = ekf->x[5];
+}
+
+void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_rad)
+{
+  float r = ekf->x[0]; /* current roll  estimate */
+  float p = ekf->x[1]; /* current pitch estimate */
+
+  /* ---- Tilt-compensated magnetic field (horizontal plane) ------------- *
+   *  Bh_x = Bx*cos(p) + By*sin(r)*sin(p) + Bz*cos(r)*sin(p)             *
+   *  Bh_y = By*cos(r) - Bz*sin(r)                                        */
+  float cr = cosf(r);
+  float sr = sinf(r);
+  float cp = cosf(p);
+  float sp = sinf(p);
+
+  float Bh_x = mag_field_uT[0] * cp + mag_field_uT[1] * sr * sp + mag_field_uT[2] * cr * sp;
+  float Bh_y = mag_field_uT[1] * cr - mag_field_uT[2] * sr;
+
+  /* Guard against degenerate horizontal field magnitude */
+  float Bh_mag = sqrtf(Bh_x * Bh_x + Bh_y * Bh_y);
+  if (Bh_mag < EKF_MAG_EPSILON)
+  {
+    return;
+  }
+
+  /* ---- Measured yaw --------------------------------------------------- */
+  float yaw_meas = atan2f(-Bh_y, Bh_x) + declination_rad;
+
+  /* ---- Innovation: wrap to [-π, +π] -----------------------------------  */
+  float y = yaw_meas - ekf->x[2];
+  while (y > (float)M_PI)
+  {
+    y -= 2.0f * (float)M_PI;
+  }
+  while (y < -(float)M_PI)
+  {
+    y += 2.0f * (float)M_PI;
+  }
+
+  /* ---- Innovation covariance: S = P[2][2] + r_mag (scalar) ----------- */
+  float S = ekf->P[2][2] + ekf->r_mag;
+  if (fabsf(S) < 1e-12f)
+  {
+    return;
+  }
+
+  /* ---- Kalman gain: K = P[:,2] / S  (6×1 vector) --------------------- */
+  float K[6];
+  for (int i = 0; i < 6; i++)
+  {
+    K[i] = ekf->P[i][2] / S;
+  }
+
+  /* ---- State update: x = x + K * y ------------------------------------ */
+  for (int i = 0; i < 6; i++)
+  {
+    ekf->x[i] += K[i] * y;
+  }
+
+  /* ---- Covariance update: P = (I − K*H) * P  (H = [0,0,1,0,0,0]) ----- *
+   *  P_new[i][j] = P[i][j] − K[i] * P[2][j]                              */
+  float P_new[6][6];
+  for (int i = 0; i < 6; i++)
+  {
+    for (int j = 0; j < 6; j++)
+    {
+      P_new[i][j] = ekf->P[i][j] - K[i] * ekf->P[2][j];
+    }
+  }
+  memcpy(ekf->P, P_new, sizeof(P_new));
 }

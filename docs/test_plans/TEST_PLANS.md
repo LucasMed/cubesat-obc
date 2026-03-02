@@ -276,6 +276,10 @@
 | T-DYN-01..05 | RK2 dynamics integrator accuracy vs Euler baseline | `test_dynamics.c` | ✅ 5/5 |
 | T-EKF-01..06 | EKF init, predict, update, bias convergence, degenerate input | `test_ekf.c` | ✅ 6/6 |
 | T-LQR-01..07 | LQR init, zero/non-zero error, gains override, stability | `test_lqr.c` | ✅ 7/7 |
+| T-WDT-01..05 | Watchdog init, kick, enable, HAL stub, health-monitor wiring | `test_watchdog.c` | ✅ 5/5 |
+| T-MDT-01..05 | Momentum dump threshold, FM guard, B-dot duty cycle, DLA write | `test_momentum_dump.c` | ✅ 5/5 |
+| T-MAG-01..04 | HMC5883L init, read, unit conversion, DLA mag fields | `test_hmc5883l.c` | ✅ 4/4 |
+| T-EKFM-01..06 | EKF mag update: no-crash, degenerate guard, correction, wrap, cov, convergence | `test_ekf_mag.c` | ✅ 6/6 |
 
 ---
 
@@ -307,11 +311,11 @@ gcovr -r ../src .
 
 ## 9. Test Coverage Summary
 
-| Metric | Phase 3 | Spec-Alignment (PRs 1–10) | Phase 4 (PRs 11–15) | Target |
-|--------|---------|---------------------------|----------------------|--------|
-| Line Coverage | 64% | ~80% | ~85% (estimated) | >85% |
-| Test targets | 6 | 17 | **19** | ≥19 |
-| Tests passing | 6/6 | 17/17 | **19/19** | 19/19 |
-| New test IDs | — | T-FMM, T-FMS, T-EPS, T-LOG, T-SDM, T-TLM, T-HM | T-DYN, T-EKF, T-LQR, T-SRF, T-ACT | — |
+| Metric | Phase 3 | Spec-Alignment (PRs 1–10) | Phase 4 (PRs 11–15) | Phase 5 (PRs 16–19) | Target |
+|--------|---------|---------------------------|----------------------|----------------------|--------|
+| Line Coverage | 64% | ~80% | ~85% (estimated) | ~88% (estimated) | >85% |
+| Test targets | 6 | 17 | 19 | **23** | ≥19 |
+| Tests passing | 6/6 | 17/17 | 19/19 | **23/23** | 23/23 |
+| New test IDs | — | T-FMM, T-FMS, T-EPS, T-LOG, T-SDM, T-TLM, T-HM | T-DYN, T-EKF, T-LQR, T-SRF, T-ACT | **T-WDT, T-MDT, T-MAG, T-EKFM** | — |
 
 *Note: Phase 4 added two new test executables (`test_ekf`, `test_lqr`) and expanded `test_sensor_read_task` (7→10) and `test_attitude_control_task` (8→11). Missing coverage remains restricted to FreeRTOS `while(1)` task loops and `#ifdef PICO_BUILD` hardware branches not reachable in host builds.*
