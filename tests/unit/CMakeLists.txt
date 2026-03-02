@@ -209,4 +209,14 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME watchdog_test COMMAND test_watchdog)
+
+    # PR-17 gate: Momentum Dump — init, degenerate B guard, cross-product accuracy,
+    # threshold logic, gain scaling.  Pure algorithm; no hardware dependency.
+    add_executable(test_momentum_dump
+        test_momentum_dump.c
+        ../../src/services/adcs/momentum_dump.c
+    )
+    target_include_directories(test_momentum_dump PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_momentum_dump m)
+    add_test(NAME momentum_dump_test COMMAND test_momentum_dump)
 endif()

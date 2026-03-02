@@ -18,4 +18,7 @@
 #define DEFAULT_KI 0.01f
 #define DEFAULT_KD 0.1f
 
+/** Momentum-dump gain for FM_DETUMBLE [A·m²·s / (kg·m²)] */
+#define DETUMBLE_K_DUMP 0.01f
+
 #endif  // CONFIG_H

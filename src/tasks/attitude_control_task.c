@@ -1,24 +1,22 @@
 /**
  * @file attitude_control_task.c
- * @brief Attitude control task — LQR / PID mode dispatch (PR-15).
+ * @brief Attitude control task — momentum dump / LQR / PID mode dispatch.
  *
  * All shared state is read exclusively through data_layer.h.
  *
- * Flight-mode guard (per SPEC-2-CTRL §4.1):
- *   Control torques are computed ONLY when the flight mode is
- *   FM_NOMINAL or FM_DIAGNOSTIC.  In FM_BOOT, FM_SAFE, or FM_DETUMBLE
- *   the step returns immediately without touching the actuators.
- *
- * Sensor validity guard:
- *   If the IMU data is stale (imu_valid == false) the step is skipped
- *   to avoid computing torques from zeroed attitude/rate data.
- *
- * Controller dispatch (PR-15):
+ * Controller dispatch (PR-15 / PR-17):
+ *   FM_DETUMBLE                 → momentum_dump_step() → magnetorquer (B×L law)
  *   FM_NOMINAL + imu_ekf_valid  → LQR (precise nadir tracking)
  *   FM_NOMINAL + !imu_ekf_valid → PID fallback (EKF converging)
  *   FM_DIAGNOSTIC               → PID (diagnostic / tuning mode)
+ *   FM_BOOT / FM_SAFE           → return immediately, no actuator output
  *
- * Spec ref: SPEC-2-CTRL v1.3 §4.1, SPEC-2-DLA v1.6 §2.4, PHASE4_PLAN PR-15
+ * Sensor validity guard (NOMINAL / DIAGNOSTIC only):
+ *   If imu_valid == false the LQR/PID paths are skipped to avoid
+ *   computing torques from zeroed attitude/rate data.
+ *
+ * Spec ref: SPEC-2-CTRL v1.3 §4.1, SPEC-2-DLA v1.6 §2.4,
+ *           SPEC-2-ADCS v1.1 §5.2, PHASE5_PLAN PR-17
  */
 
 #include "attitude_control_task.h"
@@ -30,6 +28,8 @@
 #include "data_layer.h"
 #include "flight_mode.h"
 #include "lqr.h"
+#include "magnetorquer.h"
+#include "momentum_dump.h"
 #include "task.h"
 
 #include <stdio.h>
@@ -41,6 +41,8 @@
 static attitude_ctrl_t g_ctrl;
 static attitude_dyn_t g_dyn;
 static lqr_t g_lqr;
+static momentum_dump_t g_mdump;
+static magnetorquer_t g_mtq;
 
 // Core logic for attitude control (independent of FreeRTOS task loop)
 void vAttitudeControlTask_Step(void)
@@ -48,7 +50,20 @@ void vAttitudeControlTask_Step(void)
   dl_snapshot_t snap;
   data_layer_read(&snap);
 
-  /* Only compute control torques in fully operational flight modes */
+  /* FM_DETUMBLE: bleed reaction-wheel momentum via magnetorquer B×L law.
+   * B field placeholder is zero until PR-18 wires the magnetometer into
+   * the DLA.  When B == 0 momentum_dump_step() safely outputs a zero
+   * dipole command, so no spurious torque is applied. */
+  if (snap.mode == FM_DETUMBLE)
+  {
+    float B[3] = {0.0f, 0.0f, 0.0f}; /* TODO PR-18: read DLA mag_field */
+    float dipole[3] = {0.0f, 0.0f, 0.0f};
+    momentum_dump_step(&g_mdump, B, snap.state.rates, dipole);
+    magnetorquer_set_moment(&g_mtq, dipole[0], dipole[1], dipole[2]);
+    return;
+  }
+
+  /* Only compute attitude control torques in fully operational flight modes */
   if (snap.mode != FM_NOMINAL && snap.mode != FM_DIAGNOSTIC)
   {
     return;
@@ -99,10 +114,12 @@ void vAttitudeControlTask(void *pvParameters)
   uint32_t samples = 0;
 #endif
 
-  // Initialize control, dynamics, and LQR
+  // Initialize control, dynamics, LQR, and momentum dump
   attitude_ctrl_init(&g_ctrl);
   attitude_dynamics_init(&g_dyn);
   lqr_init(&g_lqr);
+  momentum_dump_init(&g_mdump, DETUMBLE_K_DUMP);
+  magnetorquer_init(&g_mtq);
 
   printf("[attitude_control_task] Started\n");
 
