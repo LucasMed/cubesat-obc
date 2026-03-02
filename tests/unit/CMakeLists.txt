@@ -147,6 +147,7 @@ if(NOT PICO_BUILD)
         ../../src/tasks/sensor_read_task.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/ekf.c
     )
     target_include_directories(test_sensor_read_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include

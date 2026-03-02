@@ -20,6 +20,7 @@
 #include "data_layer.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/temperature.h"
+#include "ekf.h"
 #include "task.h"
 
 #include <math.h>
@@ -33,6 +34,13 @@
 #endif
 
 #define DEG_TO_RAD (float)(M_PI / 180.0)
+
+/** Time step matching the 10 Hz task rate [s]. */
+#define SENSOR_DT_S 0.1f
+
+/* EKF instance — initialised once on first step. */
+static ekf_t s_ekf;
+static bool s_ekf_initialised = false;
 
 // Core logic for sensor reading (independent of FreeRTOS task loop)
 void vSensorReadTask_Step(void)
@@ -50,7 +58,31 @@ void vSensorReadTask_Step(void)
       /* Convert gyroscope output from deg/s to rad/s (SPEC-2-DLA §2.4) */
       float gyro_rad[3] = {gyro_deg[0] * DEG_TO_RAD, gyro_deg[1] * DEG_TO_RAD,
                            gyro_deg[2] * DEG_TO_RAD};
-      data_layer_write_imu(accel, gyro_rad);
+
+      /* Write raw gyro rates so downstream tasks always have current rates. */
+      data_layer_write_imu(snap.state.attitude, gyro_rad);
+
+      /* --- EKF sensor fusion ------------------------------------------ */
+      if (!s_ekf_initialised)
+      {
+        ekf_init(&s_ekf);
+        s_ekf_initialised = true;
+      }
+
+      ekf_predict(&s_ekf, gyro_rad, SENSOR_DT_S);
+      ekf_update(&s_ekf, accel);
+
+      /* Extract EKF outputs and publish to DLA. */
+      float ekf_att[3] = {0.0f, 0.0f, 0.0f};
+      float ekf_bias[3] = {0.0f, 0.0f, 0.0f};
+      float ekf_cov[3] = {0.0f, 0.0f, 0.0f};
+      ekf_get_attitude(&s_ekf, ekf_att);
+      ekf_get_bias(&s_ekf, ekf_bias);
+      /* Diagonal covariance elements for roll + pitch + yaw. */
+      ekf_cov[0] = s_ekf.P[0][0];
+      ekf_cov[1] = s_ekf.P[1][1];
+      ekf_cov[2] = s_ekf.P[2][2];
+      data_layer_write_ekf(ekf_att, ekf_bias, ekf_cov);
     }
   }
 
