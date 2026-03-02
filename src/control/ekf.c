@@ -282,9 +282,13 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
   /* ---- Innovation: wrap to [-π, +π] -----------------------------------  */
   float y = yaw_meas - ekf->x[2];
   while (y > (float)M_PI)
+  {
     y -= 2.0f * (float)M_PI;
+  }
   while (y < -(float)M_PI)
+  {
     y += 2.0f * (float)M_PI;
+  }
 
   /* ---- Innovation covariance: S = P[2][2] + r_mag (scalar) ----------- */
   float S = ekf->P[2][2] + ekf->r_mag;
