@@ -64,6 +64,40 @@
   - `pico_flash` + FreeRTOS conflict — resolved by isolating flash calls behind a weak-symbol HAL stub; host build uses stub.
   - `tasks_lib` missing `core_lib` dependency — fixed in `src/tasks/CMakeLists.txt`.
 
+### Phase 5: Flight Readiness ✅ PRs 16–20 (2026-03-12)
+- **Goal**: Hardware abstraction layer for all remaining peripherals; full yaw observability.
+- **Branch**: `feature/phase5-flight-ready`
+- **Outcomes (PRs 16–20 committed, 23/23 tests passing)**:
+
+| PR | Commit | Description | Tests |
+|----|--------|-------------|-------|
+| PR-16 | `64d5f0e` | Watchdog HAL stub + health monitor kick | watchdog_test: 5/5 ✅ |
+| PR-17 | `b1bf725` | Momentum dump (B×L, FM_DETUMBLE guard) | momentum_dump_test: 5/5 ✅ |
+| PR-18 | `cfea46a` | HMC5883L driver + DLA mag fields | hmc5883l_test: 4/4 ✅ |
+| PR-19 | `4ee1213` | EKF yaw update via magnetometer tilt compensation | ekf_mag_test: 6/6 ✅ |
+| PR-20 | `3763dcd` | Docs finalization (CHANGELOG, RELEASE_NOTES, TEST_PLANS, TRACEABILITY) | — |
+
+---
+
+### Phase 6: Closed-Loop Stability & Architectural Consolidation ⏳ (Planned)
+- **Goal**: Verify full EKF→LQR closed-loop stability via host simulation; close architectural debt (quaternion utility, gain scheduling, integration tests T-FMS-01 + T-SAFE-01, flash logger backend, coverage ≥90%, MISRA audit).
+- **Branch**: `feature/phase6-closed-loop` (to be created)
+- **Plan**: [docs/PHASE6_PLAN.md](PHASE6_PLAN.md)
+- **Target PRs**: PR-21..27
+- **Target test count**: 41
+
+| PR | Description | Status |
+|----|-------------|--------|
+| PR-21 | Quaternion utility library (T-QAT-01..05) | ⏳ Planned |
+| PR-22 | Configurable magnetic declination (T-EKFM-07) | ⏳ Planned |
+| PR-23 | LQR gain scheduling per flight mode (T-LQRS-01..03) | ⏳ Planned |
+| PR-24 | Closed-loop simulation harness (T-CLS-01..06) | ⏳ Planned |
+| PR-25 | Integration tests T-FMS-01 + T-SAFE-01 | ⏳ Planned |
+| PR-26 | Flash-backend stub + event logger flush hook | ⏳ Planned |
+| PR-27 | gcovr coverage ≥90% + MISRA C audit | ⏳ Planned |
+
+---
+
 ### Phase 4: Advanced Control ✅ PRs 11–15 (2026-03-08)
 - **Goal**: Implement EKF attitude estimator, LQR controller, RK2 dynamics, and wire them into running tasks.
 - **Branch**: `feature/phase4-advanced-control`
@@ -89,6 +123,7 @@
 | Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
 | 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
 | 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | ✅ Complete (4/4 feature PRs + docs) |
+| 6 — Closed-Loop Stability | Q2 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ⏳ Planned — see [PHASE6_PLAN.md](PHASE6_PLAN.md) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
