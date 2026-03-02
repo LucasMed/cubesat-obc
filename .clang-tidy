@@ -1,0 +1,44 @@
+# CubeSat OBC — clang-tidy configuration
+# Target: C11, embedded (no stdlib exceptions, no dynamic allocation after boot)
+#
+# Check philosophy:
+#   bugprone-*  : catches common C bugs (integer overflow, wrong format specs, etc.)
+#   cert-*      : CERT C Coding Standard subset (safety-critical relevant)
+#   clang-analyzer-* : deep static analysis (null deref, use-after-free, etc.)
+#   misc-*      : miscellaneous quality checks
+#   performance-* : flag unnecessary copies / inefficiencies
+#   portability-* : ensure code works on both host (x86-64) and target (RP2350 ARM)
+#   readability-* : enforce coding standard conventions
+
+Checks: >
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cert-*,
+  -cert-err58-cpp,
+  -cert-err33-c,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  misc-*,
+  -misc-no-recursion,
+  -misc-unused-parameters,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-uppercase-literal-suffix,
+  -readability-identifier-naming,
+  -readability-redundant-declaration
+
+# Treat clang-tidy warnings as errors in CI (set via --warnings-as-errors in script)
+WarningsAsErrors: ''
+
+# Use C11 standard
+CheckOptions:
+  - key: cert-dcl16-c.NewSuffixes
+    value: 'L;LL;LU;LLU'
+  - key: bugprone-argument-comment.StrictMode
+    value: '0'
+
+HeaderFilterRegex: '^/workspace/(src|include)/(?!host/).*'

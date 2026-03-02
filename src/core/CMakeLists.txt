@@ -1,5 +1,6 @@
 add_library(core_lib
     system_state.c
+    data_layer.c
     comm_init.c
 )
 

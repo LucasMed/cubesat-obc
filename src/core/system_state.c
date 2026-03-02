@@ -1,66 +1,46 @@
 /**
  * @file system_state.c
- * @brief Thread-safe system state implementation.
+ * @brief Thin compatibility shim — delegates to the Data Layer (DLA).
+ *
+ * All storage and locking now live in data_layer.c.  This file exists
+ * only to preserve the legacy system_state API used by older callers
+ * while the codebase migrates to data_layer_* calls directly.
+ *
+ * New code MUST use data_layer.h instead of system_state.h.
  */
 
 #include "system_state.h"
-#include <string.h>
 
-#ifdef PICO_BUILD
-#include "FreeRTOS.h"
-#include "semphr.h"
-static SemaphoreHandle_t g_state_mutex = NULL;
-#endif
+#include "data_layer.h"
 
-static system_state_t g_state;
-
-void system_state_init(void) {
-    memset(&g_state, 0, sizeof(system_state_t));
-    
-#ifdef PICO_BUILD
-    g_state_mutex = xSemaphoreCreateMutex();
-#endif
+void system_state_init(void)
+{
+  data_layer_init();
 }
 
-static void lock_state(void) {
-#ifdef PICO_BUILD
-    if (g_state_mutex) xSemaphoreTake(g_state_mutex, portMAX_DELAY);
-#endif
+void system_state_set_available(bool imu, bool temp)
+{
+  data_layer_set_sensor_avail(imu, temp);
 }
 
-static void unlock_state(void) {
-#ifdef PICO_BUILD
-    if (g_state_mutex) xSemaphoreGive(g_state_mutex);
-#endif
+void system_state_set_imu(const float att[3], const float rates[3])
+{
+  /* att[] and rates[] are expected in radians / rad/s (SPEC-2-DLA §2.4). */
+  data_layer_write_imu(att, rates);
 }
 
-void system_state_set_available(bool imu, bool temp) {
-    lock_state();
-    g_state.imu_available = imu;
-    g_state.temp_available = temp;
-    unlock_state();
+void system_state_set_temp(float temp)
+{
+  data_layer_write_temp(temp);
 }
 
-void system_state_set_imu(const float att[3], const float rates[3]) {
-    lock_state();
-    for (int i=0; i<3; i++) {
-        g_state.attitude[i] = att[i];
-        g_state.rates[i] = rates[i];
-    }
-    g_state.imu_valid = true;
-    unlock_state();
-}
-
-void system_state_set_temp(float temp) {
-    lock_state();
-    g_state.temp = temp;
-    g_state.temp_valid = true;
-    unlock_state();
-}
-
-void system_state_get(system_state_t *out_state) {
-    if (!out_state) return;
-    lock_state();
-    memcpy(out_state, &g_state, sizeof(system_state_t));
-    unlock_state();
+void system_state_get(system_state_t *out_state)
+{
+  if (!out_state)
+  {
+    return;
+  }
+  dl_snapshot_t snap;
+  data_layer_read(&snap);
+  *out_state = snap.state;
 }

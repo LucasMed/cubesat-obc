@@ -83,10 +83,10 @@ index 2752465a..70aba67a 100644
 +# --------------------------------------------------
 +# Options
 +# --------------------------------------------------
-+option(CSP_REPRODUCIBLE_BUILDS OFF)
-+option(CSP_HAVE_STDIO ON)
-+option(CSP_ENABLE_CSP_PRINT ON)
-+option(CSP_PRINT_STDIO ON)
++option(CSP_REPRODUCIBLE_BUILDS "" OFF)
++option(CSP_HAVE_STDIO "" ON)
++option(CSP_ENABLE_CSP_PRINT "" ON)
++option(CSP_PRINT_STDIO "" ON)
 +
 +set(CSP_QFIFO_LEN 15 CACHE STRING "")
 +set(CSP_PORT_MAX_BIND 16 CACHE STRING "")
@@ -97,17 +97,17 @@ index 2752465a..70aba67a 100644
 +set(CSP_RDP_MAX_WINDOW 5 CACHE STRING "")
 +set(CSP_RTABLE_SIZE 10 CACHE STRING "")
 +
-+option(CSP_USE_RDP ON)
-+option(CSP_USE_HMAC ON)
-+option(CSP_USE_PROMISC ON)
-+option(CSP_USE_RTABLE OFF)
-+option(CSP_BUFFER_ZERO_CLEAR ON)
++option(CSP_USE_RDP "" ON)
++option(CSP_USE_HMAC "" ON)
++option(CSP_USE_PROMISC "" ON)
++option(CSP_USE_RTABLE "" OFF)
++option(CSP_BUFFER_ZERO_CLEAR "" ON)
 +
-+option(CSP_ENABLE_PYTHON3_BINDINGS OFF)
-+option(CSP_BUILD_SAMPLES OFF)
++option(CSP_ENABLE_PYTHON3_BINDINGS "" OFF)
++option(CSP_BUILD_SAMPLES "" OFF)
 +
-+option(CSP_FIXUP_V1_ZMQ_LITTLE_ENDIAN ON)
-+option(CSP_ENABLE_KISS_CRC ON)
++option(CSP_FIXUP_V1_ZMQ_LITTLE_ENDIAN "" ON)
++option(CSP_ENABLE_KISS_CRC "" ON)
 +
 +# --------------------------------------------------
 +# PLATFORM DETECTION (FIXED)

@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-02-22
-**Current Phase**: Phase 4 — Advanced Control
-**Current Branch**: `dev`
+**Last Updated**: 2026-03-01
+**Current Phase**: Spec-Review Alignment (branch `feature/spec-review-alignment`)
+**Current Branch**: `feature/spec-review-alignment`
 
 ---
 
@@ -42,21 +42,27 @@
   - Defined strict interface specifications in `PHASE3_COMM_SPEC.md`.
   - Achieved comprehensive unit testing (64% project line coverage) for packet packing, command parsing, and topology initialization.
 
----
+### Spec-Review Alignment ✅ PRs 1–10 (2026-03-01)
+- **Goal**: Close gaps identified during the REVISION_PHASE against SPEC-2 v2.0 / SPEC-3 / SPEC-5.
+- **Branch**: `feature/spec-review-alignment`
+- **Outcomes (PRs 1–10 committed, 17/17 tests passing)**:
 
-## Active Blockers
+| PR | Commit | Description | Tests |
+|----|--------|-------------|-------|
+| PR-1 | `76bf234` | Foundation Types headers (7 files) | types_test: ✅ |
+| PR-2 | `42709b4` | Data Layer Abstraction — `data_layer.c` + `system_state` shim | data_layer_test: ✅ |
+| PR-3 | `36831b7` | Flight Mode Manager — `flight_mode_manager.c` | fmm_test: 11/11 ✅ |
+| PR-4 | `f71d021` | Fault Manager — 32-slot table, FSM, anti-cascade | fault_manager_test: 12/12 ✅ |
+| PR-5 | `2ea9440` | EPS Monitor — Schmidt-trigger hysteresis, energy states | eps_monitor_test: 12/12 ✅ |
+| PR-6 | `02d779e` | Persistent Logger — 320-entry ring buffer, class filtering | logger_test: 12/12 ✅ |
+| PR-7 | `1763bdd` | Sensor Read Task → DLA (gyro deg/s→rad/s conversion) | sensor_read_task_test: 7/7 ✅ |
+| PR-8 | `9592c7b` | Attitude Control Task → DLA (FM guard + imu_valid guard) | attitude_control_task_test: 8/8 ✅ |
+| PR-9 | `4b89aee` | Telemetry Task → DLA (FM guard, energy state in flags) | telemetry_test: 6/6 ✅ |
+| PR-10 | `e59b91b` | Health Monitor — wire `fault_manager_tick` + `eps_monitor_tick` | health_monitor_task_test: 3/3 ✅ |
 
-### 🔴 `pico_flash` + FreeRTOS Integration
-- **Issue**: Pico SDK's `pico_flash` library doesn't include FreeRTOS headers — `flash.c` compilation fails (`pdPASS` undeclared)
-- **Impact**: OBC firmware with full task scheduling cannot compile
-- **Current workaround**: blink test works but doesn't use FreeRTOS tasks
-- **Planned resolution**: Use proper FreeRTOS-SMP library for Pico SDK, ensuring flash module compatibility
-
----
-
-## Immediate Next Steps
-
-4. **Advanced Control (Phase 4)** — Implement Kalman filter for attitude estimation.
+- **Active blockers resolved**:
+  - `pico_flash` + FreeRTOS conflict — resolved by isolating flash calls behind a weak-symbol HAL stub; host build uses stub.
+  - `tasks_lib` missing `core_lib` dependency — fixed in `src/tasks/CMakeLists.txt`.
 
 ---
 
@@ -67,7 +73,8 @@
 | 1 — Skeleton | Feb 2026 | Architecture, FreeRTOS stubs, PID, tests | ✅ Complete |
 | 2 — Pico SDK | Feb 2026 | Real FreeRTOS, I2C drivers, HW testing | ✅ Complete |
 | 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
-| 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | 🔄 0% |
+| Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
+| 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | ⏳ Pending |
 | 5 — Flight Ready | Q3 2026 | Watchdog, safe states, logging | ⏳ Pending |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
@@ -92,10 +99,20 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 6/6 | 0 | 6 |
-| Integration Tests | 2/2 | 0 | 2 |
+| Unit Tests | 17/17 | 0 | 17 |
+| Integration Tests | 2/2 | 2 | 4 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **8** | **2** | **10** |
+| **Total** | **19** | **4** | **23** |
+
+**New test targets (PRs 4–10)**:
+- `fmm_test` — 11 cases (flight mode FSM, guard transitions)
+- `fault_manager_test` — 12 cases (T-FMS-02..04 + anti-cascade)
+- `eps_monitor_test` — 12 cases (T-EPS-03..05, Schmidt-trigger)
+- `logger_test` — 12 cases (T-LOG-01..03, class-A eviction)
+- `sensor_read_task_test` — 7 cases (deg→rad, DLA write)
+- `attitude_control_task_test` — 8 cases (FM guard, imu_valid guard)
+- `telemetry_test` — 6 cases (T-TLM-01..06, DLA read, FM guard, energy flags)
+- `health_monitor_task_test` — 3 cases (T-HM-01..03, tick wiring)
 
 ```bash
 # Run all tests

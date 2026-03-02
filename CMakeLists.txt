@@ -28,50 +28,32 @@ project(cubesat_obc C CXX ASM)
 # Initialize Pico SDK if available
 if(PICO_BUILD)
     pico_sdk_init()
-    message(STATUS "Pico SDK initialized for RP2040")
-    
-    # =====================================================
-    # FreeRTOS (RP2040 / Pico2W)
-    # =====================================================
+    message(STATUS "Pico SDK initialized for RP2040/RP2350")
 
+    # =====================================================
+    # FreeRTOS (RP2040/RP2350 via official port library.cmake)
+    # =====================================================
     set(FREERTOS_KERNEL_PATH
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/FreeRTOS-Kernel
     )
-
-    message(STATUS "Using standalone FreeRTOS kernel")
-
-    # Kernel library
-    add_library(FreeRTOS-Kernel STATIC
-        ${FREERTOS_KERNEL_PATH}/tasks.c
-        ${FREERTOS_KERNEL_PATH}/queue.c
-        ${FREERTOS_KERNEL_PATH}/list.c
-        ${FREERTOS_KERNEL_PATH}/timers.c
-        ${FREERTOS_KERNEL_PATH}/event_groups.c
-    )
-
-    target_include_directories(FreeRTOS-Kernel PUBLIC
-        ${FREERTOS_KERNEL_PATH}/include
-        ${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040
+    # Tell the official library.cmake where our FreeRTOSConfig.h lives
+    set(FREERTOS_CONFIG_FILE_DIRECTORY
         ${CMAKE_CURRENT_SOURCE_DIR}/config
     )
+    message(STATUS "Using FreeRTOS kernel from ${FREERTOS_KERNEL_PATH}")
+    # Use the officially sanctioned RP2040 port CMake integration — properly
+    # links hardware_exception, hardware_clocks, pico_multicore, etc.
+    include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/library.cmake)
 
-    # RP2040 port
-    target_sources(FreeRTOS-Kernel PRIVATE
-        ${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/port.c
-        ${FREERTOS_KERNEL_PATH}/portable/MemMang/heap_4.c
-    )
-
-    target_compile_definitions(FreeRTOS-Kernel PUBLIC
-        PICO_FLASH_SAFE_EXECUTE_SUPPORT_FREERTOS_SMP=1
-        FREE_RTOS_KERNEL_SMP=1
-    )
-
-    target_link_libraries(FreeRTOS-Kernel PUBLIC pico_stdlib)
-
-    add_library(freertos_kernel INTERFACE)
-    target_link_libraries(freertos_kernel INTERFACE FreeRTOS-Kernel)
-
-    message(STATUS "FreeRTOS standalone kernel ready")
+    # freertos_kernel alias expected by libcsp FreeRTOS port
+    if(NOT TARGET freertos_kernel)
+        add_library(freertos_kernel INTERFACE)
+        target_link_libraries(freertos_kernel INTERFACE
+            FreeRTOS-Kernel
+            FreeRTOS-Kernel-Heap4
+        )
+    endif()
+    message(STATUS "FreeRTOS kernel (RP2040 INTERFACE port) ready")
 endif()
 
 # Enable testing support (only for host builds)
@@ -128,7 +110,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libcsp/CMakeLists.txt")
     # libcsp's examples reference Threads::Threads but libcsp only calls
     # find_package(Threads) when building on Linux, causing CMake generation
     # to fail on macOS. We call it here so the target always exists.
-    find_package(Threads REQUIRED)
+    # For Pico (cross-compilation) builds, find_package(Threads) fails because
+    # arm-none-eabi does not provide pthreads — create a stub target instead.
+    if(PICO_BUILD)
+        if(NOT TARGET Threads::Threads)
+            add_library(Threads::Threads INTERFACE IMPORTED)
+        endif()
+    else()
+        find_package(Threads REQUIRED)
+    endif()
     # Disable libcsp's internal unittests and samples to speed up build
     set(CSP_BUILD_SAMPLES OFF CACHE BOOL "Build CSP samples")
     

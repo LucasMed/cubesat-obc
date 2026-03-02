@@ -5,4 +5,4 @@
 typedef void *TaskHandle_t;
 
 // Empty stub - actual implementation in FreeRTOS.h
-#endif // TASK_H
+#endif  // TASK_H

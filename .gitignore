@@ -1,6 +1,8 @@
 # Build and output artifacts
 build/
 build_host/
+build_target/
+pico-sdk/
 cmake-build-*/
 out/
 *.o
@@ -60,6 +62,9 @@ config/local_*
 
 # Docker Compose named volumes (local only)
 docker-compose.override.yml
+
+# Private / local-only documentation (specs, notes — never push)
+docs/private/
 
 # Temporary files
 *.tmp
