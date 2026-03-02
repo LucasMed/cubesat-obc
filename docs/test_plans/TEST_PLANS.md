@@ -1,8 +1,8 @@
 # Test Plans
 
 **Document ID**: TST-001  
-**Version**: 2.0  
-**Last Updated**: 2026-03-01  
+**Version**: 3.0  
+**Last Updated**: 2026-03-08  
 **Status**: Active
 
 ---
@@ -21,13 +21,15 @@
 
 ### 1.2 test_dynamics
 - **File**: `tests/unit/test_dynamics.c`
-- **Covers**: FR-2 (Attitude Determination), FR-4 (Attitude Control)
+- **Covers**: FR-2 (Attitude Determination), FR-3 (Attitude Dynamics)
+- **Test IDs**: T-DYN-01..05
 - **Cases**:
-  - ✅ Zero-torque: attitude remains constant
-  - ✅ Constant-torque: angular acceleration correct
-  - ✅ Numerical stability: no NaN/inf over 100 iterations
-  - ✅ Energy conservation: kinetic energy bounds reasonable
-- **Result**: PASS (100%)
+  - ✅ T-DYN-01: Zero-torque — attitude remains constant
+  - ✅ T-DYN-02: Constant-torque — angular acceleration correct
+  - ✅ T-DYN-03: Numerical stability — no NaN/inf over 100 iterations
+  - ✅ T-DYN-04: RK2 accuracy — attitude error < 0.1 mrad vs analytic over 1 s
+  - ✅ T-DYN-05: RK2 vs Euler — midpoint method improves accuracy by ≥10×
+- **Result**: PASS 5/5
 
 ### 1.3 test_actuators
 - **File**: `tests/unit/test_actuators.c`
@@ -154,7 +156,8 @@
 
 ### 4.5 test_sensor_read_task
 - **File**: `tests/unit/test_sensor_read_task.c`
-- **Covers**: DLA write path, unit conversion
+- **Covers**: DLA write path, unit conversion, EKF sensor fusion (PR-14)
+- **Test IDs**: T-SDM-01..07, T-SRF-08..10
 - **Cases**:
   - ✅ Task calls `data_layer_write_imu()` with converted gyro (rad/s)
   - ✅ Gyro deg/s → rad/s conversion: factor `π/180` verified numerically
@@ -162,12 +165,16 @@
   - ✅ Task skips write when `imu_available == false`
   - ✅ Task skips write when `temp_available == false`
   - ✅ No direct access to `system_state_t` (compile-time isolation)
-  - ✅ 1 additional coverage case
-- **Result**: PASS 7/7
+  - ✅ Driver failure (`mpu6050_read_raw` returns -1) leaves `imu_valid` false
+  - ✅ T-SRF-08: `imu_ekf_valid` set to `true` after successful IMU read
+  - ✅ T-SRF-09: EKF attitude, bias, and uncertainty stored in DLA are finite
+  - ✅ T-SRF-10: `imu_ekf_valid` stays `false` when `mpu6050_read_raw` fails
+- **Result**: PASS 10/10
 
 ### 4.6 test_attitude_control_task
 - **File**: `tests/unit/test_attitude_control_task.c`
-- **Covers**: FM guard, imu_valid guard, DLA read path
+- **Covers**: FM guard, imu_valid guard, DLA read path, LQR/PID dispatch (PR-15)
+- **Test IDs**: T-SDM-04..05, T-ACT-09..11
 - **Cases**:
   - ✅ Task runs (computes torques) in FM_NOMINAL
   - ✅ Task runs in FM_DIAGNOSTIC
@@ -176,8 +183,11 @@
   - ✅ Task skips in FM_BOOT
   - ✅ Task skips when `imu_valid == false` (even in NOMINAL)
   - ✅ Task reads `attitude` and `rates` from DLA snapshot
-  - ✅ No direct access to `system_state_t`
-- **Result**: PASS 8/8
+  - ✅ `attitude_dynamics_step` receives torque from `attitude_ctrl_update`
+  - ✅ T-ACT-09: FM_NOMINAL + `imu_ekf_valid` → `lqr_compute` called; `attitude_ctrl_update` NOT called
+  - ✅ T-ACT-10: FM_NOMINAL + `imu_ekf_valid == false` → PID fallback; `attitude_ctrl_update` called
+  - ✅ T-ACT-11: FM_DIAGNOSTIC + `imu_ekf_valid` → PID called (LQR excluded from DIAGNOSTIC mode)
+- **Result**: PASS 11/11
 
 ### 4.7 test_telemetry (PR-9)
 - **File**: `tests/unit/test_telemetry.c`
@@ -204,21 +214,52 @@
 
 ---
 
-## 5. Validation Tests (Phase 4+ — TBD)
+## 5. Phase 4 — Advanced Control Tests (✅ Complete)
 
-### 5.1 Kalman Filter Attitude Estimation
-- **Covers**: FR-2 (enhanced)
-- **Expected**: RMS error <5° over 10 min simulation
-- **Status**: ⏳ Pending Phase 4
+### 5.1 test_ekf (EKF Attitude Estimator)
+- **File**: `tests/unit/test_ekf.c`
+- **Covers**: FR-2 (Attitude Determination — EKF enhanced)
+- **Test IDs**: T-EKF-01..06
+- **Cases**:
+  - ✅ T-EKF-01: `ekf_init()` produces valid zero-state with positive-definite P
+  - ✅ T-EKF-02: `ekf_predict()` propagates attitude using bias-corrected gyro
+  - ✅ T-EKF-03: `ekf_predict()` grows covariance P monotonically (no update)
+  - ✅ T-EKF-04: `ekf_update()` reduces roll/pitch uncertainty vs accelerometer
+  - ✅ T-EKF-05: Bias estimation converges: injected constant bias reduces over 50 ticks
+  - ✅ T-EKF-06: Degenerate accelerometer input (near-zero vector) does not corrupt state
+- **Result**: PASS 6/6
 
-### 5.2 Power Budget Validation
-- **Covers**: NFR-4
-- **Expected**: Average power <2 W
-- **Status**: ⏳ Pending Phase 3 (requires hardware measurement)
+### 5.2 test_lqr (LQR Full-State Controller)
+- **File**: `tests/unit/test_lqr.c`
+- **Covers**: FR-4 (Attitude Control — LQR)
+- **Test IDs**: T-LQR-01..07
+- **Cases**:
+  - ✅ T-LQR-01: `lqr_init()` sets default gains without NaN/inf
+  - ✅ T-LQR-02: Zero attitude error + zero rates → zero torque command
+  - ✅ T-LQR-03: Non-zero attitude error → non-zero torque in correct sign
+  - ✅ T-LQR-04: Non-zero rate error → damping torque (sign check)
+  - ✅ T-LQR-05: `lqr_set_gains()` overrides defaults; new torque matches manual K·x computation
+  - ✅ T-LQR-06: Output linearity — doubling attitude error doubles torque (within 1e-5)
+  - ✅ T-LQR-07: Closed-loop stability — coupled RK2 step + LQR converges attitude to zero
+- **Result**: PASS 7/7
 
 ---
 
-## 6. Test ID Traceability Summary (Spec-Alignment)
+## 6. Validation Tests (Phase 5 — Pending)
+
+### 6.1 Power Budget Validation
+- **Covers**: NFR-4
+- **Expected**: Average power <2 W
+- **Status**: ⏳ Pending hardware measurement
+
+### 6.2 End-to-End EKF Hardware Validation
+- **Covers**: FR-2 (enhanced)
+- **Expected**: RMS attitude error <5° over 10 min run on real hardware
+- **Status**: ⏳ Pending Phase 5 hardware integration
+
+---
+
+## 7. Test ID Traceability Summary
 
 | Test ID | Description | File | Status |
 |---------|-------------|------|--------|
@@ -226,25 +267,30 @@
 | T-FMS-02..04 | Fault reporting, CRITICAL→SAFE trigger, anti-cascade | `test_fault_manager.c` | ✅ 12/12 |
 | T-EPS-03..05 | EPS Schmidt-trigger, energy state transitions, SAFE trigger | `test_eps_monitor.c` | ✅ 12/12 |
 | T-LOG-01..03 | Logger ring buffer, Class-A protection, `log_read_recent` | `test_logger.c` | ✅ 12/12 |
-| T-SDM-01..03 (partial) | DLA write from sensor task, unit conversion | `test_sensor_read_task.c` | ✅ 7/7 |
-| T-SDM-04..05 (partial) | DLA read from control task, FM + imu guards | `test_attitude_control_task.c` | ✅ 8/8 |
+| T-SDM-01..07 | DLA write from sensor task, unit conversion, driver failure | `test_sensor_read_task.c` | ✅ 10/10 |
+| T-SRF-08..10 | EKF valid flag, finite outputs, flag on driver failure | `test_sensor_read_task.c` | ✅ 10/10 |
+| T-SDM-04..05 | DLA read from control task, FM + imu guards | `test_attitude_control_task.c` | ✅ 11/11 |
+| T-ACT-09..11 | LQR/PID dispatch (NOMINAL+EKF, fallback, diagnostic) | `test_attitude_control_task.c` | ✅ 11/11 |
 | T-TLM-01..06 | Telemetry DLA read, FM guard, energy flags, null buffer | `test_telemetry.c` | ✅ 6/6 |
 | T-HM-01..03 | Health monitor tick wiring (`fault_manager_tick`, `eps_monitor_tick`) | `test_health_monitor_task.c` | ✅ 3/3 |
+| T-DYN-01..05 | RK2 dynamics integrator accuracy vs Euler baseline | `test_dynamics.c` | ✅ 5/5 |
+| T-EKF-01..06 | EKF init, predict, update, bias convergence, degenerate input | `test_ekf.c` | ✅ 6/6 |
+| T-LQR-01..07 | LQR init, zero/non-zero error, gains override, stability | `test_lqr.c` | ✅ 7/7 |
 
 ---
 
-## 7. Test Execution
+## 8. Test Execution
 
 ### Running Unit Tests
 ```bash
-cd /home/ljm/Dev/cubesat-obc/build
+cd /workspace/build
 cmake .. && cmake --build .
 ctest --output-on-failure --verbose
 ```
 
 ### Running Specific Tests
 ```bash
-ctest --test-dir build -R test_pid --output-on-failure
+ctest --test-dir /workspace/build -R test_ekf --output-on-failure
 ```
 
 ### Test Coverage (Using gcov/gcovr)
@@ -259,12 +305,13 @@ gcovr -r ../src .
 
 ---
 
-## 8. Test Coverage Summary
+## 9. Test Coverage Summary
 
-| Metric | Phase 3 (%) | Current (Phase SA) | Target (%) |
-|--------|-------------|---------------------|------------|
-| Line Coverage | 64% (179/279) | ~80% (estimated, 17 test targets) | > 80% |
-| Test targets | 6 | 17 | ≥18 |
-| Tests passing | 6/6 | 17/17 | 17/17 |
+| Metric | Phase 3 | Spec-Alignment (PRs 1–10) | Phase 4 (PRs 11–15) | Target |
+|--------|---------|---------------------------|----------------------|--------|
+| Line Coverage | 64% | ~80% | ~85% (estimated) | >85% |
+| Test targets | 6 | 17 | **19** | ≥19 |
+| Tests passing | 6/6 | 17/17 | **19/19** | 19/19 |
+| New test IDs | — | T-FMM, T-FMS, T-EPS, T-LOG, T-SDM, T-TLM, T-HM | T-DYN, T-EKF, T-LQR, T-SRF, T-ACT | — |
 
-*Note: The test suite was heavily expanded during Phase 3 to cover `telemetry_task.c` (73%), `command_task.c` (58%), and `comm_init.c` (100%). The missing coverage is exclusively restricted to FreeRTOS infinite loop wrappers (`while(1)`) and hardware-specific `#ifdef PICO_BUILD` branches that cannot be executed during host testing.*
+*Note: Phase 4 added two new test executables (`test_ekf`, `test_lqr`) and expanded `test_sensor_read_task` (7→10) and `test_attitude_control_task` (8→11). Missing coverage remains restricted to FreeRTOS `while(1)` task loops and `#ifdef PICO_BUILD` hardware branches not reachable in host builds.*
