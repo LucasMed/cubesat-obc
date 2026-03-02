@@ -132,7 +132,7 @@ if command -v cppcheck >/dev/null 2>&1; then
     2>&1 || true)
 
   # Filter out pure informational lines
-  ISSUES=$(echo "$CPPCHECK_OUT" | grep -E "\[.*\]:" | grep -v "^$" || true)
+  ISSUES=$(echo "$CPPCHECK_OUT" | grep -E "\[.*\]" | grep -v "^$" || true)
 
   if [[ -z "$ISSUES" ]]; then
     pass "cppcheck: no issues found"

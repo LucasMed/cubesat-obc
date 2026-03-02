@@ -99,8 +99,9 @@ void vSensorReadTask(void *pvParameters)
 
     if (samples >= 101)
     {  // 100 measured intervals
-      printf("[sensor_read_task] Timing (100 samples): min=%llu, max=%llu, avg=%llu us\n", min_int,
-             max_int, sum_int / 100);
+      printf("[sensor_read_task] Timing (100 samples): min=%llu, max=%llu, avg=%llu us\n",
+             (unsigned long long)min_int, (unsigned long long)max_int,
+             (unsigned long long)(sum_int / 100));
       min_int = 0xFFFFFFFFFFFFFFFF;
       max_int = 0;
       sum_int = 0;

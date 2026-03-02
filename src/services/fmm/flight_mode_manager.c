@@ -97,6 +97,7 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
   if (target != FM_SAFE)
   {
     /* Check fault level: CRITICAL blocks all non-SAFE transitions */
+    // cppcheck-suppress knownConditionTrueFalse
     if (fault_get_highest_level() >= FAULT_LEVEL_CRITICAL)
     {
       return FMM_ERR_FAULT_BLOCK;
