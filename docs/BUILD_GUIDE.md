@@ -1,6 +1,6 @@
 # Build Guide
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-03-02
 
 ---
 
@@ -34,7 +34,7 @@ All dependencies are pre-installed inside the container.
 
 ```bash
 bash run_linux.sh build      # configure + build
-bash run_linux.sh test       # build + run all 8 tests
+bash run_linux.sh test       # build + run all 17 tests
 bash run_linux.sh coverage   # build + tests + HTML coverage report
 bash run_linux.sh shell      # drop into interactive bash shell
 bash run_linux.sh clean      # remove build/ directory
@@ -75,7 +75,7 @@ cmake --build build -j$(nproc)
 
 ```bash
 ctest --test-dir build --output-on-failure
-# Expected: 100% tests passed, 0 tests failed out of 8
+# Expected: 100% tests passed, 0 tests failed out of 17
 ```
 
 ### Run firmware (host stub)
