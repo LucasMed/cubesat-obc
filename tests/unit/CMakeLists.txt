@@ -247,4 +247,15 @@ if(NOT PICO_BUILD)
     target_include_directories(test_ekf_mag PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ekf_mag m)
     add_test(NAME ekf_mag_test COMMAND test_ekf_mag)
+
+    # PR-21 gate: Unit-quaternion utility library.
+    # T-QAT-01..05: euler round-trip, q⊗q*=identity, normalize unit norm,
+    # rotate_vec 90° yaw/roll, singularity-free at pitch=±90°.
+    add_executable(test_quaternion
+        test_quaternion.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_quaternion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_quaternion m)
+    add_test(NAME quaternion_test COMMAND test_quaternion)
 endif()
