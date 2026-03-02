@@ -23,8 +23,10 @@ apply_patches_to() {
         [ -f "$patch" ] || continue
         patch_name="$(basename "$patch")"
 
-        # Check if already applied (git am --check exits 0 if already applied)
-        if git -C "$abs_path" apply --check --reverse "$patch" 2>/dev/null; then
+        # Forward check: if the patch *can* be applied cleanly it has not been
+        # applied yet.  If it cannot apply (exit non-0) it is already in the
+        # working tree — skip it.
+        if ! git -C "$abs_path" apply --check "$patch" 2>/dev/null; then
             echo "  [skip] $patch_name (already applied)"
         else
             echo "  [apply] $patch_name"
