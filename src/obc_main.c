@@ -128,7 +128,9 @@ int main(void)
   // Should never reach here
   printf("ERROR: FreeRTOS scheduler exited!\n");
   while (1)
+  {
     ;
+  }
 
   return 0;
 }

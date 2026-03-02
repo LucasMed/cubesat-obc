@@ -77,11 +77,17 @@ static bool g_initialised = false;
 __attribute__((weak)) bool eps_hal_read(float *vbatt, float *ibatt, float *temp)
 {
   if (vbatt)
+  {
     *vbatt = 7.6f;
+  }
   if (ibatt)
+  {
     *ibatt = 0.5f;
+  }
   if (temp)
+  {
     *temp = 25.0f;
+  }
   return true;
 }
 
@@ -106,13 +112,21 @@ static energy_state_t compute_energy_state(float v, energy_state_t prev)
   /* Raw classification using base thresholds (no hysteresis). */
   energy_state_t raw;
   if (v < VBATT_TH_EMERGENCY)
+  {
     raw = ENERGY_EMERGENCY;
+  }
   else if (v < VBATT_TH_CRITICAL)
+  {
     raw = ENERGY_CRITICAL;
+  }
   else if (v < VBATT_TH_LOW)
+  {
     raw = ENERGY_LOW;
+  }
   else
+  {
     raw = ENERGY_NOMINAL;
+  }
 
   /*
    * If the raw state is WORSE than or equal to the previous state,
@@ -129,11 +143,17 @@ static energy_state_t compute_energy_state(float v, energy_state_t prev)
    */
   float v_hyst = v - VBATT_HYSTERESIS;
   if (v_hyst < VBATT_TH_EMERGENCY)
+  {
     return ENERGY_EMERGENCY;
+  }
   if (v_hyst < VBATT_TH_CRITICAL)
+  {
     return ENERGY_CRITICAL;
+  }
   if (v_hyst < VBATT_TH_LOW)
+  {
     return ENERGY_LOW;
+  }
   return ENERGY_NOMINAL;
 }
 
@@ -192,7 +212,9 @@ static void handle_state_change(energy_state_t prev, energy_state_t next)
 
 int eps_monitor_init(void)
 {
-  float vbatt = 7.6f, ibatt = 0.5f, temp = 25.0f;
+  float vbatt = 7.6f;
+  float ibatt = 0.5f;
+  float temp = 25.0f;
   bool ok = eps_hal_read(&vbatt, &ibatt, &temp);
 
   eps_lock();
@@ -235,7 +257,9 @@ void eps_monitor_tick(void)
     return;
   }
 
-  float vbatt = 0.0f, ibatt = 0.0f, temp = 0.0f;
+  float vbatt = 0.0f;
+  float ibatt = 0.0f;
+  float temp = 0.0f;
   bool ok = eps_hal_read(&vbatt, &ibatt, &temp);
 
   if (!ok)

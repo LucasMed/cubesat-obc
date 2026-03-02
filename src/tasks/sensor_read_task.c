@@ -43,7 +43,8 @@ void vSensorReadTask_Step(void)
   /* Read MPU6050 only if it was detected during boot */
   if (snap.state.imu_available)
   {
-    float accel[3], gyro_deg[3];
+    float accel[3];
+    float gyro_deg[3];
     if (mpu6050_read_raw(accel, gyro_deg) == 0)
     {
       /* Convert gyroscope output from deg/s to rad/s (SPEC-2-DLA §2.4) */

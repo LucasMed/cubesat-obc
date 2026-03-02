@@ -50,9 +50,13 @@ void vTelemetryTask_Step(void)
   /* Flags: validity bits + energy state */
   tlm->flags = 0;
   if (snap.state.imu_valid)
+  {
     tlm->flags |= TLM_FLAG_IMU_VALID;
+  }
   if (snap.state.temp_valid)
+  {
     tlm->flags |= TLM_FLAG_TEMP_VALID;
+  }
   tlm->flags |= (uint8_t)((snap.energy & 0x03u) << TLM_FLAG_ENERGY_SHIFT);
 
   /* Full ADCS telemetry only when not in FM_SAFE.

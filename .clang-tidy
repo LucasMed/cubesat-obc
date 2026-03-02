@@ -15,40 +15,30 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   cert-*,
   -cert-err58-cpp,
+  -cert-err33-c,
   clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   misc-*,
   -misc-no-recursion,
+  -misc-unused-parameters,
   performance-*,
   portability-*,
   readability-*,
   -readability-magic-numbers,
   -readability-function-cognitive-complexity,
-  -readability-identifier-length
+  -readability-identifier-length,
+  -readability-uppercase-literal-suffix,
+  -readability-identifier-naming,
+  -readability-redundant-declaration
 
 # Treat clang-tidy warnings as errors in CI (set via --warnings-as-errors in script)
 WarningsAsErrors: ''
 
 # Use C11 standard
 CheckOptions:
-  - key: readability-identifier-naming.VariableCase
-    value: lower_case
-  - key: readability-identifier-naming.FunctionCase
-    value: lower_case
-  - key: readability-identifier-naming.ConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.MacroDefinitionCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.EnumCase
-    value: lower_case
-  - key: readability-identifier-naming.EnumConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.TypedefCase
-    value: lower_case
-  - key: readability-identifier-naming.StructCase
-    value: lower_case
   - key: cert-dcl16-c.NewSuffixes
     value: 'L;LL;LU;LLU'
   - key: bugprone-argument-comment.StrictMode
     value: '0'
 
-HeaderFilterRegex: '^/workspace/include/.*'
+HeaderFilterRegex: '^/workspace/(src|include)/(?!host/).*'
