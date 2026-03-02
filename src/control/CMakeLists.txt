@@ -3,6 +3,8 @@ add_library(control_lib
     attitude_control.c
     ekf.c
     lqr.c
+    lqr_schedule.c
+    quaternion.c
 )
 
 target_include_directories(control_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)

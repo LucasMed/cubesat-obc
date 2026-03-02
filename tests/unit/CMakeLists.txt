@@ -163,6 +163,7 @@ if(NOT PICO_BUILD)
         ../../src/tasks/attitude_control_task.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/lqr_schedule.c
     )
     target_include_directories(test_attitude_control_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -258,4 +259,17 @@ if(NOT PICO_BUILD)
     target_include_directories(test_quaternion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_quaternion m)
     add_test(NAME quaternion_test COMMAND test_quaternion)
+
+    # PR-23 gate: LQR gain scheduling — mode-specific gain table.
+    # T-LQRS-01: FM_NOMINAL  → default gains (ωn = 10 rad/s)
+    # T-LQRS-02: FM_DETUMBLE → high-bandwidth gains (ωn = 30 rad/s)
+    # T-LQRS-03: unhandled modes fall back to nominal gain set
+    add_executable(test_lqr_schedule
+        test_lqr_schedule.c
+        ../../src/control/lqr.c
+        ../../src/control/lqr_schedule.c
+    )
+    target_include_directories(test_lqr_schedule PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_lqr_schedule m)
+    add_test(NAME lqr_schedule_test COMMAND test_lqr_schedule)
 endif()
