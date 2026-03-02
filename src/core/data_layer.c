@@ -132,6 +132,25 @@ void data_layer_set_sensor_avail(bool imu, bool temp)
   dl_unlock();
 }
 
+void data_layer_write_mag(const float field_uT[3])
+{
+  dl_lock();
+  for (int i = 0; i < 3; i++)
+  {
+    g_snapshot.state.mag_field[i] = field_uT[i];
+  }
+  g_snapshot.state.mag_valid = true;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_set_mag_avail(bool mag)
+{
+  dl_lock();
+  g_snapshot.state.mag_available = mag;
+  dl_unlock();
+}
+
 /* ------------------------------------------------------------------ */
 /* Write — flight-level state                                          */
 /* ------------------------------------------------------------------ */

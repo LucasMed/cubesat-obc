@@ -19,6 +19,7 @@
 #include "config.h"
 #include "data_layer.h"
 #include "drivers/imu/mpu6050.h"
+#include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
 #include "ekf.h"
 #include "task.h"
@@ -41,6 +42,9 @@
 /* EKF instance — initialised once on first step. */
 static ekf_t s_ekf;
 static bool s_ekf_initialised = false;
+
+/* Magnetometer init flag. */
+static bool s_mag_initialised = false;
 
 // Core logic for sensor reading (independent of FreeRTOS task loop)
 void vSensorReadTask_Step(void)
@@ -91,6 +95,26 @@ void vSensorReadTask_Step(void)
   {
     float temp = temperature_read();
     data_layer_write_temp(temp);
+  }
+
+  /* Read magnetometer only if sensor was detected during boot */
+  if (snap.state.mag_available)
+  {
+    if (!s_mag_initialised)
+    {
+      if (hmc5883l_init() == 0)
+      {
+        s_mag_initialised = true;
+      }
+    }
+    if (s_mag_initialised)
+    {
+      float mag_uT[3];
+      if (hmc5883l_read(mag_uT) == 0)
+      {
+        data_layer_write_mag(mag_uT);
+      }
+    }
   }
 }
 

@@ -58,6 +58,23 @@ float temperature_read(void)
   return s_temp_val;
 }
 
+/* Magnetometer stub — no-op init, fixed {25,0,42} read.
+ * These strong symbols prevent drivers_lib from being needed. */
+#include "drivers/mag/hmc5883l.h"
+
+int hmc5883l_init(void)
+{
+  return 0;
+}
+
+int hmc5883l_read(float field_uT[3])
+{
+  field_uT[0] = 25.0f;
+  field_uT[1] = 0.0f;
+  field_uT[2] = 42.0f;
+  return 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */

@@ -219,4 +219,20 @@ if(NOT PICO_BUILD)
     target_include_directories(test_momentum_dump PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_momentum_dump m)
     add_test(NAME momentum_dump_test COMMAND test_momentum_dump)
+
+    # PR-18 gate: HMC5883L magnetometer stub + DLA integration.
+    # Compiles the real host stub so T-MAG-01/02 exercise actual code.
+    # sensor_read_task.c + data_layer.c + ekf.c pulled in for T-MAG-04;
+    # mpu6050 / temperature stubs are defined inside test_hmc5883l.c.
+    add_executable(test_hmc5883l
+        test_hmc5883l.c
+        ../../src/drivers/mag/hmc5883l.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+    )
+    target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_hmc5883l m)
+    add_test(NAME hmc5883l_test COMMAND test_hmc5883l)
 endif()

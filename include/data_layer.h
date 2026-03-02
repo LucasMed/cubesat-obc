@@ -130,6 +130,24 @@ extern "C"
    */
   void data_layer_set_sensor_avail(bool imu, bool temp);
 
+  /**
+   * @brief Update magnetometer data in the shared snapshot.
+   *
+   * @param field_uT  Calibrated magnetic field vector [Bx, By, Bz] in µT [3].
+   *
+   * Sets @c mag_valid = true and increments @c seq.
+   */
+  void data_layer_write_mag(const float field_uT[3]);
+
+  /**
+   * @brief Set magnetometer hardware availability flag.
+   *
+   * Called once during boot after magnetometer detection.
+   *
+   * @param mag  true if the HMC5883L was detected on the I2C bus.
+   */
+  void data_layer_set_mag_avail(bool mag);
+
   /* ------------------------------------------------------------------ */
   /* Write — flight-level state                                          */
   /* ------------------------------------------------------------------ */

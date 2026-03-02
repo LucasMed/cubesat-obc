@@ -1,5 +1,6 @@
 set(DRIVER_SOURCES
     imu/mpu6050.c
+    mag/hmc5883l.c
 )
 
 if(PICO_BUILD)
