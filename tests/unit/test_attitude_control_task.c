@@ -84,10 +84,10 @@ void attitude_dynamics_step(attitude_dyn_t *ad, const float torque[3], float dt)
 /* LQR instrumented stubs                                              */
 /* ------------------------------------------------------------------ */
 
-static int   s_lqr_calls                = 0;
-static float s_lqr_att_err[3]           = {0};
-static float s_lqr_rate_err[3]          = {0};
-static float s_lqr_torque_out[3]        = {7.0f, 8.0f, 9.0f}; /* fixed output */
+static int s_lqr_calls = 0;
+static float s_lqr_att_err[3] = {0};
+static float s_lqr_rate_err[3] = {0};
+static float s_lqr_torque_out[3] = {7.0f, 8.0f, 9.0f}; /* fixed output */
 
 void lqr_init(lqr_t *lqr)
 {
@@ -105,7 +105,7 @@ void lqr_compute(lqr_t *lqr, const float att_err[3], const float rate_err[3], fl
   torque[2] = s_lqr_torque_out[2];
 }
 
-void lqr_set_gains(lqr_t *lqr, float k[3][6])
+void lqr_set_gains(lqr_t *lqr, const float k[3][6])
 {
   (void)lqr;
   (void)k;
@@ -308,7 +308,7 @@ static void test_dyn_receives_torque(void)
 
 static void test_lqr_used_in_fm_nominal_with_ekf(void)
 {
-  float att[3]   = {0.1f, 0.2f, 0.3f};
+  float att[3] = {0.1f, 0.2f, 0.3f};
   float rates[3] = {0.01f, 0.02f, 0.03f};
   float zero3[3] = {0.0f, 0.0f, 0.0f};
   reset_stubs();
@@ -332,7 +332,7 @@ static void test_lqr_used_in_fm_nominal_with_ekf(void)
 
 static void test_pid_fallback_when_ekf_not_ready(void)
 {
-  float att[3]   = {0};
+  float att[3] = {0};
   float rates[3] = {0};
   reset_stubs();
   /* imu_ekf_valid is false after data_layer_init (zeroed struct) */
@@ -350,7 +350,7 @@ static void test_pid_fallback_when_ekf_not_ready(void)
 
 static void test_pid_in_fm_diagnostic_even_with_ekf(void)
 {
-  float att[3]   = {0};
+  float att[3] = {0};
   float rates[3] = {0};
   float zero3[3] = {0.0f, 0.0f, 0.0f};
   reset_stubs();

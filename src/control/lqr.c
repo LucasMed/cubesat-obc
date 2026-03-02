@@ -50,7 +50,7 @@ void lqr_init(lqr_t *lqr)
   memcpy(lqr->K, K_DEFAULT, sizeof(K_DEFAULT));
 }
 
-void lqr_set_gains(lqr_t *lqr, float K[LQR_M][LQR_N])
+void lqr_set_gains(lqr_t *lqr, const float K[LQR_M][LQR_N])
 {
   memcpy(lqr->K, K, sizeof(lqr->K));
 }

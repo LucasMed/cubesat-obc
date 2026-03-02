@@ -67,7 +67,7 @@ extern "C"
    * @param lqr  Controller instance.
    * @param K    New 3×6 gain matrix (row-major, K[output][state]).
    */
-  void lqr_set_gains(lqr_t *lqr, float K[LQR_M][LQR_N]);
+  void lqr_set_gains(lqr_t *lqr, const float K[LQR_M][LQR_N]);
 
   /**
    * @brief Compute control torques for the given attitude and rate errors.

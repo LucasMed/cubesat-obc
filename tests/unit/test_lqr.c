@@ -284,7 +284,7 @@ static int test_custom_gains(void)
   lqr_init(&lqr);
 
   /* Set a custom scalar gain: all attitude gains = 2.0, rate gains = 0.5 */
-  float K_custom[LQR_M][LQR_N] = {
+  const float K_custom[LQR_M][LQR_N] = {
       {2.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f},
       {0.0f, 2.0f, 0.0f, 0.0f, 0.5f, 0.0f},
       {0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.5f},
