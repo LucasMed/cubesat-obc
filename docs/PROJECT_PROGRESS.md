@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-01
-**Current Phase**: Spec-Review Alignment (branch `feature/spec-review-alignment`)
-**Current Branch**: `feature/spec-review-alignment`
+**Last Updated**: 2026-03-02
+**Current Phase**: Phase 4 — Advanced Control (branch `feature/phase4-advanced-control`)
+**Current Branch**: `feature/phase4-advanced-control`
 
 ---
 
@@ -74,8 +74,8 @@
 | 2 — Pico SDK | Feb 2026 | Real FreeRTOS, I2C drivers, HW testing | ✅ Complete |
 | 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
 | Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
-| 4 — Advanced Control | Q2-Q3 2026 | Kalman filter, LQR/MPC | ⏳ Pending |
-| 5 — Flight Ready | Q3 2026 | Watchdog, safe states, logging | ⏳ Pending |
+| 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | 🔄 In Progress (0/5 PRs) |
+| 5 — Flight Ready | Q3 2026 | Watchdog, safe states, WiFi, HW drivers | ⏳ Pending |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
