@@ -17,7 +17,16 @@ jobs:
           fetch-depth: 0
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake cppcheck
+          # Install pinned clang-14 tools; fall back to LLVM apt repo on Ubuntu 24+
+          sudo apt-get install -y clang-format-14 clang-tidy-14 || {
+            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+            chmod +x /tmp/llvm.sh
+            sudo /tmp/llvm.sh 14
+            sudo apt-get install -y clang-format-14 clang-tidy-14
+          }
 
       - name: Apply libcsp patches
         run: bash scripts/apply_patches.sh
