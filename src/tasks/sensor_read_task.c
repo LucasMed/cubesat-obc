@@ -113,6 +113,12 @@ void vSensorReadTask_Step(void)
       if (hmc5883l_read(mag_uT) == 0)
       {
         data_layer_write_mag(mag_uT);
+
+        /* Yaw correction: fuse mag into EKF when filter is ready. */
+        if (s_ekf_initialised)
+        {
+          ekf_update_mag(&s_ekf, mag_uT, 0.0f);
+        }
       }
     }
   }

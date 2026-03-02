@@ -235,4 +235,16 @@ if(NOT PICO_BUILD)
     target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_hmc5883l m)
     add_test(NAME hmc5883l_test COMMAND test_hmc5883l)
+
+    # PR-19 gate: EKF yaw update via magnetometer.
+    # T-EKFM-01..06: no-crash, degenerate field guard, yaw driven to measured
+    # value, innovation wrapping at ±π, covariance reduction, repeated
+    # predict+update_mag convergence test.
+    add_executable(test_ekf_mag
+        test_ekf_mag.c
+        ../../src/control/ekf.c
+    )
+    target_include_directories(test_ekf_mag PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_ekf_mag m)
+    add_test(NAME ekf_mag_test COMMAND test_ekf_mag)
 endif()
