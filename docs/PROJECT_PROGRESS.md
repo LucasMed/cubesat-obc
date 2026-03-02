@@ -1,7 +1,7 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-02
-**Current Phase**: Phase 4 — Advanced Control (branch `feature/phase4-advanced-control`)
+**Last Updated**: 2026-03-08
+**Current Phase**: Phase 5 — Flight Readiness (branch `feature/phase4-advanced-control` → merge to dev pending)
 **Current Branch**: `feature/phase4-advanced-control`
 
 ---
@@ -64,6 +64,19 @@
   - `pico_flash` + FreeRTOS conflict — resolved by isolating flash calls behind a weak-symbol HAL stub; host build uses stub.
   - `tasks_lib` missing `core_lib` dependency — fixed in `src/tasks/CMakeLists.txt`.
 
+### Phase 4: Advanced Control ✅ PRs 11–15 (2026-03-08)
+- **Goal**: Implement EKF attitude estimator, LQR controller, RK2 dynamics, and wire them into running tasks.
+- **Branch**: `feature/phase4-advanced-control`
+- **Outcomes (PRs 11–15 committed, 19/19 tests passing)**:
+
+| PR | Commit | Description | Tests |
+|----|--------|-------------|-------|
+| PR-11 | `93a8559` | RK2 midpoint dynamics integrator | dynamics_test: 5/5 ✅ |
+| PR-12 | `5812ba1` | EKF estimator (6-state, bias correction) | ekf_test: 6/6 ✅ |
+| PR-13 | `916672d` | LQR controller (3×6 gain matrix) | lqr_test: 7/7 ✅ |
+| PR-14 | `96f969d` | Sensor fusion — EKF integrated into sensor_read_task | sensor_read_task_test: 10/10 ✅ |
+| PR-15 | `(current)` | LQR/PID dispatch in attitude_control_task | attitude_control_task_test: 11/11 ✅ |
+
 ---
 
 ## Overall Roadmap
@@ -74,7 +87,7 @@
 | 2 — Pico SDK | Feb 2026 | Real FreeRTOS, I2C drivers, HW testing | ✅ Complete |
 | 3 — Communication | Mar 2026 | CSP Protocol, Telemetry, Ground Station | ✅ Complete |
 | Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
-| 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | 🔄 In Progress (0/5 PRs) |
+| 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
 | 5 — Flight Ready | Q3 2026 | Watchdog, safe states, WiFi, HW drivers | ⏳ Pending |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
@@ -99,18 +112,18 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 17/17 | 0 | 17 |
+| Unit Tests | 19/19 | 0 | 19 |
 | Integration Tests | 2/2 | 2 | 4 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **19** | **4** | **23** |
+| **Total** | **21** | **4** | **25** |
 
 **New test targets (PRs 4–10)**:
 - `fmm_test` — 11 cases (flight mode FSM, guard transitions)
 - `fault_manager_test` — 12 cases (T-FMS-02..04 + anti-cascade)
 - `eps_monitor_test` — 12 cases (T-EPS-03..05, Schmidt-trigger)
 - `logger_test` — 12 cases (T-LOG-01..03, class-A eviction)
-- `sensor_read_task_test` — 7 cases (deg→rad, DLA write)
-- `attitude_control_task_test` — 8 cases (FM guard, imu_valid guard)
+- `sensor_read_task_test` — 10 cases (deg→rad, DLA write, EKF valid flags)
+- `attitude_control_task_test` — 11 cases (FM guard, imu_valid, LQR/PID dispatch)
 - `telemetry_test` — 6 cases (T-TLM-01..06, DLA read, FM guard, energy flags)
 - `health_monitor_task_test` — 3 cases (T-HM-01..03, tick wiring)
 
