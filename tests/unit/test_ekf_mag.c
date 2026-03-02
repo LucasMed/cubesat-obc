@@ -1,4 +1,4 @@
-/* test_ekf_mag.c — Unit tests for EKF yaw update via magnetometer (PR-19)
+/* test_ekf_mag.c — Unit tests for EKF yaw update via magnetometer (PR-19/22)
  *
  * T-EKFM-01: no_crash        — ekf_update_mag() completes on zero-state EKF
  * T-EKFM-02: degenerate_field — |Bh| < epsilon → state and P unchanged
@@ -8,6 +8,8 @@
  * T-EKFM-05: cov_reduction   — P[2][2] strictly decreases after update
  * T-EKFM-06: convergence     — repeated predict+update_mag converges yaw
  *                              to within ±5° of true value in 10 s
+ * T-EKFM-07: declination     — non-zero declination shifts yaw_meas by
+ *                              expected offset (PR-22)
  *
  * Only ekf.c is compiled here; no hardware or RTOS dependency.
  */
@@ -193,11 +195,44 @@ static void test_convergence(void)
 }
 
 /* ========================================================================
+ * T-EKFM-07  Non-zero declination shifts measured yaw by expected offset
+ *
+ * Two EKFs start at x[2]=0.  Identical horizontal field B={47,0,0} µT:
+ *   - EKF-A updated with declination = 0       → yaw_meas = 0
+ *   - EKF-B updated with declination = +10°    → yaw_meas = +10°
+ * After one update: x_B[2] > x_A[2] by a fraction of 10° (same Kalman gain).
+ * ======================================================================== */
+static void test_declination_offset(void)
+{
+  ekf_t ekf_a, ekf_b;
+  ekf_init(&ekf_a);
+  ekf_init(&ekf_b);
+
+  float mag[3];
+  make_mag(0.0f, mag); /* horizontal field pointing North */
+
+  float decl = DEG2RAD(10.0f);
+
+  ekf_update_mag(&ekf_a, mag, 0.0f);
+  ekf_update_mag(&ekf_b, mag, decl);
+
+  /* EKF-B received a yaw_meas 10° larger → its yaw state must be larger */
+  CHECK(ekf_b.x[2] > ekf_a.x[2],
+        "positive declination must increase yaw estimate vs zero-declination");
+
+  /* The difference must be strictly less than 10° (Kalman gain < 1) */
+  CHECK((ekf_b.x[2] - ekf_a.x[2]) < decl, "yaw difference must be < declination (Kalman gain < 1)");
+
+  printf("  PASS T-EKFM-07 declination +10 deg shifts yaw by %.2f deg (expected <10 deg)\n",
+         RAD2DEG(ekf_b.x[2] - ekf_a.x[2]));
+}
+
+/* ========================================================================
  * main
  * ======================================================================== */
 int main(void)
 {
-  printf("=== EKF magnetometer yaw update tests (PR-19) ===\n");
+  printf("=== EKF magnetometer yaw update tests (PR-19/22) ===\n");
 
   test_no_crash();
   test_degenerate_field();
@@ -205,6 +240,7 @@ int main(void)
   test_wrap_pi();
   test_cov_reduction();
   test_convergence();
+  test_declination_offset();
 
   if (g_failures == 0)
   {

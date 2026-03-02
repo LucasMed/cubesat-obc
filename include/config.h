@@ -21,4 +21,20 @@
 /** Momentum-dump gain for FM_DETUMBLE [A·m²·s / (kg·m²)] */
 #define DETUMBLE_K_DUMP 0.01f
 
+/**
+ * Magnetic declination for the launch site [rad].
+ *
+ * Declination is the angle between magnetic north and geographic north.
+ * Positive = east declination (magnetic north east of true north).
+ *
+ * Default 0.0 rad (equatorial/simulation).  For a real mission set this
+ * to the value from NOAA IGRF (https://www.ngdc.noaa.gov/geomag/calculators/)
+ * at the launch latitude/longitude, e.g.:
+ *   Buenos Aires, Argentina ≈ -0.0524 rad (-3.0°)
+ *   Cape Canaveral, USA     ≈ -0.1134 rad (-6.5°)
+ */
+#ifndef OBC_MAG_DECLINATION_RAD
+  #define OBC_MAG_DECLINATION_RAD 0.0f
+#endif
+
 #endif  // CONFIG_H

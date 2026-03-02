@@ -117,7 +117,7 @@ void vSensorReadTask_Step(void)
         /* Yaw correction: fuse mag into EKF when filter is ready. */
         if (s_ekf_initialised)
         {
-          ekf_update_mag(&s_ekf, mag_uT, 0.0f);
+          ekf_update_mag(&s_ekf, mag_uT, OBC_MAG_DECLINATION_RAD);
         }
       }
     }
