@@ -32,6 +32,7 @@
 // LED Blink Helper (for diagnostics on hardware)
 void vLedBlinkTask(void *pvParameters)
 {
+  (void)pvParameters;
   for (;;)
   {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);

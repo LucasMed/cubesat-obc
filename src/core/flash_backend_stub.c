@@ -43,4 +43,19 @@ void flash_backend_flush(const uint8_t *buf, size_t len)
   }
 }
 
-#endif /* !PICO_BUILD */
+#else /* PICO_BUILD */
+
+  /* Hardware flash backend is not yet implemented.
+   * Provide a no-op so the linker is satisfied; the event_logger
+   * will call this but no data will be persisted until the real
+   * flash_range_program() implementation is added in a future phase. */
+  #include "flash_backend.h"
+
+void flash_backend_flush(const uint8_t *buf, size_t len)
+{
+  (void)buf;
+  (void)len;
+  /* TODO: implement using flash_range_program() */
+}
+
+#endif /* PICO_BUILD */

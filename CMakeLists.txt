@@ -3,9 +3,16 @@ cmake_minimum_required(VERSION 3.13)
 # Option to enable/disable Pico SDK
 option(PICO_ENABLED "Enable Pico SDK compilation" ON)
 
-# Check if Pico SDK is available (only if enabled)
-if(PICO_ENABLED AND DEFINED ENV{PICO_SDK_PATH})
-    set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+# Check if Pico SDK is available (only if enabled).
+# Accept PICO_SDK_PATH as a CMake cache variable (-DPICO_SDK_PATH=...)
+# or as an environment variable (export PICO_SDK_PATH=...).
+if(PICO_ENABLED AND NOT DEFINED PICO_SDK_PATH)
+    if(DEFINED ENV{PICO_SDK_PATH})
+        set(PICO_SDK_PATH $ENV{PICO_SDK_PATH} CACHE PATH "Path to the Pico SDK")
+    endif()
+endif()
+
+if(PICO_ENABLED AND DEFINED PICO_SDK_PATH AND EXISTS "${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
     message(STATUS "Pico SDK enabled at: ${PICO_SDK_PATH}")
     
     # Set board BEFORE including SDK

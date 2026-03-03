@@ -23,7 +23,7 @@ void vApplicationMallocFailedHook(void)
     ;
 }
 
-void vApplicationStackOverflowHook(TaskHandle_t pxTask, const char *pcTaskName)
+void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
 {
   (void)pxTask;
   printf("FATAL: Stack overflow in task '%s'!\n", pcTaskName);
