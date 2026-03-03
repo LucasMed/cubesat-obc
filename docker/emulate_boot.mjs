@@ -39,6 +39,12 @@ const REQUIRED_STRINGS = [
     'Starting FreeRTOS scheduler',
 ];
 
+/**
+ * Minimum number of STATUS: telemetry packets required after boot.
+ * smoke_test.s sends 5; we require at least 3.
+ */
+const REQUIRED_STATUS_PACKETS = 3;
+
 /** Maximum emulated wall-time to wait for all strings (milliseconds). */
 const DEFAULT_TIMEOUT_MS = 8000;
 
@@ -149,20 +155,49 @@ let uartOutput = '';
 const remaining = new Set(REQUIRED_STRINGS);
 let allFound = false;
 
+// STATUS packet tracking
+const statusPackets = [];   // parsed telemetry packets
+let lineBuffer = '';        // accumulate chars until \n
+
+/** Parse a STATUS: line into a key-value object, or return null. */
+function parseStatusPacket(line) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('STATUS:')) return null;
+    const fields = {};
+    trimmed.slice(7).split(',').forEach(pair => {
+        const [k, v] = pair.split('=');
+        if (k && v !== undefined) fields[k.trim()] = v.trim();
+    });
+    return Object.keys(fields).length ? fields : null;
+}
+
 const onUartByte = (byte) => {
     const ch = String.fromCharCode(byte);
     process.stdout.write(ch);          // mirror to terminal in real-time
     uartOutput += ch;
+    lineBuffer += ch;
 
-    // Check each required string once
+    // Check each required boot string once
     for (const str of [...remaining]) {
         if (uartOutput.includes(str)) {
             remaining.delete(str);
-            console.error(`  ✅  found: "${str}"`);
+            console.error(`  ✅  boot: "${str}"`);
         }
     }
 
-    if (remaining.size === 0 && !allFound) {
+    // Parse complete lines for STATUS packets
+    if (ch === '\n') {
+        const pkt = parseStatusPacket(lineBuffer);
+        if (pkt) {
+            statusPackets.push(pkt);
+            const fields = Object.entries(pkt).map(([k, v]) => `${k}=${v}`).join('  ');
+            console.error(`  📡  STATUS[${statusPackets.length}]: ${fields}`);
+        }
+        lineBuffer = '';
+    }
+
+    // All done when boot strings + minimum status packets received
+    if (remaining.size === 0 && statusPackets.length >= REQUIRED_STATUS_PACKETS && !allFound) {
         allFound = true;
     }
 };
@@ -177,7 +212,7 @@ mcu.uart[0].onByte = onUartByte;
 
 console.error(`\n[emulate] Loading: ${resolvedPath}`);
 console.error(`[emulate] Timeout: ${timeoutMs} ms`);
-console.error(`[emulate] Waiting for ${REQUIRED_STRINGS.length} required strings…\n`);
+console.error(`[emulate] Waiting for ${REQUIRED_STRINGS.length} boot strings + ${REQUIRED_STATUS_PACKETS} STATUS packets…\n`);
 console.error('─'.repeat(60));
 
 const startReal = Date.now();
@@ -217,14 +252,29 @@ console.error('\n' + '─'.repeat(60));
 console.error('[emulate] Boot smoke-test results:');
 console.error(`  Simulated cycles : ${simCycles.toLocaleString()}`);
 console.error(`  Wall time        : ${Date.now() - startReal} ms`);
+console.error(`  Boot strings     : ${REQUIRED_STRINGS.length - remaining.size}/${REQUIRED_STRINGS.length}`);
+console.error(`  STATUS packets   : ${statusPackets.length} received`);
 
-if (allFound) {
-    console.error('  Status           : ✅  PASS — all required strings received');
+if (statusPackets.length > 0) {
+    console.error('  Telemetry snapshot (last packet):');
+    for (const [k, v] of Object.entries(statusPackets[statusPackets.length - 1])) {
+        console.error(`    ${k.padEnd(12)}: ${v}`);
+    }
+}
+
+const bootOk = remaining.size === 0;
+const statusOk = statusPackets.length >= REQUIRED_STATUS_PACKETS;
+
+if (bootOk && statusOk) {
+    console.error('  Status           : ✅  PASS — boot strings + telemetry OK');
     process.exit(0);
 } else {
-    console.error('  Status           : ❌  FAIL — missing required strings:');
-    for (const s of remaining) {
-        console.error(`      • "${s}"`);
+    if (!bootOk) {
+        console.error('  Status           : ❌  FAIL — missing boot strings:');
+        for (const s of remaining) console.error(`      • "${s}"`);
+    }
+    if (!statusOk) {
+        console.error(`  Status           : ❌  FAIL — only ${statusPackets.length}/${REQUIRED_STATUS_PACKETS} STATUS packets received`);
     }
     process.exit(1);
 }
