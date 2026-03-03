@@ -5,6 +5,60 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-20
+
+### Added (Phase 6 — Closed-Loop Stability & Architectural Consolidation)
+- **Quaternion library** (`src/control/quaternion.c`, `include/quaternion.h`): unit-quaternion
+  multiply, rotate, normalize, spherical linear interpolation (slerp), and to-Euler conversion;
+  replaces ad-hoc Euler math throughout the attitude pipeline (PR-21).
+  Five unit tests: T-QAT-01..05.
+- **Configurable magnetic declination** (`OBC_MAG_DECLINATION_RAD` in `include/config.h`):
+  compile-time declination offset applied inside `ekf_update_mag()`; default 0.0 rad; keeps
+  yaw estimate referenced to true north (PR-22). One unit test: T-EKFM-07.
+- **LQR gain scheduling** (`src/control/lqr_schedule.c`, `include/lqr_schedule.h`):
+  table-driven gain selection by combined energy state and angular momentum magnitude;
+  three discrete gain sets (HIGH_ENERGY, NOMINAL, LOW_ENERGY); `lqr_schedule_select()`
+  called by `vAttitudeControlTask_Step()` before each control tick (PR-23).
+  Three unit tests: T-LQRS-01..03.
+- **Closed-loop simulation harness** (`src/control/closed_loop_sim.c`,
+  `include/closed_loop_sim.h`): full EKF → LQR → RK2-dynamics simulation loop with
+  configurable initial attitude error, noise injection, and stability acceptance criterion
+  (settling within 30 s, residual ω < 0.05 rad/s) (PR-24). Six unit tests: T-CLS-01..06.
+- **Integration test — fault-to-safe sequence** (`tests/integration/test_fault_safe.c`):
+  end-to-end verification that `fault_report(FAULT_ANY, FAULT_LEVEL_CRITICAL)` causes
+  FMM to enter FM_SAFE within 100 ms simulation ticks (T-FMS-01a..d, 4 sub-tests) (PR-25).
+- **Integration test — watchdog safe-mode trigger** (`tests/integration/test_safe_trigger.c`):
+  verifies that `health_monitor_task.c` `watchdog_hal_triggered()` path calls
+  `fault_report(FAULT_WDT_KICK_MISSED, FAULT_LEVEL_CRITICAL)` → FM_SAFE
+  (T-SAFE-01a..c, 3 sub-tests) (PR-25).
+- **Flash-backend stub** (`src/core/flash_backend_stub.c`, `include/flash_backend.h`):
+  host-build stub that opens `/tmp/obc_log.bin` and writes packed records via
+  `flash_backend_flush()`; hardware path is a `__attribute__((weak))` override (PR-26).
+- **Event logger flush hook** (`src/core/event_logger.c`): ring-buffer (64 records × 40 B)
+  now calls `flash_backend_flush()` automatically when capacity is reached; constant
+  `LOG_RING_CAPACITY 64u` exported in `include/logger.h` (PR-26).
+  Four sub-tests: T-LOG-01a..d (one CTest target `event_logger_test`).
+- **MISRA C deviations log** (`docs/standards/MISRA_DEVIATIONS.md`): all advisory
+  deviations documented with rationale; zero required or mandatory violations (PR-27).
+
+### Changed
+- `src/tasks/health_monitor_task.c`: added `watchdog_hal_triggered()` poll →
+  `fault_report(FAULT_WDT_KICK_MISSED, FAULT_LEVEL_CRITICAL)` on every task tick (PR-25).
+- `include/eps.h`: added `eps_hal_read()` declaration for host-HAL abstraction.
+- Multiple files: MISRA C fixes — unused `<stdio.h>` removed, void casts on ignored
+  return values, braced single-statement bodies, NULL pointer comparisons (PR-27).
+
+### Testing
+- Test suite: **29** CTest executables.  All **29/29** passing.
+- New test targets (Phase 6): `quaternion_test`, `lqr_schedule_test`,
+  `closed_loop_test`, `ekf_mag_test` (T-EKFM-07 added), `test_fault_safe`,
+  `test_safe_trigger`, `event_logger_test`.
+- gcovr line coverage: **91.8%** on `src/control/` + `src/core/` + `src/services/`
+  combined (target was ≥90%).
+- cppcheck, clang-format-14, clang-tidy-14 all clean.
+
+---
+
 ## [0.6.0] - 2026-03-12
 
 ### Added (Phase 5 — Flight Readiness)
