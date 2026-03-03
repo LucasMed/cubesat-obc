@@ -272,4 +272,21 @@ if(NOT PICO_BUILD)
     target_include_directories(test_lqr_schedule PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_lqr_schedule m)
     add_test(NAME lqr_schedule_test COMMAND test_lqr_schedule)
+
+    # PR-24 gate: Closed-loop stability harness.
+    # T-CLS-01..03: roll/pitch/yaw settle within tolerance in 10 s.
+    # T-CLS-04: gyro-bias estimate converges within 5 mrad/s in 20 s.
+    # T-CLS-05: torque saturation active and bounded by sqrt(3)·CLS_TAU_SAT.
+    # T-CLS-06: RW momentum exceeds dump threshold during FM_DETUMBLE.
+    add_executable(test_closed_loop
+        test_closed_loop.c
+        ../../src/control/ekf.c
+        ../../src/control/lqr.c
+        ../../src/control/lqr_schedule.c
+        ../../src/control/closed_loop_sim.c
+        ../../src/dynamics/attitude_dynamics.c
+    )
+    target_include_directories(test_closed_loop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_closed_loop m)
+    add_test(NAME closed_loop_test COMMAND test_closed_loop)
 endif()

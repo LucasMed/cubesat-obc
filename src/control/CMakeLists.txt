@@ -4,6 +4,7 @@ add_library(control_lib
     ekf.c
     lqr.c
     lqr_schedule.c
+    closed_loop_sim.c
     quaternion.c
 )
 
