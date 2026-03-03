@@ -39,51 +39,39 @@ static void vCspRouterTask(void *pvParameters)
 
 void comm_init(void)
 {
-  (void)printf("CSP: [1] stack init...\r\n");
+  (void)printf("CSP: initializing...\r\n");
   (void)fflush(stdout);
 
-  // 1. Init CSP (also registers the loopback interface automatically)
   csp_init();
 
-  (void)printf("CSP: [2] csp_init done\r\n");
-  (void)fflush(stdout);
-
 #ifndef PICO_BUILD
-  /* ── Host build: use physical UART1 via KISS ──────────────────────────── */
-  // 2. Setup UART configuration for KISS
+  /* ── Host build: physical UART1 via KISS ── */
   csp_usart_conf_t conf = {
       .device = "uart1", .baudrate = 115200, .databits = 8, .stopbits = 1, .paritysetting = 0};
 
-  // 3. Add KISS interface
   csp_iface_t *kiss_iface = NULL;
   int res = csp_usart_open_and_add_kiss_interface(&conf, "KISS", OBC_ADDRESS, &kiss_iface);
   if (res != CSP_ERR_NONE)
   {
-    (void)printf("CSP ERROR: Failed to add KISS interface (%d)\r\n", res);
+    (void)printf("CSP ERROR: KISS interface failed (%d)\r\n", res);
     (void)fflush(stdout);
     return;
   }
 
-  // 4. Set routing table: GN (addr 1) via KISS
   char rtable[64];
   (void)snprintf(rtable, sizeof(rtable), "%d/255 KISS", GN_ADDRESS);
   (void)csp_rtable_load(rtable);
-
-  (void)printf("CSP: KISS @ addr %d, route to GN(%d)\r\n", OBC_ADDRESS, GN_ADDRESS);
+  (void)printf("CSP: KISS @ addr %d, route GN(%d)\r\n", OBC_ADDRESS, GN_ADDRESS);
   (void)fflush(stdout);
 #else
-  /* ── Pico build: use loopback only — no blocking POSIX UART calls.
-   *    csp_init() already registered LOOP for the local address. ── */
-  (void)printf("CSP: [3] loopback-only mode\r\n");
+  /* ── Pico build: loopback only — csp_init() already registered LOOP ── */
+  (void)printf("CSP: loopback-only mode\r\n");
   (void)fflush(stdout);
 #endif
 
 #ifdef PICO_BUILD
-  // 5. Start the CSP router task (libcsp 2.x has no built-in router thread).
-  (void)printf("CSP: [4] creating router task...\r\n");
-  (void)fflush(stdout);
   xTaskCreate(vCspRouterTask, "CSPRouter", 512, NULL, tskIDLE_PRIORITY + 5, NULL);
-  (void)printf("CSP: [5] done\r\n");
+  (void)printf("CSP: router task OK\r\n");
   (void)fflush(stdout);
 #endif
 }

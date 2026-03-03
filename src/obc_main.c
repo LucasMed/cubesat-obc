@@ -47,104 +47,99 @@ void vLedBlinkTask(void *pvParameters)
 }
 #endif
 
+/**
+ * vStartupTask — runs at highest priority after vTaskStartScheduler().
+ *
+ * All FreeRTOS sync-object creation (queues, semaphores, mutexes inside
+ * csp_init, etc.) MUST happen here, not in main().  On the RP2350 SMP
+ * FreeRTOS port the kernel spinlocks are not initialised until the
+ * scheduler starts, so calling xQueueCreateStatic (or anything that
+ * calls taskENTER_CRITICAL) from main() before vTaskStartScheduler()
+ * causes a deadlock.
+ */
+static void vStartupTask(void *pvParameters)
+{
+  (void)pvParameters;
+
+  printf("\r\n[STARTUP] Subsystem init begin\r\n");
+  fflush(stdout);
+
+  printf("  system_state_init...\r\n");
+  fflush(stdout);
+  system_state_init();
+
+  printf("  comm_init...\r\n");
+  fflush(stdout);
+  comm_init();
+
+  printf("  fault_manager_init...\r\n");
+  fflush(stdout);
+  fault_manager_init();
+
+  printf("  eps_monitor_init...\r\n");
+  fflush(stdout);
+  eps_monitor_init();
+
+#ifdef PICO_BUILD
+  printf("  i2c_bus_init...\r\n");
+  fflush(stdout);
+  i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN, 400000);
+#endif
+
+  printf("  sensors...\r\n");
+  fflush(stdout);
+  int imu_res = mpu6050_init();
+  int temp_res = temperature_init();
+  system_state_set_available(imu_res == 0, temp_res == 0);
+  printf("  IMU: %s  Temp: %s\r\n", imu_res == 0 ? "OK" : "not found",
+         temp_res == 0 ? "OK" : "not found");
+
+  printf("  creating tasks...\r\n");
+  fflush(stdout);
+#ifdef PICO_BUILD
+  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+#endif
+  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
+  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
+  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
+
+  printf("[STARTUP] done — deleting startup task\r\n");
+  fflush(stdout);
+  vTaskDelete(NULL);
+}
+
 int main(void)
 {
 #ifdef PICO_BUILD
   stdio_init_all();
 
-  /* Early UART marker — visible at 115200 on GP0/TX even before USB connects */
   printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
   fflush(stdout);
 
-  printf("\n=====================================\n");
-  printf("  CubeSat OBC - Pico 2W Firmware\n");
-  printf("  FreeRTOS Real Kernel\n");
-  printf("=====================================\n\n");
-
   if (cyw43_arch_init())
   {
-    /* CYW43 init failed — LED will not work but firmware continues.
-     * This is non-fatal: the OBC can operate without the status LED. */
     printf("[WARN] CYW43 init failed — LED disabled\r\n");
     fflush(stdout);
-    /* Do NOT return here: returning from main() in embedded is undefined.
-     * Continue — the OBC subsystems do not require CYW43. */
   }
-
-  /* Wait briefly for USB CDC host to connect (non-blocking: use UART if no USB) */
-  for (int i = 0; i < 20; i++)
-  {
-    printf(".");
-    sleep_ms(100);
-  }
-  printf("\nStartup delay finished.\r\n");
-  fflush(stdout);
 #else
   printf("=== CubeSat OBC Firmware (Host Simulation) ===\n");
 #endif
 
-  // Initialize System State
-  printf("Initializing system state...\n");
+  /* Create ONE startup task — all subsystem init happens inside it after
+   * the scheduler starts and SMP spinlocks are fully initialised.        */
+  xTaskCreate(vStartupTask, "Startup", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
+
+  printf("[BOOT] starting scheduler...\r\n");
   fflush(stdout);
-  system_state_init();
-
-  // Initialize Communications
-  comm_init();
-
-  // Initialize Fault Manager and EPS Monitor
-  printf("Initializing fault manager...\n");
-  fflush(stdout);
-  fault_manager_init();
-
-  printf("Initializing EPS monitor...\n");
-  fflush(stdout);
-  eps_monitor_init();
-
-#ifdef PICO_BUILD
-  // Initialize I2C Bus
-  printf("Initializing I2C bus...\n");
-  fflush(stdout);
-  i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN, 400000);
-#endif
-
-  // Initialize Sensors
-  printf("Initializing sensors...\n");
-  fflush(stdout);
-  int imu_res = mpu6050_init();
-  int temp_res = temperature_init();
-
-  system_state_set_available(imu_res == 0, temp_res == 0);
-
-  printf("Creating FreeRTOS tasks...\n");
-  fflush(stdout);
-
-#ifdef PICO_BUILD
-  // LED blink task (diagnostic on hardware)
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-#endif
-
-  // OBC Functional Tasks
-  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
-  xTaskCreate(vAttitudeControlTask, "AttitudeControl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
-  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
-
-  printf("Starting FreeRTOS scheduler...\n");
-  fflush(stdout);
-#ifdef PICO_BUILD
-  sleep_ms(100);  // Small pause to let serial buffers clear
-#endif
 
   vTaskStartScheduler();
 
-  // Should never reach here
-  printf("ERROR: FreeRTOS scheduler exited!\n");
-  while (1)
+  printf("[ERROR] scheduler exited!\r\n");
+  for (;;)
   {
-    ;
   }
-
   return 0;
 }
 

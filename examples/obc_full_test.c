@@ -66,16 +66,71 @@ static void vHeartbeatTask(void *pvParameters)
   }
 }
 
+/* ── Startup task — all FreeRTOS init runs here, AFTER the scheduler ────── */
+/**
+ * On the RP2350 SMP FreeRTOS port the kernel spinlocks are not ready until
+ * vTaskStartScheduler() completes.  Any call to xQueueCreateStatic (inside
+ * csp_init, etc.) before the scheduler start causes a spin-lock deadlock.
+ * Solution: do all subsystem init inside a highest-priority startup task.
+ */
+static void vStartupTask(void *pvParameters)
+{
+  (void)pvParameters;
+
+  printf("\r\n[STARTUP] Subsystem init begin\r\n");
+  fflush(stdout);
+
+  printf("  system_state_init...\r\n");
+  fflush(stdout);
+  system_state_init();
+
+  printf("  comm_init...\r\n");
+  fflush(stdout);
+  comm_init();
+
+  printf("  fault_manager_init...\r\n");
+  fflush(stdout);
+  fault_manager_init();
+
+  printf("  eps_monitor_init...\r\n");
+  fflush(stdout);
+  eps_monitor_init();
+
+  printf("  i2c_bus_init...\r\n");
+  fflush(stdout);
+  i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN, 400000);
+
+  printf("  sensors...\r\n");
+  fflush(stdout);
+  int imu_ok = mpu6050_init();
+  int temp_ok = temperature_init();
+  system_state_set_available(imu_ok == 0, temp_ok == 0);
+  printf("  IMU: %s  Temp: %s\r\n", imu_ok == 0 ? "OK" : "not found",
+         temp_ok == 0 ? "OK" : "not found");
+  fflush(stdout);
+
+  printf("  creating tasks...\r\n");
+  fflush(stdout);
+  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, tskIDLE_PRIORITY + 6, NULL);
+  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
+  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
+  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
+
+  printf("[STARTUP] done\r\n");
+  fflush(stdout);
+  vTaskDelete(NULL);
+}
+
 /* ── main ──────────────────────────────────────────────────────────────────── */
 int main(void)
 {
   stdio_init_all();
 
-  printf("\r\n[BOOT] OBC full-subsystem test started\r\n");
-  fflush(stdout);
-
-  /* Wait up to 5 s for USB CDC host (UART works immediately) */
-  for (int i = 0; i < 50 && !stdio_usb_connected(); i++)
+  /* Wait up to 3 s for USB CDC host (UART works immediately) */
+  for (int i = 0; i < 30 && !stdio_usb_connected(); i++)
     sleep_ms(100);
 
   printf("\r\n===================================\r\n");
@@ -89,52 +144,12 @@ int main(void)
     fflush(stdout);
   }
 
-  /* OBC subsystem init — mirrors obc_main.c line-for-line */
-  printf("Initializing system state...\r\n");
-  fflush(stdout);
-  system_state_init();
+  /* Create ONE startup task — everything else happens inside it after the
+   * scheduler starts and SMP spinlocks are fully initialised.           */
+  xTaskCreate(vStartupTask, "Startup", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
 
-  printf("Initializing communications...\r\n");
+  printf("[BOOT] starting scheduler...\r\n");
   fflush(stdout);
-  comm_init();
-
-  printf("Initializing fault manager...\r\n");
-  fflush(stdout);
-  fault_manager_init();
-
-  printf("Initializing EPS monitor...\r\n");
-  fflush(stdout);
-  eps_monitor_init();
-
-  printf("Initializing I2C bus...\r\n");
-  fflush(stdout);
-  i2c_bus_init(I2C_SDA_PIN, I2C_SCL_PIN, 400000);
-
-  printf("Initializing sensors...\r\n");
-  fflush(stdout);
-  int imu_ok = mpu6050_init();
-  int temp_ok = temperature_init();
-  system_state_set_available(imu_ok == 0, temp_ok == 0);
-  printf("  IMU: %s   Temp: %s\r\n", imu_ok == 0 ? "OK" : "not found",
-         temp_ok == 0 ? "OK" : "not found");
-
-  /* FreeRTOS tasks — same as obc_main.c */
-  printf("Creating FreeRTOS tasks...\r\n");
-  fflush(stdout);
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-  /* Heartbeat at highest priority — guarantees UART output every 2 s regardless
-   * of what other tasks are doing. If [HB N] lines stop appearing, the system
-   * has crashed or the scheduler stopped. */
-  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, tskIDLE_PRIORITY + 6, NULL);
-  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
-  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
-  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
-
-  printf("Starting FreeRTOS scheduler...\r\n");
-  fflush(stdout);
-  sleep_ms(100);
 
   vTaskStartScheduler();
 
