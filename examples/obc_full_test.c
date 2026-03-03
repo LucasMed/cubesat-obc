@@ -62,6 +62,7 @@ static void vHeartbeatTask(void *pvParameters)
   for (;;)
   {
     printf("[HB %lu] heap=%lu\r\n", (unsigned long)tick++, (unsigned long)xPortGetFreeHeapSize());
+    fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }

@@ -45,6 +45,21 @@ void vLedBlinkTask(void *pvParameters)
     cyw43_arch_poll();
   }
 }
+
+/* Heartbeat — proof of life every 2 s with explicit fflush so USB CDC
+ * delivers the output promptly (without fflush the buffer sits for up to
+ * PICO_STDIO_USB_STDOUT_TIMEOUT_US = 500 ms before the host sees it). */
+static void vHeartbeatTask(void *pvParameters)
+{
+  (void)pvParameters;
+  uint32_t tick = 0;
+  for (;;)
+  {
+    printf("[HB %lu] heap=%lu\r\n", (unsigned long)tick++, (unsigned long)xPortGetFreeHeapSize());
+    fflush(stdout);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+  }
+}
 #endif
 
 /**
@@ -97,13 +112,14 @@ static void vStartupTask(void *pvParameters)
   printf("  creating tasks...\r\n");
   fflush(stdout);
 #ifdef PICO_BUILD
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);
 #endif
-  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
-  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 4, NULL);
-  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
 
   printf("[STARTUP] done — deleting startup task\r\n");
   fflush(stdout);
