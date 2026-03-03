@@ -68,14 +68,20 @@ void isr_hardfault(void)
     printf("  [MMFSR] MUNSTKERR - MemManage on exception return\r\n");
   if (cfsr & 0x00000010u)
     printf("  [MMFSR] MSTKERR - MemManage on exception entry (stack overflow?)\r\n");
+  if (cfsr & 0x00010000u)
+    printf("  [UFSR] UNDEFINSTR - undefined instruction\r\n");
   if (cfsr & 0x00020000u)
     printf("  [UFSR] INVSTATE - invalid EPSR (NULL/bad function pointer)\r\n");
   if (cfsr & 0x00040000u)
     printf("  [UFSR] INVPC - bad EXC_RETURN\r\n");
   if (cfsr & 0x00080000u)
     printf("  [UFSR] NOCP - coprocessor access\r\n");
-  if (cfsr & 0x02000000u)
+  if (cfsr & 0x00100000u)
     printf("  [UFSR] STKOF - stack overflow (Cortex-M33)\r\n");
+  if (cfsr & 0x01000000u)
+    printf("  [UFSR] UNALIGNED - unaligned memory access (CCR.UNALIGN_TRP is set)\r\n");
+  if (cfsr & 0x02000000u)
+    printf("  [UFSR] DIVBYZERO - divide by zero\r\n");
   fflush(stdout);
   for (;;)
     ;
