@@ -23,6 +23,7 @@ void vApplicationMallocFailedHook(void)
     ;
 }
 
+// cppcheck-suppress constParameterPointer -- signature mandated by FreeRTOS API
 void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
 {
   (void)pxTask;
