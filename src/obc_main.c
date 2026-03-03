@@ -133,12 +133,6 @@ int main(void)
 #ifdef PICO_BUILD
   stdio_init_all();
 
-  /* Clear CCR.UNALIGN_TRP (bit 3) before the scheduler starts.
-   * The RP2350 boot ROM sets this bit which traps every unaligned word
-   * access as a UsageFault (escalated to HardFault).  Clearing it restores
-   * the ARMv8-M default behaviour (hardware fixup, not trap). */
-  *(volatile uint32_t *)0xE000ED14UL &= ~(1UL << 3);
-
   printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
   fflush(stdout);
   /* Wait up to 3 s for USB CDC host to enumerate (UART works immediately). */

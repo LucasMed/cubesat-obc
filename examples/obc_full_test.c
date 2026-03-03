@@ -150,13 +150,6 @@ static void vStartupTask(void *pvParameters)
 int main(void)
 {
   stdio_init_all();
-  /* Clear CCR.UNALIGN_TRP (bit 3) before the scheduler starts.
-   * The RP2350 boot ROM sets this bit which traps every unaligned word
-   * access as a UsageFault (escalated to HardFault).  FreeRTOS task stacks
-   * and libcsp packet buffers are 4-byte aligned, but Cortex-M33 hardware
-   * context save/restore can touch half-word-aligned offsets.  Clearing
-   * the bit restores the ARMv8-M default (hardware fixup, not trap). */
-  *(volatile uint32_t *)0xE000ED14UL &= ~(1UL << 3);
   /* Wait up to 3 s for USB CDC host (UART works immediately) */
   for (int i = 0; i < 30 && !stdio_usb_connected(); i++)
     sleep_ms(100);

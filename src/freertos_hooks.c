@@ -10,6 +10,40 @@
 #include <stdio.h>
 
 #ifdef PICO_BUILD
+  #include "pico/runtime.h"
+
+// ============================================================================
+// Per-core runtime initialiser
+// ============================================================================
+
+/**
+ * Clear CCR.UNALIGN_TRP on the current core.
+ *
+ * Registered as a PICO_RUNTIME_INIT_FUNC_PER_CORE at priority "00052" so it
+ * runs on BOTH cores:
+ *   - Core 0: called by the C-runtime initialisation chain before main().
+ *   - Core 1: called in core1_wrapper() via runtime_run_per_core_initializers()
+ *             before the FreeRTOS scheduler entry function (i.e. before any
+ *             user task can execute).
+ *
+ * Priority "00052" is intentionally one step after the Pico SDK's builtin
+ * PICO_RUNTIME_INIT_PER_CORE_BOOTROM_RESET ("00051") which calls
+ * BOOTROM_STATE_RESET_CURRENT_CORE — that call RE-SETS CCR.UNALIGN_TRP to 1
+ * (the RP2350 bootrom default).  Clearing it here at "00052" ensures the bit
+ * stays cleared on both cores throughout the application's lifetime.
+ *
+ * Without this, core 1 hits a UsageFault (CFSR=0x01000000 UNALIGNED) on its
+ * first context switch, which escalates to HardFault, dead-locks the FreeRTOS
+ * SMP scheduler spinlock, and silently freezes both cores.
+ */
+static void prvClearUnalignTrap(void)
+{
+  /* CCR is at 0xE000ED14 in the Private Peripheral Bus — each core has its own
+   * physical copy via the per-core PPB mapping. */
+  *(volatile uint32_t *)0xE000ED14UL &= ~(1UL << 3); /* clear UNALIGN_TRP */
+}
+PICO_RUNTIME_INIT_FUNC_PER_CORE(prvClearUnalignTrap, "00052");
+
 // ============================================================================
 // FreeRTOS Required Hooks
 // ============================================================================
