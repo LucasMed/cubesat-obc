@@ -41,9 +41,11 @@ void comm_init(void)
 {
   (void)printf("CSP: Initializing stack...\n");
 
-  // 1. Init CSP
+  // 1. Init CSP (also registers the loopback interface automatically)
   csp_init();
 
+#ifndef PICO_BUILD
+  /* ── Host build: use physical UART1 via KISS ──────────────────────────── */
   // 2. Setup UART configuration for KISS
   csp_usart_conf_t conf = {
       .device = "uart1", .baudrate = 115200, .databits = 8, .stopbits = 1, .paritysetting = 0};
@@ -57,14 +59,19 @@ void comm_init(void)
     return;
   }
 
-  // 4. Set routing table
-  // Route for address 1 (Ground Station) goes via KISS interface
+  // 4. Set routing table: GN (addr 1) via KISS
   char rtable[64];
   (void)snprintf(rtable, sizeof(rtable), "%d/255 KISS", GN_ADDRESS);
   (void)csp_rtable_load(rtable);
 
   (void)printf("CSP: Interface KISS added @ address %d\n", OBC_ADDRESS);
   (void)printf("CSP: Route to GN (%d) configured via KISS\n", GN_ADDRESS);
+#else
+  /* ── Pico build: libcsp has no Pico USART driver; use loopback only.
+   *    csp_init() already registered the LOOP interface for the local
+   *    address — all CSP tasks (bind/accept/send) work via loopback.   ── */
+  (void)printf("CSP: Pico build — loopback-only mode (no external KISS)\n");
+#endif
 
 #ifdef PICO_BUILD
   // 5. Start the CSP router task.
