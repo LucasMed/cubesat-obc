@@ -120,7 +120,7 @@ static void vStartupTask(void *pvParameters)
   xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 2, NULL);          /* 2 */
   xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);             /* 2 */
   xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 1, NULL);  /* 1 */
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 1, NULL);            /* 1 */
+  xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL);            /* 1 */
 
   printf("[STARTUP] done\r\n");
   fflush(stdout);

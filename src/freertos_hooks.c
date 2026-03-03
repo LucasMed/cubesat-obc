@@ -18,7 +18,8 @@ void vApplicationIdleHook(void) {}
 
 void vApplicationMallocFailedHook(void)
 {
-  printf("FATAL: FreeRTOS malloc failed!\n");
+  printf("FATAL: FreeRTOS malloc failed!\r\n");
+  fflush(stdout);
   for (;;)
     ;
 }
@@ -27,7 +28,8 @@ void vApplicationMallocFailedHook(void)
 void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
 {
   (void)pxTask;
-  printf("FATAL: Stack overflow in task '%s'!\n", pcTaskName);
+  printf("FATAL: Stack overflow in task '%s'!\r\n", pcTaskName);
+  fflush(stdout);
   for (;;)
     ;
 }

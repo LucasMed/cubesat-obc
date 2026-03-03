@@ -112,7 +112,7 @@ static void vStartupTask(void *pvParameters)
   printf("  creating tasks...\r\n");
   fflush(stdout);
 #ifdef PICO_BUILD
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
   xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);
 #endif
   xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
