@@ -111,15 +111,17 @@ static void vStartupTask(void *pvParameters)
 
   printf("  creating tasks...\r\n");
   fflush(stdout);
+  /* Stack sizes in words (1 word = 4 bytes).
+   * 1024 words = 4 KB per task.  Tasks using float printf need >= 1 KB. */
 #ifdef PICO_BUILD
   xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
   xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);
 #endif
-  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
+  xTaskCreate(vSensorReadTask, "SensorRead", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
+  xTaskCreate(vTelemetryTask, "Telemetry", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
   xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
 
   printf("[STARTUP] done — deleting startup task\r\n");
   fflush(stdout);

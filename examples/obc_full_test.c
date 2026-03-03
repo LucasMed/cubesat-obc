@@ -54,7 +54,13 @@ static void vLedBlinkTask(void *pvParameters)
   }
 }
 
-/* ── Heartbeat task — confirms scheduler running and prints free heap ──────── */
+/* ── Heartbeat task — confirms scheduler running and prints free heap / HWMs ─ */
+static TaskHandle_t h_sensor = NULL;
+static TaskHandle_t h_attitude = NULL;
+static TaskHandle_t h_telemetry = NULL;
+static TaskHandle_t h_command = NULL;
+static TaskHandle_t h_health = NULL;
+
 static void vHeartbeatTask(void *pvParameters)
 {
   (void)pvParameters;
@@ -62,6 +68,14 @@ static void vHeartbeatTask(void *pvParameters)
   for (;;)
   {
     printf("[HB %lu] heap=%lu\r\n", (unsigned long)tick++, (unsigned long)xPortGetFreeHeapSize());
+    /* Stack high-water marks (words remaining) — helps detect overflow */
+    if (h_sensor)
+      printf("  HWM sensor=%u att=%u tlm=%u cmd=%u hlt=%u\r\n",
+             (unsigned)uxTaskGetStackHighWaterMark(h_sensor),
+             (unsigned)uxTaskGetStackHighWaterMark(h_attitude),
+             (unsigned)uxTaskGetStackHighWaterMark(h_telemetry),
+             (unsigned)uxTaskGetStackHighWaterMark(h_command),
+             (unsigned)uxTaskGetStackHighWaterMark(h_health));
     fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
@@ -114,13 +128,18 @@ static void vStartupTask(void *pvParameters)
   fflush(stdout);
   /* configMAX_PRIORITIES=5 → valid range 0-4. tskIDLE_PRIORITY+N where N>=5 triggers configASSERT
    * hang. */
-  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);      /* 4 */
-  xTaskCreate(vSensorReadTask, "SensorRead", 512, NULL, tskIDLE_PRIORITY + 3, NULL);        /* 3 */
-  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 512, NULL, tskIDLE_PRIORITY + 3, NULL); /* 3 */
-  xTaskCreate(vTelemetryTask, "Telemetry", 512, NULL, tskIDLE_PRIORITY + 2, NULL);          /* 2 */
-  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);             /* 2 */
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 512, NULL, tskIDLE_PRIORITY + 1, NULL);  /* 1 */
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL);            /* 1 */
+  /* Stack sizes in words (1 word = 4 bytes).
+   * 1024 words = 4 KB per task.  Tasks using float printf or deep CSP call
+   * chains need ≥1 KB — 512 words was borderline and caused HardFault.   */
+  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);     /* 4 */
+  xTaskCreate(vSensorReadTask, "SensorRead", 1024, NULL, tskIDLE_PRIORITY + 3, &h_sensor); /* 3 */
+  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 1024, NULL, tskIDLE_PRIORITY + 3,
+              &h_attitude);                                                                 /* 3 */
+  xTaskCreate(vTelemetryTask, "Telemetry", 1024, NULL, tskIDLE_PRIORITY + 2, &h_telemetry); /* 2 */
+  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, &h_command);       /* 2 */
+  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 1024, NULL, tskIDLE_PRIORITY + 1,
+              &h_health);                                                        /* 1 */
+  xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL); /* 1 */
 
   printf("[STARTUP] done\r\n");
   fflush(stdout);

@@ -37,37 +37,45 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
 
   #if defined(__arm__) || defined(__thumb__)
 /**
- * ARM HardFault handler — prints CFSR + faulting PC without a naked trampoline.
+ * ARM HardFault handler — prints CFSR without touching the exception frame.
  *
- * FreeRTOS tasks run on PSP.  We read PSP with a safe inline-asm constraint
- * (no naked function, no stack corruption risk) to find the stacked frame and
- * extract the PC.  MSP is the interrupt/exception stack and is not the task
- * frame when a task triggers the fault.
+ * IMPORTANT: Do NOT read PSP here.  If the fault was triggered by a stack
+ * overflow the PSP already points to corrupt/unmapped memory; dereferencing
+ * it causes a second HardFault → RP2350 lockup reset → all USB output lost.
  *
- * Exception frame layout (Cortex-M basic frame, stacked on PSP by hardware):
- *   [0]=r0  [1]=r1  [2]=r2  [3]=r3
- *   [4]=r12 [5]=lr(EXC)  [6]=pc  [7]=xpsr
+ * CFSR (0xE000ED28) is an SCB register in the fixed System Control Space —
+ * always readable regardless of stack state, so it is safe to read here.
+ * It tells us *why* the fault fired which is enough to diagnose the cause.
  *
  * The Pico SDK vector table uses "isr_hardfault" (not HardFault_Handler).
  */
 void isr_hardfault(void)
 {
-  /* CFSR: UsageFault | BusFault | MemManage status bits */
-  volatile uint32_t cfsr = *(volatile uint32_t *)0xE000ED28UL;
-
-  /* Read PSP — safe inline-asm, not naked, compiler handles preamble */
-  uint32_t psp_val;
-  __asm volatile("mrs %0, psp" : "=r"(psp_val));
-  const uint32_t *psp_frame = (const uint32_t *)psp_val;
-
-  uint32_t pc = psp_frame[6];
-  uint32_t lr = psp_frame[5];
+  /* CFSR: UsageFault [31:16] | BusFault [15:8] | MemManage [7:0] */
+  uint32_t cfsr = *(volatile uint32_t *)0xE000ED28UL;
+  /* HFSR: HardFault Status Register — bit 30 = FORCED (escalated fault) */
+  uint32_t hfsr = *(volatile uint32_t *)0xE000ED2CUL;
 
   printf("FATAL: HardFault!\r\n"
-         "  PC  =0x%08" PRIx32 "\r\n"
-         "  LR  =0x%08" PRIx32 "\r\n"
-         "  CFSR=0x%08" PRIx32 "\r\n",
-         pc, lr, (uint32_t)cfsr);
+         "  CFSR=0x%08" PRIx32 "  HFSR=0x%08" PRIx32 "\r\n",
+         cfsr, hfsr);
+  /* CFSR decode hints printed separately so each fits on one line */
+  if (cfsr & 0x00000001u)
+    printf("  [MMFSR] IACCVIOL - exec from non-executable region\r\n");
+  if (cfsr & 0x00000002u)
+    printf("  [MMFSR] DACCVIOL - data access violation\r\n");
+  if (cfsr & 0x00000008u)
+    printf("  [MMFSR] MUNSTKERR - MemManage on exception return\r\n");
+  if (cfsr & 0x00000010u)
+    printf("  [MMFSR] MSTKERR - MemManage on exception entry (stack overflow?)\r\n");
+  if (cfsr & 0x00020000u)
+    printf("  [UFSR] INVSTATE - invalid EPSR (NULL/bad function pointer)\r\n");
+  if (cfsr & 0x00040000u)
+    printf("  [UFSR] INVPC - bad EXC_RETURN\r\n");
+  if (cfsr & 0x00080000u)
+    printf("  [UFSR] NOCP - coprocessor access\r\n");
+  if (cfsr & 0x02000000u)
+    printf("  [UFSR] STKOF - stack overflow (Cortex-M33)\r\n");
   fflush(stdout);
   for (;;)
     ;

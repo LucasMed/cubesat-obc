@@ -3,10 +3,12 @@
 #ifndef FREERTOS_H
 #define FREERTOS_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
 typedef uint32_t TickType_t;
+typedef uint32_t UBaseType_t;
 typedef void (*TaskFunction_t)(void *);
 typedef void *TaskHandle_t;
 
@@ -56,5 +58,11 @@ typedef void *TaskHandle_t;
   {                                                                                                \
     (void)(xTaskToDelete);                                                                         \
   } while (0)
+
+// Stack high-water mark stub (returns 0 on host)
+#define uxTaskGetStackHighWaterMark(xTask) ((UBaseType_t)((void)(xTask), 0u))
+
+// Free heap stub (returns 0 on host)
+#define xPortGetFreeHeapSize() ((size_t)0u)
 
 #endif  // FREERTOS_H
