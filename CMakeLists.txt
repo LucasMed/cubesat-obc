@@ -21,6 +21,10 @@ if(PICO_ENABLED AND DEFINED PICO_SDK_PATH AND EXISTS "${PICO_SDK_PATH}/external/
     # Pull in Pico SDK
     include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
     set(PICO_BUILD TRUE)
+    # Propagate PICO_BUILD to all C/C++ translation units (libraries + executables).
+    # Without this, static libraries compiled before the final link step would
+    # not see the #ifdef PICO_BUILD guards in source files.
+    add_compile_definitions(PICO_BUILD=1)
 else()
     set(PICO_BUILD FALSE)
     if(NOT PICO_ENABLED)
