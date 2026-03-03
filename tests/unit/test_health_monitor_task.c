@@ -62,6 +62,15 @@ bool watchdog_hal_triggered(void)
   return false;
 }
 
+/* fault_report is never reached (watchdog_hal_triggered returns false above),
+ * but we need the symbol for the linker since health_monitor_task.c now
+ * references it. */
+void fault_report(uint16_t id, fault_level_t level)
+{
+  (void)id;
+  (void)level;
+}
+
 /* ---- Unit under test --------------------------------------------------- */
 #include "health_monitor_task.h"
 

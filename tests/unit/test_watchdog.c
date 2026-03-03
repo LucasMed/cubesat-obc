@@ -78,6 +78,14 @@ void eps_monitor_tick(void)
   s_eps_tick_calls++;
 }
 
+/* fault_report is referenced by health_monitor_task.c (watchdog trigger path).
+ * This stub prevents a linker error; the trigger path is not exercised here. */
+void fault_report(uint16_t id, fault_level_t level)
+{
+  (void)id;
+  (void)level;
+}
+
 /* ---- Unit under test --------------------------------------------------- */
 #include "health_monitor_task.h"
 
