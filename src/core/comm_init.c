@@ -9,13 +9,33 @@
 #include <stdio.h>
 
 #ifdef PICO_BUILD
+  #include "FreeRTOS.h"
   #include "pico/stdlib.h"
+  #include "task.h"
 #endif
 
 // OBC Address: 10
 // Ground Station Address: 1
 #define OBC_ADDRESS 10
 #define GN_ADDRESS 1
+
+#ifdef PICO_BUILD
+/**
+ * CSP router task — required by libcsp 2.x (no background router thread).
+ * csp_route_work() dequeues one packet from the RX queue and forwards it
+ * to the appropriate socket.  Must be called repeatedly; a 1 ms yield
+ * keeps latency low without burning CPU.
+ */
+static void vCspRouterTask(void *pvParameters)
+{
+  (void)pvParameters;
+  for (;;)
+  {
+    csp_route_work();
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+#endif
 
 void comm_init(void)
 {
@@ -45,4 +65,13 @@ void comm_init(void)
 
   (void)printf("CSP: Interface KISS added @ address %d\n", OBC_ADDRESS);
   (void)printf("CSP: Route to GN (%d) configured via KISS\n", GN_ADDRESS);
+
+#ifdef PICO_BUILD
+  // 5. Start the CSP router task.
+  //    libcsp 2.x has no built-in background router — csp_route_work() must
+  //    be called from application code.  Use priority tskIDLE_PRIORITY + 5
+  //    so it runs above normal OBC tasks but below the watchdog.
+  xTaskCreate(vCspRouterTask, "CSPRouter", 512, NULL, tskIDLE_PRIORITY + 5, NULL);
+  (void)printf("CSP: Router task started\n");
+#endif
 }

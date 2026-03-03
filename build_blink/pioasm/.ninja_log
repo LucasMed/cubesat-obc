@@ -1,0 +1,14 @@
+# ninja log v5
+1	788	1772568334538961324	CMakeFiles/pioasm.dir/hex_output.cpp.o	55e38bacfc99a21a
+1	865	1772568334620694397	CMakeFiles/pioasm.dir/c_sdk_output.cpp.o	b9c8fc805fbdbb5a
+1	871	1772568334606048153	CMakeFiles/pioasm.dir/json_output.cpp.o	e6f604ec37b99ce2
+2	874	1772568334590536241	CMakeFiles/pioasm.dir/go_output.cpp.o	255e83ab826ff2ce
+1	972	1772568334730158163	CMakeFiles/pioasm.dir/ada_output.cpp.o	f187008c7555af8b
+0	1009	1772568334765737000	CMakeFiles/pioasm.dir/main.cpp.o	fd64ec12fda55d79
+0	1026	1772568334783321459	CMakeFiles/pioasm.dir/pio_disassembler.cpp.o	2e5b3d222a1336f3
+1	1288	1772568335045106762	CMakeFiles/pioasm.dir/python_output.cpp.o	70aa143564208529
+0	1336	1772568335092948879	CMakeFiles/pioasm.dir/gen/lexer.cpp.o	1813308a05da69b9
+0	2795	1772568336551039421	CMakeFiles/pioasm.dir/pio_assembler.cpp.o	28978e8ef2a1e251
+0	2862	1772568336617941167	CMakeFiles/pioasm.dir/gen/parser.cpp.o	b5e3148dc116e512
+2863	3173	1772568336930449552	pioasm	2c253a01ae12df52
+8	61	0	CMakeFiles/install.util	2db1e68d7ebc72b
