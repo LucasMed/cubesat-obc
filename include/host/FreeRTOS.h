@@ -41,11 +41,20 @@ typedef void *TaskHandle_t;
     printf("[FreeRTOS] Scheduler stub (no actual RTOS on host)\\n");                               \
   } while (0)
 
-// Task creation stub
+// Task creation stub — casts pvTaskCode to void* so the function is
+// considered "used" by clang-tidy (avoids false unused-function warnings).
 #define xTaskCreate(pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)     \
   do                                                                                               \
   {                                                                                                \
+    (void)(pvTaskCode);                                                                            \
     printf("[FreeRTOS] Created task: %s (stub)\\n", (pcName));                                     \
+  } while (0)
+
+// Task deletion stub
+#define vTaskDelete(xTaskToDelete)                                                                 \
+  do                                                                                               \
+  {                                                                                                \
+    (void)(xTaskToDelete);                                                                         \
   } while (0)
 
 #endif  // FREERTOS_H
