@@ -2,11 +2,26 @@
 # Alternative to Dev Containers: run build / test commands in a Linux
 # environment from the macOS terminal without opening VS Code.
 #
-# Usage examples:
+# Usage examples (host targets):
 #   docker compose run --rm build           # configure + build
 #   docker compose run --rm test            # build + run all tests
 #   docker compose run --rm coverage        # build + coverage report
 #   docker compose run --rm shell           # interactive shell
+#
+# Usage examples (Pico 2W hardware targets):
+#   docker compose run --rm pico-test       # full pipeline: tests + build + emulate + .uf2
+#   docker compose run --rm pico-build      # cross-compile .uf2 only
+#   docker compose run --rm pico-shell      # interactive shell with SDK
+#
+# The pico-test pipeline stages:
+#   1. Host unit tests    (29/29 CTest)
+#   2. RP2350 .uf2 build  (flash artifact)
+#   3. RP2040 .elf build  (emulation target)
+#   4. rp2040js boot smoke-test
+#   5. Static analysis    (clang-format, clang-tidy, cppcheck)
+#   6. Coverage report    (gcovr HTML)
+#
+# Artifacts are written to ./artifacts/ on the host.
 
 version: "3.9"
 
@@ -20,6 +35,22 @@ x-base: &base
   working_dir: /workspace
   environment:
     - TERM=xterm-256color
+
+x-pico-base: &pico-base
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.pico
+  volumes:
+    - .:/workspace:cached
+    - pico-sdk-cache:/opt/pico-sdk
+    - pico-build-cache:/workspace/build_pico
+    - emu-build-cache:/workspace/build_emu
+    - ./artifacts:/workspace/artifacts
+  working_dir: /workspace
+  environment:
+    - TERM=xterm-256color
+    - PICO_SDK_PATH=/opt/pico-sdk
+    - ARTIFACTS_DIR=/workspace/artifacts
 
 services:
   # ----------------------------------------------------------------
@@ -67,5 +98,38 @@ services:
     tty: true
     command: bash
 
+  # ================================================================
+  # Pico 2W hardware targets (require docker/Dockerfile.pico image)
+  # ================================================================
+
+  # ----------------------------------------------------------------
+  # Full validation pipeline → ready-to-deploy .uf2
+  # Stages: host-test → pico-build → emu-build → emulate → static → coverage
+  # ----------------------------------------------------------------
+  pico-test:
+    <<: *pico-base
+    entrypoint: bash
+    command: scripts/pico_ci.sh all
+
+  # ----------------------------------------------------------------
+  # Cross-compile RP2350 .uf2 only (fast, no tests)
+  # ----------------------------------------------------------------
+  pico-build:
+    <<: *pico-base
+    entrypoint: bash
+    command: scripts/pico_ci.sh pico-build
+
+  # ----------------------------------------------------------------
+  # Interactive shell with Pico SDK, ARM toolchain and rp2040js
+  # ----------------------------------------------------------------
+  pico-shell:
+    <<: *pico-base
+    stdin_open: true
+    tty: true
+    entrypoint: bash
+
 volumes:
   build-cache:
+  pico-sdk-cache:
+  pico-build-cache:
+  emu-build-cache:

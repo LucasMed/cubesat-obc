@@ -39,3 +39,6 @@ bool watchdog_hal_triggered(void)
 }
 
 #endif /* PICO_BUILD */
+
+/* Suppress ISO C "empty translation unit" warning when not built for Pico. */
+typedef int watchdog_hal_pico_unused_t;

@@ -2,6 +2,9 @@
 build/
 build_host/
 build_target/
+build_ci/
+build_pico_ci/
+build_emu_ci/
 pico-sdk/
 cmake-build-*/
 out/

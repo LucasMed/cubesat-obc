@@ -1,0 +1,101 @@
+# =============================================================================
+# docker/Dockerfile.pico
+# =============================================================================
+# Multi-stage image for the CubeSat OBC "pico-test" pipeline.
+#
+# Pipeline stages inside the container:
+#   1. Host unit tests     — 29/29 CTest passing (logic validation)
+#   2. Pico SDK build      — cross-compile cubesat_obc_pico.uf2  (RP2350)
+#   3. Emulation build     — cross-compile cubesat_obc_emu.elf   (RP2040)
+#   4. Boot smoke-test     — rp2040js emulates RP2040 binary,
+#                            verifies expected boot strings on UART
+#
+# On success the /artifacts directory contains:
+#   cubesat_obc_pico.uf2   ← ready-to-flash Pico 2W firmware
+#   cubesat_obc_pico.bin
+#   cubesat_obc_pico.hex
+#   test_results.xml        ← JUnit XML for CI systems
+#   coverage/               ← gcovr HTML coverage report
+# =============================================================================
+
+FROM ubuntu:22.04 AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PICO_SDK_VERSION=2.1.1
+
+# ---------------------------------------------------------------------------
+# System packages
+# ---------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build essentials
+    build-essential \
+    cmake \
+    ninja-build \
+    git \
+    curl \
+    wget \
+    unzip \
+    pkg-config \
+    # ARM cross-compiler (RP2040 + RP2350)
+    gcc-arm-none-eabi \
+    libnewlib-arm-none-eabi \
+    libstdc++-arm-none-eabi-newlib \
+    binutils-arm-none-eabi \
+    # Testing & coverage
+    lcov \
+    gcovr \
+    # Static analysis
+    cppcheck \
+    clang \
+    clang-format \
+    clang-tidy \
+    clang-tools \
+    # Python (gcovr, scripts)
+    python3 \
+    python3-pip \
+    # Node.js 20 LTS (rp2040js emulator)
+    ca-certificates \
+    gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] \
+       https://deb.nodesource.com/node_20.x nodistro main" \
+       > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# rp2040js (RP2040 JavaScript emulator — npm global install)
+# Used for the emulation smoke-test stage.
+# ---------------------------------------------------------------------------
+RUN npm install -g rp2040js@0.19.4
+
+# ---------------------------------------------------------------------------
+# Pico SDK (cloned once into the image, submodules depth-1)
+# ---------------------------------------------------------------------------
+RUN git clone --depth 1 --branch ${PICO_SDK_VERSION} \
+        https://github.com/raspberrypi/pico-sdk.git /opt/pico-sdk \
+    && git -C /opt/pico-sdk submodule update --init --depth 1
+
+ENV PICO_SDK_PATH=/opt/pico-sdk
+
+# ---------------------------------------------------------------------------
+# Non-root user (matches devcontainer UID convention)
+# ---------------------------------------------------------------------------
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd  --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} \
+    && apt-get update && apt-get install -y sudo \
+    && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# ---------------------------------------------------------------------------
+# Default: run the full CI pipeline when this image is `docker run`ed
+# ---------------------------------------------------------------------------
+ENTRYPOINT ["bash", "scripts/pico_ci.sh"]
+CMD ["all"]
