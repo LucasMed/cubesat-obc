@@ -37,42 +37,40 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
 
   #if defined(__arm__) || defined(__thumb__)
 /**
- * ARM HardFault handler — captures the exception stack frame and prints the
- * faulting PC, LR, and CFSR so we can identify the crash site in the map file.
+ * ARM HardFault handler — prints CFSR + faulting PC without a naked trampoline.
+ *
+ * FreeRTOS tasks run on PSP.  We read PSP with a safe inline-asm constraint
+ * (no naked function, no stack corruption risk) to find the stacked frame and
+ * extract the PC.  MSP is the interrupt/exception stack and is not the task
+ * frame when a task triggers the fault.
+ *
+ * Exception frame layout (Cortex-M basic frame, stacked on PSP by hardware):
+ *   [0]=r0  [1]=r1  [2]=r2  [3]=r3
+ *   [4]=r12 [5]=lr(EXC)  [6]=pc  [7]=xpsr
  *
  * The Pico SDK vector table uses "isr_hardfault" (not HardFault_Handler).
- * The naked trampoline selects MSP vs PSP based on EXC_RETURN bit 2, then
- * calls the C handler with a pointer to the saved register frame.
- *
- * Exception frame layout (Cortex-M, basic frame):
- *   [0]=r0  [1]=r1  [2]=r2  [3]=r3
- *   [4]=r12 [5]=lr  [6]=pc  [7]=xpsr
  */
-void hardfault_c(uint32_t *frame)
+void isr_hardfault(void)
 {
-  /* CFSR: Configurable Fault Status Register — UFSR | BFSR | MMFSR */
+  /* CFSR: UsageFault | BusFault | MemManage status bits */
   volatile uint32_t cfsr = *(volatile uint32_t *)0xE000ED28UL;
+
+  /* Read PSP — safe inline-asm, not naked, compiler handles preamble */
+  uint32_t psp_val;
+  __asm volatile("mrs %0, psp" : "=r"(psp_val));
+  const uint32_t *psp_frame = (const uint32_t *)psp_val;
+
+  uint32_t pc = psp_frame[6];
+  uint32_t lr = psp_frame[5];
+
   printf("FATAL: HardFault!\r\n"
          "  PC  =0x%08" PRIx32 "\r\n"
          "  LR  =0x%08" PRIx32 "\r\n"
-         "  R0  =0x%08" PRIx32 "  R1=0x%08" PRIx32 "\r\n"
          "  CFSR=0x%08" PRIx32 "\r\n",
-         frame[6], frame[5], frame[0], frame[1], (uint32_t)cfsr);
+         pc, lr, (uint32_t)cfsr);
   fflush(stdout);
   for (;;)
     ;
-}
-
-/* naked trampoline: figure out which stack held the exception frame */
-void isr_hardfault(void) __attribute__((naked));
-void isr_hardfault(void)
-{
-  __asm volatile("tst   lr, #4        \n" /* EXC_RETURN bit2: 0=MSP, 1=PSP */
-                 "ite   eq            \n"
-                 "mrseq r0, msp       \n"
-                 "mrsne r0, psp       \n"
-                 "b     hardfault_c   \n" /* r0 = frame pointer → first arg */
-  );
 }
   #endif
 
