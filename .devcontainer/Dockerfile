@@ -43,6 +43,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------------------------------------------
+# Node.js 20 LTS + rp2040js (RP2040 emulator for boot smoke-test)
+# ----------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] \
+       https://deb.nodesource.com/node_20.x nodistro main" \
+       > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "Node.js ready — rp2040js is installed via docker/package.json at runtime"
+
+# ----------------------------------------------------------------
 # Create a non-root user that matches the UID/GID of the macOS host
 # user (VS Code will override these via devcontainer.json remoteUser)
 # ----------------------------------------------------------------

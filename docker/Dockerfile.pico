@@ -66,10 +66,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
-# rp2040js (RP2040 JavaScript emulator — npm global install)
-# Used for the emulation smoke-test stage.
+# rp2040js (RP2040 JavaScript emulator — local install in docker/)
+# ESM import() does not resolve global npm packages; we use a local
+# node_modules via docker/package.json so the script works in both
+# the pico-test container and the devcontainer.
 # ---------------------------------------------------------------------------
-RUN npm install -g rp2040js@0.19.4
+COPY docker/package.json /workspace/docker/package.json
+RUN npm install --prefix /workspace/docker --omit=dev \
+ && node -e "import('/workspace/docker/node_modules/rp2040js/dist/esm/index.js').then(m=>console.log('rp2040js',Object.keys(m).includes('RP2040')?'OK':'ERROR'))"
 
 # ---------------------------------------------------------------------------
 # Pico SDK (cloned once into the image, submodules depth-1)

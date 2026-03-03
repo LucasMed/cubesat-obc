@@ -1,0 +1,10 @@
+{
+    "name": "cubesat-obc-emulator",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "description": "rp2040js boot smoke-test for CubeSat OBC firmware",
+    "dependencies": {
+        "rp2040js": "^1.3.0"
+    }
+}

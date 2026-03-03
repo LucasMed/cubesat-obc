@@ -5,6 +5,8 @@ build_target/
 build_ci/
 build_pico_ci/
 build_emu_ci/
+build_pico/
+build_emu/
 pico-sdk/
 cmake-build-*/
 out/
@@ -20,6 +22,7 @@ out/
 # Dependencies
 vendor/
 external/
+node_modules/
 
 # IDE and editor files
 .vscode/
