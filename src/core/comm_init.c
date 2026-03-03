@@ -39,10 +39,14 @@ static void vCspRouterTask(void *pvParameters)
 
 void comm_init(void)
 {
-  (void)printf("CSP: Initializing stack...\n");
+  (void)printf("CSP: [1] stack init...\r\n");
+  (void)fflush(stdout);
 
   // 1. Init CSP (also registers the loopback interface automatically)
   csp_init();
+
+  (void)printf("CSP: [2] csp_init done\r\n");
+  (void)fflush(stdout);
 
 #ifndef PICO_BUILD
   /* ── Host build: use physical UART1 via KISS ──────────────────────────── */
@@ -55,7 +59,8 @@ void comm_init(void)
   int res = csp_usart_open_and_add_kiss_interface(&conf, "KISS", OBC_ADDRESS, &kiss_iface);
   if (res != CSP_ERR_NONE)
   {
-    (void)printf("CSP ERROR: Failed to add KISS interface (%d)\n", res);
+    (void)printf("CSP ERROR: Failed to add KISS interface (%d)\r\n", res);
+    (void)fflush(stdout);
     return;
   }
 
@@ -64,21 +69,21 @@ void comm_init(void)
   (void)snprintf(rtable, sizeof(rtable), "%d/255 KISS", GN_ADDRESS);
   (void)csp_rtable_load(rtable);
 
-  (void)printf("CSP: Interface KISS added @ address %d\n", OBC_ADDRESS);
-  (void)printf("CSP: Route to GN (%d) configured via KISS\n", GN_ADDRESS);
+  (void)printf("CSP: KISS @ addr %d, route to GN(%d)\r\n", OBC_ADDRESS, GN_ADDRESS);
+  (void)fflush(stdout);
 #else
-  /* ── Pico build: libcsp has no Pico USART driver; use loopback only.
-   *    csp_init() already registered the LOOP interface for the local
-   *    address — all CSP tasks (bind/accept/send) work via loopback.   ── */
-  (void)printf("CSP: Pico build — loopback-only mode (no external KISS)\n");
+  /* ── Pico build: use loopback only — no blocking POSIX UART calls.
+   *    csp_init() already registered LOOP for the local address. ── */
+  (void)printf("CSP: [3] loopback-only mode\r\n");
+  (void)fflush(stdout);
 #endif
 
 #ifdef PICO_BUILD
-  // 5. Start the CSP router task.
-  //    libcsp 2.x has no built-in background router — csp_route_work() must
-  //    be called from application code.  Use priority tskIDLE_PRIORITY + 5
-  //    so it runs above normal OBC tasks but below the watchdog.
+  // 5. Start the CSP router task (libcsp 2.x has no built-in router thread).
+  (void)printf("CSP: [4] creating router task...\r\n");
+  (void)fflush(stdout);
   xTaskCreate(vCspRouterTask, "CSPRouter", 512, NULL, tskIDLE_PRIORITY + 5, NULL);
-  (void)printf("CSP: Router task started\n");
+  (void)printf("CSP: [5] done\r\n");
+  (void)fflush(stdout);
 #endif
 }
