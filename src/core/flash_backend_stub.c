@@ -17,10 +17,10 @@
 
   #include "flash_backend.h"
 
-  /* cppcheck-suppress misra-c2012-21.6 -- MISRA deviation: stdio fopen/fwrite
+/* cppcheck-suppress misra-c2012-21.6 -- MISRA deviation: stdio fopen/fwrite
  * are used exclusively in this host-only stub; not compiled for flight targets
  * (guarded by #ifndef PICO_BUILD). See MISRA_DEVIATIONS.md §21.6-D2. */
-#include <stdio.h>
+  #include <stdio.h>
 
   #define FLASH_LOG_PATH "/tmp/obc_log.bin"
 

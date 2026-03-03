@@ -100,8 +100,13 @@ void q_rotate_vec(quat_t q, const float v[3], float v_out[3])
 {
   /* v' = q ⊗ [0,v] ⊗ q*
    * Expanded form avoids constructing a pure quaternion explicitly. */
-  float w = q.w, x = q.x, y = q.y, z = q.z;
-  float vx = v[0], vy = v[1], vz = v[2];
+  float w = q.w;
+  float x = q.x;
+  float y = q.y;
+  float z = q.z;
+  float vx = v[0];
+  float vy = v[1];
+  float vz = v[2];
 
   /* t = 2 * (q_vec × v) */
   float tx = 2.0f * (y * vz - z * vy);
@@ -118,7 +123,10 @@ void q_rotate_vec(quat_t q, const float v[3], float v_out[3])
 
 void q_to_euler(quat_t q, float *roll_rad, float *pitch_rad, float *yaw_rad)
 {
-  float w = q.w, x = q.x, y = q.y, z = q.z;
+  float w = q.w;
+  float x = q.x;
+  float y = q.y;
+  float z = q.z;
 
   /* Roll (rotation about X) */
   float sinr_cosp = 2.0f * (w * x + y * z);
