@@ -3,8 +3,6 @@
 
 #include "config.h"
 
-#include <stdio.h>
-
 void reaction_wheel_init(reaction_wheel_t *rw)
 {
   rw->omega = 0.0f;

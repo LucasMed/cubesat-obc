@@ -3,6 +3,9 @@
 #include <csp/csp.h>
 #include <csp/drivers/usart.h>
 #include <csp/interfaces/csp_if_kiss.h>
+/* cppcheck-suppress misra-c2012-21.6 -- MISRA deviation: stdio printf
+ * used for CSP stack debug output; removed in production linker script
+ * under NDEBUG. See MISRA_DEVIATIONS.md §21.6-D1. */
 #include <stdio.h>
 
 #ifdef PICO_BUILD
@@ -16,7 +19,7 @@
 
 void comm_init(void)
 {
-  printf("CSP: Initializing stack...\n");
+  (void)printf("CSP: Initializing stack...\n");
 
   // 1. Init CSP
   csp_init();
@@ -30,16 +33,16 @@ void comm_init(void)
   int res = csp_usart_open_and_add_kiss_interface(&conf, "KISS", OBC_ADDRESS, &kiss_iface);
   if (res != CSP_ERR_NONE)
   {
-    printf("CSP ERROR: Failed to add KISS interface (%d)\n", res);
+    (void)printf("CSP ERROR: Failed to add KISS interface (%d)\n", res);
     return;
   }
 
   // 4. Set routing table
   // Route for address 1 (Ground Station) goes via KISS interface
   char rtable[64];
-  snprintf(rtable, sizeof(rtable), "%d/255 KISS", GN_ADDRESS);
-  csp_rtable_load(rtable);
+  (void)snprintf(rtable, sizeof(rtable), "%d/255 KISS", GN_ADDRESS);
+  (void)csp_rtable_load(rtable);
 
-  printf("CSP: Interface KISS added @ address %d\n", OBC_ADDRESS);
-  printf("CSP: Route to GN (%d) configured via KISS\n", GN_ADDRESS);
+  (void)printf("CSP: Interface KISS added @ address %d\n", OBC_ADDRESS);
+  (void)printf("CSP: Route to GN (%d) configured via KISS\n", GN_ADDRESS);
 }

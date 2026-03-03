@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-12
-**Current Phase**: Phase 5 — Flight Readiness (branch `feature/phase5-flight-ready`)
-**Current Branch**: `feature/phase5-flight-ready`
+**Last Updated**: 2026-03-20
+**Current Phase**: Phase 6 — Closed-Loop Stability & Architectural Consolidation (branch `feature/phase6-closed-loop`)
+**Current Branch**: `feature/phase6-closed-loop`
 
 ---
 
@@ -79,22 +79,21 @@
 
 ---
 
-### Phase 6: Closed-Loop Stability & Architectural Consolidation ⏳ (Planned)
+### Phase 6: Closed-Loop Stability & Architectural Consolidation ✅ PRs 21–27 (2026-03-20)
 - **Goal**: Verify full EKF→LQR closed-loop stability via host simulation; close architectural debt (quaternion utility, gain scheduling, integration tests T-FMS-01 + T-SAFE-01, flash logger backend, coverage ≥90%, MISRA audit).
-- **Branch**: `feature/phase6-closed-loop` (to be created)
+- **Branch**: `feature/phase6-closed-loop`
 - **Plan**: [docs/PHASE6_PLAN.md](PHASE6_PLAN.md)
-- **Target PRs**: PR-21..27
-- **Target test count**: 41
+- **Outcomes (PRs 21–27 committed, 29/29 tests passing)**:
 
-| PR | Description | Status |
-|----|-------------|--------|
-| PR-21 | Quaternion utility library (T-QAT-01..05) | ⏳ Planned |
-| PR-22 | Configurable magnetic declination (T-EKFM-07) | ⏳ Planned |
-| PR-23 | LQR gain scheduling per flight mode (T-LQRS-01..03) | ⏳ Planned |
-| PR-24 | Closed-loop simulation harness (T-CLS-01..06) | ⏳ Planned |
-| PR-25 | Integration tests T-FMS-01 + T-SAFE-01 | ⏳ Planned |
-| PR-26 | Flash-backend stub + event logger flush hook | ⏳ Planned |
-| PR-27 | gcovr coverage ≥90% + MISRA C audit | ⏳ Planned |
+| PR | Commit | Description | Tests |
+|----|--------|-------------|-------|
+| PR-21 | `bbe9f9a` | Quaternion utility library (`quaternion.c/h`) | quaternion_test: 5/5 ✅ |
+| PR-22 | `d7af9fc` | Configurable magnetic declination (`OBC_MAG_DECLINATION_RAD`) | ekf_mag_test +1 (T-EKFM-07) ✅ |
+| PR-23 | `66798de` | LQR gain scheduling per energy state (`lqr_schedule.c/h`) | lqr_schedule_test: 3/3 ✅ |
+| PR-24 | `5ada29a` | Closed-loop simulation harness (`closed_loop_sim.c/h`) | closed_loop_test: 6/6 ✅ |
+| PR-25 | `36afd95` | Integration tests T-FMS-01a..d + T-SAFE-01a..c; watchdog safe-mode path | test_fault_safe: ✅  test_safe_trigger: ✅ |
+| PR-26 | `ff630b2` | Flash-backend stub + event logger flush hook | event_logger_test: 4/4 ✅ |
+| PR-27 | `454fcdf` | MISRA C audit (0 required/mandatory violations) + gcovr 91.8% | — |
 
 ---
 
@@ -123,7 +122,7 @@
 | Spec Alignment | Mar 2026 | REVISION_PHASE PRs 1–10 vs SPEC-2 v2.0 | ✅ Complete (10/10 PRs) |
 | 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
 | 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | ✅ Complete (4/4 feature PRs + docs) |
-| 6 — Closed-Loop Stability | Q2 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ⏳ Planned — see [PHASE6_PLAN.md](PHASE6_PLAN.md) |
+| 6 — Closed-Loop Stability | Q1 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ✅ Complete (7/7 PRs) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
@@ -147,10 +146,18 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 23/23 | 0 | 23 |
-| Integration Tests | 2/2 | 2 | 4 |
+| Unit Tests | 27/27 | 0 | 27 |
+| Integration Tests | 2/2 | 0 | 2 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **21** | **4** | **25** |
+| **Total** | **29** | **0** | **29** |
+
+**New test targets (Phase 6 — PRs 21–27)**:
+- `quaternion_test` — 5 cases (T-QAT-01..05, unit-quaternion math)
+- `lqr_schedule_test` — 3 cases (T-LQRS-01..03, gain table selection)
+- `closed_loop_test` — 6 cases (T-CLS-01..06, EKF→LQR stability criterion)
+- `event_logger_test` — 4 sub-tests (T-LOG-01a..d, flush to flash backend)
+- `test_fault_safe` — 4 sub-tests (T-FMS-01a..d, end-to-end CRITICAL→FM_SAFE)
+- `test_safe_trigger` — 3 sub-tests (T-SAFE-01a..c, watchdog trigger→FM_SAFE)
 
 **New test targets (PRs 4–10)**:
 - `fmm_test` — 11 cases (flight mode FSM, guard transitions)
@@ -174,9 +181,10 @@ cd build && cmake .. && cmake --build . && ctest --output-on-failure
 | Standard | Coverage |
 |----------|----------|
 | ECSS-Q-ST-80C | ✅ Architecture, documentation |
-| MISRA C | ✅ Naming, static memory, safety |
+| MISRA C | ✅ 0 required/mandatory violations; advisory deviations in `docs/standards/MISRA_DEVIATIONS.md` |
 | IEC 61508 | ✅ Task priorities, determinism |
 | NASA SWE-130 | ✅ Modular design, test automation |
+| gcovr Line Coverage | ✅ 91.8% on `src/control/` + `src/core/` + `src/services/` (target ≥90%) |
 
 ---
 

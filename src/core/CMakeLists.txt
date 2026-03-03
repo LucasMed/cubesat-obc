@@ -2,6 +2,8 @@ add_library(core_lib
     system_state.c
     data_layer.c
     comm_init.c
+    event_logger.c
+    flash_backend_stub.c
 )
 
 target_include_directories(core_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)

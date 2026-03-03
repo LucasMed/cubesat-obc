@@ -267,6 +267,35 @@ T-MAG-01..04: HMC5883L Magnetometer driver (PR-18)
 T-EKFM-01..06: EKF yaw update via magnetometer tilt compensation (PR-19)
   └─ Validates: FR-2 (full 3-axis attitude determination including yaw), FR-3 (EKF observability)
   └─ Status: ✅ All 6 passing
+
+T-EKFM-07: Configurable magnetic declination offset applied in ekf_update_mag() (PR-22)
+  └─ Validates: FR-2 (yaw referenced to true north via OBC_MAG_DECLINATION_RAD)
+  └─ Status: ✅ Passing
+
+T-QAT-01..05: Unit-quaternion library — multiply, rotate, normalize, slerp, to-euler (PR-21)
+  └─ Validates: FR-4 (Attitude Control — quaternion math correctness)
+  └─ Status: ✅ All 5 passing
+
+T-LQRS-01..03: LQR gain scheduling — table lookup by energy state + angular momentum (PR-23)
+  └─ Validates: FR-4 (Attitude Control — gain scheduling), SYS-REQ-4 (adaptive gains)
+  └─ Status: ✅ All 3 passing
+
+T-CLS-01..06: Closed-loop simulation — EKF → LQR → RK2-dynamics stability harness (PR-24)
+  └─ Validates: FR-2 (EKF), FR-4 (LQR), FR-3 (RK2 dynamics), SYS-REQ-1 (attitude stabilisation)
+  └─ Criterion: settling within 30 s, residual ω < 0.05 rad/s
+  └─ Status: ✅ All 6 passing
+
+T-FMS-01a..d: Fault-to-safe integration — CRITICAL fault → FM_SAFE within 100 ms ticks (PR-25)
+  └─ Validates: FR-10 (Fault Aggregation → fmm_force_safe), SYS-REQ-5 (safe-mode latency)
+  └─ Status: ✅ All 4 sub-tests passing
+
+T-SAFE-01a..c: Watchdog miss → safe-mode integration — watchdog_hal_triggered() path (PR-25)
+  └─ Validates: FR-8 (Health Monitoring), FR-10 (Fault Aggregation), SYS-REQ-5
+  └─ Status: ✅ All 3 sub-tests passing
+
+T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers flash write (PR-26)
+  └─ Validates: FR-12 (Persistent Event Logging via flash_backend_flush()), SYS-REQ-6
+  └─ Status: ✅ All 4 sub-tests passing
 ```
 
 ---
@@ -281,6 +310,9 @@ T-EKFM-01..06: EKF yaw update via magnetometer tilt compensation (PR-19)
 | **Spec-Alignment PRs 1–8** | Unit Testing (host build) | FR-9..12, SYS-REQ-4..6, FR-1/FR-4 DLA path | ✅ 16/16 passing |
 | **Spec-Alignment PRs 9–10** | Unit Testing (host build) | FR-7 DLA migration (T-TLM-01..06), FR-8 tick wiring (T-HM-01..03) | ✅ 17/17 passing |
 | **Phase 4 PRs 11–15** | Unit Testing (host build) | FR-2 (EKF), FR-3 (RK2/dynamics), FR-4 (LQR dispatch) | ✅ 19/19 passing |
+| **Phase 5 PRs 16–20** | Unit Testing (host build) | FR-2 (yaw/mag), FR-5 (momentum dump), FR-8 (watchdog HAL) | ✅ 23/23 passing |
+| **Phase 6 PRs 21–27** | Unit + Integration Testing (host build) | FR-2 (quat, declination), FR-4 (LQR schedule, closed-loop), FR-8 (watchdog safe-mode), FR-10 (CRITICAL→FM_SAFE), FR-12 (flash backend) | ✅ 29/29 passing |
+| **MISRA C Audit** | Static analysis + deviation log | All source files | ✅ 0 required/mandatory violations; 91.8% line coverage |
 | **Phase 4** | Sensor Fusion Testing (Kalman) | FR-2, FR-3, FR-4 (enhanced) | Attitude error <5° RMS |
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
 
@@ -290,7 +322,6 @@ T-EKFM-01..06: EKF yaw update via magnetometer tilt compensation (PR-19)
 
 | Gap | Impact | Mitigation | Owner |
 |-----|--------|-----------|-------|
-| Integration tests T-FMS-01, T-SAFE-01 pending | SAFE-trigger sequence unverified end-to-end | Create `test_fault_safe.c`, `test_safe_trigger.c` in future sprint | Integration Lead |
 | WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
 | T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
 
@@ -299,13 +330,15 @@ T-EKFM-01..06: EKF yaw update via magnetometer tilt compensation (PR-19)
 ## Summary
 
 - **Total Requirements**: 17 (12 functional, 5 non-functional)
-- **Unit Test Coverage**: 23 tests covering all functional requirements implemented to date (23/23 passing)
-- **Integration Test Coverage**: 2 done, 4 planned
-- **Overall Readiness**: 92% (Phase 5 host-testable complete; hardware validation pending)
+- **Unit Test Coverage**: 27 unit tests + 2 integration test targets = **29 CTest executables** (29/29 passing)
+- **Integration Test Coverage**: 2 done (T-FMS-01, T-SAFE-01), 2 planned (hardware)
+- **Code Line Coverage**: 91.8% (src/control/ + src/core/ + src/services/ combined)
+- **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/standards/MISRA_DEVIATIONS.md`
+- **Overall Readiness**: 96% (Phase 6 host-testable complete; hardware validation pending)
 - **Risk Level**: LOW
 
 ---
 
-**Last Updated**: 2026-03-12
-**Matrix Version**: 2.2
+**Last Updated**: 2026-03-20
+**Matrix Version**: 2.3
 **Status**: Active (updated each phase)

@@ -28,6 +28,7 @@
 #include "data_layer.h"
 #include "flight_mode.h"
 #include "lqr.h"
+#include "lqr_schedule.h"
 #include "magnetorquer.h"
 #include "momentum_dump.h"
 #include "task.h"
@@ -81,7 +82,9 @@ void vAttitudeControlTask_Step(void)
 
   if (snap.mode == FM_NOMINAL && snap.state.imu_ekf_valid)
   {
-    /* Precise nadir tracking: use LQR with EKF attitude estimate. */
+    /* Precise nadir tracking: use LQR with EKF attitude estimate.
+     * Apply mode-scheduled gains before computing torques (PR-23). */
+    lqr_schedule_apply(&g_lqr, snap.mode);
     float att_err[3] = {snap.state.attitude[0] - target[0], snap.state.attitude[1] - target[1],
                         snap.state.attitude[2] - target[2]};
     lqr_compute(&g_lqr, att_err, snap.state.rates, torque);

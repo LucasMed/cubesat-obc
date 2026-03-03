@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "config.h"
 #include "eps.h"
+#include "fault_ids.h"
 #include "fault_manager.h"
 #include "task.h"
 #include "watchdog_hal.h"
@@ -15,10 +16,20 @@ void vHealthMonitorTask_Step(void)
   /* 1. Feed the hardware watchdog — must happen every health-monitor tick. */
   watchdog_hal_feed();
 
-  /* 2. Periodic Fault Manager age / auto-clear pass (1 Hz) */
+  /* 2. Check if the previous reset was watchdog-induced.
+   * If so raise a CRITICAL fault which immediately forces FM_SAFE via
+   * fmm_force_safe() inside fault_report().
+   * The check is intentionally done before fault_manager_tick() so the
+   * CRITICAL entry is visible in the fault table on the same tick. */
+  if (watchdog_hal_triggered())
+  {
+    fault_report(FAULT_WDT_KICK_MISSED, FAULT_LEVEL_CRITICAL);
+  }
+
+  /* 3. Periodic Fault Manager age / auto-clear pass (1 Hz) */
   fault_manager_tick();
 
-  /* 3. EPS voltage classification, fault raise/clear, rail control */
+  /* 4. EPS voltage classification, fault raise/clear, rail control */
   eps_monitor_tick();
 
   printf("[health_monitor_task] Health check\n");

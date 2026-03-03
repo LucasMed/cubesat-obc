@@ -7,6 +7,9 @@
 
 #include "drivers/i2c_interface.h"
 
+/* cppcheck-suppress misra-c2012-21.6 -- MISRA deviation: printf used for
+ * IMU driver fault diagnostics; acceptable during bring-up; to be replaced
+ * with log_event() in Phase 7. See MISRA_DEVIATIONS.md §21.6-D4. */
 #include <stdio.h>
 
 // MPU6050 Registers
@@ -27,26 +30,26 @@ int mpu6050_init(void)
   uint8_t id;
   if (i2c_bus_write_read(MPU6050_ADDR, (uint8_t[]){MPU6050_WHO_AM_I}, 1, &id, 1) < 0)
   {
-    printf("mpu6050: Sensor not detected on I2C bus\n");
+    (void)printf("mpu6050: Sensor not detected on I2C bus\n");
     return -1;
   }
 
-  if (id != 0x68)
+  if (id != (uint8_t)0x68u)
   {
-    printf("mpu6050: Unknown device ID: 0x%02X\n", id);
+    (void)printf("mpu6050: Unknown device ID: 0x%02X\n", id);
     return -1;
   }
 
   // Wake up device (write 0 to PWR_MGMT_1)
   data[0] = MPU6050_PWR_MGMT_1;
   data[1] = MPU6050_WAKEUP;
-  if (i2c_bus_write(MPU6050_ADDR, data, 2) < 0)
+  if (i2c_bus_write(MPU6050_ADDR, data, 2u) < 0)
   {
-    printf("mpu6050: Failed to wake up\n");
+    (void)printf("mpu6050: Failed to wake up\n");
     return -1;
   }
 
-  printf("mpu6050: initialized successfully\n");
+  (void)printf("mpu6050: initialized successfully\n");
   return 0;
 }
 
@@ -61,13 +64,13 @@ int mpu6050_read_raw(float accel[3], float gyro[3])
   }
 
   // Combine high/low bytes
-  int16_t ax = (int16_t)((buffer[0] << 8) | buffer[1]);
-  int16_t ay = (int16_t)((buffer[2] << 8) | buffer[3]);
-  int16_t az = (int16_t)((buffer[4] << 8) | buffer[5]);
+  int16_t ax = (int16_t)(((uint16_t)buffer[0] << 8u) | (uint16_t)buffer[1]);
+  int16_t ay = (int16_t)(((uint16_t)buffer[2] << 8u) | (uint16_t)buffer[3]);
+  int16_t az = (int16_t)(((uint16_t)buffer[4] << 8u) | (uint16_t)buffer[5]);
   // buffer[6,7] is temperature (skip for now)
-  int16_t gx = (int16_t)((buffer[8] << 8) | buffer[9]);
-  int16_t gy = (int16_t)((buffer[10] << 8) | buffer[11]);
-  int16_t gz = (int16_t)((buffer[12] << 8) | buffer[13]);
+  int16_t gx = (int16_t)(((uint16_t)buffer[8] << 8u) | (uint16_t)buffer[9]);
+  int16_t gy = (int16_t)(((uint16_t)buffer[10] << 8u) | (uint16_t)buffer[11]);
+  int16_t gz = (int16_t)(((uint16_t)buffer[12] << 8u) | (uint16_t)buffer[13]);
 
   // Convert to physical units (scales based on ±2g and ±250 deg/s by default)
   // For now using ±2g (16384 LSB/g) and ±250 deg/s (131 LSB/deg/s)
@@ -92,15 +95,15 @@ int mpu6050_read(float *roll, float *pitch, float *yaw)
   }
 
   // Simple pass-through for now (or basic complementary filter in the future)
-  if (roll)
+  if (roll != NULL)
   {
     *roll = gyro[0];
   }
-  if (pitch)
+  if (pitch != NULL)
   {
     *pitch = gyro[1];
   }
-  if (yaw)
+  if (yaw != NULL)
   {
     *yaw = gyro[2];
   }

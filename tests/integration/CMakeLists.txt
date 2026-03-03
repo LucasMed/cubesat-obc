@@ -8,6 +8,44 @@ if(NOT PICO_BUILD)
     target_include_directories(test_i2c_mock PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_i2c_mock drivers_lib core_lib)
     add_test(NAME i2c_mock_test COMMAND test_i2c_mock)
+
+    # PR-25 gate: T-FMS-01 — CRITICAL fault forces FM_SAFE end-to-end.
+    # Uses real fault_manager + FMM + data_layer stack; no hardware dependency.
+    # T-FMS-01a: CRITICAL → FM_SAFE immediate
+    # T-FMS-01b: ERROR    → no mode change
+    # T-FMS-01c: WARNING  → no mode change
+    # T-FMS-01d: FM_SAFE sticky after fault_clear()
+    add_executable(test_fault_safe
+        test_fault_safe.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_fault_safe PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    add_test(NAME fault_safe_test COMMAND test_fault_safe)
+
+    # PR-25 gate: T-SAFE-01 — watchdog reset detected by health monitor →
+    # FAULT_WDT_KICK_MISSED CRITICAL → FM_SAFE autonomous transition.
+    # Compiles health_monitor_task.c with a controllable watchdog HAL stub.
+    # T-SAFE-01a: triggered=true  → FM_SAFE + fault active
+    # T-SAFE-01b: triggered=false → no FM_SAFE (clean boot)
+    # T-SAFE-01c: repeated triggers → FM_SAFE sticky, fault count increments
+    add_executable(test_safe_trigger
+        test_safe_trigger.c
+        ../../src/tasks/health_monitor_task.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_safe_trigger PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    add_test(NAME safe_trigger_test COMMAND test_safe_trigger)
+
 else()
     # Pico hardware integration tests
     add_executable(test_i2c_hardware

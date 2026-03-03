@@ -40,7 +40,7 @@
 /** Zero a 6×6 matrix. */
 static void mat66_zero(float A[6][6])
 {
-  memset(A, 0, sizeof(float) * 36);
+  (void)memset(A, 0, sizeof(float) * 36u);
 }
 
 /**
@@ -61,7 +61,7 @@ static void mat66_mul(float A[6][6], float B[6][6], float C[6][6])
       }
     }
   }
-  memcpy(C, tmp, sizeof(float) * 36);
+  (void)memcpy(C, tmp, sizeof(float) * 36u);
 }
 
 /**
@@ -82,7 +82,7 @@ static void mat66_mul_T(float A[6][6], float B[6][6], float C[6][6])
       }
     }
   }
-  memcpy(C, tmp, sizeof(float) * 36);
+  (void)memcpy(C, tmp, sizeof(float) * 36u);
 }
 
 /** A += B  (element-wise, in-place). */
@@ -103,7 +103,7 @@ static void mat66_add(float A[6][6], float B[6][6])
 
 void ekf_init(ekf_t *ekf)
 {
-  memset(ekf, 0, sizeof(*ekf));
+  (void)memset(ekf, 0, sizeof(*ekf));
 
   /* Initial state covariance P0 */
   for (int i = 0; i < 3; i++)
@@ -171,7 +171,7 @@ void ekf_update(ekf_t *ekf, const float accel[3])
 
   /* Guard against degenerate accelerometer (near-zero magnitude) */
   float ay2_az2 = ay * ay + az * az;
-  if (ay2_az2 < 1e-10f)
+  if (ay2_az2 < 1.0e-10f)
   {
     return;
   }
@@ -196,7 +196,7 @@ void ekf_update(ekf_t *ekf, const float accel[3])
 
   /* ---- S^{-1} (2×2 analytic inverse) --------------------------------- */
   float det = S00 * S11 - S01 * S10;
-  if (fabsf(det) < 1e-12f)
+  if (fabsf(det) < 1.0e-12f)
   {
     return; /* numerically singular — skip update */
   }
@@ -236,7 +236,7 @@ void ekf_update(ekf_t *ekf, const float accel[3])
       P_new[i][j] = ekf->P[i][j] - K[i][0] * ekf->P[0][j] - K[i][1] * ekf->P[1][j];
     }
   }
-  memcpy(ekf->P, P_new, sizeof(P_new));
+  (void)memcpy(ekf->P, P_new, sizeof(P_new));
 }
 
 void ekf_get_attitude(const ekf_t *ekf, float att[3])
@@ -292,7 +292,7 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
 
   /* ---- Innovation covariance: S = P[2][2] + r_mag (scalar) ----------- */
   float S = ekf->P[2][2] + ekf->r_mag;
-  if (fabsf(S) < 1e-12f)
+  if (fabsf(S) < 1.0e-12f)
   {
     return;
   }
@@ -320,5 +320,5 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
       P_new[i][j] = ekf->P[i][j] - K[i] * ekf->P[2][j];
     }
   }
-  memcpy(ekf->P, P_new, sizeof(P_new));
+  (void)memcpy(ekf->P, P_new, sizeof(P_new));
 }

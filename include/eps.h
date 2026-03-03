@@ -130,6 +130,20 @@ extern "C"
    */
   void eps_monitor_tick(void);
 
+  /**
+   * @brief Hardware abstraction: read raw EPS telemetry.
+   *
+   * Default weak implementation returns nominal values for host builds.
+   * Override with a strong symbol in the hardware driver layer or in
+   * unit tests to inject specific voltage/current/temperature values.
+   *
+   * @param vbatt  Output: battery voltage (V).
+   * @param ibatt  Output: battery current, positive = charging (A).
+   * @param temp   Output: PCB / battery temperature (°C).
+   * @return true on success, false if the sensor read failed.
+   */
+  bool eps_hal_read(float *vbatt, float *ibatt, float *temp);
+
 #ifdef __cplusplus
 }
 #endif

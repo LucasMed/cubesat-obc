@@ -68,6 +68,19 @@ extern "C"
   typedef char log_event_size_check_[(sizeof(log_event_t) == 40u) ? 1 : -1];
 
   /* ------------------------------------------------------------------ */
+  /* Logger configuration constants                                     */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * @brief Maximum log records held in the in-memory ring buffer.
+   *
+   * When the buffer reaches this capacity log_event() automatically
+   * calls flash_backend_flush() and resets the buffer before writing
+   * the new record.
+   */
+#define LOG_RING_CAPACITY 64u
+
+  /* ------------------------------------------------------------------ */
   /* Logger API                                                          */
   /* ------------------------------------------------------------------ */
 

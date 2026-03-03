@@ -163,6 +163,7 @@ if(NOT PICO_BUILD)
         ../../src/tasks/attitude_control_task.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/lqr_schedule.c
     )
     target_include_directories(test_attitude_control_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -247,4 +248,56 @@ if(NOT PICO_BUILD)
     target_include_directories(test_ekf_mag PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ekf_mag m)
     add_test(NAME ekf_mag_test COMMAND test_ekf_mag)
+
+    # PR-21 gate: Unit-quaternion utility library.
+    # T-QAT-01..05: euler round-trip, q⊗q*=identity, normalize unit norm,
+    # rotate_vec 90° yaw/roll, singularity-free at pitch=±90°.
+    add_executable(test_quaternion
+        test_quaternion.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_quaternion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_quaternion m)
+    add_test(NAME quaternion_test COMMAND test_quaternion)
+
+    # PR-23 gate: LQR gain scheduling — mode-specific gain table.
+    # T-LQRS-01: FM_NOMINAL  → default gains (ωn = 10 rad/s)
+    # T-LQRS-02: FM_DETUMBLE → high-bandwidth gains (ωn = 30 rad/s)
+    # T-LQRS-03: unhandled modes fall back to nominal gain set
+    add_executable(test_lqr_schedule
+        test_lqr_schedule.c
+        ../../src/control/lqr.c
+        ../../src/control/lqr_schedule.c
+    )
+    target_include_directories(test_lqr_schedule PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_lqr_schedule m)
+    add_test(NAME lqr_schedule_test COMMAND test_lqr_schedule)
+
+    # PR-24 gate: Closed-loop stability harness.
+    # T-CLS-01..03: roll/pitch/yaw settle within tolerance in 10 s.
+    # T-CLS-04: gyro-bias estimate converges within 5 mrad/s in 20 s.
+    # T-CLS-05: torque saturation active and bounded by sqrt(3)·CLS_TAU_SAT.
+    # T-CLS-06: RW momentum exceeds dump threshold during FM_DETUMBLE.
+    add_executable(test_closed_loop
+        test_closed_loop.c
+        ../../src/control/ekf.c
+        ../../src/control/lqr.c
+        ../../src/control/lqr_schedule.c
+        ../../src/control/closed_loop_sim.c
+        ../../src/dynamics/attitude_dynamics.c
+    )
+    target_include_directories(test_closed_loop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_closed_loop m)
+    add_test(NAME closed_loop_test COMMAND test_closed_loop)
+
+    # PR-26: Event logger flush test (T-LOG-01a..d).
+    # flash_backend_stub.c is intentionally excluded so the test can supply
+    # its own strong-symbol override of flash_backend_flush().
+    add_executable(test_event_logger
+        test_event_logger.c
+        ../../src/core/event_logger.c
+    )
+    target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME event_logger_test COMMAND test_event_logger)
+
 endif()
