@@ -62,6 +62,9 @@ static bool g_initialised = false;
 /* HAL stub (weak — override in PICO driver layer or unit tests)       */
 /* ------------------------------------------------------------------ */
 
+/* Forward declaration (satisfies MISRA-C:2012 Rule 8.4) */
+bool eps_hal_read(float *vbatt, float *ibatt, float *temp);
+
 /**
  * @brief Read raw EPS telemetry from hardware.
  *
@@ -76,15 +79,15 @@ static bool g_initialised = false;
  */
 __attribute__((weak)) bool eps_hal_read(float *vbatt, float *ibatt, float *temp)
 {
-  if (vbatt)
+  if (vbatt != NULL)
   {
     *vbatt = 7.6f;
   }
-  if (ibatt)
+  if (ibatt != NULL)
   {
     *ibatt = 0.5f;
   }
-  if (temp)
+  if (temp != NULL)
   {
     *temp = 25.0f;
   }

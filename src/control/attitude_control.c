@@ -3,8 +3,6 @@
 #include "config.h"
 #include "pid.h"
 
-#include <stdio.h>
-
 void attitude_ctrl_init(attitude_ctrl_t *ac)
 {
   pid_init(&ac->pid_roll, DEFAULT_KP, DEFAULT_KI, DEFAULT_KD);

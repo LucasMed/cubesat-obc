@@ -30,7 +30,9 @@ int i2c_bus_write(uint8_t addr, const uint8_t *data, size_t len)
 {
   int ret = i2c_write_blocking(I2C_INST, addr, data, len, false);
   if (ret < 0)
+  {
     return ret;
+  }
   return 0;
 }
 
@@ -38,7 +40,9 @@ int i2c_bus_read(uint8_t addr, uint8_t *data, size_t len)
 {
   int ret = i2c_read_blocking(I2C_INST, addr, data, len, false);
   if (ret < 0)
+  {
     return ret;
+  }
   return 0;
 }
 
@@ -47,11 +51,15 @@ int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *
   // Write then read with repeated start
   int ret = i2c_write_blocking(I2C_INST, addr, tx, tx_len, true);
   if (ret < 0)
+  {
     return ret;
+  }
 
   ret = i2c_read_blocking(I2C_INST, addr, rx, rx_len, false);
   if (ret < 0)
+  {
     return ret;
+  }
 
   return 0;
 }

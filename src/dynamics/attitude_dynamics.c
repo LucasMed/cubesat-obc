@@ -6,8 +6,9 @@
 
 void attitude_dynamics_init(attitude_dyn_t *ad)
 {
-  memset(ad, 0, sizeof(*ad));
-  ad->inertia[0] = ad->inertia[1] = 0.01f;
+  (void)memset(ad, 0, sizeof(*ad));
+  ad->inertia[0] = 0.01f;
+  ad->inertia[1] = 0.01f;
   ad->inertia[2] = 0.005f;
 }
 

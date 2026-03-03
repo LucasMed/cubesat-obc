@@ -1,8 +1,6 @@
 #include "config.h"
 #include "pid.h"
 
-#include <stdio.h>
-
 void pid_init(pid_ctrl_t *p, float kp, float ki, float kd)
 {
   p->kp = kp;

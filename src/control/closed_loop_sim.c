@@ -88,8 +88,8 @@ static void sim_make_mag(const float attitude[3], float b_out[3])
 
   /* R[0][0..2] from ZYX Euler rotation matrix R = Rz(yaw)·Ry(pitch)·Rx(roll) */
   b_out[0] = B0 * (cy * cp);
-  b_out[1] = B0 * (cy * sp * sr - sy * cr);
-  b_out[2] = B0 * (cy * sp * cr + sy * sr);
+  b_out[1] = B0 * ((cy * ((sp * sr)) - (sy * cr)));
+  b_out[2] = B0 * ((cy * ((sp * cr)) + (sy * sr)));
 }
 
 /**
@@ -97,11 +97,20 @@ static void sim_make_mag(const float attitude[3], float b_out[3])
  */
 static float saturate(float v, float limit)
 {
+  float result;
   if (v > limit)
-    return limit;
-  if (v < -limit)
-    return -limit;
-  return v;
+  {
+    result = limit;
+  }
+  else if (v < -limit)
+  {
+    result = -limit;
+  }
+  else
+  {
+    result = v;
+  }
+  return result;
 }
 
 /**
@@ -109,7 +118,7 @@ static float saturate(float v, float limit)
  */
 static float vec3_norm(const float v[3])
 {
-  return sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  return sqrtf(((v[0] * v[0]) + (v[1] * v[1])) + (v[2] * v[2]));
 }
 
 /* =========================================================================
@@ -119,7 +128,7 @@ static float vec3_norm(const float v[3])
 void cls_init(cls_t *sim, float roll0, float pitch0, float yaw0, const float bias[3], float dt,
               float tau_sat)
 {
-  memset(sim, 0, sizeof(*sim));
+  (void)memset(sim, 0, sizeof(*sim));
 
   /* EKF: cold start (zero attitude, large initial covariance) */
   ekf_init(&sim->ekf);

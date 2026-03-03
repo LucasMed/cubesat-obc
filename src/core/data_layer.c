@@ -57,7 +57,7 @@ static void dl_unlock(void)
 
 void data_layer_init(void)
 {
-  memset(&g_snapshot, 0, sizeof(dl_snapshot_t));
+  (void)memset(&g_snapshot, 0, sizeof(dl_snapshot_t));
   g_snapshot.mode = FM_BOOT;
   g_snapshot.energy = ENERGY_NOMINAL;
 
@@ -80,7 +80,7 @@ void data_layer_read(dl_snapshot_t *out)
     return;
   }
   dl_lock();
-  memcpy(out, &g_snapshot, sizeof(dl_snapshot_t));
+  (void)memcpy(out, &g_snapshot, sizeof(dl_snapshot_t));
   dl_unlock();
 }
 

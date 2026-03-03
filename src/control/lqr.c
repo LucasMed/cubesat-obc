@@ -47,12 +47,12 @@ static const float K_DEFAULT[LQR_M][LQR_N] = {
 
 void lqr_init(lqr_t *lqr)
 {
-  memcpy(lqr->K, K_DEFAULT, sizeof(K_DEFAULT));
+  (void)memcpy(lqr->K, K_DEFAULT, sizeof(K_DEFAULT));
 }
 
 void lqr_set_gains(lqr_t *lqr, const float K[LQR_M][LQR_N])
 {
-  memcpy(lqr->K, K, sizeof(lqr->K));
+  (void)memcpy(lqr->K, K, sizeof(lqr->K));
 }
 
 void lqr_compute(lqr_t *lqr, const float att_err[3], const float rate_err[3], float torque_cmd[3])

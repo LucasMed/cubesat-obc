@@ -3,11 +3,11 @@
 
 #include "config.h"
 
-#include <stdio.h>
-
 void magnetorquer_init(magnetorquer_t *mq)
 {
-  mq->moment[0] = mq->moment[1] = mq->moment[2] = 0.0f;
+  mq->moment[0] = 0.0f;
+  mq->moment[1] = 0.0f;
+  mq->moment[2] = 0.0f;
 }
 
 void magnetorquer_set_moment(magnetorquer_t *mq, float mx, float my, float mz)
