@@ -70,7 +70,9 @@ void comm_init(void)
 #endif
 
 #ifdef PICO_BUILD
-  xTaskCreate(vCspRouterTask, "CSPRouter", 512, NULL, tskIDLE_PRIORITY + 5, NULL);
+  /* Priority must be < configMAX_PRIORITIES (5). Use 3 — runs between
+   * Telemetry/Command and idle, low enough not to starve other tasks. */
+  xTaskCreate(vCspRouterTask, "CSPRouter", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
   (void)printf("CSP: router task OK\r\n");
   (void)fflush(stdout);
 #endif

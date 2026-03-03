@@ -117,7 +117,9 @@ int main(void)
 
   printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
   fflush(stdout);
-
+  /* Wait up to 3 s for USB CDC host to enumerate (UART works immediately). */
+  for (int i = 0; i < 30 && !stdio_usb_connected(); i++)
+    sleep_ms(100);
   if (cyw43_arch_init())
   {
     printf("[WARN] CYW43 init failed — LED disabled\r\n");
