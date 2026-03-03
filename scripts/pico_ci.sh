@@ -37,7 +37,14 @@ BUILD_HOST="${REPO_ROOT}/build_ci"
 BUILD_PICO="${REPO_ROOT}/build_pico_ci"
 BUILD_EMU="${REPO_ROOT}/build_emu_ci"
 ARTIFACTS="${ARTIFACTS_DIR:-${REPO_ROOT}/artifacts}"
-PICO_SDK_PATH="${PICO_SDK_PATH:-/opt/pico-sdk}"
+# Resolve SDK: env var → in-tree third_party copy → /opt fallback
+if [[ -z "${PICO_SDK_PATH:-}" ]]; then
+    if [[ -f "${REPO_ROOT}/third_party/pico-sdk/pico_sdk_init.cmake" ]]; then
+        PICO_SDK_PATH="${REPO_ROOT}/third_party/pico-sdk"
+    else
+        PICO_SDK_PATH="/opt/pico-sdk"
+    fi
+fi
 EMU_SCRIPT="${REPO_ROOT}/docker/emulate_boot.mjs"
 
 # ─── Colours ────────────────────────────────────────────────────────────────
