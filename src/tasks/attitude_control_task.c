@@ -125,6 +125,7 @@ void vAttitudeControlTask(void *pvParameters)
   magnetorquer_init(&g_mtq);
 
   printf("[attitude_control_task] Started\n");
+  fflush(stdout);
 
   while (1)
   {

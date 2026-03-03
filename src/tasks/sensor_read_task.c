@@ -140,6 +140,7 @@ void vSensorReadTask(void *pvParameters)
 #endif
 
   printf("[sensor_read_task] Started\n");
+  fflush(stdout);
 
   while (1)
   {

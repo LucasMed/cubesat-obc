@@ -79,6 +79,7 @@ void vCommandTask(void *pvParameters)
   (void)pvParameters;
 
   printf("[command_task] Started listening on port %d\n", COMMAND_PORT);
+  fflush(stdout);
 
   // 1. Create socket and bind
   csp_socket_t sock = {0};

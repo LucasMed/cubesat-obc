@@ -43,6 +43,7 @@ void vHealthMonitorTask(void *pvParameters)
   const TickType_t xFrequency = pdMS_TO_TICKS(5000);  // 5 Hz (0.2 Hz logical)
 
   printf("[health_monitor_task] Started\n");
+  fflush(stdout);
 
   while (1)
   {

@@ -34,6 +34,26 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
     ;
 }
 
+  #if defined(__arm__) || defined(__thumb__)
+/**
+ * ARM HardFault handler — catches null pointer dereferences, bad memory access,
+ * unaligned access, etc.  Without this the default weak handler loops silently
+ * and stops all FreeRTOS tasks including the heartbeat.
+ *
+ * The Pico SDK uses "isr_hardfault" as the vector table symbol.
+ * Providing a strong definition here overrides the SDK's weak no-op.
+ */
+void isr_hardfault(void)
+{
+  /* Do NOT use bkpt — without an attached debugger it re-triggers HardFault
+   * (double-fault) which causes a lockup reset before we can print anything. */
+  printf("FATAL: HardFault!\r\n");
+  fflush(stdout);
+  for (;;)
+    ;
+}
+  #endif
+
   #if configSUPPORT_STATIC_ALLOCATION
 
 void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
