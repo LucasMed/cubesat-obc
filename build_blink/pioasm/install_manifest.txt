@@ -1,5 +1,0 @@
-/workspace/build_blink/pioasm-install/pioasm/pioasm
-/workspace/build_blink/pioasm-install/pioasm/pioasmTargets.cmake
-/workspace/build_blink/pioasm-install/pioasm/pioasmTargets-release.cmake
-/workspace/build_blink/pioasm-install/pioasm/pioasmConfig.cmake
-/workspace/build_blink/pioasm-install/pioasm/pioasmConfigVersion.cmake

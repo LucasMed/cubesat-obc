@@ -1,7 +1,0 @@
-/workspace/build_blink/_deps/picotool/picotool
-/workspace/build_blink/_deps/picotool/picotoolTargets.cmake
-/workspace/build_blink/_deps/picotool/picotoolTargets-release.cmake
-/workspace/build_blink/_deps/picotool/picotoolConfig.cmake
-/workspace/build_blink/_deps/picotool/picotoolConfigVersion.cmake
-/workspace/build_blink/_deps/picotool/enc_bootloader.elf
-/workspace/build_blink/_deps/picotool/enc_bootloader_mbedtls.elf
