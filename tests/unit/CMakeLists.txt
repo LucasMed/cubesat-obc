@@ -289,4 +289,15 @@ if(NOT PICO_BUILD)
     target_include_directories(test_closed_loop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_closed_loop m)
     add_test(NAME closed_loop_test COMMAND test_closed_loop)
+
+    # PR-26: Event logger flush test (T-LOG-01a..d).
+    # flash_backend_stub.c is intentionally excluded so the test can supply
+    # its own strong-symbol override of flash_backend_flush().
+    add_executable(test_event_logger
+        test_event_logger.c
+        ../../src/core/event_logger.c
+    )
+    target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME event_logger_test COMMAND test_event_logger)
+
 endif()
