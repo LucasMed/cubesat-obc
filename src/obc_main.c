@@ -26,6 +26,7 @@
 #include "telemetry_task.h"
 
 #ifdef PICO_BUILD
+  #include "hardware/watchdog.h"
   #include "pico/cyw43_arch.h"
   #include "pico/stdlib.h"
 
@@ -37,8 +38,11 @@ void vLedBlinkTask(void *pvParameters)
   {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     vTaskDelay(pdMS_TO_TICKS(200));
+    /* Poll CYW43 so the SPI command is processed (required with arch_none) */
+    cyw43_arch_poll();
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
     vTaskDelay(pdMS_TO_TICKS(800));
+    cyw43_arch_poll();
   }
 }
 #endif
@@ -48,6 +52,10 @@ int main(void)
 #ifdef PICO_BUILD
   stdio_init_all();
 
+  /* Early UART marker — visible at 115200 on GP0/TX even before USB connects */
+  printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
+  fflush(stdout);
+
   printf("\n=====================================\n");
   printf("  CubeSat OBC - Pico 2W Firmware\n");
   printf("  FreeRTOS Real Kernel\n");
@@ -55,18 +63,22 @@ int main(void)
 
   if (cyw43_arch_init())
   {
-    printf("ERROR: CYW43 initialization failed!\n");
-    return -1;
+    /* CYW43 init failed — LED will not work but firmware continues.
+     * This is non-fatal: the OBC can operate without the status LED. */
+    printf("[WARN] CYW43 init failed — LED disabled\r\n");
+    fflush(stdout);
+    /* Do NOT return here: returning from main() in embedded is undefined.
+     * Continue — the OBC subsystems do not require CYW43. */
   }
 
-  // Wait for USB connection (optional but helpful for Putty/Minicom)
-  // Giving 2 seconds for the host to detect the device
+  /* Wait briefly for USB CDC host to connect (non-blocking: use UART if no USB) */
   for (int i = 0; i < 20; i++)
   {
     printf(".");
     sleep_ms(100);
   }
-  printf("\nUSB Connected / Startup delay finished.\n");
+  printf("\nStartup delay finished.\r\n");
+  fflush(stdout);
 #else
   printf("=== CubeSat OBC Firmware (Host Simulation) ===\n");
 #endif
