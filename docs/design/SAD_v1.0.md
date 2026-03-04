@@ -74,16 +74,23 @@ Fields marked `[TBD-HW]` require additional hardware instrumentation (planned v1
 All tasks created inside `vStartupTask` (runs at `configMAX_PRIORITIES - 1 = 4`)
 after the scheduler starts, ensuring all kernel primitives are initialised.
 
-| Task | Function | Priority | Stack (words) | Period | HWM (measured) |
-|------|----------|----------|---------------|--------|----------------|
-| Startup | `vStartupTask` | 4 (highest) | 2048 | one-shot → idles at P1 | — |
-| SensorRead | `vSensorReadTask` | **4** | 2048 | 100 ms (10 Hz) | `[TBD-HW]` |
-| AttitudeCtrl | `vAttitudeControlTask` | 3 | 2048 | 100 ms (10 Hz) | `[TBD-HW]` |
-| Telemetry | `vTelemetryTask` | 2 | 2048 | 500 ms (2 Hz) | `[TBD-HW]` |
-| Command | `vCommandTask` | 2 | 2048 | blocking (CSP recv) | `[TBD-HW]` |
-| HealthMon | `vHealthMonitorTask` | 1 | 2048 | 5000 ms (0.2 Hz) | `[TBD-HW]` |
-| LEDBlink | `vLedBlinkTask` | 1 | 2048 | 200/800 ms blink | `[TBD-HW]` |
-| Heartbeat | `vHeartbeatTask` | 1 | 2048 | 2000 ms | **1930** |
+| Task | Function | Priority | Stack (words) | Period | HWM (free words) | Used (words) |
+|------|----------|----------|---------------|--------|------------------|--------------|
+| Startup | `vStartupTask` | 4 (highest) | 2048 | one-shot → idles at P1 | — | — |
+| SensorRead | `vSensorReadTask` | **4** | 2048 | 100 ms (10 Hz) | **1908** | 140 |
+| AttitudeCtrl | `vAttitudeControlTask` | 3 | 2048 | 100 ms (10 Hz) | **1952** | 96 |
+| Telemetry | `vTelemetryTask` | 2 | 2048 | 500 ms (2 Hz) | **1868** | 180 |
+| Command | `vCommandTask` | 2 | 2048 | blocking (CSP recv) | **1894** | 154 |
+| HealthMon | `vHealthMonitorTask` | 1 | 2048 | 5000 ms (0.2 Hz) | **1974** | 74 |
+| LEDBlink | `vLedBlinkTask` | 1 | 2048 | 200/800 ms blink | **1947** | 101 |
+| Heartbeat | `vHeartbeatTask` | 1 | 2048 | 2000 ms | **1930** | 118 |
+
+> **HWM interpretation**: `uxTaskGetStackHighWaterMark()` returns the **minimum
+> remaining free words** since task creation (high = good). Maximum usage
+> across all tasks is Telemetry at 180 words (720 bytes = 8.8% of 2048-word
+> stack). All tasks have ≥91% headroom. Stacks could be reduced to 512 words
+> if memory pressure arises; current sizing is conservative by design.
+> Measured on Pico 2W hardware @ v0.7.1, no IMU connected.
 
 **Priority scale**: 0 = Idle, 1 = Low, 2 = Normal, 3 = High, 4 = Critical.  
 SensorRead at P4 ensures the EKF always has fresh data before AttitudeCtrl (P3) runs;  
@@ -186,7 +193,9 @@ Canonical FDIR chain (single path — implemented v0.7.1):
       ┌───────────────┼───────────────┐
       ▼               ▼               ▼
 [TelemetryTask:  [AttitudeCtrl:  [HealthMon:
- HK-only mode]   suspended]      watchdog still feeds]
+ HK-only mode]   early return,   watchdog still feeds]
+                 no actuator
+                 output]
 ```
 
 **Design rationale for single-authority chain:**
@@ -194,6 +203,12 @@ Canonical FDIR chain (single path — implemented v0.7.1):
 - No concurrent/duplicate transitions from parallel EPS paths
 - Single code point for future inhibit logic or priority override
 - Formal FDIR traceability: trigger source → fault ID → FMM transition
+
+> **AttitudeCtrl FM_SAFE behaviour**: the task uses an early `return` inside its
+> loop body when `current_mode == FM_SAFE` — **not** `vTaskSuspend()`.  
+> `vTaskSuspend` is avoided in FSW: it hides the task from runtime analysis and
+> requires an external `vTaskResume` call for recovery. The no-IMU startup path
+> was likewise converted from `vTaskSuspend` to a 5 s polling loop in v0.7.1.
 
 ### 5.4 Flight Mode Transition Table
 
@@ -293,7 +308,8 @@ Flash (2 MB total):
 SRAM (520 KB total):
   ├── .bss (static data)    : ~154 KB
   ├── FreeRTOS heap         : ~240 KB   (configTOTAL_HEAP_SIZE)
-  │     └── free at runtime : ~60 KB    (measured on hardware)
+  │     ├── free at runtime  : ~60 KB    (xPortGetFreeHeapSize, measured HW)
+  │     └── min-ever free    : ~58 KB    (xPortGetMinimumEverFreeHeapSize, HW)
   ├── Task stacks           :  ~64 KB   (8 tasks × 2048 words × 4 bytes)
   └── SDK/system            : remainder
 ```
@@ -338,7 +354,7 @@ main()
 |----|-------|----------|
 | ARCH-01 | Enable SMP (`configNUMBER_OF_CORES = 2`), assign core affinity | High |
 | ARCH-02 | ~~Remove EPS → FMM direct path~~ — ✅ **Implemented (v0.7.1)**: `eps_monitor.c` reports `FAULT_LEVEL_CRITICAL` for both `ENERGY_CRITICAL` and `ENERGY_EMERGENCY`; `fmm_request_transition()` removed | ~~High~~ → ✅ |
-| ARCH-03 | Instrument all task HWMs in production heartbeat loop | Medium |
+| ARCH-03 | ~~Instrument all task HWMs~~ — ✅ **Implemented (v0.7.1)**: all 7 task HWMs printed every 5 s in ALIVE loop; `xPortGetMinimumEverFreeHeapSize()` added to Heartbeat and ALIVE | ~~Medium~~ → ✅ |
 | ARCH-04 | Flash-backed logger backend (persistent across reboot) | Medium |
 | ARCH-05 | Validate watchdog timeout window on real hardware (currently uses SDK default) | High |
 | ARCH-06 | Connect real MPU6050 + HMC5883L; validate EKF convergence on hardware | High |

@@ -128,14 +128,26 @@ void vAttitudeControlTask(void *pvParameters)
   fflush(stdout);
 
   /* ── Without an IMU there is no attitude data to control ─────────────── */
+  /*  Polling loop instead of vTaskSuspend: keeps the task schedulable and
+   *  allows future IMU hot-plug without needing an external vTaskResume. */
   {
     dl_snapshot_t snap;
     data_layer_read(&snap);
     if (!snap.state.imu_available)
     {
-      printf("[attitude_control_task] IMU not connected — task suspended\n");
+      printf("[attitude_control_task] IMU not connected — polling every 5 s\n");
       fflush(stdout);
-      vTaskSuspend(NULL);
+      for (;;)
+      {
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        data_layer_read(&snap);
+        if (snap.state.imu_available)
+        {
+          printf("[attitude_control_task] IMU now available — starting control\n");
+          fflush(stdout);
+          break;
+        }
+      }
     }
   }
 

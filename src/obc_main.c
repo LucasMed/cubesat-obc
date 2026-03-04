@@ -54,9 +54,11 @@ static void vHeartbeatTask(void *pvParameters)
   uint32_t tick = 0;
   for (;;)
   {
-    printf("[HB %lu] heap=%lu tick=%lu\r\n", (unsigned long)tick,
-           (unsigned long)xPortGetFreeHeapSize(), (unsigned long)xTaskGetTickCount());
-    printf("  HWM Heartbeat=%lu\r\n", (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    printf("[HB %lu] heap=%lu min_ever=%lu tick=%lu\r\n", (unsigned long)tick,
+           (unsigned long)xPortGetFreeHeapSize(), (unsigned long)xPortGetMinimumEverFreeHeapSize(),
+           (unsigned long)xTaskGetTickCount());
+    printf("  HWM Heartbeat=%lu (used=%lu)\r\n", (unsigned long)uxTaskGetStackHighWaterMark(NULL),
+           (unsigned long)(2048u - uxTaskGetStackHighWaterMark(NULL)));
     fflush(stdout); /* guarantee output even if pico short-circuit misbehaves */
     tick++;
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -176,10 +178,10 @@ static void vStartupTask(void *pvParameters)
   vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
   for (;;)
   {
-    printf("[ALIVE] heap=%lu tick=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
-           (unsigned long)xTaskGetTickCount());
+    printf("[ALIVE] heap=%lu min_ever=%lu tick=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
+           (unsigned long)xPortGetMinimumEverFreeHeapSize(), (unsigned long)xTaskGetTickCount());
 #ifdef PICO_BUILD
-    /* Stack HWM in words (lower = more stack used). Target: ≥ 20%% free = ≥ 410 words. */
+    /* HWM = remaining free words (high is good). used = 2048 - HWM. */
     printf("  HWM SensorRead  =%4lu  AttitudeCtrl=%4lu\r\n",
            (unsigned long)uxTaskGetStackHighWaterMark(h_sensor),
            (unsigned long)uxTaskGetStackHighWaterMark(h_ctrl));
