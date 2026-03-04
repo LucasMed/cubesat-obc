@@ -25,7 +25,8 @@
 #include "eps.h"
 #include "fault_ids.h"
 #include "fault_manager.h"
-#include "flight_mode.h"
+/* flight_mode.h intentionally omitted: EPS does not call FMM directly.
+ * The single FDIR authority chain is: EPS → fault_report() → FaultMgr → FMM. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -189,10 +190,10 @@ static void handle_state_change(energy_state_t prev, energy_state_t next)
 
   case ENERGY_CRITICAL:
     fault_clear(FAULT_EPS_VBATT_LOW);
-    /* ERROR level records the anomaly without forcing FM_SAFE directly */
-    fault_report(FAULT_EPS_VBATT_CRITICAL, FAULT_LEVEL_ERROR);
-    /* Spec: ENERGY_CRITICAL → FM_SAFE requested */
-    (void)fmm_request_transition(FM_SAFE);
+    /* Single FDIR authority chain: EPS → FaultMgr → FMM.
+     * CRITICAL level triggers fmm_force_safe() inside fault_manager.
+     * Direct fmm_request_transition() removed (was a bypass of the audit log). */
+    fault_report(FAULT_EPS_VBATT_CRITICAL, FAULT_LEVEL_CRITICAL);
     break;
 
   case ENERGY_EMERGENCY:

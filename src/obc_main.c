@@ -172,6 +172,19 @@ static void vStartupTask(void *pvParameters)
   {
     printf("[ALIVE] heap=%lu tick=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
            (unsigned long)xTaskGetTickCount());
+#ifdef PICO_BUILD
+    /* Stack HWM in words (lower = more stack used). Target: ≥ 20%% free = ≥ 410 words. */
+    printf("  HWM SensorRead  =%4lu  AttitudeCtrl=%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(h_sensor),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_ctrl));
+    printf("  HWM Telemetry   =%4lu  Command     =%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(h_telem),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_cmd));
+    printf("  HWM HealthMon   =%4lu  LEDBlink    =%4lu  Heartbeat=%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(h_health),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_led),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_hb));
+#endif
     fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(5000));
   }

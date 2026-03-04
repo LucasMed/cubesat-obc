@@ -77,7 +77,7 @@ after the scheduler starts, ensuring all kernel primitives are initialised.
 | Task | Function | Priority | Stack (words) | Period | HWM (measured) |
 |------|----------|----------|---------------|--------|----------------|
 | Startup | `vStartupTask` | 4 (highest) | 2048 | one-shot → idles at P1 | — |
-| SensorRead | `vSensorReadTask` | 3 | 2048 | 100 ms (10 Hz) | `[TBD-HW]` |
+| SensorRead | `vSensorReadTask` | **4** | 2048 | 100 ms (10 Hz) | `[TBD-HW]` |
 | AttitudeCtrl | `vAttitudeControlTask` | 3 | 2048 | 100 ms (10 Hz) | `[TBD-HW]` |
 | Telemetry | `vTelemetryTask` | 2 | 2048 | 500 ms (2 Hz) | `[TBD-HW]` |
 | Command | `vCommandTask` | 2 | 2048 | blocking (CSP recv) | `[TBD-HW]` |
@@ -85,7 +85,9 @@ after the scheduler starts, ensuring all kernel primitives are initialised.
 | LEDBlink | `vLedBlinkTask` | 1 | 2048 | 200/800 ms blink | `[TBD-HW]` |
 | Heartbeat | `vHeartbeatTask` | 1 | 2048 | 2000 ms | **1930** |
 
-**Priority scale**: 0 = Idle, 1 = Low, 2 = Normal, 3 = High, 4 = Critical (Startup only).
+**Priority scale**: 0 = Idle, 1 = Low, 2 = Normal, 3 = High, 4 = Critical.  
+SensorRead at P4 ensures the EKF always has fresh data before AttitudeCtrl (P3) runs;  
+both P3 and P4 are above the FreeRTOS timer task (P3 = `configMAX_PRIORITIES - 2`).
 
 > `vStartupTask` lowers itself to P1 after task creation and becomes the "ALIVE"
 > watchdog print loop, avoiding the problematic `vTaskDelete` code path on
@@ -153,61 +155,56 @@ after the scheduler starts, ensuring all kernel primitives are initialised.
 
 ### 5.3 FDIR / SAFE MODE Authority Chain
 
-> This answers the "where does SAFE MODE authority live?" question.
-> The implementation has **two active paths** — both terminate in FMM.
+> SAFE MODE authority is held exclusively by the **Flight Mode Manager (FMM)**.  
+> The **only** valid path from any fault event to `FM_SAFE` is through the Fault Manager.  
+> Direct EPS → FMM calls (`fmm_request_transition`) were removed in v0.7.1 (ARCH-02).
 
 ```
-Path A (EPS → Fault Manager → FMM):              Path B (EPS → FMM direct):
-─────────────────────────────────────            ────────────────────────────
-[EPSMonitor tick]                                [EPSMonitor tick]
-    │                                                │
-    │ ENERGY_CRITICAL                               │ ENERGY_CRITICAL
-    │                                                │
-    ▼                                               ▼
-[fault_report(FAULT_EPS_VBATT_CRITICAL,        [fmm_request_transition(FM_SAFE)]
-             FAULT_LEVEL_CRITICAL)]                 │
-    │                                               │
-    ▼                                               ▼
-[fault_manager: level ≥ CRITICAL]          [FMM: transition allowed
-    │                                        (FM_SAFE from any mode)]
-    ▼                                               │
-[fmm_force_safe()]  ────────────────────────────────┘
-    │
-    ▼
-[FMM: data_layer_set_flight_mode(FM_SAFE)]
-    │
-    ▼
-[TelemetryTask: HK-only mode]
-[AttitudeCtrl: suspended]
-[HealthMon: watchdog still feeds]
+Canonical FDIR chain (single path — implemented v0.7.1):
+────────────────────────────────────────────────────────
+
+[EPSMonitor tick]             [HealthMon detects WDT reboot]
+    │                                   │
+    │ ENERGY_CRITICAL                   │
+    │ or ENERGY_EMERGENCY               │
+    │                                   │
+    ▼                                   ▼
+[fault_report(FAULT_EPS_VBATT_CRITICAL,  [fault_report(FAULT_WDT_KICK_MISSED,
+             FAULT_LEVEL_CRITICAL)]                   FAULT_LEVEL_CRITICAL)]
+    │                                   │
+    └─────────────────┬─────────────────┘
+                      │
+                      ▼
+      [fault_manager: level ≥ CRITICAL]
+                      │
+                      ▼
+               [fmm_force_safe()]
+                      │
+                      ▼
+      [FMM: data_layer_set_flight_mode(FM_SAFE)]
+                      │
+      ┌───────────────┼───────────────┐
+      ▼               ▼               ▼
+[TelemetryTask:  [AttitudeCtrl:  [HealthMon:
+ HK-only mode]   suspended]      watchdog still feeds]
 ```
 
-**Additional SAFE MODE trigger:**
-```
-[Health Monitor detects watchdog-triggered reboot]
-    │
-    ▼
-[fault_report(FAULT_WDT_KICK_MISSED, FAULT_LEVEL_CRITICAL)]
-    │
-    ▼
-[fault_manager → fmm_force_safe()]
-```
-
-> ⚠️ **Architectural note for v1.0.0**: Path B (direct `fmm_request_transition`)
-> bypasses the Fault Manager's audit log. Architecturally, the preferred
-> canonical path is A (EPS → Fault → FMM). Path B should be removed to enforce
-> a single FDIR authority chain. This is tracked as a v1.0.0 cleanup item.
+**Design rationale for single-authority chain:**
+- Unified fault audit log: every `FM_SAFE` transition is recorded with timestamp and count
+- No concurrent/duplicate transitions from parallel EPS paths
+- Single code point for future inhibit logic or priority override
+- Formal FDIR traceability: trigger source → fault ID → FMM transition
 
 ### 5.4 Flight Mode Transition Table
 
 ```
        ┌──────────┬──────────┬──────────┬──────────┬──────────┐
-       │ To →     │ FM_BOOT  │ FM_SAFE  │ FM_NOMINAL│FM_DETUMBLE│
+       │ To →     │ FM_BOOT  │ FM_SAFE  │FM_NOMINAL│FM_DETUMBLE│
        ├──────────┼──────────┼──────────┼──────────┼──────────┤
-  FM_BOOT   │    —    │    ✅    │    ✅    │    ❌    │
-  FM_SAFE   │    ❌   │    —    │    ✅    │    ❌    │
-  FM_NOMINAL│    ❌   │    ✅    │    —    │    ✅    │
-  FM_DETUMBLE│   ❌   │    ✅    │    ✅    │    —    │
+        FM_BOOT   │    —     │    ✅    │    ✅    │    ❌    │
+        FM_SAFE   │    ❌    │    —     │    ✅    │    ❌    │
+        FM_NOMINAL│    ❌    │    ✅    │    —     │    ✅    │
+        FM_DETUMBLE│   ❌    │    ✅    │    ✅    │    —     │
        └──────────┴──────────┴──────────┴──────────┴──────────┘
 
 Rules:
@@ -340,7 +337,7 @@ main()
 | ID | Issue | Priority |
 |----|-------|----------|
 | ARCH-01 | Enable SMP (`configNUMBER_OF_CORES = 2`), assign core affinity | High |
-| ARCH-02 | Remove EPS → FMM direct path; enforce single FDIR chain (EPS → Fault → FMM) | High |
+| ARCH-02 | ~~Remove EPS → FMM direct path~~ — ✅ **Implemented (v0.7.1)**: `eps_monitor.c` reports `FAULT_LEVEL_CRITICAL` for both `ENERGY_CRITICAL` and `ENERGY_EMERGENCY`; `fmm_request_transition()` removed | ~~High~~ → ✅ |
 | ARCH-03 | Instrument all task HWMs in production heartbeat loop | Medium |
 | ARCH-04 | Flash-backed logger backend (persistent across reboot) | Medium |
 | ARCH-05 | Validate watchdog timeout window on real hardware (currently uses SDK default) | High |

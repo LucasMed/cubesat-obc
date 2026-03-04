@@ -26,7 +26,7 @@ Requirements marked `[PLANNED]` are not yet implemented (target: v1.0.0).
 The OBC software executes on a Raspberry Pi Pico 2W (RP2350, Cortex-M33) under
 FreeRTOS. It provides attitude determination and control, fault detection and
 isolation, telemetry downlink, telecommand uplink, and energy management for a
-3U CubeSat.
+1U CubeSat.
 
 ---
 
@@ -134,10 +134,11 @@ detected permanently.
 → `fmm_force_safe()`.*
 
 #### SYS-F-205 — FDIR Authority Chain (single path)  
-`[PLANNED]` SAFE MODE transitions triggered by EPS shall flow exclusively through
+`[IMPL]` SAFE MODE transitions triggered by EPS shall flow exclusively through
 the Fault Manager (EPS → Fault Manager → FMM). Direct calls from EPS to FMM
-(`fmm_request_transition`) shall be removed.  
-*Current state: dual-path exists; see SAD ARCH-02.*
+(`fmm_request_transition`) are removed.  
+*Both `ENERGY_CRITICAL` and `ENERGY_EMERGENCY` now report `FAULT_LEVEL_CRITICAL`
+→ `fault_manager` → `fmm_force_safe()`. No direct FMM calls from EPS Monitor.*
 
 ---
 
@@ -236,7 +237,7 @@ with 0 violations in the CI pipeline.
 *Measured on hardware: min=99,954 µs, max=100,037 µs (±43 µs jitter — well within spec).*
 
 ### SYS-NF-005 — Boot Time  
-`[IMPL]` The OBC shall complete subsystem initialisation and begin nominal task
+`[IMPL]` The OBC shall complete subsystem initialization and begin nominal task
 execution within 10 s of power-on (excluding USB CDC enumeration wait).
 
 ### SYS-NF-006 — Stack Safety  
