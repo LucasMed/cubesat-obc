@@ -142,6 +142,23 @@ void vSensorReadTask(void *pvParameters)
   printf("[sensor_read_task] Started\n");
   fflush(stdout);
 
+  /* ── Check if any sensor is available; if not, exit this task ────────── */
+  {
+    dl_snapshot_t snap;
+    data_layer_read(&snap);
+    if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available)
+    {
+      printf("[sensor_read_task] No sensors connected — task suspended\n");
+      fflush(stdout);
+      vTaskSuspend(NULL); /* park forever — no CPU wasted */
+      /* unreachable unless explicitly resumed */
+    }
+    printf("[sensor_read_task] Sensors: IMU=%s  Temp=%s  Mag=%s\n",
+           snap.state.imu_available ? "yes" : "no", snap.state.temp_available ? "yes" : "no",
+           snap.state.mag_available ? "yes" : "no");
+    fflush(stdout);
+  }
+
   while (1)
   {
     vTaskDelayUntil(&xLastWakeTime, xFrequency);

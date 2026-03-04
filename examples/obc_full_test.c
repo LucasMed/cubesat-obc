@@ -24,6 +24,17 @@
 
 #include <stdio.h>
 
+/* ── Task enable/disable flags for incremental debugging ────────────────────
+ * Set to 0 to skip creating a task. Start with all 0, confirm LED + HB work,
+ * then enable one at a time and reflash until the blocker is found.          */
+#define ENABLE_COMM_INIT 1 /* CSPRouter task (pri 3) */
+#define ENABLE_LED_BLINK 1 /* CYW43 SPI LED toggle   */
+#define ENABLE_TASK_SENSOR_READ 1
+#define ENABLE_TASK_ATTITUDE_CTRL 1
+#define ENABLE_TASK_TELEMETRY 1
+#define ENABLE_TASK_COMMAND 1
+#define ENABLE_TASK_HEALTH_MON 1
+
 /* OBC subsystem headers — same as obc_main.c */
 #include "attitude_control_task.h"
 #include "comm_init.h"
@@ -39,18 +50,18 @@
 #include "system_state.h"
 #include "telemetry_task.h"
 
-/* ── LED blink task (identical to obc_main.c) ─────────────────────────────── */
+/* ── LED blink task ───────────────────────────────────────────────────────────── */
 static void vLedBlinkTask(void *pvParameters)
 {
   (void)pvParameters;
   for (;;)
   {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+    cyw43_arch_poll(); /* process SPI command NOW, before yielding */
     vTaskDelay(pdMS_TO_TICKS(200));
-    cyw43_arch_poll();
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    vTaskDelay(pdMS_TO_TICKS(800));
     cyw43_arch_poll();
+    vTaskDelay(pdMS_TO_TICKS(800));
   }
 }
 
@@ -67,16 +78,12 @@ static void vHeartbeatTask(void *pvParameters)
   uint32_t tick = 0;
   for (;;)
   {
-    printf("[HB %lu] heap=%lu\r\n", (unsigned long)tick++, (unsigned long)xPortGetFreeHeapSize());
-    /* Stack high-water marks (words remaining) — helps detect overflow */
-    if (h_sensor)
-      printf("  HWM sensor=%u att=%u tlm=%u cmd=%u hlt=%u\r\n",
-             (unsigned)uxTaskGetStackHighWaterMark(h_sensor),
-             (unsigned)uxTaskGetStackHighWaterMark(h_attitude),
-             (unsigned)uxTaskGetStackHighWaterMark(h_telemetry),
-             (unsigned)uxTaskGetStackHighWaterMark(h_command),
-             (unsigned)uxTaskGetStackHighWaterMark(h_health));
-    fflush(stdout);
+    /* Ultra-minimal heartbeat — no fflush, no HWM.
+     * Pico SDK printf (LIB_PICO_PRINTF_PICO) already calls stdio_flush()
+     * internally.  Calling fflush(stdout) from FreeRTOS tasks may conflict
+     * with the USB low-priority IRQ and crash. */
+    printf("[HB %lu] heap=%lu\r\n", (unsigned long)tick, (unsigned long)xPortGetFreeHeapSize());
+    tick++;
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }
@@ -99,9 +106,14 @@ static void vStartupTask(void *pvParameters)
   fflush(stdout);
   system_state_init();
 
+#if ENABLE_COMM_INIT
   printf("  comm_init...\r\n");
   fflush(stdout);
   comm_init();
+#else
+  printf("  [SKIP] comm_init (disabled)\r\n");
+  fflush(stdout);
+#endif
 
   printf("  fault_manager_init...\r\n");
   fflush(stdout);
@@ -126,44 +138,133 @@ static void vStartupTask(void *pvParameters)
 
   printf("  creating tasks...\r\n");
   fflush(stdout);
-  /* configMAX_PRIORITIES=5 → valid range 0-4. tskIDLE_PRIORITY+N where N>=5 triggers configASSERT
-   * hang. */
-  /* Stack sizes in words (1 word = 4 bytes).
-   * 1024 words = 4 KB per task.  Tasks using float printf or deep CSP call
-   * chains need ≥1 KB — 512 words was borderline and caused HardFault.   */
-  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);     /* 4 */
-  xTaskCreate(vSensorReadTask, "SensorRead", 1024, NULL, tskIDLE_PRIORITY + 3, &h_sensor); /* 3 */
-  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 1024, NULL, tskIDLE_PRIORITY + 3,
-              &h_attitude);                                                                 /* 3 */
-  xTaskCreate(vTelemetryTask, "Telemetry", 1024, NULL, tskIDLE_PRIORITY + 2, &h_telemetry); /* 2 */
-  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, &h_command);       /* 2 */
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 1024, NULL, tskIDLE_PRIORITY + 1,
-              &h_health);                                                        /* 1 */
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL); /* 1 */
 
-  printf("[STARTUP] done\r\n");
+/* Check every xTaskCreate — a silent pdFAIL here causes mysterious hangs. */
+#define CHK(ret, name)                                                                             \
+  do                                                                                               \
+  {                                                                                                \
+    if ((ret) != pdPASS)                                                                           \
+    {                                                                                              \
+      printf("  [ERROR] xTaskCreate FAILED: " name "\r\n");                                        \
+      fflush(stdout);                                                                              \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      printf("  [OK]    created: " name "\r\n");                                                   \
+      fflush(stdout);                                                                              \
+    }                                                                                              \
+  } while (0)
+
+  /* Create lower-priority tasks first so that Heartbeat (highest pri) cannot
+   * preempt the startup task before all tasks exist.
+   * 2048 words (8 KB) per task: newlib printf with floats + EKF + CSP uses >4 KB. */
+#if ENABLE_LED_BLINK
+  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, NULL), "LEDBlink");
+#else
+  printf("  [SKIP]  LEDBlink (disabled)\r\n");
   fflush(stdout);
-  vTaskDelete(NULL);
+#endif
+  // CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, configMAX_PRIORITIES - 2, NULL),
+  // "Heartbeat");
+  CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+      "Heartbeat");
+
+#if ENABLE_TASK_SENSOR_READ
+  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 3, &h_sensor),
+      "SensorRead");
+#else
+  printf("  [SKIP]  SensorRead (disabled)\r\n");
+  fflush(stdout);
+#endif
+#if ENABLE_TASK_ATTITUDE_CTRL
+  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3,
+                  &h_attitude),
+      "AttitudeCtrl");
+#else
+  printf("  [SKIP]  AttitudeCtrl (disabled)\r\n");
+  fflush(stdout);
+#endif
+#if ENABLE_TASK_TELEMETRY
+  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, &h_telemetry),
+      "Telemetry");
+#else
+  printf("  [SKIP]  Telemetry (disabled)\r\n");
+  fflush(stdout);
+#endif
+#if ENABLE_TASK_COMMAND
+  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, &h_command),
+      "Command");
+#else
+  printf("  [SKIP]  Command (disabled)\r\n");
+  fflush(stdout);
+#endif
+#if ENABLE_TASK_HEALTH_MON
+  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1, &h_health),
+      "HealthMon");
+#else
+  printf("  [SKIP]  HealthMon (disabled)\r\n");
+  fflush(stdout);
+#endif
+
+#undef CHK
+
+  printf("[STARTUP] done — heap=%lu\r\n", (unsigned long)xPortGetFreeHeapSize());
+  fflush(stdout);
+
+  /* TEST 4: Stay at MAX priority (4). Call vTaskDelay → context switch
+   * to Timer Svc (pri 3), then Idle (pri 0), then back to us.
+   * If this crashes: PendSV / idle-task / SMP port is broken.
+   * If ALIVE 0 prints but not ALIVE 1: crash is in Timer/Idle task.      */
+  /* NO vTaskPrioritySet — remain at configMAX_PRIORITIES-1 = 4 */
+  uint32_t alive_tick = 0;
+  for (;;)
+  {
+    printf("[ALIVE %lu] tick=%lu\r\n", (unsigned long)alive_tick,
+           (unsigned long)xTaskGetTickCount());
+    alive_tick++;
+    vTaskDelay(pdMS_TO_TICKS(2000));
+  }
 }
 
 /* ── main ──────────────────────────────────────────────────────────────────── */
 int main(void)
 {
   stdio_init_all();
+  setvbuf(stdout, NULL, _IONBF, 0); /* fully unbuffered — every write goes to USB immediately */
   /* Wait up to 3 s for USB CDC host (UART works immediately) */
   for (int i = 0; i < 30 && !stdio_usb_connected(); i++)
     sleep_ms(100);
+
+  /* Check if we rebooted due to a stack overflow (watchdog scratch magic). */
+  if (watchdog_hw->scratch[0] == 0xDEAD0001u)
+  {
+    char name[13] = {0};
+    for (int i = 0; i < 3; i++)
+    {
+      uint32_t w = watchdog_hw->scratch[1 + i];
+      name[i * 4 + 0] = (char)(w & 0xFF);
+      name[i * 4 + 1] = (char)((w >> 8) & 0xFF);
+      name[i * 4 + 2] = (char)((w >> 16) & 0xFF);
+      name[i * 4 + 3] = (char)((w >> 24) & 0xFF);
+    }
+    name[12] = '\0';
+    watchdog_hw->scratch[0] = 0; /* clear so we don't repeat */
+    printf("\r\n*** REBOOTED: Stack overflow in task '%s' ***\r\n\r\n", name);
+    fflush(stdout);
+  }
 
   printf("\r\n===================================\r\n");
   printf("  Pico 2W -- Full OBC subsystem test\r\n");
   printf("===================================\r\n\r\n");
   fflush(stdout);
 
+#if 1
   if (cyw43_arch_init())
   {
     printf("[WARN] cyw43_arch_init failed -- LED disabled\r\n");
     fflush(stdout);
   }
+#endif
 
   /* Create ONE startup task — everything else happens inside it after the
    * scheduler starts and SMP spinlocks are fully initialised.           */

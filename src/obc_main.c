@@ -37,26 +37,28 @@ void vLedBlinkTask(void *pvParameters)
   for (;;)
   {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+    cyw43_arch_poll(); /* process SPI command NOW, before yielding */
     vTaskDelay(pdMS_TO_TICKS(200));
-    /* Poll CYW43 so the SPI command is processed (required with arch_none) */
-    cyw43_arch_poll();
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    vTaskDelay(pdMS_TO_TICKS(800));
     cyw43_arch_poll();
+    vTaskDelay(pdMS_TO_TICKS(800));
   }
 }
 
-/* Heartbeat — proof of life every 2 s with explicit fflush so USB CDC
- * delivers the output promptly (without fflush the buffer sits for up to
- * PICO_STDIO_USB_STDOUT_TIMEOUT_US = 500 ms before the host sees it). */
+/* Heartbeat — proof of life every 2 s.
+ * No fflush: pico USB CDC ring buffer is drained by the USB IRQ.
+ * An explicit fflush while the buffer is full can deadlock the stdio mutex. */
 static void vHeartbeatTask(void *pvParameters)
 {
   (void)pvParameters;
   uint32_t tick = 0;
   for (;;)
   {
-    printf("[HB %lu] heap=%lu\r\n", (unsigned long)tick++, (unsigned long)xPortGetFreeHeapSize());
-    fflush(stdout);
+    printf("[HB %lu] heap=%lu tick=%lu\r\n", (unsigned long)tick,
+           (unsigned long)xPortGetFreeHeapSize(), (unsigned long)xTaskGetTickCount());
+    printf("  HWM Heartbeat=%lu\r\n", (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    fflush(stdout); /* guarantee output even if pico short-circuit misbehaves */
+    tick++;
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }
@@ -108,36 +110,93 @@ static void vStartupTask(void *pvParameters)
   system_state_set_available(imu_res == 0, temp_res == 0);
   printf("  IMU: %s  Temp: %s\r\n", imu_res == 0 ? "OK" : "not found",
          temp_res == 0 ? "OK" : "not found");
+  fflush(stdout);
 
   printf("  creating tasks...\r\n");
   fflush(stdout);
-  /* Stack sizes in words (1 word = 4 bytes).
-   * 1024 words = 4 KB per task.  Tasks using float printf need >= 1 KB. */
-#ifdef PICO_BUILD
-  xTaskCreate(vLedBlinkTask, "LEDBlink", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
-  xTaskCreate(vHeartbeatTask, "Heartbeat", 512, NULL, configMAX_PRIORITIES - 1, NULL);
-#endif
-  xTaskCreate(vSensorReadTask, "SensorRead", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
-  xTaskCreate(vTelemetryTask, "Telemetry", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
-  xTaskCreate(vCommandTask, "Command", 1024, NULL, tskIDLE_PRIORITY + 2, NULL);
-  xTaskCreate(vHealthMonitorTask, "HealthMonitor", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-  printf("[STARTUP] done — deleting startup task\r\n");
+#define CHK(ret, name)                                                                             \
+  do                                                                                               \
+  {                                                                                                \
+    if ((ret) != pdPASS)                                                                           \
+    {                                                                                              \
+      printf("  [ERROR] xTaskCreate FAILED: " name "\r\n");                                        \
+      fflush(stdout);                                                                              \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      printf("  [OK]    created: " name "\r\n");                                                   \
+      fflush(stdout);                                                                              \
+    }                                                                                              \
+  } while (0)
+
+  /* Create lower-priority tasks first; Heartbeat (highest pri) goes last so
+   * it cannot preempt the startup task before all other tasks exist.
+   * 2048 words (8 KB) per task: newlib printf with floats + EKF + CSP uses >4 KB. */
+  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 3, NULL),
+      "SensorRead");
+  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3, NULL),
+      "AttitudeCtrl");
+  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, NULL),
+      "Telemetry");
+  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, NULL), "Command");
+  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+      "HealthMon");
+#ifdef PICO_BUILD
+  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, NULL), "LEDBlink");
+  /* Heartbeat at LOW priority — it’s just diagnostic, must not preempt Startup. */
+  CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+      "Heartbeat");
+#endif
+
+#undef CHK
+
+  printf("[STARTUP] done — heap=%lu\r\n", (unsigned long)xPortGetFreeHeapSize());
   fflush(stdout);
-  vTaskDelete(NULL);
+
+  /* Instead of vTaskDelete(NULL) — which may have issues on the SMP kernel
+   * with 1 core — lower our priority and turn this task into a slow alive
+   * heartbeat.  This avoids the SMP task-deletion code path entirely.      */
+  vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
+  for (;;)
+  {
+    printf("[ALIVE] heap=%lu tick=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
+           (unsigned long)xTaskGetTickCount());
+    fflush(stdout);
+    vTaskDelay(pdMS_TO_TICKS(5000));
+  }
 }
 
 int main(void)
 {
 #ifdef PICO_BUILD
   stdio_init_all();
+  setvbuf(stdout, NULL, _IONBF, 0); /* fully unbuffered — every write goes to USB immediately */
 
-  printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
-  fflush(stdout);
   /* Wait up to 3 s for USB CDC host to enumerate (UART works immediately). */
   for (int i = 0; i < 30 && !stdio_usb_connected(); i++)
     sleep_ms(100);
+
+  /* Check if we rebooted due to a stack overflow (watchdog scratch magic). */
+  if (watchdog_hw->scratch[0] == 0xDEAD0001u)
+  {
+    char name[13] = {0};
+    for (int i = 0; i < 3; i++)
+    {
+      uint32_t w = watchdog_hw->scratch[1 + i];
+      name[i * 4 + 0] = (char)(w & 0xFF);
+      name[i * 4 + 1] = (char)((w >> 8) & 0xFF);
+      name[i * 4 + 2] = (char)((w >> 16) & 0xFF);
+      name[i * 4 + 3] = (char)((w >> 24) & 0xFF);
+    }
+    name[12] = '\0';
+    watchdog_hw->scratch[0] = 0; /* clear so we don't repeat */
+    printf("\r\n*** REBOOTED: Stack overflow in task '%s' ***\r\n\r\n", name);
+    fflush(stdout);
+  }
+
+  printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
+  fflush(stdout);
   if (cyw43_arch_init())
   {
     printf("[WARN] CYW43 init failed — LED disabled\r\n");

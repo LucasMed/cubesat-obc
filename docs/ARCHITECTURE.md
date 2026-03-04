@@ -4,7 +4,8 @@
 
 The CubeSat On-Board Computer (OBC) is a modular, real-time flight software system for attitude determination and control (ADCS) on a 1U CubeSat platform.
 
-**Target Hardware**: Raspberry Pi Pico 2W (RP2040 dual-core MCU, 264 KB SRAM, WiFi via CYW43)
+**Target Hardware**: Raspberry Pi Pico 2W (RP2350 dual-core Cortex-M33 MCU, 520 KB SRAM, WiFi via CYW43)
+**OS**: FreeRTOS with `ARM_CM33_NTZ` port to securely handle ARMv8-M memory & FPU dynamic exception frames.
 
 ---
 
@@ -12,7 +13,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      CubeSat OBC (RP2040)                       │
+│                      CubeSat OBC (RP2350)                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────┐      ┌─────────────┐      ┌──────────────┐    │
@@ -157,7 +158,7 @@ Telemetry (1 Hz):
 - **Rationale**: 
   - Simpler implementation, easier to tune for small-sat applications
   - Avoids gimbal lock issues (Euler angles sufficient for CubeSat)
-  - Low computational cost (~1 ms per 10 Hz cycle on RP2040)
+  - Low computational cost (~1 ms per 10 Hz cycle on RP2350)
   - Can upgrade to LQR/MPC in Phase 4 if needed
 - **Trade-off**: Less robust near singularities; mitigated by small angular rates in nadir-pointing mode
 
@@ -173,7 +174,7 @@ Telemetry (1 Hz):
 ### 3. **Euler Integration (not RK4)**
 - **Decision**: Simple Euler forward integration for attitude dynamics
 - **Rationale**:
-  - RP2040 runs attitude update in simulation only (Phase 2 adds real sensor fusion)
+  - RP2350 runs attitude update in simulation only (Phase 2 adds real sensor fusion)
   - Euler is O(dt²); acceptable for 20 Hz update rate during ground testing
   - Can add RK2/RK4 in Phase 4 if validation requires higher-order integration
 - **Trade-off**: Slight loss of accuracy; sufficient for control law validation
@@ -188,7 +189,7 @@ Telemetry (1 Hz):
 ### 5. **Software Floating-Point (Soft-FP)**
 - **Decision**: Force `-mfloat-abi=soft` in build configuration.
 - **Rationale**: 
-  - The FreeRTOS port (RP2040) does not handle FPU context switching.
+  - The FreeRTOS port (RP2350) does not handle FPU context switching.
   - Using hardware FPU on RP2350 leads to stack corruption during task switches.
   - Soft-FP ensures stability without significant performance impact for the 10-20 Hz loop.
   - Clear ownership model in tasks (read/write boundaries documented)
@@ -201,7 +202,7 @@ Telemetry (1 Hz):
   - Scalability for Phase 3 (comms, monitoring)
   - Industry standard for flight software
   - Easier to add watchdog, safety monitors
-- **Trade-off**: ~10 KB SRAM for RTOS kernel; acceptable on RP2040
+- **Trade-off**: ~10 KB SRAM for RTOS kernel; acceptable on RP2350
 
 ### 6. **Host-Buildable Scaffold**
 - **Decision**: Compile and test on Linux (GCC) before Pico SDK integration
@@ -243,13 +244,13 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| MCU | RP2040 (Pico 2W) | Low cost, dual-core, integrated WiFi, ARM Cortex-M0+ |
+| MCU | RP2350 (Pico 2W) | Low cost, dual-core, integrated WiFi, ARM Cortex-M0+ |
 | RTOS | FreeRTOS | Open-source, flight-proven, wide industry adoption |
 | Build | CMake | Cross-platform, modular, industry standard |
 | Language | C (C11) | Deterministic, low overhead, MISRA compliance |
 | Testing | CTest + Unit Tests | Native C testing, CI integration |
 | Sensors | I2C (IMU, Temp) | Standard protocol, widely available components |
-| Actuators | PWM/SPI (RW motors) | Standard digital control, DMA-capable on RP2040 |
+| Actuators | PWM/SPI (RW motors) | Standard digital control, DMA-capable on RP2350 |
 
 ---
 

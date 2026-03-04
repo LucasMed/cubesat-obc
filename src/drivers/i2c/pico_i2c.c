@@ -1,6 +1,9 @@
 /**
  * @file pico_i2c.c
  * @brief Raspberry Pi Pico implementation of the I2C interface.
+ *
+ * Uses timeout-based I2C calls (50 ms) to prevent indefinite hangs
+ * when sensors are not connected or the bus is stuck.
  */
 
 #include "drivers/i2c_interface.h"
@@ -9,6 +12,9 @@
 
 // Define which I2C instance to use (default I2C0)
 #define I2C_INST i2c0
+
+/** I2C operation timeout in microseconds (50 ms — generous for 400 kHz bus). */
+#define I2C_TIMEOUT_US 50000
 
 int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
 {
@@ -28,7 +34,7 @@ int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
 
 int i2c_bus_write(uint8_t addr, const uint8_t *data, size_t len)
 {
-  int ret = i2c_write_blocking(I2C_INST, addr, data, len, false);
+  int ret = i2c_write_timeout_us(I2C_INST, addr, data, len, false, I2C_TIMEOUT_US);
   if (ret < 0)
   {
     return ret;
@@ -38,7 +44,7 @@ int i2c_bus_write(uint8_t addr, const uint8_t *data, size_t len)
 
 int i2c_bus_read(uint8_t addr, uint8_t *data, size_t len)
 {
-  int ret = i2c_read_blocking(I2C_INST, addr, data, len, false);
+  int ret = i2c_read_timeout_us(I2C_INST, addr, data, len, false, I2C_TIMEOUT_US);
   if (ret < 0)
   {
     return ret;
@@ -49,13 +55,13 @@ int i2c_bus_read(uint8_t addr, uint8_t *data, size_t len)
 int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *rx, size_t rx_len)
 {
   // Write then read with repeated start
-  int ret = i2c_write_blocking(I2C_INST, addr, tx, tx_len, true);
+  int ret = i2c_write_timeout_us(I2C_INST, addr, tx, tx_len, true, I2C_TIMEOUT_US);
   if (ret < 0)
   {
     return ret;
   }
 
-  ret = i2c_read_blocking(I2C_INST, addr, rx, rx_len, false);
+  ret = i2c_read_timeout_us(I2C_INST, addr, rx, rx_len, false, I2C_TIMEOUT_US);
   if (ret < 0)
   {
     return ret;

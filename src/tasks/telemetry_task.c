@@ -95,7 +95,6 @@ void vTelemetryTask_Step(void)
 
   printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] flags=0x%02X\n", snap.mode, tlm->attitude[0],
          tlm->attitude[1], tlm->attitude[2], tlm->flags);
-  fflush(stdout);
 }
 
 // Telemetry task: sends telemetry at 1 Hz

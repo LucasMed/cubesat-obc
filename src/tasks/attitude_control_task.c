@@ -127,6 +127,18 @@ void vAttitudeControlTask(void *pvParameters)
   printf("[attitude_control_task] Started\n");
   fflush(stdout);
 
+  /* ── Without an IMU there is no attitude data to control ─────────────── */
+  {
+    dl_snapshot_t snap;
+    data_layer_read(&snap);
+    if (!snap.state.imu_available)
+    {
+      printf("[attitude_control_task] IMU not connected — task suspended\n");
+      fflush(stdout);
+      vTaskSuspend(NULL);
+    }
+  }
+
   while (1)
   {
     vTaskDelayUntil(&xLastWakeTime, xFrequency);

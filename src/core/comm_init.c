@@ -71,8 +71,10 @@ void comm_init(void)
 
 #ifdef PICO_BUILD
   /* Priority must be < configMAX_PRIORITIES (5). Use 3 — runs between
-   * Telemetry/Command and idle, low enough not to starve other tasks. */
-  xTaskCreate(vCspRouterTask, "CSPRouter", 512, NULL, tskIDLE_PRIORITY + 3, NULL);
+   * Telemetry/Command and idle, low enough not to starve other tasks.
+   * 1024 words (4 KB): csp_route_work() + newlib + queue ops need >2 KB
+   * on Cortex-M33. */
+  xTaskCreate(vCspRouterTask, "CSPRouter", 1024, NULL, tskIDLE_PRIORITY + 3, NULL);
   (void)printf("CSP: router task OK\r\n");
   (void)fflush(stdout);
 #endif

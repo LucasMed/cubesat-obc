@@ -54,7 +54,7 @@ if(PICO_BUILD)
     message(STATUS "Using FreeRTOS kernel from ${FREERTOS_KERNEL_PATH}")
     # Use the officially sanctioned RP2040 port CMake integration — properly
     # links hardware_exception, hardware_clocks, pico_multicore, etc.
-    include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/library.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/config/library.cmake)
 
     # freertos_kernel alias expected by libcsp FreeRTOS port
     if(NOT TARGET freertos_kernel)
