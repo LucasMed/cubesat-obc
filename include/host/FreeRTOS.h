@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 
+typedef int32_t BaseType_t;
 typedef uint32_t TickType_t;
 typedef uint32_t UBaseType_t;
 typedef void (*TaskFunction_t)(void *);
@@ -14,8 +15,10 @@ typedef void *TaskHandle_t;
 
 #define pdMS_TO_TICKS(xTimeInMs) (xTimeInMs)
 #define portTICK_PERIOD_MS 1
-#define pdTRUE 1
-#define pdFALSE 0
+#define pdTRUE ((BaseType_t)1)
+#define pdFALSE ((BaseType_t)0)
+#define pdPASS ((BaseType_t)1)
+#define pdFAIL ((BaseType_t)0)
 
 // Stub implementations
 #ifndef vTaskDelayUntil
@@ -45,12 +48,9 @@ typedef void *TaskHandle_t;
 
 // Task creation stub — casts pvTaskCode to void* so the function is
 // considered "used" by clang-tidy (avoids false unused-function warnings).
+// Returns pdPASS so the CHK() macro works on host builds.
 #define xTaskCreate(pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)     \
-  do                                                                                               \
-  {                                                                                                \
-    (void)(pvTaskCode);                                                                            \
-    printf("[FreeRTOS] Created task: %s (stub)\\n", (pcName));                                     \
-  } while (0)
+  ((void)(pvTaskCode), (void)printf("[FreeRTOS] Created task: %s (stub)\n", (pcName)), pdPASS)
 
 // Task deletion stub
 #define vTaskDelete(xTaskToDelete)                                                                 \

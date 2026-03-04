@@ -123,7 +123,7 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
  *
  * The Pico SDK vector table uses the name "isr_hardfault".
  */
-void prvHardFaultHandler(uint32_t *frame, uint32_t exc_return)
+void prvHardFaultHandler(const uint32_t *frame, uint32_t exc_return)
 {
   /* Step 1: clear CCR.UNALIGN_TRP so PSP frame accesses below can't re-fault. */
   *(volatile uint32_t *)0xE000ED14UL &= ~(1UL << 3);
