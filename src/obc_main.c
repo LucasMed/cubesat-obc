@@ -125,6 +125,12 @@ static void vStartupTask(void *pvParameters)
   printf("  creating tasks...\r\n");
   fflush(stdout);
 
+  static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
+  static TaskHandle_t h_cmd = NULL, h_health = NULL;
+#ifdef PICO_BUILD
+  static TaskHandle_t h_led = NULL, h_hb = NULL;
+#endif
+
 #define CHK(ret, name)                                                                             \
   do                                                                                               \
   {                                                                                                \
@@ -143,19 +149,19 @@ static void vStartupTask(void *pvParameters)
   /* Create lower-priority tasks first; Heartbeat (highest pri) goes last so
    * it cannot preempt the startup task before all other tasks exist.
    * 2048 words (8 KB) per task: newlib printf with floats + EKF + CSP uses >4 KB. */
-  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 3, NULL),
+  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 4, &h_sensor),
       "SensorRead");
-  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3, NULL),
+  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3, &h_ctrl),
       "AttitudeCtrl");
-  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, NULL),
+  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, &h_telem),
       "Telemetry");
-  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, NULL), "Command");
-  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, &h_cmd), "Command");
+  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1, &h_health),
       "HealthMon");
 #ifdef PICO_BUILD
-  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, NULL), "LEDBlink");
-  /* Heartbeat at LOW priority — it’s just diagnostic, must not preempt Startup. */
-  CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, &h_led), "LEDBlink");
+  /* Heartbeat at LOW priority — it's just diagnostic, must not preempt Startup. */
+  CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, &h_hb),
       "Heartbeat");
 #endif
 
