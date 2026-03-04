@@ -62,7 +62,8 @@ typedef void *TaskHandle_t;
 // Stack high-water mark stub (returns 0 on host)
 #define uxTaskGetStackHighWaterMark(xTask) ((UBaseType_t)((void)(xTask), 0u))
 
-// Free heap stub (returns 0 on host)
+// Free heap stubs (return 0 on host)
 #define xPortGetFreeHeapSize() ((size_t)0u)
+#define xPortGetMinimumEverFreeHeapSize() ((size_t)0u)
 
 #endif  // FREERTOS_H

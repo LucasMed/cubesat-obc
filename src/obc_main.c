@@ -127,10 +127,14 @@ static void vStartupTask(void *pvParameters)
   printf("  creating tasks...\r\n");
   fflush(stdout);
 
+#ifdef PICO_BUILD
+  /* Task handles — Pico only; HWM printed in ALIVE loop. */
   static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
   static TaskHandle_t h_cmd = NULL, h_health = NULL;
-#ifdef PICO_BUILD
   static TaskHandle_t h_led = NULL, h_hb = NULL;
+  #define HPTR(h) (&(h))
+#else
+  #define HPTR(h) (NULL)
 #endif
 
 #define CHK(ret, name)                                                                             \
@@ -151,14 +155,17 @@ static void vStartupTask(void *pvParameters)
   /* Create lower-priority tasks first; Heartbeat (highest pri) goes last so
    * it cannot preempt the startup task before all other tasks exist.
    * 2048 words (8 KB) per task: newlib printf with floats + EKF + CSP uses >4 KB. */
-  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 4, &h_sensor),
+  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 4, HPTR(h_sensor)),
       "SensorRead");
-  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3, &h_ctrl),
+  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3,
+                  HPTR(h_ctrl)),
       "AttitudeCtrl");
-  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, &h_telem),
+  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_telem)),
       "Telemetry");
-  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, &h_cmd), "Command");
-  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1, &h_health),
+  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_cmd)),
+      "Command");
+  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1,
+                  HPTR(h_health)),
       "HealthMon");
 #ifdef PICO_BUILD
   CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, &h_led), "LEDBlink");
@@ -166,6 +173,8 @@ static void vStartupTask(void *pvParameters)
   CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, &h_hb),
       "Heartbeat");
 #endif
+
+#undef HPTR
 
 #undef CHK
 

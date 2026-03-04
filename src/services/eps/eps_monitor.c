@@ -188,20 +188,13 @@ static void handle_state_change(energy_state_t prev, energy_state_t next)
     fault_report(FAULT_EPS_VBATT_LOW, FAULT_LEVEL_WARNING);
     break;
 
-  case ENERGY_CRITICAL:
+  case ENERGY_CRITICAL: /* fall through */
+  case ENERGY_EMERGENCY:
     fault_clear(FAULT_EPS_VBATT_LOW);
     /* Single FDIR authority chain: EPS → FaultMgr → FMM.
      * CRITICAL level triggers fmm_force_safe() inside fault_manager.
-     * Direct fmm_request_transition() removed (was a bypass of the audit log). */
-    fault_report(FAULT_EPS_VBATT_CRITICAL, FAULT_LEVEL_CRITICAL);
-    break;
-
-  case ENERGY_EMERGENCY:
-    fault_clear(FAULT_EPS_VBATT_LOW);
-    /*
-     * CRITICAL fault level triggers fmm_force_safe() inside
-     * fault_manager — no need to call it explicitly here.
-     */
+     * Both CRITICAL and EMERGENCY escalate to the same level — no direct
+     * fmm_request_transition() call (would bypass the fault audit log). */
     fault_report(FAULT_EPS_VBATT_CRITICAL, FAULT_LEVEL_CRITICAL);
     break;
 
