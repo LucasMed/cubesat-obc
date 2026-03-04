@@ -81,6 +81,16 @@ static void vStartupTask(void *pvParameters)
   printf("\r\n[STARTUP] Subsystem init begin\r\n");
   fflush(stdout);
 
+#ifdef PICO_BUILD
+  printf("  cyw43_arch_init...\r\n");
+  fflush(stdout);
+  if (cyw43_arch_init())
+  {
+    printf("  [WARN] cyw43_arch_init failed -- LED disabled\r\n");
+    fflush(stdout);
+  }
+#endif
+
   printf("  system_state_init...\r\n");
   fflush(stdout);
   system_state_init();
@@ -197,11 +207,6 @@ int main(void)
 
   printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
   fflush(stdout);
-  if (cyw43_arch_init())
-  {
-    printf("[WARN] CYW43 init failed — LED disabled\r\n");
-    fflush(stdout);
-  }
 #else
   printf("=== CubeSat OBC Firmware (Host Simulation) ===\n");
 #endif
