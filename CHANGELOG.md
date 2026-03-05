@@ -5,7 +5,21 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/hardware-bom
+## [Unreleased] — feature/icd-obc-001
+
+### Added
+- **ICD-OBC-001 v1.0** (`docs/ICD-OBC-001.md`): Interface Control Document defining all
+  hardware/software interfaces for the CubeSat OBC. Covers I2C0 (MPU-6050, HMC5883L),
+  UART0 (GPS NEO-7M), UART1 (E22-400M30S / HC-12 TT&C), PWM (RW + MTQ actuators),
+  ADC0 (Vbatt), GPIO20 (TPS3431 watchdog), and USB CDC (debug). Includes bus topology
+  diagram, software ownership matrix, FDIR propagation chain, and verification methods.
+- **Magnetometer migration path** (ICD §6.1): HMC5883L retained as lab sensor (driver
+  fully integrated); LIS3MDL documented as flight recommendation with recommended
+  `mag_interface.h` abstraction layer for zero-impact driver swap at CDR.
+
+---
+
+## [0.9.0] — feature/hardware-bom
 
 ### Added
 - **Hardware BOM v1.0** (`docs/BOM.md`): complete Bill of Materials for the CubeSat OBC reaching
@@ -43,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] — feature/pre-hw-integration-docs
+## [0.8.0] — feature/pre-hw-integration-docs
 
 ### Added
 - **SyRS v1.0** (`docs/requirements/SyRS_v1.0.md`): System Requirements Specification
