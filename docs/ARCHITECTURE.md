@@ -59,8 +59,11 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **IMU Driver** (MPU6050): 6-DOF accelerometer + gyroscope via I2C
 - **Temperature Sensor**: TMP102 or onboard sensor readout
 - **Power Monitor**: Battery voltage via ADC
+- **Magnetometer Driver** (LIS3MDL): 3-axis magnetometer via I2C; replaces discontinued HMC5883L
+  (QMC5883L clone risk in GY-271 modules); continuous mode, ODR = 80 Hz, addr `0x1C`;
+  used by EKF for yaw estimation via tilt-compensated update (`ekf_update_mag()`)
 - **Design Rationale**: Hardware abstraction layer (HAL) pattern—easy to swap sensors
-- **Files**: `drivers/imu/mpu6050.c`, driver stubs for temperature
+- **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` (CDR: migrate to LIS3MDL)
 
 ### 3. **Control System** (`src/control/`)
 - **PID Controller**: Decoupled per axis (roll, pitch, yaw)
@@ -78,10 +81,13 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
   - Model: torque-to-momentum conversion
   - Momentum dump via magnetorquers when saturated
 - **Magnetorquers** (3-axis): Magnetic dipole interaction with Earth's field
-  - Supplementary actuator; low power, slow response
-  - Used for de-sat maneuvers
-- **Design Rationale**: Hybrid actuator strategy provides fault tolerance
-- **Files**: `reaction_wheel.c`, `magnetorquer.c`
+  - **Primary ADCS actuator (Phase 1)**: B-dot detumbling and safe-mode attitude hold achievable
+    without reaction wheels
+  - Reaction wheels required only for precision pointing (Phase 2 ADCS)
+  - Used for momentum desaturation (B×L dump) when RWs are saturated
+- **Design Rationale**: Magnetorquers-first strategy — MTQ-only enables full detumbling and SAFE MODE;
+  RWs add precision pointing in a later phase. Fault tolerance: loss of all RWs still permits MTQ-only safe mode.
+- **Files**: `reaction_wheel.c`, `magnetorquer.c`, `services/adcs/momentum_dump.c`
 
 ### 5. **Attitude Dynamics** (`src/dynamics/`)
 - **Model**: Rigid body rotation dynamics
@@ -95,7 +101,8 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **SensorRead Task** (10 Hz): Poll IMU, temperature, voltage
 - **AttitudeControl Task** (20 Hz): Compute control commands
 - **Telemetry Task** (1 Hz): Transmit state to ground station
-- **HealthMonitor Task** (0.2 Hz): Bus voltage, thermal monitoring, watchdog
+- **HealthMonitor Task** (0.2 Hz): Bus voltage, thermal monitoring, internal MCU watchdog kick +
+  external TPS3431 watchdog feed (`watchdog_hal_feed()` on GPIO20, 3 s timeout)
 - **Design**: Priority levels (HIGH/MEDIUM/LOW) prevent starvation
 - **Files**: 4 task implementations + task headers
 
@@ -104,7 +111,8 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **Physical Layer**: UART1 acts as the primary telemetry/command link via KISS framing.
 - **Telemetry Task** (Port 10): Emits 1 Hz packed binary `csp_telemetry_packet_t` over CSP (connection-less).
 - **Command Task** (Port 20): Listens for uplink commands (Echo, Reboot, Set Mode).
-- **UART0**: Retained for ASCII debug logging.
+- **UART0**: Remapped to GPS NEO-7M @ 9600 baud, NMEA 0183 (`$GPGGA`/`$GPRMC`); debug output
+  migrated to USB CDC (`pico_enable_stdio_usb = 1`).
 
 ---
 

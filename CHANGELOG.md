@@ -5,6 +5,44 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — feature/hardware-bom
+
+### Added
+- **Hardware BOM v1.0** (`docs/BOM.md`): complete Bill of Materials for the CubeSat OBC reaching
+  **PDR PASS** status. Covers all subsystems: OBC (RP2350/Pico 2W), ADCS sensors (MPU-6050 +
+  LIS3MDL), GPS (NEO-7M), TT&C (E22-400M30S / HC-12), EPS (LiPo 18650 + MT3608 + TP4056),
+  actuators (TB6612FNG RW + DRV8833 MTQ), ground station, and orbital parameters (SSO 500–700 km).
+- **External hardware watchdog TPS3431** (BOM §10 #12): WDI → GPIO20 (dedicated pin), timeout = 3 s,
+  kick source `HealthMonitorTask → watchdog_hal_feed()`. Closes the recovery chain:
+  `HealthMonitorTask → internal MCU watchdog → TPS3431 → full system reset`.
+- **LIS3MDL** identified as flight-grade magnetometer (BOM §3.1): replaces discontinued HMC5883L;
+  continuous mode, ODR = 80 Hz, I2C addr `0x1C`. QMC5883L clone risk in GY-271 modules documented
+  with mitigation steps and driver guidance.
+- **GPS NEO-7M** pin assignment finalised (BOM §4): UART0 @ 9600 baud, NMEA 0183 (`$GPGGA`/`$GPRMC`).
+  Debug output migrated from UART0 to USB CDC (`pico_enable_stdio_usb = 1`).
+- **SAW filter 433 MHz** added to RF chain (BOM §6e): TDK B39431 or equivalent placed between
+  E22-400M30S PA output and antenna; attenuates harmonics and out-of-band EMI interference.
+- **Magnetorquers-first ADCS strategy** documented (BOM §8): B-dot detumbling and safe-mode attitude
+  hold are achievable with MTQ-only (no reaction wheels). Phase 1 ADCS = MTQ-only; Phase 2 = RW + MTQ.
+  Firmware implication: implement and validate `b_dot_control.c` before `lqr_control.c`.
+- **Ground station design finalised** (BOM §7.2): E22-400M30S + CP2102/CH340 USB-UART adapter as
+  recommended final GS (symmetric 433 MHz pair, transparent UART mode, no custom firmware required).
+  LORA32U4 II demoted to bench-only secondary option.
+- **Link budget verified** for SSO horizon case (BOM §6.1): 2300 km slant range at 5° elevation;
+  E22-400M30S margin = +8.5 dB ✅; HC-12 margin = −9.5 dB ❌ (lab only confirmed).
+- **Lab purchase list** (BOM §14): 22 items, ~$125–155 USD, priority-ordered by firmware readiness.
+
+### Documentation
+- BOM §2 OBC: DWT cycle counter (`DWT->CYCCNT`) noted for per-task WCET measurement before CDR;
+  COTS non-space-grade risk (TID/SEE) and conformal coating recommendation documented.
+- BOM §10 #9: I2C pull-up 4.7 kΩ on SDA/SCL confirmed required for MPU-6050 and LIS3MDL at 400 kHz;
+  status updated from `❓ To evaluate` → `🔄 Planned`.
+- BOM §0: SSO orbital parameters documented (500–700 km, 96–98°, eclipse ≤ 35.5 min).
+- CDR pending items identified: flight EPS, reaction wheel final spec, OBC PCB design, LIS3MDL driver
+  migration (`src/drivers/mag/`), radiation tolerance qualification.
+
+---
+
 ## [Unreleased] — feature/pre-hw-integration-docs
 
 ### Added
