@@ -103,8 +103,8 @@ y notas de integración.
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
-| 6 | Transceiver TT&C | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 |
-| 6b | *(alternativa banco de pruebas)* | HC-12 (433 MHz FSK, TTL UART) | 2 | 🔄 Planificado | Solo para testing en tierra; 100 mW, $3/ud |
+| 6 | Transceiver TT&C (vuelo) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 |
+| 6b | Transceiver TT&C (GS + prototipo) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 Planificado | Plug-and-play KISS/CSP; 100 mW; ideal dev/GS; ver §6.2 |
 
 > Ver también **§7 Estación Terrena** para el hardware de ground control.
 
@@ -157,6 +157,56 @@ GPIO[libre]─────────────▶ AUX (busy/ready flag, opci
 - Requiere licencia amateur (IARU coordinar frecuencia) o banda ISM 433 MHz (potencia limitada a 10 mW en algunos países en ISM — verificar regulación local)
 - Antena: dipolo 1/4 onda (~16.4 cm a 434 MHz) o antena helicoidal para mayor ganancia
 - Link budget LEO 600 km con dipolo: ~-120 dBm recibido @ 1W TX → viable con E22 sensibilidad típica -148 dBm (LoRa SF12)
+
+### 6.2 Análisis específico: HC-12 Si4463 433 MHz
+
+**Veredicto: ✅ Excelente para desarrollo/GS — ⚠️ Marginal para vuelo LEO**
+
+El HC-12 es el candidato **más sencillo de integrar** de todos los evaluados: UART transparente, misma banda (433 MHz), y compatible con KISS/CSP sin ningún cambio de firmware.
+
+| Característica | HC-12 (Si4463) | E22-400M30S (SX1268) |
+|---|---|---|
+| Interfaz con Pico 2W | ✅ UART TTL directo (3.3V–5V) | ✅ UART TTL directo (3.3V) |
+| KISS/CSP plug-and-play | ✅ Sí, modo FU3 = pipe transparente | ✅ Sí, modo transparente |
+| Frecuencia | ✅ 433.4–473 MHz configurable | ✅ 410–493 MHz configurable |
+| Baud rate | ✅ hasta 115200 bps (AT+Bxxxx) | ✅ hasta 115200 bps |
+| Potencia TX | ⚠️ 20 dBm (100 mW) | ✅ 30 dBm (1 W) |
+| Sensibilidad RX | ⚠️ −117 dBm @ 5 kbps | ✅ −148 dBm (LoRa SF12) |
+| Precio | ✅ ~$3–5 | ~$15 |
+| Level-shifter necesario | ✅ No (acepta 3.3V y 5V) | ✅ No |
+| Configuración extra (M0/M1/AUX) | ✅ No (solo UART + SET pin opcional) | ⚠️ Sí (3 GPIOs extra) |
+
+#### Circuito de conexión — HC-12 (más simple que el E22):
+```
+Pico 2W                  HC-12
+GPIO4 (TX) ───────────▶ TXD
+GPIO5 (RX) ◀─────────── RXD
+3.3V       ───────────▶ VCC  (acepta 3.2–5.5V)
+GND        ───────────▶ GND
+                        SET  (dejar libre = modo normal; GND = modo AT cmd)
+```
+> Solo 4 cables. Sin pines de modo adicionales en operación normal.
+
+#### Link budget para LEO (600 km):
+
+| Parámetro | HC-12 (100 mW) | E22-400M30S (1 W) |
+|-----------|---------------|-------------------|
+| EIRP TX | ~23 dBm (con dipolo 3 dBi) | ~33 dBm |
+| Path loss LEO 600 km @ 435 MHz | ~148 dB | ~148 dB |
+| Señal recibida (dipolo GS 3 dBi) | **−122 dBm** | **−112 dBm** |
+| Sensibilidad RX (FSK 9600 bps) | −117 dBm | −125 dBm (FSK) |
+| **Margen de enlace** | **−5 dB ❌ (insuficiente)** | **+13 dB ✅** |
+
+> **Conclusión del link budget**: el HC-12 con 100 mW no tiene margen suficiente para un enlace LEO confiable a 600 km con antenas de dipolo. Sería viable solo con antenas yagi de alta ganancia en tierra (≥10 dBi), lo que complica la GS.
+
+#### Roles recomendados:
+
+| Rol | HC-12 | E22-400M30S |
+|-----|-------|-------------|
+| Desarrollo en banco (< 10 m) | ✅ Ideal — plug-and-play, barato | ✅ También válido |
+| Pruebas campo corto (< 1 km) | ✅ Sobra potencia | ✅ |
+| Radio de Estación Terrena (GS) | ✅ Par económico con antena yagi | ✅ Par estándar |
+| **Transceiver de vuelo LEO** | ❌ Sin margen de enlace | ✅ **Usar este** |
 
 ---
 
@@ -258,3 +308,4 @@ ADC4   — Sensor temperatura interno
 |---------|-------|-------|-------------|
 | 0.1 | 2026-03-05 | — | Creación inicial; GPS GY-NEO6Mv2 evaluado; sensores actitud documentados |
 | 0.2 | 2026-03-05 | — | Transceiver TT&C analizado; E22-400M30S recomendado; LORA32U4 II → GS |
+| 0.3 | 2026-03-05 | — | HC-12 Si4463 433 MHz evaluado: ✅ GS/desarrollo, ❌ vuelo LEO (link budget −5 dB) |
