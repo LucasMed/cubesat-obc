@@ -1,443 +1,442 @@
 # Bill of Materials (BOM) — CubeSat OBC Hardware
 
 **Document ID**: BOM-OBC-001  
-**Version**: 0.7  
+**Version**: 0.9  
 **Date**: 2026-03-05  
 **Branch**: `feature/hardware-bom`  
-**Status**: 🔄 En construcción — agregar partes a medida que se evalúan
+**Status**: 🔄 In progress — components added as they are evaluated
 
 ---
 
-## 0. Parámetros de Misión (referencia para el BOM)
+## 0. Mission Parameters (BOM reference)
 
-> Estos parámetros orbitales son la base de todos los cálculos de link budget, EPS (eclipse), y ventanas de contacto.
+> These orbital parameters are the basis for all link budget, EPS (eclipse), and contact window calculations.
 
-| Parámetro | Valor | Notas |
+| Parameter | Value | Notes |
 |-----------|-------|-------|
-| Tipo de órbita | **SSO — Sun-Synchronous / Polar** | Ecuación solar local fija cada día |
-| Altitud | **500–700 km** (objetivo nominal: 600 km) | LEO bajo |
-| Inclinación | **~96°–98°** | Cobertura polar + Argentina |
-| Período orbital | **94.5 min** (500 km) – **98.6 min** (700 km) | $T = 2\pi\sqrt{a^3/\mu}$ |
-| Eclipse méximo | **35–37 min** (caso peor, $\beta = 0°$) | $t_{ecl} = T \cdot \frac{\arccos\sqrt{1-(R_E/a)^2}}{\pi}$ |
-| Eclipse mínimo | **0 min** (solão continuo cuando $|\beta| > 66°$) | Parte del año sin eclipse |
-| Ventana de contacto (GS Argentina) | **10–14 min/paso**, 2–4 pasos/día | Depende de latitud GS y elevación mín |
-| Slant range overhead (nadir) | ~500–700 km | Paso en cenit |
-| **Slant range crítico** (el. 5°, horizonte) | **~2000–2300 km** | ⚠️ Caso crítico para link budget |
-| Deriva orbital | ~0.98°/día (précesión) | SSO mantiene LTAN fijo |
+| Orbit type | **SSO — Sun-Synchronous / Polar** | Fixed local solar time each day |
+| Altitude | **500–700 km** (nominal target: 600 km) | Low LEO |
+| Inclination | **~96°–98°** | Polar coverage |
+| Orbital period | **94.5 min** (500 km) – **98.6 min** (700 km) | $T = 2\pi\sqrt{a^3/\mu}$ |
+| Max eclipse | **35–37 min** (worst case, $\beta = 0°$) | $t_{ecl} = T \cdot \frac{\arccos\sqrt{1-(R_E/a)^2}}{\pi}$ |
+| Min eclipse | **0 min** (continuous sunlight when $|\beta| > 66°$) | Part of the year eclipse-free |
+| Contact window (GS) | **10–14 min/pass**, 2–4 passes/day | Depends on GS latitude and min elevation |
+| Slant range overhead (nadir) | ~500–700 km | Zenith pass |
+| **Critical slant range** (5° el., horizon) | **~2000–2300 km** | ⚠️ Critical case for link budget |
+| Orbital drift | ~0.98°/day (precession) | SSO maintains fixed LTAN |
 
-**Implicaciones directas para el BOM:**
-- **Link budget**: dimensionar para slant range **2300 km** (horizonte), no 600 km (nadir) — ver §6
-- **EPS / batería**: dimensionar para cubrir **37 min de eclipse** por órbita — ver §9
-- **GPS**: muy relevante — la SSO pasa sobre Argentina a la **misma hora solar local** todos los días; el GPS provee timestamp y posición para correlacionar datos de sensores con coordenadas geográficas — ver §4
-- **GS (Estación Terrena)**: ventana de ≤8 min útiles de enlace por paso → el protocolo CSP + telemetría 1 Hz debe ser eficiente
-
----
-
-## 1. Propósito
-
-Este documento lista todos los componentes de hardware necesarios para ensamblar
-el prototipo de vuelo del OBC (On-Board Computer) basado en la Raspberry Pi Pico 2W
-(RP2350, Cortex-M33). Se incluye el estado de compatibilidad con el firmware actual
-y notas de integración.
-
-**Leyenda de estado:**
-| Símbolo | Significado |
-|---------|-------------|
-| ✅ Integrado | Driver y requisito implementados en el firmware |
-| 🔄 Planificado | Partes evaluadas, driver pendiente de desarrollo |
-| ❓ Por evaluar | Candidato, análisis de compatibilidad pendiente |
-| ❌ Descartado | Incompatible o sustituido por otro componente |
+**Direct BOM implications:**
+- **Link budget**: size for slant range **2300 km** (horizon), not 600 km (nadir) — see §6
+- **EPS / battery**: size to cover **37 min of eclipse** per orbit — see §9
+- **GPS**: highly relevant — SSO passes at the **same local solar time** every day; GPS provides precise timestamps and position to correlate sensor data with geographic coordinates — see §4
+- **GS (Ground Station)**: useful link window ≤8 min per pass → CSP protocol + 1 Hz telemetry must be efficient
 
 ---
 
-## 2. Procesador / OBC Central
+## 1. Purpose
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 1 | Microcontrolador OBC | Raspberry Pi Pico 2W | 2 | ✅ Integrado | RP2350 (Cortex-M33 dual-core, 520 KB SRAM, Wi-Fi/BT); 1 vuelo + 1 spare |
+This document lists all hardware components required to assemble the flight prototype
+of the OBC (On-Board Computer) based on the Raspberry Pi Pico 2W (RP2350, Cortex-M33).
+Firmware compatibility status and integration notes are included for each component.
 
-**Referencia firmware**: `config/pico_pins.h`, `src/CMakeLists.txt`
-
----
-
-## 3. Sensores de Actitud (ADCS)
-
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 2 | IMU 6-DOF | MPU-6050 (módulo GY-521) | 2 | ✅ Integrado | I2C @ 400 kHz, addr 0x68; GPIO4 (SDA), GPIO5 (SCL) |
-| 3 | Magnetómetro 3-ejes | HMC5883L (módulo GY-271) | 2 | ✅ Integrado | I2C bus I2C0; driver `src/drivers/mag/hmc5883l.c` — Phase 5 |
-
-**Notas de integración — Sensores de actitud:**
-- IMU y magnetómetro comparten bus I2C0 (`GPIO4`/`GPIO5`, fast-mode 400 kHz).
-- El EKF fusiona acelerómetro + giróscopo + magnetómetro (3-state: roll/pitch/yaw).
-- Referencia: `src/tasks/sensor_read_task.c`, `include/ekf.h`
+**Status legend:**
+| Symbol | Meaning |
+|--------|---------|
+| ✅ Integrated | Driver and requirement implemented in firmware |
+| 🔄 Planned | Parts evaluated, driver pending development |
+| ❓ To evaluate | Candidate, compatibility analysis pending |
+| ❌ Rejected | Incompatible or superseded by another component |
 
 ---
 
-## 4. Navegación / Posicionamiento
+## 2. Processor / Central OBC
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 4 | Módulo GPS | GY-NEO6Mv2 con NEO-7M + antena | 2 | 🔄 Planificado | UART @ 9600 baud, 3.3V; requiere liberar UART0 — ver §4.1 |
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 1 | OBC Microcontroller | Raspberry Pi Pico 2W | 2 | ✅ Integrated | RP2350 (Cortex-M33 dual-core, 520 KB SRAM, Wi-Fi/BT); 1 flight + 1 spare |
 
-> **Relevancia en SSO**: el GPS es **especialmente útil** en esta misión. La SSO pasa sobre Argentina al mismo momento solar local cada día → el GPS provee timestamp preciso y posición para correlacionar lecturas con ubicación geográfica. También permite sincronizar el reloj del OBC en cada paso.
-
-### 4.1 Compatibilidad GPS GY-NEO6Mv2 / NEO-7M
-
-**Hardware**: ✅ Compatible con condición  
-**Software**: 🔄 Driver y task de FreeRTOS pendientes de desarrollo
-
-| Característica | GY-NEO6Mv2 (NEO-7M) | RP2350 / Pico 2W | Estado |
-|---|---|---|---|
-| Protocolo | UART (NMEA 0183) | 2× UART hardware | ✅ |
-| Voltaje lógico | 3.3 V | GPIO a 3.3 V | ✅ |
-| Voltaje supply | 3.3–5 V (regulador onboard) | 3.3 V disponible | ✅ |
-| Antena | Pasiva cerámica (incluida) | N/A | ✅ |
-| Baud rate default | 9600 | Configurable | ✅ |
-
-**Conflicto de UART** (debe resolverse antes de comprar):
-
-| Puerto | Pines | Uso actual | Disponible para GPS |
-|--------|-------|-----------|---------------------|
-| UART0 | GPIO0/GPIO1 | Debug ASCII @ 115200 | ⚠️ Liberable si debug→USB CDC |
-| UART1 | GPIO4/GPIO5 | CSP/KISS telemetry @ 115200 | ❌ Ocupado |
-
-**Solución seleccionada: Opción A — Liberar UART0 para GPS**
-> Mover todo el debug output a USB CDC (ya habilitado en `src/CMakeLists.txt`,
-> `pico_enable_stdio_usb = 1`). UART0 queda libre para recibir sentencias NMEA
-> del GPS. Cambio de firmware estimado: mínimo (1 línea en `pico_pins.h` + driver NMEA).
-
-**Trabajo de firmware requerido** (Phase 7 o nueva tarea):
-- [ ] Driver NMEA parser (`src/drivers/gps/neo7m.c`)
-- [ ] Tarea FreeRTOS GPS (`src/tasks/gps_task.c`) — 1 Hz
-- [ ] Escritura al Data Layer (`data_layer_write_gps()`)
-- [ ] Requisito en SyRS (`SYS-F-GPS-001` — posición orbital)
-- [ ] Tests unitarios (`tests/unit/test_gps.c`)
+**Firmware reference**: `config/pico_pins.h`, `src/CMakeLists.txt`
 
 ---
 
-## 5. Gestión de Energía
+## 3. Attitude Sensors (ADCS)
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 5 | Sensor temperatura | TMP102 o ADC4 interno | 1 | ✅ Integrado | Modo ADC4 activo; I2C addr 0x48 si externo |
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 2 | 6-DOF IMU | MPU-6050 (GY-521 module) | 2 | ✅ Integrated | I2C @ 400 kHz, addr 0x68; GPIO4 (SDA), GPIO5 (SCL) |
+| 3 | 3-axis Magnetometer | HMC5883L (GY-271 module) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — Phase 5 |
 
-> Batería, regulador 5V, cargador y panel solar definidos en **§9 EPS**.
+**Integration notes — Attitude sensors:**
+- IMU and magnetometer share I2C0 bus (`GPIO4`/`GPIO5`, fast-mode 400 kHz).
+- The EKF fuses accelerometer + gyroscope + magnetometer (3-state: roll/pitch/yaw).
+- Reference: `src/tasks/sensor_read_task.c`, `include/ekf.h`
 
 ---
 
-## 6. Comunicaciones (TT&C)
+## 4. Navigation / Positioning
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 6 | Transceiver TT&C (vuelo) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 — **comprar para vuelo** |
-| 6b | Transceiver TT&C (lab/GS) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 **Comprar ahora** | Plug-and-play KISS/CSP; mismo firmware que E22; ~$3/ud — ver §6.2 |
-| 6c | Antena TT&C lab | Antena whip/rubber-duck 433 MHz SMA (5–8 dBi) | 4 | 🔄 **Comprar ahora** | 2× para HC-12 OBC+GS, 2× spare; ~$1–2 c/u (AliExpress) |
-| 6d | Antena TT&C vuelo | Dipolo λ/4 personalizado a 434 MHz (~17.3 cm wire + radiales) | 1 | 🔄 Planificado | λ/4 con factor de velocidad 0.95 = 16.4 cm hilo + plano de tierra; ver §6.3 |
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 4 | GPS Module | GY-NEO6Mv2 with NEO-7M + antenna | 2 | 🔄 Planned | UART @ 9600 baud, 3.3V; requires freeing UART0 — see §4.1 |
 
-> Ver también **§7 Estación Terrena** para el hardware de ground control.
+> **SSO relevance**: GPS is **especially useful** in this mission. The SSO passes at the same local solar time every day → GPS provides precise timestamps and position to correlate readings with geographic coordinates. Also enables OBC clock synchronization on each pass.
 
-### 6.1 Análisis de transceivers UHF/VHF
+### 4.1 GPS GY-NEO6Mv2 / NEO-7M Compatibility
 
-**Requisitos del firmware para el TT&C:**
-- Interfaz: **UART1** (`GPIO4 TX` / `GPIO5 RX`) @ **115200 baud**, 3.3 V TTL
-- Protocolo: **KISS framing** sobre la capa física → el radio debe actuar como **pipe UART transparente**
-- Stack: CSP v2 (OBC addr 10, GS addr 1); telemetría 1 Hz @ 29 bytes/paquete
+**Hardware**: ✅ Compatible with condition  
+**Software**: 🔄 FreeRTOS driver and task pending development
 
-> Referencia firmware: [docs/PHASE3_COMM_SPEC.md](PHASE3_COMM_SPEC.md), `src/drivers/uart/pico_usart.c`
+| Feature | GY-NEO6Mv2 (NEO-7M) | RP2350 / Pico 2W | Status |
+|---------|---------------------|------------------|--------|
+| Protocol | UART (NMEA 0183) | 2× hardware UART | ✅ |
+| Logic voltage | 3.3 V | GPIO at 3.3 V | ✅ |
+| Supply voltage | 3.3–5 V (onboard regulator) | 3.3 V available | ✅ |
+| Antenna | Passive ceramic (included) | N/A | ✅ |
+| Default baud rate | 9600 | Configurable | ✅ |
 
-**Candidatos evaluados:**
+**UART conflict** (must be resolved before purchase):
 
-| Módulo | Frecuencia | Interfaz | Potencia | KISS-compatible | Precio est. | Veredicto |
-|--------|-----------|---------|---------|----------------|------------|----------|
-| **EBYTE E22-400M30S** (SX1268) | 410–493 MHz | UART TTL 3.3V | 30 dBm (1W) | ✅ Modo transparente | ~$15 | ✅ **Recomendado** |
-| **EBYTE E22-900M30S** (SX1262) | 850–930 MHz | UART TTL 3.3V | 30 dBm (1W) | ✅ Modo transparente | ~$15 | ✅ Alternativa (banda diferente) |
-| **HC-12** (Si4463) | 433 MHz FSK | UART TTL 3.3V | 20 dBm (100 mW) | ✅ Modo transparente | ~$3 | ⚠️ Solo prototipo tierra |
-| **Dorji DRA818U** | 400–470 MHz UHF | UART (AT cmd) + audio analógico | 1W | ❌ Audio analógico, necesita TNC | ~$8 | ❌ No compatible directo |
-| **AX5043** (IC) | Multi-banda sub-GHz | **SPI** | configurable | ❌ SPI → requiere nuevo driver | ~$10 (IC) | ❌ Cambio de arquitectura |
-| **RFM98W** / SX1276 | 433/868/915 MHz | **SPI** | 20 dBm | ❌ SPI | ~$5 | ❌ Cambio de arquitectura |
+| Port | Pins | Current use | Available for GPS |
+|------|------|-------------|-------------------|
+| UART0 | GPIO0/GPIO1 | Debug ASCII @ 115200 | ⚠️ Freeable if debug→USB CDC |
+| UART1 | GPIO4/GPIO5 | CSP/KISS telemetry @ 115200 | ❌ In use |
 
-**¿Por qué el E22-400M30S es el recomendado?**
+**Selected solution: Option A — Free UART0 for GPS**
+> Move all debug output to USB CDC (already enabled in `src/CMakeLists.txt`,
+> `pico_enable_stdio_usb = 1`). UART0 is then free to receive NMEA sentences
+> from the GPS. Estimated firmware change: minimal (1 line in `pico_pins.h` + NMEA driver).
 
-1. **UART transparente nativo**: en modo de operación normal actúa como cable serial RF → el stack KISS/CSP del firmware actual funciona sin modificaciones.
-2. **TTL 3.3 V**: compatible directo con GPIO del RP2350, sin level-shifter.
-3. **30 dBm (1 W)**: potencia de TX adecuada para enlace LEO (~600 km) con antena de dipolo.
-4. **LoRa + FSK**: configurable; para LEO se recomienda FSK @ 9600–115200 baud o LoRa SF7 para mayor link budget.
-5. **Banda 433 MHz (UHF)**: alineada con frecuencias de satélites amateur (IARU Region 2: 435–438 MHz).
+**Firmware work required** (Phase 7 or new task):
+- [ ] NMEA parser driver (`src/drivers/gps/neo7m.c`)
+- [ ] FreeRTOS GPS task (`src/tasks/gps_task.c`) — 1 Hz
+- [ ] Data Layer write (`data_layer_write_gps()`)
+- [ ] SyRS requirement (`SYS-F-GPS-001` — orbital position)
+- [ ] Unit tests (`tests/unit/test_gps.c`)
 
-**Circuito de conexión (sin level-shifter necesario):**
+---
+
+## 5. Power Management
+
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 5 | Temperature sensor | TMP102 or internal ADC4 | 1 | ✅ Integrated | ADC4 mode active; I2C addr 0x48 if external |
+
+> Battery, 5V regulator, charger, and solar panel are defined in **§9 EPS**.
+
+---
+
+## 6. Communications (TT&C)
+
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 6 | TT&C Transceiver (flight) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planned | Transparent UART 3.3V, 30 dBm (1W); see §6.1 — **buy for flight** |
+| 6b | TT&C Transceiver (lab/GS) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 **Buy now** | Plug-and-play KISS/CSP; same firmware as E22; ~$3/unit — see §6.2 |
+| 6c | TT&C Antenna (lab) | 433 MHz whip/rubber-duck SMA (5–8 dBi) | 4 | 🔄 **Buy now** | 2× for HC-12 OBC+GS, 2× spare; ~$1–2 each |
+| 6d | TT&C Antenna (flight) | Custom λ/4 dipole at 434 MHz (~17.3 cm wire + radials) | 1 | 🔄 Planned | λ/4 with velocity factor 0.95 = 16.4 cm wire + ground plane; see §6.3 |
+
+> See also **§7 Ground Station** for ground control hardware.
+
+### 6.1 UHF/VHF Transceiver Analysis
+
+**Firmware requirements for TT&C:**
+- Interface: **UART1** (`GPIO4 TX` / `GPIO5 RX`) @ **115200 baud**, 3.3 V TTL
+- Protocol: **KISS framing** over the physical layer → radio must act as a **transparent UART pipe**
+- Stack: CSP v2 (OBC addr 10, GS addr 1); telemetry 1 Hz @ 29 bytes/packet
+
+> Firmware reference: [docs/PHASE3_COMM_SPEC.md](PHASE3_COMM_SPEC.md), `src/drivers/uart/pico_usart.c`
+
+**Evaluated candidates:**
+
+| Module | Frequency | Interface | Power | KISS-compatible | Est. price | Verdict |
+|--------|-----------|-----------|-------|----------------|-----------|---------|
+| **EBYTE E22-400M30S** (SX1268) | 410–493 MHz | UART TTL 3.3V | 30 dBm (1W) | ✅ Transparent mode | ~$15 | ✅ **Recommended** |
+| **EBYTE E22-900M30S** (SX1262) | 850–930 MHz | UART TTL 3.3V | 30 dBm (1W) | ✅ Transparent mode | ~$15 | ✅ Alternative (different band) |
+| **HC-12** (Si4463) | 433 MHz FSK | UART TTL 3.3V | 20 dBm (100 mW) | ✅ Transparent mode | ~$3 | ⚠️ Lab prototype only |
+| **Dorji DRA818U** | 400–470 MHz UHF | UART (AT cmd) + analog audio | 1W | ❌ Analog audio, requires TNC | ~$8 | ❌ Not directly compatible |
+| **AX5043** (IC) | Multi-band sub-GHz | **SPI** | configurable | ❌ SPI → requires new driver | ~$10 (IC) | ❌ Architecture change |
+| **RFM98W** / SX1276 | 433/868/915 MHz | **SPI** | 20 dBm | ❌ SPI | ~$5 | ❌ Architecture change |
+
+**Why is the E22-400M30S recommended?**
+
+1. **Native transparent UART**: in normal operating mode acts as an RF serial cable → current KISS/CSP firmware stack works without modifications.
+2. **TTL 3.3 V**: directly compatible with RP2350 GPIO, no level-shifter needed.
+3. **30 dBm (1 W)**: adequate TX power for LEO link (~600 km) with dipole antenna.
+4. **LoRa + FSK**: configurable; for LEO, FSK @ 9600–115200 baud or LoRa SF7 is recommended for better link budget.
+5. **433 MHz (UHF)**: aligned with amateur satellite frequencies (IARU Region 2: 435–438 MHz).
+
+**Wiring diagram (no level-shifter required):**
 ```
 Pico 2W                    E22-400M30S
 GPIO4 (TX) ─────────────▶ RXD
 GPIO5 (RX) ◀───────────── TXD
 3.3V       ─────────────▶ VCC
 GND        ─────────────▶ GND
-GPIO[libre]─────────────▶ M0  (modo: 00 = transparente)
-GPIO[libre]─────────────▶ M1
-GPIO[libre]─────────────▶ AUX (busy/ready flag, opcional)
+GPIO[free] ─────────────▶ M0  (mode: 00 = transparent)
+GPIO[free] ─────────────▶ M1
+GPIO[free] ─────────────▶ AUX (busy/ready flag, optional)
 ```
 
-**Trabajo de firmware requerido** (mínimo — compatibilidad directa):
-- [ ] Confirmar baud rate del E22 configurado a 115200 (configurable vía AT antes del vuelo)
-- [ ] Agregar configuración M0/M1/AUX en `pico_pins.h` con GPIOs libres
-- [ ] Test end-to-end KISS/CSP con hardware real
+**Firmware work required** (minimum — direct compatibility):
+- [ ] Confirm E22 baud rate configured to 115200 (configurable via AT before flight)
+- [ ] Add M0/M1/AUX configuration to `pico_pins.h` with free GPIOs
+- [ ] End-to-end KISS/CSP test with real hardware
 
-**Notas de RF para SSO (500–700 km, inclinación 97°):**
+**RF notes for SSO (500–700 km, 97° inclination):**
 
-**⚠️ El caso crítico NO es el paso en cenit — es el paso en el horizonte.** Con elevación mínima de 5° sobre Argentina, el slant range llega a ~2300 km.
+**⚠️ The critical case is NOT the zenith pass — it is the horizon pass.** At 5° minimum elevation slant range reaches ~2300 km.
 
-| Parámetro | Paso en cenit (600 km) | **Paso en horizonte (2300 km, 5° el.)** |
-|-----------|----------------------|------------------------------------------|
-| Free-space path loss @ 435 MHz | 140.8 dB | **152.5 dB** (+11.7 dB más) |
-| EIRP E22 (1W + dipolo 3 dBi) | 33 dBm | 33 dBm |
-| Señal recibida (dipolo GS 3 dBi) | −11.2 dBm... | **−116.5 dBm** |
-| Sensibilidad E22 FSK @ 9600 bps | −125 dBm | −125 dBm |
-| **Margen de enlace E22** | **+26 dB** | **+8.5 dB ✅ (suficiente)** |
-| **Margen HC-12** (100 mW, −117 dBm) | +16 dBm | **−6.5 dB ❌ (insuficiente)** |
+| Parameter | Zenith pass (600 km) | **Horizon pass (2300 km, 5° el.)** |
+|-----------|---------------------|-------------------------------------|
+| Free-space path loss @ 435 MHz | 140.8 dB | **152.5 dB** (+11.7 dB more) |
+| EIRP E22 (1W + 3 dBi dipole) | 33 dBm | 33 dBm |
+| Received signal (GS 3 dBi dipole) | −104.8 dBm | **−116.5 dBm** |
+| E22 sensitivity FSK @ 9600 bps | −125 dBm | −125 dBm |
+| **E22 link margin** | **+20.2 dB** | **+8.5 dB ✅ (sufficient)** |
+| **HC-12 margin** (100 mW, −117 dBm) | +10 dB | **−9.5 dB ❌ (insufficient)** |
 
-> El E22-400M30S cierra el enlace con +8.5 dB de margen incluso en el horizonte a 2300 km — confirma que es la elección correcta para vuelo.
-> El HC-12 queda descartado para vuelo incluso más claramente con los parámetros SSO reales.
+> The E22-400M30S closes the link with +8.5 dB margin even at the 2300 km horizon — confirms it is the right choice for flight.
+> The HC-12 is clearly rejected for flight with the real SSO parameters.
 
-- Requiere licencia amateur (IARU coordinar frecuencia 435–438 MHz)
-- Antena: dipolo 1/4 onda (~16.4 cm a 434 MHz)
-- Ventana de contacto ~10–14 min/paso → protocolo CSP debe transmitir el máximo de telemetría en ese tiempo
+- Requires amateur license (IARU coordinate frequency 435–438 MHz)
+- Antenna: λ/4 dipole (~16.4 cm at 434 MHz)
+- Contact window ~10–14 min/pass → CSP protocol must transmit maximum telemetry in that time
 
-### 6.2 Análisis específico: HC-12 Si4463 433 MHz
+### 6.2 Specific analysis: HC-12 Si4463 433 MHz
 
-**Veredicto: ✅ Excelente para desarrollo/GS — ⚠️ Marginal para vuelo LEO**
+**Verdict: ✅ Excellent for development/GS — ⚠️ Insufficient margin for LEO flight**
 
-El HC-12 es el candidato **más sencillo de integrar** de todos los evaluados: UART transparente, misma banda (433 MHz), y compatible con KISS/CSP sin ningún cambio de firmware.
+The HC-12 is the **simplest to integrate** of all candidates evaluated: transparent UART, same band (433 MHz), and compatible with KISS/CSP with no firmware changes.
 
-| Característica | HC-12 (Si4463) | E22-400M30S (SX1268) |
-|---|---|---|
-| Interfaz con Pico 2W | ✅ UART TTL directo (3.3V–5V) | ✅ UART TTL directo (3.3V) |
-| KISS/CSP plug-and-play | ✅ Sí, modo FU3 = pipe transparente | ✅ Sí, modo transparente |
-| Frecuencia | ✅ 433.4–473 MHz configurable | ✅ 410–493 MHz configurable |
-| Baud rate | ✅ hasta 115200 bps (AT+Bxxxx) | ✅ hasta 115200 bps |
-| Potencia TX | ⚠️ 20 dBm (100 mW) | ✅ 30 dBm (1 W) |
-| Sensibilidad RX | ⚠️ −117 dBm @ 5 kbps | ✅ −148 dBm (LoRa SF12) |
-| Precio | ✅ ~$3–5 | ~$15 |
-| Level-shifter necesario | ✅ No (acepta 3.3V y 5V) | ✅ No |
-| Configuración extra (M0/M1/AUX) | ✅ No (solo UART + SET pin opcional) | ⚠️ Sí (3 GPIOs extra) |
+| Feature | HC-12 (Si4463) | E22-400M30S (SX1268) |
+|---------|----------------|----------------------|
+| Pico 2W interface | ✅ Direct UART TTL (3.3V–5V) | ✅ Direct UART TTL (3.3V) |
+| KISS/CSP plug-and-play | ✅ Yes, mode FU3 = transparent pipe | ✅ Yes, transparent mode |
+| Frequency | ✅ 433.4–473 MHz configurable | ✅ 410–493 MHz configurable |
+| Baud rate | ✅ up to 115200 bps (AT+Bxxxx) | ✅ up to 115200 bps |
+| TX power | ⚠️ 20 dBm (100 mW) | ✅ 30 dBm (1 W) |
+| RX sensitivity | ⚠️ −117 dBm @ 5 kbps | ✅ −148 dBm (LoRa SF12) |
+| Price | ✅ ~$3–5 | ~$15 |
+| Level-shifter needed | ✅ No (accepts 3.3V and 5V) | ✅ No |
+| Extra config pins (M0/M1/AUX) | ✅ No (UART + optional SET pin) | ⚠️ Yes (3 extra GPIOs) |
 
-#### Circuito de conexión — HC-12 (más simple que el E22):
+#### Wiring diagram — HC-12 (simpler than E22):
 ```
 Pico 2W                  HC-12
 GPIO4 (TX) ───────────▶ TXD
 GPIO5 (RX) ◀─────────── RXD
-3.3V       ───────────▶ VCC  (acepta 3.2–5.5V)
+3.3V       ───────────▶ VCC  (accepts 3.2–5.5V)
 GND        ───────────▶ GND
-                        SET  (dejar libre = modo normal; GND = modo AT cmd)
+                        SET  (leave open = normal mode; GND = AT cmd mode)
 ```
-> Solo 4 cables. Sin pines de modo adicionales en operación normal.
+> Only 4 wires. No extra mode pins in normal operation.
 
-#### Link budget para SSO (caso crítico: horizonte a 2300 km, el. 5°):
+#### Link budget for SSO (critical case: horizon at 2300 km, 5° el.):
 
-| Parámetro | HC-12 (100 mW) | E22-400M30S (1 W) |
-|-----------|---------------|-------------------|
-| EIRP TX | ~23 dBm (dipolo 3 dBi) | ~33 dBm |
+| Parameter | HC-12 (100 mW) | E22-400M30S (1 W) |
+|-----------|----------------|-------------------|
+| EIRP TX | ~23 dBm (3 dBi dipole) | ~33 dBm |
 | Path loss SSO **2300 km** @ 435 MHz | ~152.5 dB | ~152.5 dB |
-| Señal recibida (dipolo GS 3 dBi) | **−126.5 dBm** | **−116.5 dBm** |
-| Sensibilidad RX (FSK 9600 bps) | −117 dBm | −125 dBm (FSK) |
-| **Margen de enlace** | **−9.5 dB ❌** | **+8.5 dB ✅** |
+| Received signal (GS 3 dBi dipole) | **−126.5 dBm** | **−116.5 dBm** |
+| RX sensitivity (FSK 9600 bps) | −117 dBm | −125 dBm (FSK) |
+| **Link margin** | **−9.5 dB ❌** | **+8.5 dB ✅** |
 
-> Con SSO real (horizonte 2300 km), el HC-12 tiene aún menos margen que el cálculo previo a 600 km.
+> With real SSO parameters (horizon 2300 km), the HC-12 has even less margin than the previous 600 km calculation.
 
-> **Conclusión del link budget**: el HC-12 con 100 mW no tiene margen suficiente para un enlace LEO confiable a 600 km con antenas de dipolo. Sería viable solo con antenas yagi de alta ganancia en tierra (≥10 dBi), lo que complica la GS.
+> **Link budget conclusion**: the HC-12 at 100 mW does not have sufficient margin for a reliable LEO link with dipole antennas. It would only be viable with high-gain yagi antennas at the GS (≥10 dBi), which complicates the ground station.
 
-#### Roles recomendados y plan de adquisición:
+#### Recommended roles and acquisition plan:
 
-| Rol | HC-12 | E22-400M30S |
-|-----|-------|-------------|
-| **Pruebas de laboratorio (ahora)** | ✅ **Comprar ahora** — plug-and-play, barato, mismo firmware | ✅ También válido |
-| Pruebas campo corto (< 1 km) | ✅ Sobra potencia | ✅ |
-| Radio de Estación Terrena (GS) | ✅ Par económico con antena yagi | ✅ Par estándar |
-| **Transceiver de vuelo LEO** | ❌ Sin margen de enlace | ✅ **Comprar para vuelo** |
+| Role | HC-12 | E22-400M30S |
+|------|-------|-------------|
+| **Lab testing (now)** | ✅ **Buy now** — plug-and-play, cheap, same firmware | ✅ Also valid |
+| Short-range field testing (< 1 km) | ✅ More than enough | ✅ |
+| Ground Station radio (GS) | ✅ Economical pair with yagi antenna | ✅ Standard pair |
+| **LEO flight transceiver** | ❌ No link margin | ✅ **Buy for flight** |
 
-> **Plan sugerido**: comprar 2× HC-12 ya (~$6–10 total) para iniciar todas las pruebas
-> de laboratorio KISS/CSP/telemetría. Cuando estén los E22-400M30S para vuelo,
-> **el firmware no cambia** — mismo UART, misma configuración, mismos pines.
+> **Suggested plan**: buy 2× HC-12 now (~$6–10 total) to start all lab KISS/CSP/telemetry tests.
+> When E22-400M30S modules arrive for flight,
+> **the firmware does not change** — same UART, same configuration, same pins.
 
 ---
 
-## 7. Estación Terrena (Ground Station)
+## 7. Ground Station
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| GS-1 | Radio GS | LORA32U4 II 915 MHz + antena IPEX | 1 | 🔄 Planificado | PC→USB→ATmega32U4→SX1276; ver §7.1 |
-| GS-2 | Radio GS alternativo | EBYTE E22-400M30S (433 MHz) | 1 | ❓ Por evaluar | Mismo módulo que el satélite; par simétrico |
-| GS-3 | PC / Laptop | Cualquier PC Linux/Mac/Win | 1 | ✅ Disponible | Corre el cliente CSP de ground (Phase 3) |
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| GS-1 | GS Radio | LORA32U4 II 915 MHz + IPEX antenna | 1 | 🔄 Planned | PC→USB→ATmega32U4→SX1276; see §7.1 |
+| GS-2 | GS Radio (alternative) | EBYTE E22-400M30S (433 MHz) | 1 | ❓ To evaluate | Same module as satellite; symmetric pair |
+| GS-3 | PC / Laptop | Any Linux/Mac/Win PC | 1 | ✅ Available | Runs CSP ground client (Phase 3) |
 
-### 7.1 LORA32U4 II como radio de Estación Terrena
+### 7.1 LORA32U4 II as Ground Station radio
 
-**Veredicto para GS: ⚠️ Usable con firmware custom a 915 MHz (solo pruebas en tierra)**
+**Verdict for GS: ⚠️ Usable with custom firmware at 915 MHz (bench testing only)**
 
-Aunque no es apto para el OBC del satélite (ver §6.1), el LORA32U4 II tiene sentido como radio de la GS para el banco de pruebas:
+Although not suitable for the satellite OBC (see §6.1), the LORA32U4 II makes sense as a GS radio for bench testing:
 
-| Aspecto | Detalle |
-|---------|---------|
-| **Conexión a PC** | USB nativo (ATmega32U4 tiene USB HW) → aparece como puerto serial `/dev/ttyACM0` |
-| **Chip RF** | SX1276 interno → mismo core que muchos módulos LoRa |
-| **Firmware requerido** | Bridge serial USB↔LoRa (ej. `RadioLib` o `arduino-lmic` con modo KISS) |
-| **Banda** | 915 MHz ISM — válida para pruebas en tierra en Región 2 (Américas); **no apta para vuelo** |
-| **Potencia TX** | 20 dBm (100 mW) — suficiente para distancias de banco (< 1 km) |
-| **Antena IPEX** | Conector IPEX (U.FL) con cable incluido → conectar antena de dipolo 915 MHz |
-| **Precio** | ~$18–22 |
+| Aspect | Detail |
+|--------|--------|
+| **PC connection** | Native USB (ATmega32U4 has hardware USB) → appears as serial port `/dev/ttyACM0` |
+| **RF chip** | Internal SX1276 → same core as many LoRa modules |
+| **Required firmware** | USB↔LoRa serial bridge (e.g. `RadioLib` or `arduino-lmic` with KISS mode) |
+| **Band** | 915 MHz ISM — valid for bench testing in ITU Region 2 (Americas); **not suitable for flight** |
+| **TX power** | 20 dBm (100 mW) — sufficient for bench distances (< 1 km) |
+| **IPEX antenna** | IPEX (U.FL) connector with cable included → connect 915 MHz dipole antenna |
+| **Price** | ~$18–22 |
 
-**Flujo de prueba en tierra:**
+**Bench test flow:**
 ```
-PC (cliente CSP Python/C)
-  └─ USB serial ─▶ LORA32U4 II (bridge KISS/LoRa @ 915 MHz)
+PC (CSP Python/C client)
+  └─ USB serial ─▶ LORA32U4 II (KISS/LoRa bridge @ 915 MHz)
                         │
                         │ RF 915 MHz
                         │
-                   E22-400M30S o segundo LORA32U4 II
+                   E22-400M30S or second LORA32U4 II
                         │
-                        └─ UART1 ─▶ Pico 2W OBC (firmware KISS/CSP)
+                        └─ UART1 ─▶ Pico 2W OBC (KISS/CSP firmware)
 ```
 
-> **Nota importante**: Para pruebas tierra-tierra en banda 915 MHz, ambos extremos deben usar 915 MHz — el E22-400M30S por defecto es 433 MHz. Si se elige el LORA32U4 II como GS, el par de tierra sería: **LORA32U4 II (GS, 915) ↔ E22-900M30S (satélite, 915)**. Para vuelo real, migrar a 433/435 MHz y reemplazar el GS con un E22-400M30S conectado por UART a la PC.
+> **Important note**: For bench testing at 915 MHz, both ends must use 915 MHz — the E22-400M30S defaults to 433 MHz. If LORA32U4 II is chosen as GS, the bench pair would be: **LORA32U4 II (GS, 915) ↔ E22-900M30S (satellite, 915)**. For real flight, migrate to 433/435 MHz and replace the GS with an E22-400M30S connected via UART to the PC.
 
-**Pendientes para usar el LORA32U4 II como GS:**
-- [ ] Escribir/adaptar firmware bridge KISS-serial para ATmega32U4 (Arduino + RadioLib)
-- [ ] Validar que el bridge KISS sea bit-a-bit compatible con `csp_if_kiss` del OBC
-- [ ] Definir banda final de vuelo (433 vs 915 MHz) para asegurar par correcto
+**Pending items to use LORA32U4 II as GS:**
+- [ ] Write/adapt KISS-serial bridge firmware for ATmega32U4 (Arduino + RadioLib)
+- [ ] Validate that the KISS bridge is bit-for-bit compatible with the OBC's `csp_if_kiss`
+- [ ] Define final flight band (433 vs 915 MHz) to ensure correct pair
 
 ---
 
-## 8. Actuadores (ADCS)
+## 8. Actuators (ADCS)
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 7 | Reaction Wheels (vuelo) | (a definir — BLDC custom) | 3 | ❓ Por evaluar | GPIO6/7/8 (PWM3A/3B/4A); ver §8.1 |
-| 7b | Reaction Wheels **(lab)** | Motor DC con encoder + driver TB6612 | 3 | 🔄 **Comprar ahora** | Emula inercia; PWM directo en GPIO6/7/8; ver §8.1 |
-| 8 | Magnetorquers (vuelo) | Bobina custom en ferrita + H-bridge | 3 | ❓ Por evaluar | GPIO14/15/16 (PWM7A/7B/0A); ver §8.2 |
-| 8b | Magnetorquers **(lab)** | Módulo L298N o DRV8833 + bobina | 3 | 🔄 **Comprar ahora** | Control PWM bidireccional; ver §8.2 |
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 7 | Reaction Wheels (flight) | (TBD — custom BLDC) | 3 | ❓ To evaluate | GPIO6/7/8 (PWM3A/3B/4A); see §8.1 |
+| 7b | Reaction Wheels **(lab)** | DC motor with encoder + TB6612 driver | 3 | 🔄 **Buy now** | Emulates inertia; direct PWM on GPIO6/7/8; see §8.1 |
+| 8 | Magnetorquers (flight) | Custom ferrite coil + H-bridge | 3 | ❓ To evaluate | GPIO14/15/16 (PWM7A/7B/0A); see §8.2 |
+| 8b | Magnetorquers **(lab)** | DRV8833 module + ferrite coil | 3 | 🔄 **Buy now** | Bidirectional PWM control; see §8.2 |
 
-### 8.1 Reaction Wheels — opciones de laboratorio
+### 8.1 Reaction Wheels — lab options
 
-**Interfaz del firmware:**
-- Control por **PWM** en `GPIO6` (RW1), `GPIO7` (RW2), `GPIO8` (RW3) — ver `config/pico_pins.h`
-- Modelo de firmware: `reaction_wheel_apply_torque(rw, torque, dt)` → actualiza `rw->omega`
-- Parámetros: `RW_MAX_OMEGA_RPM = 4000`, `RW_INERTIA = 0.001 kg·m²`
-- El driver PWM de hardware del RP2350 (`hardware_pwm`) ya está disponible en los slices PWM3/PWM4
+**Firmware interface:**
+- PWM control on `GPIO6` (RW1), `GPIO7` (RW2), `GPIO8` (RW3) — see `config/pico_pins.h`
+- Firmware model: `reaction_wheel_apply_torque(rw, torque, dt)` → updates `rw->omega`
+- Parameters: `RW_MAX_OMEGA_RPM = 4000`, `RW_INERTIA = 0.001 kg·m²`
+- RP2350 hardware PWM driver (`hardware_pwm`) already available on slices PWM3/PWM4
 
-**Componentes para laboratorio (comprar ahora):**
+**Lab components (buy now):**
 
-| Componente | Modelo sugerido | Precio | Función |
-|-----------|----------------|--------|---------|
-| Motor DC con encoder | GA12-N20 (6V, 100–300 RPM) o N20 micro | ~$3–5 c/u | Simula la rueda de reacción |
-| Driver motor H-bridge | TB6612FNG (módulo breakout) | ~$2–3 c/u | Convierte PWM del Pico → corriente bidireccional al motor |
-| Disco de inercia | Disco acrílico o metal ~5 cm Ø | ~$1 | Aumenta inercia del eje para comportamiento realista |
+| Component | Suggested model | Price | Function |
+|-----------|----------------|-------|---------|
+| DC motor with encoder | GA12-N20 (6V, 100–300 RPM) or N20 micro | ~$3–5 each | Simulates the reaction wheel |
+| H-bridge motor driver | TB6612FNG (breakout module) | ~$2–3 each | Converts Pico PWM → bidirectional motor current |
+| Inertia disk | Acrylic or metal disk ~5 cm Ø | ~$1 | Increases shaft inertia for realistic behavior |
 
-**Circuito de conexión — Reaction Wheel × 1 eje (repetir × 3):**
+**Wiring diagram — Reaction Wheel × 1 axis (repeat × 3):**
 ```
 Pico 2W                    TB6612FNG            Motor N20
 GPIO6 (PWM) ─────────────▶ PWMA          ──▶ AO1/AO2 ──▶ Motor
 GPIO_DIR_A  ─────────────▶ AIN1
 GPIO_DIR_B  ─────────────▶ AIN2
-3.3V        ─────────────▶ VCC (lógica)
+3.3V        ─────────────▶ VCC (logic)
 VMOTOR 5V   ─────────────▶ VM  (motor)
 GND         ─────────────▶ GND, STBY
 ```
 
-> **Nota**: el firmware modelo actual solo calcula `omega` internamente. El siguiente paso de desarrollo es agregar el HAL PWM que convierta `torque → duty cycle` y lo escriba en `hardware_pwm`. Esto entra en **Phase 7 / actuator HAL**.
+> **Note**: the current firmware model only computes `omega` internally. The next development step is adding the PWM HAL that converts `torque → duty cycle` and writes it to `hardware_pwm`. This falls under **Phase 7 / actuator HAL**.
 
-**¿Por qué no usar un servo o ESC directamente?**
-- Servos/ESC de hobby usan PWM de 50 Hz con pulso 1–2 ms → requiere lógica extra
-- TB6612 acepta el PWM de alta frecuencia nativo del RP2350 (hasta ~125 kHz) → más simple y fiel al control real
+**Why not use a servo or ESC directly?**
+- Hobby servos/ESCs use 50 Hz PWM with 1–2 ms pulses → requires extra logic
+- TB6612 accepts the native high-frequency PWM of the RP2350 (up to ~125 kHz) → simpler and closer to real control
 
-### 8.2 Magnetorquers — opciones de laboratorio
+### 8.2 Magnetorquers — lab options
 
-**Interfaz del firmware:**
-- Control por **PWM** en `GPIO14` (X), `GPIO15` (Y), `GPIO16` (Z)
-- Firmware: `magnetorquer_set_moment(mq, mx, my, mz)` → establece dipolo magnético [A·m²]
-- La de-saturación B×L está implementada en `src/services/adcs/momentum_dump.c` (Phase 5)
+**Firmware interface:**
+- PWM control on `GPIO14` (X), `GPIO15` (Y), `GPIO16` (Z)
+- Firmware: `magnetorquer_set_moment(mq, mx, my, mz)` → sets magnetic dipole [A·m²]
+- B×L desaturation is implemented in `src/services/adcs/momentum_dump.c` (Phase 5)
 
-**Componentes para laboratorio (comprar ahora):**
+**Lab components (buy now):**
 
-| Componente | Modelo sugerido | Precio | Función |
-|-----------|----------------|--------|---------|
-| Driver H-bridge bidireccional | DRV8833 (módulo) o L9110S | ~$1–2 c/u | Invierte corriente en la bobina (magneto +/-) |
-| Bobina electromagnética | Electroimán 5V 12mm (ej. ZYE1-P20/15) o bobina casera en ferrita | ~$2–4 c/u | Genera dipolo magnético proporcional a la corriente |
-| Núcleo de ferrita (opcional) | Barra ferrita 8×70 mm | ~$1 c/u | Aumenta permeabilidad → más momento por vuelta |
+| Component | Suggested model | Price | Function |
+|-----------|----------------|-------|---------|
+| Bidirectional H-bridge driver | DRV8833 (module) or L9110S | ~$1–2 each | Reverses current through coil (dipole +/−) |
+| Electromagnetic coil | Homemade ferrite-core coil (AWG28, 300 turns) | ~$2–4 each | Generates magnetic dipole proportional to current |
+| Ferrite core | MnZn bar 8×70 mm | ~$1 each | Increases permeability → more moment per turn |
 
-**Circuito de conexión — Magnetorquer × 1 eje (repetir × 3):**
+**Wiring diagram — Magnetorquer × 1 axis (repeat × 3):**
 ```
-Pico 2W                  DRV8833             Bobina
-GPIO14 (PWM) ──────────▶ AIN1 (o IN1)
-GPIO_DIR     ──────────▶ AIN2 (o IN2)  ──▶ AOUT1/AOUT2 ──▶ Bobina
+Pico 2W                  DRV8833             Coil
+GPIO14 (PWM) ──────────▶ AIN1 (or IN1)
+GPIO_DIR     ──────────▶ AIN2 (or IN2)  ──▶ AOUT1/AOUT2 ──▶ Coil
 3.3V         ──────────▶ VCC
 GND          ──────────▶ GND
 ```
 
-> La dirección de la corriente determina la polaridad del dipolo (+/−) → el firmware debe poder invertir el signo del momento para el B×L dump.
+> Current direction determines dipole polarity (+/−) → firmware must be able to invert the moment sign for the B×L dump.
 
-**Qué se puede probar en laboratorio con esto:**
-- ✅ Ciclo completo ADCS: EKF → LQR → `magnetorquer_set_moment()` → corriente real en bobina
-- ✅ Verificar que el B×L dump genera corriente proporcional al campo magnético medido por HMC5883L
-- ✅ Medir campo generado con el propio magnetómetro del sistema (loop cerrado de verdad)
-- ⚠️ No simula el torque real en órbita (campo terrestre ~50 µT vs laboratorio con interferencias)
+**What can be tested in the lab with this:**
+- ✅ Full ADCS loop: EKF → LQR → `magnetorquer_set_moment()` → real current in coil
+- ✅ Verify that B×L dump generates current proportional to the magnetic field measured by HMC5883L
+- ✅ Measure generated field with the system's own magnetometer (true closed loop)
+- ⚠️ Does not simulate real orbital torque (Earth field ~50 µT vs. lab with EMI)
 
-**Resumen plan de adquisición — Actuadores:**
+**Actuator acquisition plan summary:**
 
-| Etapa | Qué comprar | Costo estimado | Cuándo |
-|-------|------------|----------------|--------|
-| **Lab ahora** | 3× Motor N20 + 3× TB6612 + 3× DRV8833 + hilo AWG28 + ferrita | ~$30–40 total | Ahora |
-| **Vuelo** | BLDC custom de reaction wheel + bobinas de ferrita | Por cotizar | Fase HW final |
+| Stage | What to buy | Est. cost | When |
+|-------|------------|-----------|------|
+| **Lab now** | 3× Motor N20 + 3× TB6612 + 3× DRV8833 + AWG28 wire + ferrite | ~$30–40 total | Now |
+| **Flight** | Custom BLDC reaction wheels + custom ferrite coils | To be quoted | Final HW phase |
 
 ---
 
 ## 9. EPS — Electrical Power System
 
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| EPS-1 | Batería LiPo | **18650 1S 3.7V 3000–3500 mAh** (ej. Samsung 30Q, Panasonic NCR18650B) | 1–2 | 🔄 **Comprar ahora** | Bus principal; ver §9.1 |
-| EPS-2 | Boost converter 5V | **MT3608** o XL6009 (módulo) | 1 | 🔄 **Comprar ahora** | LiPo 3.7V → 5V bus; ver §9.1 |
-| EPS-3 | Cargador LiPo | **TP4056** con protección (módulo micro-USB) | 1 | 🔄 **Comprar ahora** | Carga 1S desde USB o panel solar; ver §9.1 |
-| EPS-4 | Panel solar (lab) | Monocristalino **6V 1W** (Vmpp ≈ 5.5V, Isc ≈ 200 mA, 135×110 mm) | 1 | 🔄 **Comprar ahora** | Prueba circuito de carga TP4056; agregar diodo Schottky 1N5819 en serie; ver §9.2 |
-| EPS-6 | Diodo Schottky anti-retorno | **1N5819** (Vf ≈ 0.3V @ 200 mA, Vr = 40V) | 1 | 🔄 **Comprar ahora** | Evita descarga de batería al panel durante la noche; colocar entre panel y Vin TP4056 |
-| EPS-5 | Sensor voltaje batería | ADC0 en GPIO26 (divisor resistivo) | 1 | ✅ Integrado | Driver ya en firmware; ver `config/pico_pins.h` |
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| EPS-1 | LiPo Battery | **18650 1S 3.7V 3000–3500 mAh** (e.g. Samsung 30Q, Panasonic NCR18650B) | 1–2 | 🔄 **Buy now** | Main bus; see §9.1 |
+| EPS-2 | 5V Boost converter | **MT3608** or XL6009 (module) | 1 | 🔄 **Buy now** | LiPo 3.7V → 5V bus; see §9.1 |
+| EPS-3 | LiPo Charger | **TP4056** with protection (micro-USB module) | 1 | 🔄 **Buy now** | Charges 1S from USB or solar panel; see §9.1 |
+| EPS-4 | Solar panel (lab) | Monocrystalline **6V 1W** (Vmpp ≈ 5.5V, Isc ≈ 200 mA, 135×110 mm) | 1 | 🔄 **Buy now** | Tests TP4056 charging circuit; add 1N5819 Schottky in series; see §9.2 |
+| EPS-6 | Anti-backflow Schottky diode | **1N5819** (Vf ≈ 0.3V @ 200 mA, Vr = 40V) | 1 | 🔄 **Buy now** | Prevents battery discharge through panel at night; place between panel and TP4056 Vin |
+| EPS-5 | Battery voltage sensor | ADC0 on GPIO26 (resistor divider) | 1 | ✅ Integrated | Driver already in firmware; see `config/pico_pins.h` |
 
-### 9.1 Elección del voltaje de bus — Análisis
+### 9.1 Bus voltage selection — Analysis
 
-**Recomendación: Bus 5V regulado desde LiPo 1S (3.7V)**
+**Recommendation: Regulated 5V bus from LiPo 1S (3.7V)**
 
-#### Voltajes en juego
+#### Voltages in play
 
-| Componente | Voltaje de operación | Compatible con 5V bus |
-|-----------|---------------------|----------------------|
-| Pico 2W (VSYS) | **1.8–5.5V** → LDO interno → 3.3V | ✅ Conectar VSYS al bus 5V |
-| MPU-6050 (GY-521) | 3.3–5V (regulador onboard) | ✅ |
-| HMC5883L (GY-271) | 3.3V (regulador onboard) | ✅ |
-| GPS NEO-7M | 3.3–5V (regulador onboard) | ✅ |
+| Component | Operating voltage | Compatible with 5V bus |
+|-----------|-----------------|----------------------|
+| Pico 2W (VSYS) | **1.8–5.5V** → internal LDO → 3.3V | ✅ Connect VSYS to 5V bus |
+| MPU-6050 (GY-521) | 3.3–5V (onboard regulator) | ✅ |
+| HMC5883L (GY-271) | 3.3V (onboard regulator) | ✅ |
+| GPS NEO-7M | 3.3–5V (onboard regulator) | ✅ |
 | HC-12 | **3.2–5.5V** | ✅ |
-| Motor N20 (via TB6612) | VM: **2.5–13.5V** → mejor a 5V | ✅ Más torque a 5V |
-| Bobinas ferrita (via DRV8833) | VM: 0–10.8V → diseñado a 3.3V | ✅ También funciona a 5V |
-| E22-400M30S (vuelo) | 3.3–5.5V | ✅ |
+| Motor N20 (via TB6612) | VM: **2.5–13.5V** → best at 5V | ✅ More torque at 5V |
+| Ferrite coils (via DRV8833) | VM: 0–10.8V → designed at 3.3V | ✅ Also works at 5V |
+| E22-400M30S (flight) | 3.3–5.5V | ✅ |
 
-> **Conclusión**: todos los componentes actuales y planificados aceptan 5V. El Pico 2W lo regula internamente a 3.3V para su lógica y los módulos de sensores tienen sus propios reguladores onboard.
+> **Conclusion**: all current and planned components accept 5V. The Pico 2W regulates internally to 3.3V for its logic, and sensor modules have their own onboard regulators.
 
-#### ¿Por qué 5V y no 3.3V?
+#### Why 5V and not 3.3V?
 
-| Criterio | 3.3V bus | **5V bus** |
-|----------|---------|-----------|
-| Torque motores N20 | ⚠️ Reducido (~60% del nominal) | ✅ Nominal |
-| Margen de regulación | ❌ LiPo 3.7V → hay que bajar → pérdidas | ✅ LiPo 3.7V → boost a 5V → eficiente |
-| Pico 2W | ✅ Funciona (VSYS mín 1.8V) | ✅ Funciona mejor |
-| Simplicidad | ❌ Necesita LDO buck igualmente | ✅ Un solo boost converter |
-| Compatibilidad componentes | ✅ Todos funcionan | ✅ Todos funcionan |
+| Criterion | 3.3V bus | **5V bus** |
+|-----------|---------|-----------|
+| N20 motor torque | ⚠️ Reduced (~60% of nominal) | ✅ Nominal |
+| Regulation margin | ❌ LiPo 3.7V → must step down → losses | ✅ LiPo 3.7V → boost to 5V → efficient |
+| Pico 2W | ✅ Works (VSYS min 1.8V) | ✅ Works better |
+| Simplicity | ❌ Needs LDO buck anyway | ✅ Single boost converter |
+| Component compatibility | ✅ All work | ✅ All work |
 
-#### ¿Por qué 1S LiPo (3.7V) y no 2S (7.4V)?
+#### Why 1S LiPo (3.7V) and not 2S (7.4V)?
 
-- 2S requiere regulador buck de mayor potencia para bajar a 5V → más componentes
-- 1S + MT3608 boost a 5V es el circuito más simple y eficiente para < 1A
-- Tensión de celda 1S (3.0–4.2V) siempre dentro del rango de VSYS del Pico
+- 2S requires a higher power buck regulator to step down to 5V → more components
+- 1S + MT3608 boost to 5V is the simplest and most efficient circuit for < 1A
+- 1S cell voltage (3.0–4.2V) always within the Pico VSYS range
 
-#### Arquitectura EPS recomendada
+#### Recommended EPS architecture
 
 ```
-                   TP4056 (cargador)
+                   TP4056 (charger)
 USB/Solar 5V  ──▶  ├── CHRG/STDBY LED
                    └── BAT+ / BAT-
                           │
@@ -449,178 +448,235 @@ USB/Solar 5V  ──▶  ├── CHRG/STDBY LED
                           │
               ┌───────────┴─────────────────┐
               │                             │
-         5V BUS                         Divisor resistivo
+         5V BUS                         Resistor divider
               │                         (R1=330kΩ, R2=100kΩ)
     ┌─────────┼──────────────┐               │
     │         │              │           GPIO26 (ADC0)
-  VSYS      VM TB6612      VM DRV8833    → Pico lee Vbatt
-  (Pico)   (motores RW)   (magnetorquers)
+  VSYS      VM TB6612      VM DRV8833    → Pico reads Vbatt
+  (Pico)   (RW motors)   (magnetorquers)
     │
-  LDO 3.3V (interno Pico)
+  LDO 3.3V (internal Pico)
     │
-  GPIO / I2C / UART (todos los sensores)
+  GPIO / I2C / UART (all sensors)
 ```
 
-#### Divisor resistivo para lectura de Vbatt
+#### Resistor divider for Vbatt reading
 
-El ADC del Pico mide hasta 3.3V. La batería puede estar entre 3.0V–4.2V:
+The Pico ADC measures up to 3.3V. The battery can be between 3.0V–4.2V:
 
 $$V_{ADC} = V_{batt} \times \frac{R_2}{R_1 + R_2}$$
 
-Con $R_1 = 330\,\text{k}\Omega$ y $R_2 = 100\,\text{k}\Omega$:
+With $R_1 = 330\,\text{k}\Omega$ and $R_2 = 100\,\text{k}\Omega$:
 
-$$V_{ADC} = 4.2 \times \frac{100}{430} \approx 0.98\,\text{V} \quad \checkmark \text{ (dentro del rango ADC)}$$
+$$V_{ADC} = 4.2 \times \frac{100}{430} \approx 0.98\,\text{V} \quad \checkmark \text{ (within ADC range)}$$
 
-> Valores de resistencias a agregar en §10 Misceláneos.
+> Resistor values to be added in §10 Miscellaneous.
 
-#### Consumo estimado del sistema completo y autonomía
+#### Estimated system power consumption and autonomy
 
-**Cálculo de eclipse para SSO 600 km (caso peor, $\beta = 0°$):**
+**Eclipse calculation for SSO 600 km (worst case, $\beta = 0°$):**
 
 $$t_{eclipse} = T_{orbit} \times \frac{\arccos\sqrt{1-\left(\frac{R_E}{R_E+h}\right)^2}}{\pi} = 96.7 \times \frac{66.1°}{180°} \approx 35.5 \text{ min}$$
 
-> ✅ **Nuestro estimado original de ~35 min era correcto.** Los parámetros SSO confirman el dimensionamiento del EPS.
-> Nota: en períodos con $|\beta| > 66°$ no hay eclipse (luz solar continua).
+> ✅ **Our original ~35 min estimate was correct.** SSO parameters confirm the EPS sizing.
+> Note: during periods with $|\beta| > 66°$ there is no eclipse (continuous sunlight).
 
-| Subsistema | Componente | Consumo typ @ 5V |
-|-----------|-----------|-----------------|
+| Subsystem | Component | Typical current @ 5V |
+|-----------|-----------|---------------------|
 | OBC | Pico 2W | ~80 mA |
 | IMU | MPU-6050 | ~4 mA |
-| Magnetómetro | HMC5883L | ~1 mA |
+| Magnetometer | HMC5883L | ~1 mA |
 | GPS | NEO-7M | ~45 mA |
-| TT&C | HC-12 TX activo | ~80 mA (TX) / 13 mA (RX) |
+| TT&C | HC-12 TX active | ~80 mA (TX) / 13 mA (RX) |
 | RW motors | 3× Motor N20 @ 5V | ~150–300 mA |
-| Magnetorquers | 3× bobina ferrita | ~240 mA |
-| **Total máximo** | **(todos activos)** | **~700 mA @ 5V = 3.5W** |
-| **Total nominal** | **(control activo, comms RX)** | **~400 mA @ 5V = 2W** |
+| Magnetorquers | 3× ferrite coil | ~240 mA |
+| **Maximum total** | **(all active)** | **~700 mA @ 5V = 3.5W** |
+| **Nominal total** | **(active control, RX comms)** | **~400 mA @ 5V = 2W** |
 
-**Autonomía con 18650 3000 mAh @ 3.7V = 11.1 Wh:**
+**Autonomy with 18650 3000 mAh @ 3.7V = 11.1 Wh:**
 
-| Escenario | Consumo | Autonomía estimada |
-|-----------|---------|-------------------|
-| Nominal (todo activo) | 2W | ~5.5 horas |
-| Máximo (actuadores full) | 3.5W | ~3 horas |
-| Solo OBC + comms (idle) | 0.5W | ~22 horas |
+| Scenario | Consumption | Estimated autonomy |
+|----------|-------------|-------------------|
+| Nominal (all active) | 2W | ~5.5 hours |
+| Maximum (full actuators) | 3.5W | ~3 hours |
+| OBC + comms only (idle) | 0.5W | ~22 hours |
 
-> Para vuelo LEO (~90 min de órbita), con solar de 1W y consumo nominal de 2W hay que dimensionar la batería para cubrir el eclipse (~35 min). Ver §9.2 para el análisis de panel solar.
+> For LEO flight (~90 min orbit), with 1W solar and 2W nominal consumption, the battery must be sized to cover the eclipse (~35 min). See §9.2 for solar panel analysis.
 
-### 9.2 Panel solar — Análisis y dimensionamiento
+### 9.2 Solar panel — Analysis and sizing
 
-#### Panel de laboratorio (prototipo)
+#### Lab panel (prototype)
 
-**Objetivo del panel en lab**: validar el circuito de carga TP4056, no alimentar el sistema completo.
+**Lab panel objective**: validate the TP4056 charging circuit, not power the full system.
 
-| Parámetro | Valor |
+| Parameter | Value |
 |-----------|-------|
-| Modelo | Monocristalino 6V 1W, 135×110 mm |
-| Tensión Vmpp | ~5.5V |
-| Corriente Impp | ~182 mA |
-| Voc (circuito abierto) | ~7.2V |
-| Isc (cortocircuito) | ~200 mA |
-| Compatibilidad TP4056 | ✅ Vin máx TP4056 = 8V; Vmpp bajo carga ≈ 5.5V ✅ |
+| Model | Monocrystalline 6V 1W, 135×110 mm |
+| Vmpp | ~5.5V |
+| Impp | ~182 mA |
+| Voc (open circuit) | ~7.2V |
+| Isc (short circuit) | ~200 mA |
+| TP4056 compatibility | ✅ TP4056 Vin max = 8V; Vmpp under load ≈ 5.5V ✅ |
 
-**Circuito de conexión:**
+**Wiring diagram:**
 ```
-Panel 6V 1W
+Solar panel 6V 1W
    (+)──▶ 1N5819 ──▶ Vin TP4056 ──▶ BAT+ 18650
    (−)──────────────▶ GND TP4056
 ```
-> El diodo 1N5819 (Vf ≈ 0.3V) previene que la batería se descargue a través del panel en la oscuridad.
-> Con diodo: Vin_TP4056 = Vmpp − 0.3V ≈ 5.2V → dentro del rango operativo ✅
+> The 1N5819 diode (Vf ≈ 0.3V) prevents the battery from discharging through the panel in darkness.
+> With diode: Vin_TP4056 = Vmpp − 0.3V ≈ 5.2V → within operating range ✅
 
-**Balance energético en lab (exterior, día soleado):**
+**Energy balance in lab (outdoor, sunny day):**
 
-| Escenario | Generación solar | Consumo sistema | Balance |
-|-----------|-----------------|----------------|---------|
-| Sistema inactivo (solo carga) | 1W × 5h sol = 5 Wh | ~0.1W (OBC idle) | +4.5 Wh → carga batería |
-| Sistema nominal (todo activo) | 1W × 6h = 6 Wh | 2W × 6h = 12 Wh | −6 Wh → batería se agota |
-| **Conclusión** | La batería es la fuente principal en lab. El panel solo reduce la descarga. Para operación continua: alimentar vía USB. | | |
+| Scenario | Solar generation | System consumption | Balance |
+|----------|-----------------|-------------------|---------|
+| System inactive (charge only) | 1W × 5h sun = 5 Wh | ~0.1W (OBC idle) | +4.5 Wh → charges battery |
+| Nominal system (all active) | 1W × 6h = 6 Wh | 2W × 6h = 12 Wh | −6 Wh → battery drains |
+| **Conclusion** | Battery is the primary power source in lab. Panel only reduces drain. For continuous operation: power via USB. | | |
 
-#### Dimensionamiento de panel para vuelo LEO (referencia)
+#### Flight LEO panel sizing (reference)
 
-Basado en parámetros SSO 600 km (§0):
+Based on SSO 600 km parameters (§0):
 
-$$P_{panel} \geq \frac{P_{consumo} \times T_{órbita}}{\eta_{conv} \times T_{sol}} = \frac{2\,\text{W} \times 98.6\,\text{min}}{0.70 \times 63.1\,\text{min}} \approx 4.5\,\text{W brutos}$$
+$$P_{panel} \geq \frac{P_{load} \times T_{orbit}}{\eta_{conv} \times T_{sun}} = \frac{2\,\text{W} \times 98.6\,\text{min}}{0.70 \times 63.1\,\text{min}} \approx 4.5\,\text{W raw}$$
 
-Donde:
-- $T_{sol} = T_{órbita} - t_{eclipse} = 98.6 - 35.5 = 63.1$ min/órbita
-- $\eta_{conv}$ = 0.70 (eficiencia boost + cargador)
-- Consumo nominal: 2W
+Where:
+- $T_{sun} = T_{orbit} - t_{eclipse} = 98.6 - 35.5 = 63.1$ min/orbit
+- $\eta_{conv}$ = 0.70 (boost + charger efficiency)
+- Nominal load: 2W
 
-| Configuración de panel | Potencia típica | ¿Suficiente para vuelo? |
-|----------------------|----------------|-------------------------|
-| 1U, 1 cara (10×10 cm, GaAs 28%) | ~1.5W | ❌ Insuficiente |
-| 1U, 2 caras opuestas | ~3W | ⚠️ Marginal |
-| 1U, 4 caras laterales | ~4–5W | ✅ Suficiente (nominal) |
-| **Recomendación vuelo** | **4 caras × 1.5W = 6W brutos** | ✅ +33% margen |
+| Panel configuration | Typical power | Sufficient for flight? |
+|--------------------|--------------|------------------------|
+| 1U, 1 face (10×10 cm, GaAs 28%) | ~1.5W | ❌ Insufficient |
+| 1U, 2 opposite faces | ~3W | ⚠️ Marginal |
+| 1U, 4 lateral faces | ~4–5W | ✅ Sufficient (nominal) |
+| **Flight recommendation** | **4 faces × 1.5W = 6W raw** | ✅ +33% margin |
 
-> **Estado actual**: el panel de vuelo es `🔄 Planificado`. Las celdas solares de vuelo (GaAs triple-juntura o monocristalino espacial) son componentes de largo tiempo de entrega y se cotizan en la fase HW final.
-
----
-
-## 10. Misceláneos / Pasivos
-
-| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
-|---|-----------|-------------|---------|--------|-------|
-| 9 | Resistencias pull-up I2C | 4.7 kΩ 0402 | 4 | ❓ Por evaluar | Para SDA/SCL de I2C0 e I2C1 |
-| 10 | Conector debug | Micro-USB o USB-C | 1 | ✅ Integrado | USB CDC habilitado en firmware |
-| 11 | Divisor resistivo Vbatt | R1 = 330 kΩ, R2 = 100 kΩ (1/4 W) | 2 | 🔄 Planificado | Lectura Vbatt en ADC0/GPIO26; V_ADC = V_batt × 0.23 |
+> **Current status**: flight panel is `🔄 Planned`. Flight solar cells (triple-junction GaAs or space-grade monocrystalline) are long lead-time components and will be sourced in the final HW phase.
 
 ---
 
-## 11. Resumen de asignación de pines (RP2350 / Pico 2W)
+## 10. Miscellaneous / Passives
+
+| # | Component | P/N / Model | Qty | Status | Notes |
+|---|-----------|-------------|-----|--------|-------|
+| 9 | I2C pull-up resistors | 4.7 kΩ 0402 | 4 | ❓ To evaluate | For SDA/SCL of I2C0 and I2C1 |
+| 10 | Debug connector | Micro-USB or USB-C | 1 | ✅ Integrated | USB CDC enabled in firmware |
+| 11 | Vbatt resistor divider | R1 = 330 kΩ, R2 = 100 kΩ (¼ W) | 2 | 🔄 Planned | Vbatt reading on ADC0/GPIO26; V_ADC = V_batt × 0.23 |
+
+---
+
+## 11. Pin Assignment Summary (RP2350 / Pico 2W)
 
 ```
-GPIO0  — UART0 TX  → 🔄 Reasignar a GPS TX (debug → USB CDC)
-GPIO1  — UART0 RX  → 🔄 Reasignar a GPS RX
-GPIO2  — I2C1 SDA  (expansión futura)
-GPIO3  — I2C1 SCL  (expansión futura)
+GPIO0  — UART0 TX  → 🔄 Remap to GPS TX (debug → USB CDC)
+GPIO1  — UART0 RX  → 🔄 Remap to GPS RX
+GPIO2  — I2C1 SDA  (future expansion)
+GPIO3  — I2C1 SCL  (future expansion)
 GPIO4  — I2C0 SDA  / UART1 TX  ← MPU6050 + HMC5883L; UART1 = CSP TT&C
-GPIO5  — I2C0 SCL  / UART1 RX  ← MPU6050 + HMC5883L; seleccionar uno
+GPIO5  — I2C0 SCL  / UART1 RX  ← MPU6050 + HMC5883L; select one
 GPIO6  — PWM3A  → RW Motor 1
 GPIO7  — PWM3B  → RW Motor 2
 GPIO8  — PWM4A  → RW Motor 3
 GPIO14 — PWM7A  → Magnetorquer X
 GPIO15 — PWM7B  → Magnetorquer Y
 GPIO16 — PWM0A  → Magnetorquer Z
-GPIO20 — Watchdog externo (placeholder)
-GPIO25 — LED status onboard
-GPIO26 — ADC0   → Sensor voltaje batería
-GPIO27 — ADC1   → Sensor temperatura (opcional externo)
-ADC4   — Temperatura interna RP2350
+GPIO20 — External watchdog (placeholder)
+GPIO25 — Onboard status LED
+GPIO26 — ADC0   → Battery voltage sensor
+GPIO27 — ADC1   → Temperature sensor (optional external)
+ADC4   — RP2350 internal temperature
 ```
 
-> **Nota**: GPIO4/GPIO5 están mapeados tanto a I2C0 como a UART1. El firmware
-> actual activa I2C0 para sensores y UART1 para CSP. No usar simultáneamente.
+> **Note**: GPIO4/GPIO5 are mapped to both I2C0 and UART1. The current firmware
+> activates I2C0 for sensors and UART1 for CSP. Do not use simultaneously.
 
 ---
 
-## 12. Pendientes y decisiones abiertas
+## 12. Open items and decisions
 
-- [x] ~~EPS: definir batería LiPo, regulador 3.3V y panel solar~~ — resuelto en §9 (v0.5)
-- [x] ~~Panel solar: especificación y análisis~~ — panel lab 6V 1W + dimensionamiento vuelo en §9.2 (v0.7)
-- [x] ~~Antena TT&C: agregar al BOM~~ — 6c/6d agregados, análisis λ/4 en §6.1 (v0.7)
-- [ ] Confirmar licencia amateur IARU para 435–438 MHz (frecuencias de satélite sobre Argentina)
-- [ ] Calcular número de pasos diarios sobre GS según latitud seleccionada para la estación terrena
-- [ ] Dimensionar batería de vuelo: cubrir 37 min eclipse @ 2W = 1.23 Wh mín (+ 50% margen = 1.85 Wh)
-- [ ] Dimensionar panel solar de vuelo: 4 caras laterales 1U, ~4.5W brutos necesarios (§9.2)
-- [ ] Cotizar celdas solares GaAs/Si para vuelo (Spectrolab, Azur Space, AzurLight — lead time &gt; 6 meses)
-- [ ] Definir antena de vuelo: dipolo λ/4 a 434 MHz (17.3 cm × factor vel. 0.95 ≈ 16.4 cm) + plano de tierra
-- [ ] Resolver asignación GPIO4/GPIO5: I2C0 y UART1 son configuraciones compiladas distintas o multiplexado en tiempo
-- [ ] Agregar GPIOs de dirección para TB6612 (RW) y DRV8833 (magnetorquers) en `pico_pins.h`
-- [ ] Confirmar fabricantes y proveedores (Mouser, DigiKey, AliExpress para prototipo)
-- [ ] Validar tolerancia de radiación de componentes (LEO polar, órbita ~97°, fluencia de protones y electrones)
+- [x] ~~EPS: define LiPo battery, 3.3V regulator, and solar panel~~ — resolved in §9 (v0.5)
+- [x] ~~Solar panel: specification and analysis~~ — 6V 1W lab panel + flight sizing in §9.2 (v0.7)
+- [x] ~~TT&C antenna: add to BOM~~ — 6c/6d added, λ/4 analysis in §6.1 (v0.7)
+- [ ] Confirm amateur license IARU for 435–438 MHz (amateur satellite frequencies)
+- [ ] Calculate number of daily passes over GS based on selected ground station latitude
+- [ ] Size flight battery: cover 37 min eclipse @ 2W = 1.23 Wh min (+ 50% margin = 1.85 Wh)
+- [ ] Size flight solar panel: 4 lateral faces 1U, ~4.5W raw required (§9.2)
+- [ ] Source flight solar cells GaAs/Si (Spectrolab, Azur Space — lead time > 6 months)
+- [ ] Define flight antenna: λ/4 dipole at 434 MHz (17.3 cm × velocity factor 0.95 ≈ 16.4 cm) + ground plane
+- [ ] Resolve GPIO4/GPIO5 assignment: I2C0 and UART1 are separate build configurations or time-multiplexed
+- [ ] Add direction GPIOs for TB6612 (RW) and DRV8833 (magnetorquers) in `pico_pins.h`
+- [ ] Confirm manufacturers and suppliers (Mouser, DigiKey, AliExpress for prototype)
+- [ ] Validate radiation tolerance of components (polar LEO, ~97° orbit, proton and electron fluence)
 
 ---
 
-## 13. Historial de cambios
+## 13. Changelog
 
-| Versión | Fecha | Autor | Descripción |
-|---------|-------|-------|-------------|
-| 0.1 | 2026-03-05 | — | Creación inicial; GPS GY-NEO6Mv2 evaluado; sensores actitud documentados |
-| 0.2 | 2026-03-05 | — | Transceiver TT&C analizado; E22-400M30S recomendado; LORA32U4 II → GS |
-| 0.3 | 2026-03-05 | — | HC-12 Si4463 433 MHz evaluado: ✅ GS/desarrollo, ❌ vuelo LEO (link budget −5 dB) |
-| 0.4 | 2026-03-05 | — | Magnetorquer: setup limpio ferrita+DRV8833; P20/15 descartado; EPS stub §9 |
-| 0.5 | 2026-03-05 | — | EPS completo: bus 5V, LiPo 1S 18650, MT3608 boost, TP4056; análisis de autonomía |
-| 0.6 | 2026-03-05 | — | Parámetros orbitales SSO ingresados (§0); link budget corregido a slant 2300 km; eclipse ≅ 35.5 min verificado |
-| 0.7 | 2026-03-05 | — | Panel solar: spec lab 6V 1W + dimensionamiento vuelo 4.5W (§9.2); antenas TT&C agregadas (6c/6d); §5 actualizado |
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 0.1 | 2026-03-05 | — | Initial creation; GPS GY-NEO6Mv2 evaluated; attitude sensors documented |
+| 0.2 | 2026-03-05 | — | TT&C transceiver analyzed; E22-400M30S recommended; LORA32U4 II → GS |
+| 0.3 | 2026-03-05 | — | HC-12 Si4463 433 MHz evaluated: ✅ GS/development, ❌ LEO flight (link budget −5 dB) |
+| 0.4 | 2026-03-05 | — | Magnetorquer: clean ferrite+DRV8833 setup; P20/15 rejected; EPS stub §9 |
+| 0.5 | 2026-03-05 | — | Full EPS: 5V bus, LiPo 1S 18650, MT3608 boost, TP4056; autonomy analysis |
+| 0.6 | 2026-03-05 | — | SSO orbital parameters added (§0); link budget corrected to 2300 km slant; eclipse ≅ 35.5 min verified |
+| 0.7 | 2026-03-05 | — | Solar panel: 6V 1W lab spec + 4.5W flight sizing (§9.2); TT&C antennas added (6c/6d); §5 updated |
+| 0.8 | 2026-03-05 | — | Consolidated lab purchase list §14; estimated total ~$125–155 USD |
+| 0.9 | 2026-03-05 | — | Full document translated to English; acquisition notes cleaned up |
+
+---
+
+## 14. Lab Purchase List — Buy Now
+
+> **Objective**: complete functional lab prototype to validate ADCS, EPS, TT&C, and GPS firmware.
+> Flight components (E22, GaAs solar cells, BLDC RW) will be sourced in the final HW phase.
+
+### 14.1 Consolidated table
+
+| # | Subsystem | Component | Model / Specification | Qty | Est. unit price | Subtotal | Suggested source |
+|---|-----------|-----------|----------------------|-----|----------------|---------|-----------------|
+| 1 | OBC | Raspberry Pi Pico 2W | RP2350, Wi-Fi/BT, 520 KB SRAM | 2 | ~$7 | ~$14 | DigiKey / Mouser / Pi Store |
+| 2 | ADCS | IMU MPU-6050 | GY-521 module (I2C, 3.3V) | 2 | ~$2 | ~$4 | AliExpress |
+| 3 | ADCS | Magnetometer HMC5883L | GY-271 module (I2C, 3.3V) | 2 | ~$3 | ~$6 | AliExpress |
+| 4 | GPS | GPS Module NEO-7M | GY-NEO6Mv2 + ceramic antenna | 2 | ~$8 | ~$16 | AliExpress |
+| 5 | TT&C | Transceiver HC-12 | Si4463, 433 MHz FSK, UART TTL | 2 | ~$4 | ~$8 | AliExpress |
+| 6 | TT&C | 433 MHz Antenna | Rubber-duck / whip SMA (5–8 dBi) | 4 | ~$1.5 | ~$6 | AliExpress |
+| 7 | RW | DC motor with encoder | GA12-N20 6V 100–300 RPM | 3 | ~$4 | ~$12 | AliExpress |
+| 8 | RW | H-bridge motor driver | TB6612FNG (breakout module) | 3 | ~$2.5 | ~$7.50 | AliExpress |
+| 9 | RW | Inertia disk | Acrylic or aluminum ~5 cm Ø, 5–10 mm | 3 | ~$1 | ~$3 | AliExpress / hardware store |
+| 10 | MTQ | H-bridge driver | DRV8833 (module) | 3 | ~$1.5 | ~$4.50 | AliExpress |
+| 11 | MTQ | Ferrite core | MnZn bar 8×70 mm | 3 | ~$1.5 | ~$4.50 | AliExpress |
+| 12 | MTQ | Copper wire | AWG28 enameled, 50 m spool | 1 | ~$4 | ~$4 | AliExpress / local electronics |
+| 13 | EPS | LiPo 18650 battery | Samsung 30Q 3000 mAh, 3.7V 1S | 2 | ~$8 | ~$16 | Local electronics store |
+| 14 | EPS | 5V Boost converter | MT3608 module (up to 28V, 2A) | 2 | ~$1 | ~$2 | AliExpress |
+| 15 | EPS | LiPo charger | TP4056 with protection IC (micro-USB) | 2 | ~$1 | ~$2 | AliExpress |
+| 16 | EPS | Solar panel | Monocrystalline 6V 1W (135×110 mm) | 1 | ~$4 | ~$4 | AliExpress |
+| 17 | EPS | Schottky diode | 1N5819 (DO-41, Vf ≈ 0.3V), ×10 pack | 1 | ~$1 | ~$1 | AliExpress |
+| 18 | Misc | I2C pull-up resistors | 4.7 kΩ ¼W (pack × 100) | 1 | ~$1 | ~$1 | AliExpress |
+| 19 | Misc | Vbatt divider resistors | R1 = 330 kΩ + R2 = 100 kΩ ¼W (pack) | 1 | ~$1 | ~$1 | AliExpress |
+| 20 | Misc | Breadboard | 830-point (half size) | 2 | ~$3 | ~$6 | AliExpress / local electronics |
+| 21 | Misc | DuPont jumper wires | M-M / M-F / F-F 20 cm (120 pcs kit) | 1 | ~$2 | ~$2 | AliExpress |
+| 22 | Misc | 18650 battery holder | With switch and JST connector | 1 | ~$1.5 | ~$1.5 | AliExpress |
+| | | | | | **TOTAL estimated** | **~$125–155 USD** | |
+
+> Price range depends on supplier and shipping cost. Estimated **$90–110 USD** excluding shipping (AliExpress standard shipping).
+
+### 14.2 Purchase priorities by development phase
+
+| Priority | Items | Unlocked by | Est. cost |
+|----------|-------|-------------|-----------|
+| **1 — Immediate** (firmware already works) | #1 Pico 2W, #2 GY-521, #3 GY-271 | Nothing — firmware integrated | ~$24 |
+| **2 — Comms lab** | #5 HC-12 × 2, #6 antennas × 4 | CSP/KISS ready (UART1) | ~$14 |
+| **3 — EPS lab** | #13 LiPo 18650, #14 MT3608, #15 TP4056, #16 solar panel, #17 diode, #22 battery holder | EPS §9 analyzed | ~$26 |
+| **4 — Actuators lab** | #7–9 RW + TB6612, #10–12 MTQ + DRV8833 + ferrite + wire | Phase 7 actuator HAL (pending) | ~$36 |
+| **5 — GPS** | #4 GY-NEO6Mv2 × 2 | Requires freeing UART0 (GPS driver pending) | ~$16 |
+| **6 — Miscellaneous** | #18–21 resistors, breadboard, wires | Always useful | ~$10 |
+
+### 14.3 Acquisition notes
+
+- **LiPo battery**: LiPo cells have shipping restrictions with most carriers — buy locally from an electronics store or hobby shop. Always buy cells with overcharge protection (the TP4056 circuit already provides this, but double protection is safer).
+- **Pico 2W**: available on Mouser/DigiKey (~$7 USD + shipping) or from authorized Raspberry Pi distributors. Verify it is the **2W** version (RP2350 with Wi-Fi), not the Pico 1 (RP2040) or Pico 2 (without Wi-Fi).
+- **HC-12 vs E22**: buy HC-12 now for lab. The KISS/CSP firmware is identical — when E22 modules arrive for flight, only the hardware changes, not the code.
+- **GA12-N20**: specify 6V and RPM ≤ 300 when ordering. The N20 at 3V or 12V is physically identical but has different motor constants — incorrect for our PWM operating point.
