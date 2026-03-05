@@ -1,7 +1,7 @@
 # Bill of Materials (BOM) — CubeSat OBC Hardware
 
 **Document ID**: BOM-OBC-001  
-**Version**: 0.1 (Draft)  
+**Version**: 0.7  
 **Date**: 2026-03-05  
 **Branch**: `feature/hardware-bom`  
 **Status**: 🔄 En construcción — agregar partes a medida que se evalúan
@@ -122,7 +122,7 @@ y notas de integración.
 |---|-----------|-------------|---------|--------|-------|
 | 5 | Sensor temperatura | TMP102 o ADC4 interno | 1 | ✅ Integrado | Modo ADC4 activo; I2C addr 0x48 si externo |
 
-> ⚠️ **Por definir**: regulador de voltaje del bus de batería, panel solar, EPS (Electrical Power System). Agregar en próxima iteración del BOM.
+> Batería, regulador 5V, cargador y panel solar definidos en **§9 EPS**.
 
 ---
 
@@ -132,6 +132,8 @@ y notas de integración.
 |---|-----------|-------------|---------|--------|-------|
 | 6 | Transceiver TT&C (vuelo) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 — **comprar para vuelo** |
 | 6b | Transceiver TT&C (lab/GS) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 **Comprar ahora** | Plug-and-play KISS/CSP; mismo firmware que E22; ~$3/ud — ver §6.2 |
+| 6c | Antena TT&C lab | Antena whip/rubber-duck 433 MHz SMA (5–8 dBi) | 4 | 🔄 **Comprar ahora** | 2× para HC-12 OBC+GS, 2× spare; ~$1–2 c/u (AliExpress) |
+| 6d | Antena TT&C vuelo | Dipolo λ/4 personalizado a 434 MHz (~17.3 cm wire + radiales) | 1 | 🔄 Planificado | λ/4 con factor de velocidad 0.95 = 16.4 cm hilo + plano de tierra; ver §6.3 |
 
 > Ver también **§7 Estación Terrena** para el hardware de ground control.
 
@@ -393,7 +395,8 @@ GND          ──────────▶ GND
 | EPS-1 | Batería LiPo | **18650 1S 3.7V 3000–3500 mAh** (ej. Samsung 30Q, Panasonic NCR18650B) | 1–2 | 🔄 **Comprar ahora** | Bus principal; ver §9.1 |
 | EPS-2 | Boost converter 5V | **MT3608** o XL6009 (módulo) | 1 | 🔄 **Comprar ahora** | LiPo 3.7V → 5V bus; ver §9.1 |
 | EPS-3 | Cargador LiPo | **TP4056** con protección (módulo micro-USB) | 1 | 🔄 **Comprar ahora** | Carga 1S desde USB o panel solar; ver §9.1 |
-| EPS-4 | Panel solar (lab) | Panel 6V 1W (135×110 mm) | 1 | ❓ Por evaluar | Alimenta cargador TP4056 en lab outdoor / vuelo futuro |
+| EPS-4 | Panel solar (lab) | Monocristalino **6V 1W** (Vmpp ≈ 5.5V, Isc ≈ 200 mA, 135×110 mm) | 1 | 🔄 **Comprar ahora** | Prueba circuito de carga TP4056; agregar diodo Schottky 1N5819 en serie; ver §9.2 |
+| EPS-6 | Diodo Schottky anti-retorno | **1N5819** (Vf ≈ 0.3V @ 200 mA, Vr = 40V) | 1 | 🔄 **Comprar ahora** | Evita descarga de batería al panel durante la noche; colocar entre panel y Vin TP4056 |
 | EPS-5 | Sensor voltaje batería | ADC0 en GPIO26 (divisor resistivo) | 1 | ✅ Integrado | Driver ya en firmware; ver `config/pico_pins.h` |
 
 ### 9.1 Elección del voltaje de bus — Análisis
@@ -499,7 +502,59 @@ $$t_{eclipse} = T_{orbit} \times \frac{\arccos\sqrt{1-\left(\frac{R_E}{R_E+h}\ri
 | Máximo (actuadores full) | 3.5W | ~3 horas |
 | Solo OBC + comms (idle) | 0.5W | ~22 horas |
 
-> Para vuelo LEO (~90 min de órbita), con solar de 1W y consumo nominal de 2W hay que dimensionar la batería para cubrir el eclipse (~35 min). Análisis detallado en la iteración de vuelo del BOM.
+> Para vuelo LEO (~90 min de órbita), con solar de 1W y consumo nominal de 2W hay que dimensionar la batería para cubrir el eclipse (~35 min). Ver §9.2 para el análisis de panel solar.
+
+### 9.2 Panel solar — Análisis y dimensionamiento
+
+#### Panel de laboratorio (prototipo)
+
+**Objetivo del panel en lab**: validar el circuito de carga TP4056, no alimentar el sistema completo.
+
+| Parámetro | Valor |
+|-----------|-------|
+| Modelo | Monocristalino 6V 1W, 135×110 mm |
+| Tensión Vmpp | ~5.5V |
+| Corriente Impp | ~182 mA |
+| Voc (circuito abierto) | ~7.2V |
+| Isc (cortocircuito) | ~200 mA |
+| Compatibilidad TP4056 | ✅ Vin máx TP4056 = 8V; Vmpp bajo carga ≈ 5.5V ✅ |
+
+**Circuito de conexión:**
+```
+Panel 6V 1W
+   (+)──▶ 1N5819 ──▶ Vin TP4056 ──▶ BAT+ 18650
+   (−)──────────────▶ GND TP4056
+```
+> El diodo 1N5819 (Vf ≈ 0.3V) previene que la batería se descargue a través del panel en la oscuridad.
+> Con diodo: Vin_TP4056 = Vmpp − 0.3V ≈ 5.2V → dentro del rango operativo ✅
+
+**Balance energético en lab (exterior, día soleado):**
+
+| Escenario | Generación solar | Consumo sistema | Balance |
+|-----------|-----------------|----------------|---------|
+| Sistema inactivo (solo carga) | 1W × 5h sol = 5 Wh | ~0.1W (OBC idle) | +4.5 Wh → carga batería |
+| Sistema nominal (todo activo) | 1W × 6h = 6 Wh | 2W × 6h = 12 Wh | −6 Wh → batería se agota |
+| **Conclusión** | La batería es la fuente principal en lab. El panel solo reduce la descarga. Para operación continua: alimentar vía USB. | | |
+
+#### Dimensionamiento de panel para vuelo LEO (referencia)
+
+Basado en parámetros SSO 600 km (§0):
+
+$$P_{panel} \geq \frac{P_{consumo} \times T_{órbita}}{\eta_{conv} \times T_{sol}} = \frac{2\,\text{W} \times 98.6\,\text{min}}{0.70 \times 63.1\,\text{min}} \approx 4.5\,\text{W brutos}$$
+
+Donde:
+- $T_{sol} = T_{órbita} - t_{eclipse} = 98.6 - 35.5 = 63.1$ min/órbita
+- $\eta_{conv}$ = 0.70 (eficiencia boost + cargador)
+- Consumo nominal: 2W
+
+| Configuración de panel | Potencia típica | ¿Suficiente para vuelo? |
+|----------------------|----------------|-------------------------|
+| 1U, 1 cara (10×10 cm, GaAs 28%) | ~1.5W | ❌ Insuficiente |
+| 1U, 2 caras opuestas | ~3W | ⚠️ Marginal |
+| 1U, 4 caras laterales | ~4–5W | ✅ Suficiente (nominal) |
+| **Recomendación vuelo** | **4 caras × 1.5W = 6W brutos** | ✅ +33% margen |
+
+> **Estado actual**: el panel de vuelo es `🔄 Planificado`. Las celdas solares de vuelo (GaAs triple-juntura o monocristalino espacial) son componentes de largo tiempo de entrega y se cotizan en la fase HW final.
 
 ---
 
@@ -543,9 +598,14 @@ ADC4   — Temperatura interna RP2350
 ## 12. Pendientes y decisiones abiertas
 
 - [x] ~~EPS: definir batería LiPo, regulador 3.3V y panel solar~~ — resuelto en §9 (v0.5)
+- [x] ~~Panel solar: especificación y análisis~~ — panel lab 6V 1W + dimensionamiento vuelo en §9.2 (v0.7)
+- [x] ~~Antena TT&C: agregar al BOM~~ — 6c/6d agregados, análisis λ/4 en §6.1 (v0.7)
 - [ ] Confirmar licencia amateur IARU para 435–438 MHz (frecuencias de satélite sobre Argentina)
 - [ ] Calcular número de pasos diarios sobre GS según latitud seleccionada para la estación terrena
 - [ ] Dimensionar batería de vuelo: cubrir 37 min eclipse @ 2W = 1.23 Wh mín (+ 50% margen = 1.85 Wh)
+- [ ] Dimensionar panel solar de vuelo: 4 caras laterales 1U, ~4.5W brutos necesarios (§9.2)
+- [ ] Cotizar celdas solares GaAs/Si para vuelo (Spectrolab, Azur Space, AzurLight — lead time &gt; 6 meses)
+- [ ] Definir antena de vuelo: dipolo λ/4 a 434 MHz (17.3 cm × factor vel. 0.95 ≈ 16.4 cm) + plano de tierra
 - [ ] Resolver asignación GPIO4/GPIO5: I2C0 y UART1 son configuraciones compiladas distintas o multiplexado en tiempo
 - [ ] Agregar GPIOs de dirección para TB6612 (RW) y DRV8833 (magnetorquers) en `pico_pins.h`
 - [ ] Confirmar fabricantes y proveedores (Mouser, DigiKey, AliExpress para prototipo)
@@ -563,3 +623,4 @@ ADC4   — Temperatura interna RP2350
 | 0.4 | 2026-03-05 | — | Magnetorquer: setup limpio ferrita+DRV8833; P20/15 descartado; EPS stub §9 |
 | 0.5 | 2026-03-05 | — | EPS completo: bus 5V, LiPo 1S 18650, MT3608 boost, TP4056; análisis de autonomía |
 | 0.6 | 2026-03-05 | — | Parámetros orbitales SSO ingresados (§0); link budget corregido a slant 2300 km; eclipse ≅ 35.5 min verificado |
+| 0.7 | 2026-03-05 | — | Panel solar: spec lab 6V 1W + dimensionamiento vuelo 4.5W (§9.2); antenas TT&C agregadas (6c/6d); §5 actualizado |
