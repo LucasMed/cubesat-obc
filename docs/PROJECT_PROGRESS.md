@@ -79,6 +79,22 @@
 
 ---
 
+### Hardware BOM / PDR ✅ (2026-03-05, branch `feature/hardware-bom`)
+- **Goal**: Define complete hardware Bill of Materials; reach PDR PASS gate.
+- **PDR Result**: ✅ **PASS** — architecture solid, RF design correct, ADCS coherent.
+- **Key decisions**:
+  - **LIS3MDL** as flight-grade magnetometer (HMC5883L discontinued; QMC5883L clone risk)
+  - **TPS3431** external watchdog: GPIO20, 3 s timeout, kick from `HealthMonitorTask`
+  - **GPS NEO-7M**: UART0 @ 9600 baud NMEA 0183; debug → USB CDC
+  - **SAW filter 433 MHz**: added to E22-400M30S RF chain for EMI immunity
+  - **Magnetorquers-first ADCS**: B-dot MTQ-only = Phase 1; RW precision pointing = Phase 2
+  - **Ground station**: E22-400M30S + CP2102 USB-UART (symmetric 433 MHz, no custom firmware)
+  - **Link budget** verified: +8.5 dB margin at 2300 km SSO horizon slant ✅
+- **CDR pending**: LIS3MDL driver migration, GPS NMEA driver, B-dot controller, PWM HAL,
+  OBC PCB design, WCET measurement, radiation qualification.
+
+---
+
 ### Phase 6: Closed-Loop Stability & Architectural Consolidation ✅ PRs 21–27 (2026-03-20)
 - **Goal**: Verify full EKF→LQR closed-loop stability via host simulation; close architectural debt (quaternion utility, gain scheduling, integration tests T-FMS-01 + T-SAFE-01, flash logger backend, coverage ≥90%, MISRA audit).
 - **Branch**: `feature/phase6-closed-loop`
@@ -123,6 +139,7 @@
 | 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
 | 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | ✅ Complete (4/4 feature PRs + docs) |
 | 6 — Closed-Loop Stability | Q1 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ✅ Complete (7/7 PRs) |
+| HW BOM / PDR | Mar 2026 | Full hardware BOM; PDR review; LIS3MDL, TPS3431 watchdog, SAW filter, MTQ-first ADCS strategy, GS design | ✅ Complete (BOM v1.0, PDR PASS) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 

@@ -339,6 +339,37 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 
 ---
 
+## Hardware Design Requirements (BOM v1.0)
+
+> Traceability from BOM component decisions to firmware requirements and test coverage.
+> **PDR Result: PASS** (2026-03-05, `feature/hardware-bom`)
+
+| HW-REQ | Component | BOM Ref | Firmware Requirement | Tests | Status |
+|--------|-----------|---------|---------------------|-------|--------|
+| HW-01 | OBC: RP2350 / Pico 2W | §2 | FR-1..FR-12 (all tasks run on RP2350) | All 29/29 | ✅ |
+| HW-02 | IMU: MPU-6050 (I2C0, 0x68) | §3 | FR-1 (Attitude Sensing), FR-2 (EKF input) | T-SDM-01..03, T-EKF-01..06 | ✅ |
+| HW-03 | Magnetometer: HMC5883L (I2C0, 0x1E) — lab; LIS3MDL (0x1C) for flight | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ✅ Lab (HMC5883L); CDR: new LIS3MDL driver |
+| HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-13 (GPS positioning, future) — NMEA parser `src/drivers/gps/neo7m.c` pending | — | 🔄 Planned |
+| HW-05 | External watchdog: TPS3431, GPIO20, timeout=3 s | §10 #12 | FR-8 (Health Monitoring — `watchdog_hal_feed()` in `HealthMonitorTask`) | T-WDT-01..05, T-SAFE-01a..c | ✅ HAL ready |
+| HW-06 | TT&C: E22-400M30S UART1 @ 115200 baud | §6 | FR-7 (Telemetry TX via KISS/CSP), link margin +8.5 dB @ 2300 km | T-TLM-01..06 | ✅ |
+| HW-07 | SAW filter 433 MHz (TDK B39431) | §6e | Non-functional: EMI immunity; no firmware driver required | — | 🔄 Planned |
+| HW-08 | EPS: LiPo 18650 → MT3608 5V → Pico VSYS | §9 | FR-11 (EPS Monitor, GPIO26 ADC0 Vbatt) | T-EPS-03..05 | ✅ |
+| HW-09 | Magnetorquers: DRV8833 on GPIO14/15/16 | §8 | FR-6 (MTQ actuation), B-dot detumbling (Phase 1 ADCS) | T-MDT-01..05 | ✅ HAL stub |
+| HW-10 | Reaction wheels: TB6612FNG on GPIO6/7/8 | §8 | FR-5 (RW actuation), LQR torque output (Phase 2 ADCS) | test_actuators | ✅ HAL stub |
+
+### Open Hardware Items (CDR scope)
+
+| Item | Description | Owner |
+|------|-------------|-------|
+| CDR-HW-01 | Migrate magnetometer driver: `hmc5883l.c` → `lis3mdl.c` (addr 0x1C, new register map) | SW Team |
+| CDR-HW-02 | Implement GPS NMEA parser: `src/drivers/gps/neo7m.c` + FreeRTOS task | SW Team |
+| CDR-HW-03 | Implement B-dot detumbling controller: `src/control/b_dot_control.c` | Control Team |
+| CDR-HW-04 | Add PWM HAL output to `reaction_wheel.c` and `magnetorquer.c` (torque → duty cycle) | HW/SW Team |
+| CDR-HW-05 | Qualify all flight components for TID/SEE (polar LEO, ~97° orbit) | Systems |
+| CDR-HW-06 | Measure WCET of all 7 FreeRTOS tasks using `DWT->CYCCNT` and document timing budget | SW Team |
+
+---
+
 **Last Updated**: 2026-03-20
 **Matrix Version**: 2.3
 **Status**: Active (updated each phase)
