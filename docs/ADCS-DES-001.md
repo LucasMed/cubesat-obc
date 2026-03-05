@@ -3,8 +3,8 @@
 | Field | Value |
 |-------|-------|
 | Document ID | ADCS-DES-001 |
-| Version | 0.3 |
-| Status | Draft |
+| Version | 1.0 |
+| Status | Baselined — PDR |
 | Subsystem | ADCS |
 | Date | 2026-03-05 |
 | Related docs | ICD-OBC-001, SPEC-2-ADCS v1.1, PHASE4_PLAN.md, PHASE5_PLAN.md, PHASE6_PLAN.md |
