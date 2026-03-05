@@ -337,12 +337,42 @@ GND          ──────────▶ GND
 
 | Etapa | Qué comprar | Costo estimado | Cuándo |
 |-------|------------|----------------|--------|
-| **Lab ahora** | 3× Motor N20 + 3× TB6612 + 3× DRV8833 + bobinas | ~$30–40 total | Ahora |
+| **Lab ahora** | 3× Motor N20 + 3× TB6612 + 3× DRV8833 + hilo AWG28 + ferrita | ~$30–40 total | Ahora |
 | **Vuelo** | BLDC custom de reaction wheel + bobinas de ferrita | Por cotizar | Fase HW final |
 
 ---
 
-## 9. Misceláneos / Pasivos
+## 9. EPS — Electrical Power System
+
+| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
+|---|-----------|-------------|---------|--------|-------|
+| EPS-1 | Batería LiPo | (a definir) | 1 | ❓ Por evaluar | Ver §9.1 |
+| EPS-2 | Regulador 3.3V | (a definir) | 1 | ❓ Por evaluar | Ver §9.1 |
+| EPS-3 | Panel solar | (a definir) | 1–4 caras | ❓ Por evaluar | Ver §9.1 |
+| EPS-4 | Sensor voltaje batería | ADC0 en GPIO26 (interno) | 1 | ✅ Integrado | Divisor resistivo → ADC0 del Pico; ver `config/pico_pins.h` |
+
+### 9.1 Requisitos del EPS desde el firmware
+
+El Pico 2W (RP2350) lee el voltaje de batería a través del ADC0 (`GPIO26`) con un divisor resistivo. El valor se publica en el Data Layer y se incluye en los paquetes de telemetría CSP.
+
+**Consumo estimado del sistema completo (lab):**
+
+| Subsistema | Componente | Consumo typ |
+|-----------|-----------|-------------|
+| OBC | Pico 2W @ 3.3V | ~100 mA (150 mA pico) |
+| IMU | MPU-6050 | ~3.9 mA |
+| Magnetómetro | HMC5883L | ~0.6 mA |
+| GPS | NEO-7M (cuando se integre) | ~45 mA |
+| TT&C lab | HC-12 TX activo | ~100 mA (TX) / 16 mA (RX) |
+| RW motors | 3× Motor N20 @ 5V | ~150–300 mA total |
+| Magnetorquers | 3× bobina ferrita @ 3.3V | ~300 mA total |
+| **Total estimado** | | **~700 mA – 1A @ 3.3V–5V** |
+
+> A definir en la siguiente iteración del BOM. Pendiente.
+
+---
+
+## 10. Misceláneos / Pasivos
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
@@ -351,7 +381,7 @@ GND          ──────────▶ GND
 
 ---
 
-## 10. Resumen de asignación de pines (RP2350 / Pico 2W)
+## 11. Resumen de asignación de pines (RP2350 / Pico 2W)
 
 ```
 GPIO0  — UART0 TX  → 🔄 Reasignar a GPS TX (debug → USB CDC)
@@ -360,8 +390,17 @@ GPIO2  — I2C1 SDA  (expansión futura)
 GPIO3  — I2C1 SCL  (expansión futura)
 GPIO4  — I2C0 SDA  / UART1 TX  ← MPU6050 + HMC5883L; UART1 = CSP TT&C
 GPIO5  — I2C0 SCL  / UART1 RX  ← MPU6050 + HMC5883L; seleccionar uno
+GPIO6  — PWM3A  → RW Motor 1
+GPIO7  — PWM3B  → RW Motor 2
+GPIO8  — PWM4A  → RW Motor 3
+GPIO14 — PWM7A  → Magnetorquer X
+GPIO15 — PWM7B  → Magnetorquer Y
+GPIO16 — PWM0A  → Magnetorquer Z
+GPIO20 — Watchdog externo (placeholder)
 GPIO25 — LED status onboard
-ADC4   — Sensor temperatura interno
+GPIO26 — ADC0   → Sensor voltaje batería
+GPIO27 — ADC1   → Sensor temperatura (opcional externo)
+ADC4   — Temperatura interna RP2350
 ```
 
 > **Nota**: GPIO4/GPIO5 están mapeados tanto a I2C0 como a UART1. El firmware
@@ -369,21 +408,22 @@ ADC4   — Sensor temperatura interno
 
 ---
 
-## 11. Pendientes y decisiones abiertas
+## 12. Pendientes y decisiones abiertas
 
-- [ ] Definir EPS: regulador, batería LiPo, y panel solar
-- [ ] Seleccionar transceiver UHF/VHF para TT&C (UART1)
+- [ ] **EPS**: definir batería LiPo, regulador 3.3V y panel solar — siguiente iteración del BOM
 - [ ] Confirmar fabricantes y proveedores (Mouser, DigiKey, AliExpress para prototipo)
 - [ ] Validar tolerancia de radiación de componentes seleccionados (LEO environment)
 - [ ] Evaluar si el GPS tiene aplicación en órbita real (ventana de visibilidad, TTFF)
 - [ ] Resolver asignación GPIO4/GPIO5: documentar si I2C0 y UART1 se multiplexan en tiempo o son configuraciones compiladas distintas
+- [ ] Agregar GPIOs de dirección para TB6612 (RW) y DRV8833 (magnetorquers) en `pico_pins.h`
 
 ---
 
-## 12. Historial de cambios
+## 13. Historial de cambios
 
 | Versión | Fecha | Autor | Descripción |
 |---------|-------|-------|-------------|
 | 0.1 | 2026-03-05 | — | Creación inicial; GPS GY-NEO6Mv2 evaluado; sensores actitud documentados |
 | 0.2 | 2026-03-05 | — | Transceiver TT&C analizado; E22-400M30S recomendado; LORA32U4 II → GS |
 | 0.3 | 2026-03-05 | — | HC-12 Si4463 433 MHz evaluado: ✅ GS/desarrollo, ❌ vuelo LEO (link budget −5 dB) |
+| 0.4 | 2026-03-05 | — | Magnetorquer: setup limpio ferrita+DRV8833; P20/15 descartado; EPS stub §9 |
