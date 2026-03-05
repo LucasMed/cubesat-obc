@@ -8,6 +8,31 @@
 
 ---
 
+## 0. Parámetros de Misión (referencia para el BOM)
+
+> Estos parámetros orbitales son la base de todos los cálculos de link budget, EPS (eclipse), y ventanas de contacto.
+
+| Parámetro | Valor | Notas |
+|-----------|-------|-------|
+| Tipo de órbita | **SSO — Sun-Synchronous / Polar** | Ecuación solar local fija cada día |
+| Altitud | **500–700 km** (objetivo nominal: 600 km) | LEO bajo |
+| Inclinación | **~96°–98°** | Cobertura polar + Argentina |
+| Período orbital | **94.5 min** (500 km) – **98.6 min** (700 km) | $T = 2\pi\sqrt{a^3/\mu}$ |
+| Eclipse méximo | **35–37 min** (caso peor, $\beta = 0°$) | $t_{ecl} = T \cdot \frac{\arccos\sqrt{1-(R_E/a)^2}}{\pi}$ |
+| Eclipse mínimo | **0 min** (solão continuo cuando $|\beta| > 66°$) | Parte del año sin eclipse |
+| Ventana de contacto (GS Argentina) | **10–14 min/paso**, 2–4 pasos/día | Depende de latitud GS y elevación mín |
+| Slant range overhead (nadir) | ~500–700 km | Paso en cenit |
+| **Slant range crítico** (el. 5°, horizonte) | **~2000–2300 km** | ⚠️ Caso crítico para link budget |
+| Deriva orbital | ~0.98°/día (précesión) | SSO mantiene LTAN fijo |
+
+**Implicaciones directas para el BOM:**
+- **Link budget**: dimensionar para slant range **2300 km** (horizonte), no 600 km (nadir) — ver §6
+- **EPS / batería**: dimensionar para cubrir **37 min de eclipse** por órbita — ver §9
+- **GPS**: muy relevante — la SSO pasa sobre Argentina a la **misma hora solar local** todos los días; el GPS provee timestamp y posición para correlacionar datos de sensores con coordenadas geográficas — ver §4
+- **GS (Estación Terrena)**: ventana de ≤8 min útiles de enlace por paso → el protocolo CSP + telemetría 1 Hz debe ser eficiente
+
+---
+
 ## 1. Propósito
 
 Este documento lista todos los componentes de hardware necesarios para ensamblar
@@ -54,6 +79,8 @@ y notas de integración.
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
 | 4 | Módulo GPS | GY-NEO6Mv2 con NEO-7M + antena | 2 | 🔄 Planificado | UART @ 9600 baud, 3.3V; requiere liberar UART0 — ver §4.1 |
+
+> **Relevancia en SSO**: el GPS es **especialmente útil** en esta misión. La SSO pasa sobre Argentina al mismo momento solar local cada día → el GPS provee timestamp preciso y posición para correlacionar lecturas con ubicación geográfica. También permite sincronizar el reloj del OBC en cada paso.
 
 ### 4.1 Compatibilidad GPS GY-NEO6Mv2 / NEO-7M
 
@@ -153,10 +180,25 @@ GPIO[libre]─────────────▶ AUX (busy/ready flag, opci
 - [ ] Agregar configuración M0/M1/AUX en `pico_pins.h` con GPIOs libres
 - [ ] Test end-to-end KISS/CSP con hardware real
 
-**Notas de RF para LEO:**
-- Requiere licencia amateur (IARU coordinar frecuencia) o banda ISM 433 MHz (potencia limitada a 10 mW en algunos países en ISM — verificar regulación local)
-- Antena: dipolo 1/4 onda (~16.4 cm a 434 MHz) o antena helicoidal para mayor ganancia
-- Link budget LEO 600 km con dipolo: ~-120 dBm recibido @ 1W TX → viable con E22 sensibilidad típica -148 dBm (LoRa SF12)
+**Notas de RF para SSO (500–700 km, inclinación 97°):**
+
+**⚠️ El caso crítico NO es el paso en cenit — es el paso en el horizonte.** Con elevación mínima de 5° sobre Argentina, el slant range llega a ~2300 km.
+
+| Parámetro | Paso en cenit (600 km) | **Paso en horizonte (2300 km, 5° el.)** |
+|-----------|----------------------|------------------------------------------|
+| Free-space path loss @ 435 MHz | 140.8 dB | **152.5 dB** (+11.7 dB más) |
+| EIRP E22 (1W + dipolo 3 dBi) | 33 dBm | 33 dBm |
+| Señal recibida (dipolo GS 3 dBi) | −11.2 dBm... | **−116.5 dBm** |
+| Sensibilidad E22 FSK @ 9600 bps | −125 dBm | −125 dBm |
+| **Margen de enlace E22** | **+26 dB** | **+8.5 dB ✅ (suficiente)** |
+| **Margen HC-12** (100 mW, −117 dBm) | +16 dBm | **−6.5 dB ❌ (insuficiente)** |
+
+> El E22-400M30S cierra el enlace con +8.5 dB de margen incluso en el horizonte a 2300 km — confirma que es la elección correcta para vuelo.
+> El HC-12 queda descartado para vuelo incluso más claramente con los parámetros SSO reales.
+
+- Requiere licencia amateur (IARU coordinar frecuencia 435–438 MHz)
+- Antena: dipolo 1/4 onda (~16.4 cm a 434 MHz)
+- Ventana de contacto ~10–14 min/paso → protocolo CSP debe transmitir el máximo de telemetría en ese tiempo
 
 ### 6.2 Análisis específico: HC-12 Si4463 433 MHz
 
@@ -187,15 +229,17 @@ GND        ───────────▶ GND
 ```
 > Solo 4 cables. Sin pines de modo adicionales en operación normal.
 
-#### Link budget para LEO (600 km):
+#### Link budget para SSO (caso crítico: horizonte a 2300 km, el. 5°):
 
 | Parámetro | HC-12 (100 mW) | E22-400M30S (1 W) |
 |-----------|---------------|-------------------|
-| EIRP TX | ~23 dBm (con dipolo 3 dBi) | ~33 dBm |
-| Path loss LEO 600 km @ 435 MHz | ~148 dB | ~148 dB |
-| Señal recibida (dipolo GS 3 dBi) | **−122 dBm** | **−112 dBm** |
+| EIRP TX | ~23 dBm (dipolo 3 dBi) | ~33 dBm |
+| Path loss SSO **2300 km** @ 435 MHz | ~152.5 dB | ~152.5 dB |
+| Señal recibida (dipolo GS 3 dBi) | **−126.5 dBm** | **−116.5 dBm** |
 | Sensibilidad RX (FSK 9600 bps) | −117 dBm | −125 dBm (FSK) |
-| **Margen de enlace** | **−5 dB ❌ (insuficiente)** | **+13 dB ✅** |
+| **Margen de enlace** | **−9.5 dB ❌** | **+8.5 dB ✅** |
+
+> Con SSO real (horizonte 2300 km), el HC-12 tiene aún menos margen que el cálculo previo a 600 km.
 
 > **Conclusión del link budget**: el HC-12 con 100 mW no tiene margen suficiente para un enlace LEO confiable a 600 km con antenas de dipolo. Sería viable solo con antenas yagi de alta ganancia en tierra (≥10 dBi), lo que complica la GS.
 
@@ -428,6 +472,13 @@ $$V_{ADC} = 4.2 \times \frac{100}{430} \approx 0.98\,\text{V} \quad \checkmark \
 
 #### Consumo estimado del sistema completo y autonomía
 
+**Cálculo de eclipse para SSO 600 km (caso peor, $\beta = 0°$):**
+
+$$t_{eclipse} = T_{orbit} \times \frac{\arccos\sqrt{1-\left(\frac{R_E}{R_E+h}\right)^2}}{\pi} = 96.7 \times \frac{66.1°}{180°} \approx 35.5 \text{ min}$$
+
+> ✅ **Nuestro estimado original de ~35 min era correcto.** Los parámetros SSO confirman el dimensionamiento del EPS.
+> Nota: en períodos con $|\beta| > 66°$ no hay eclipse (luz solar continua).
+
 | Subsistema | Componente | Consumo typ @ 5V |
 |-----------|-----------|-----------------|
 | OBC | Pico 2W | ~80 mA |
@@ -491,12 +542,14 @@ ADC4   — Temperatura interna RP2350
 
 ## 12. Pendientes y decisiones abiertas
 
-- [ ] **EPS**: definir batería LiPo, regulador 3.3V y panel solar — siguiente iteración del BOM
-- [ ] Confirmar fabricantes y proveedores (Mouser, DigiKey, AliExpress para prototipo)
-- [ ] Validar tolerancia de radiación de componentes seleccionados (LEO environment)
-- [ ] Evaluar si el GPS tiene aplicación en órbita real (ventana de visibilidad, TTFF)
-- [ ] Resolver asignación GPIO4/GPIO5: documentar si I2C0 y UART1 se multiplexan en tiempo o son configuraciones compiladas distintas
+- [x] ~~EPS: definir batería LiPo, regulador 3.3V y panel solar~~ — resuelto en §9 (v0.5)
+- [ ] Confirmar licencia amateur IARU para 435–438 MHz (frecuencias de satélite sobre Argentina)
+- [ ] Calcular número de pasos diarios sobre GS según latitud seleccionada para la estación terrena
+- [ ] Dimensionar batería de vuelo: cubrir 37 min eclipse @ 2W = 1.23 Wh mín (+ 50% margen = 1.85 Wh)
+- [ ] Resolver asignación GPIO4/GPIO5: I2C0 y UART1 son configuraciones compiladas distintas o multiplexado en tiempo
 - [ ] Agregar GPIOs de dirección para TB6612 (RW) y DRV8833 (magnetorquers) en `pico_pins.h`
+- [ ] Confirmar fabricantes y proveedores (Mouser, DigiKey, AliExpress para prototipo)
+- [ ] Validar tolerancia de radiación de componentes (LEO polar, órbita ~97°, fluencia de protones y electrones)
 
 ---
 
@@ -509,3 +562,4 @@ ADC4   — Temperatura interna RP2350
 | 0.3 | 2026-03-05 | — | HC-12 Si4463 433 MHz evaluado: ✅ GS/desarrollo, ❌ vuelo LEO (link budget −5 dB) |
 | 0.4 | 2026-03-05 | — | Magnetorquer: setup limpio ferrita+DRV8833; P20/15 descartado; EPS stub §9 |
 | 0.5 | 2026-03-05 | — | EPS completo: bus 5V, LiPo 1S 18650, MT3608 boost, TP4056; análisis de autonomía |
+| 0.6 | 2026-03-05 | — | Parámetros orbitales SSO ingresados (§0); link budget corregido a slant 2300 km; eclipse ≅ 35.5 min verificado |
