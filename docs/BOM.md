@@ -90,7 +90,7 @@ Firmware compatibility status and integration notes are included for each compon
 | Component | Model | Interface | Temp range | Notes |
 |-----------|-------|-----------|-----------|-------|
 | IMU (upgrade) | **ICM-42688-P** (TDK InvenSense) | SPI / I2C | −40 to +85 °C | High-precision, DMP, actively produced; drop-in upgrade for MPU-6050 |
-| Magnetometer (replacement) | **LIS3MDL** (STMicroelectronics) | SPI / I2C | −40 to +85 °C | Low-power, 16-bit, actively produced; functional HMC5883L replacement |
+| Magnetometer (replacement) | **LIS3MDL** (STMicroelectronics) | SPI / I2C | −40 to +85 °C | Low-power, 16-bit, actively produced; functional HMC5883L replacement. **Operating config**: continuous mode, ODR = 80 Hz, I2C addr `0x1C` (SA0=GND) |
 
 > **Lab decision**: the GY-271 is acceptable for prototype if the actual IC is confirmed. For flight, migrate to **LIS3MDL** on the custom OBC PCB (CDR scope).
 
@@ -100,7 +100,7 @@ Firmware compatibility status and integration notes are included for each compon
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
-| 4 | GPS Module | GY-NEO6Mv2 with NEO-7M + antenna | 2 | 🔄 Planned | UART @ 9600 baud, 3.3V; requires freeing UART0 — see §4.1 |
+| 4 | GPS Module | GY-NEO6Mv2 with NEO-7M + antenna | 2 | 🔄 Planned | UART @ **9600 baud**, **NMEA 0183** protocol; 3.3V; requires freeing UART0 — see §4.1. FSW driver must parse `$GPGGA` / `$GPRMC` sentences |
 
 > **SSO relevance**: GPS is **especially useful** in this mission. The SSO passes at the same local solar time every day → GPS provides precise timestamps and position to correlate readings with geographic coordinates. Also enables OBC clock synchronization on each pass.
 
@@ -629,7 +629,7 @@ Where:
 | 9 | I2C pull-up resistors | 4.7 kΩ 0402 | 4 | 🔄 Planned | For SDA/SCL of I2C0 and I2C1; **confirmed required** — MPU-6050 and HMC5883L/LIS3MDL both need explicit pull-ups (§3.1) |
 | 10 | Debug connector | Micro-USB or USB-C | 1 | ✅ Integrated | USB CDC enabled in firmware |
 | 11 | Vbatt resistor divider | R1 = 330 kΩ, R2 = 100 kΩ (¼ W) | 2 | 🔄 Planned | Vbatt reading on ADC0/GPIO26; V_ADC = V_batt × 0.23 |
-| 12 | External watchdog | TPS3431 (or MCP1316, MAX706) | 1 | 🔄 Planned | GPIO20 (placeholder in `pico_pins.h`); triggers hardware reset if firmware hangs; critical for SAFE MODE recovery in LEO; ~$1–2 |
+| 12 | External watchdog | TPS3431 (or MCP1316, MAX706) | 1 | 🔄 Planned | WDI pin → **GPIO20** (dedicated, `pico_pins.h`); **timeout: 3 s**; kick source: `HealthMonitorTask → watchdog_hal_feed()`; triggers full system reset if firmware hangs; critical for SAFE MODE recovery in LEO; ~$1–2 |
 
 ---
 
