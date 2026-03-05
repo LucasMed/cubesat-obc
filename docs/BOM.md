@@ -263,8 +263,82 @@ PC (cliente CSP Python/C)
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
-| 7 | Reaction Wheels | (a definir) | 3 | ❓ Por evaluar | Control PWM/SPI; 3 ejes ortogonales |
-| 8 | Magnetorquers | (a definir) | 3 | ❓ Por evaluar | Control PWM; de-saturation via `B×L` dump (Phase 5) |
+| 7 | Reaction Wheels (vuelo) | (a definir — BLDC custom) | 3 | ❓ Por evaluar | GPIO6/7/8 (PWM3A/3B/4A); ver §8.1 |
+| 7b | Reaction Wheels **(lab)** | Motor DC con encoder + driver TB6612 | 3 | 🔄 **Comprar ahora** | Emula inercia; PWM directo en GPIO6/7/8; ver §8.1 |
+| 8 | Magnetorquers (vuelo) | Bobina custom en ferrita + H-bridge | 3 | ❓ Por evaluar | GPIO14/15/16 (PWM7A/7B/0A); ver §8.2 |
+| 8b | Magnetorquers **(lab)** | Módulo L298N o DRV8833 + bobina | 3 | 🔄 **Comprar ahora** | Control PWM bidireccional; ver §8.2 |
+
+### 8.1 Reaction Wheels — opciones de laboratorio
+
+**Interfaz del firmware:**
+- Control por **PWM** en `GPIO6` (RW1), `GPIO7` (RW2), `GPIO8` (RW3) — ver `config/pico_pins.h`
+- Modelo de firmware: `reaction_wheel_apply_torque(rw, torque, dt)` → actualiza `rw->omega`
+- Parámetros: `RW_MAX_OMEGA_RPM = 4000`, `RW_INERTIA = 0.001 kg·m²`
+- El driver PWM de hardware del RP2350 (`hardware_pwm`) ya está disponible en los slices PWM3/PWM4
+
+**Componentes para laboratorio (comprar ahora):**
+
+| Componente | Modelo sugerido | Precio | Función |
+|-----------|----------------|--------|---------|
+| Motor DC con encoder | GA12-N20 (6V, 100–300 RPM) o N20 micro | ~$3–5 c/u | Simula la rueda de reacción |
+| Driver motor H-bridge | TB6612FNG (módulo breakout) | ~$2–3 c/u | Convierte PWM del Pico → corriente bidireccional al motor |
+| Disco de inercia | Disco acrílico o metal ~5 cm Ø | ~$1 | Aumenta inercia del eje para comportamiento realista |
+
+**Circuito de conexión — Reaction Wheel × 1 eje (repetir × 3):**
+```
+Pico 2W                    TB6612FNG            Motor N20
+GPIO6 (PWM) ─────────────▶ PWMA          ──▶ AO1/AO2 ──▶ Motor
+GPIO_DIR_A  ─────────────▶ AIN1
+GPIO_DIR_B  ─────────────▶ AIN2
+3.3V        ─────────────▶ VCC (lógica)
+VMOTOR 5V   ─────────────▶ VM  (motor)
+GND         ─────────────▶ GND, STBY
+```
+
+> **Nota**: el firmware modelo actual solo calcula `omega` internamente. El siguiente paso de desarrollo es agregar el HAL PWM que convierta `torque → duty cycle` y lo escriba en `hardware_pwm`. Esto entra en **Phase 7 / actuator HAL**.
+
+**¿Por qué no usar un servo o ESC directamente?**
+- Servos/ESC de hobby usan PWM de 50 Hz con pulso 1–2 ms → requiere lógica extra
+- TB6612 acepta el PWM de alta frecuencia nativo del RP2350 (hasta ~125 kHz) → más simple y fiel al control real
+
+### 8.2 Magnetorquers — opciones de laboratorio
+
+**Interfaz del firmware:**
+- Control por **PWM** en `GPIO14` (X), `GPIO15` (Y), `GPIO16` (Z)
+- Firmware: `magnetorquer_set_moment(mq, mx, my, mz)` → establece dipolo magnético [A·m²]
+- La de-saturación B×L está implementada en `src/services/adcs/momentum_dump.c` (Phase 5)
+
+**Componentes para laboratorio (comprar ahora):**
+
+| Componente | Modelo sugerido | Precio | Función |
+|-----------|----------------|--------|---------|
+| Driver H-bridge bidireccional | DRV8833 (módulo) o L9110S | ~$1–2 c/u | Invierte corriente en la bobina (magneto +/-) |
+| Bobina electromagnética | Electroimán 5V 12mm (ej. ZYE1-P20/15) o bobina casera en ferrita | ~$2–4 c/u | Genera dipolo magnético proporcional a la corriente |
+| Núcleo de ferrita (opcional) | Barra ferrita 8×70 mm | ~$1 c/u | Aumenta permeabilidad → más momento por vuelta |
+
+**Circuito de conexión — Magnetorquer × 1 eje (repetir × 3):**
+```
+Pico 2W                  DRV8833             Bobina
+GPIO14 (PWM) ──────────▶ AIN1 (o IN1)
+GPIO_DIR     ──────────▶ AIN2 (o IN2)  ──▶ AOUT1/AOUT2 ──▶ Bobina
+3.3V         ──────────▶ VCC
+GND          ──────────▶ GND
+```
+
+> La dirección de la corriente determina la polaridad del dipolo (+/−) → el firmware debe poder invertir el signo del momento para el B×L dump.
+
+**Qué se puede probar en laboratorio con esto:**
+- ✅ Ciclo completo ADCS: EKF → LQR → `magnetorquer_set_moment()` → corriente real en bobina
+- ✅ Verificar que el B×L dump genera corriente proporcional al campo magnético medido por HMC5883L
+- ✅ Medir campo generado con el propio magnetómetro del sistema (loop cerrado de verdad)
+- ⚠️ No simula el torque real en órbita (campo terrestre ~50 µT vs laboratorio con interferencias)
+
+**Resumen plan de adquisición — Actuadores:**
+
+| Etapa | Qué comprar | Costo estimado | Cuándo |
+|-------|------------|----------------|--------|
+| **Lab ahora** | 3× Motor N20 + 3× TB6612 + 3× DRV8833 + bobinas | ~$30–40 total | Ahora |
+| **Vuelo** | BLDC custom de reaction wheel + bobinas de ferrita | Por cotizar | Fase HW final |
 
 ---
 
