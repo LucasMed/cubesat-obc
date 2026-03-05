@@ -102,12 +102,12 @@ void vAttitudeControlTask_Step(void)
   attitude_dynamics_step(&g_dyn, torque, dt);
 }
 
-// Attitude control task: runs control loop at 20 Hz
+// Attitude control task: runs control loop at 10 Hz
 void vAttitudeControlTask(void *pvParameters)
 {
   (void)pvParameters;
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(50);  // 20 Hz
+  const TickType_t xFrequency = pdMS_TO_TICKS(100);  // 10 Hz
 
 #ifdef PICO_BUILD
   uint64_t last_wake = time_us_64();
@@ -170,8 +170,8 @@ void vAttitudeControlTask(void *pvParameters)
     }
     samples++;
 
-    if (samples >= 201)
-    {  // 200 samples for 20Hz (~10 seconds)
+    if (samples >= 101)
+    {  // 100 samples for 10Hz (~10 seconds)
       printf("[attitude_control_task] Timing (200 samples): min=%llu, max=%llu, avg=%llu us\n",
              (unsigned long long)min_int, (unsigned long long)max_int,
              (unsigned long long)(sum_int / 200));
