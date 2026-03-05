@@ -62,7 +62,7 @@ Interfaces covered:
        ┌─────────────────────┼──────────────────────┐
        │                     │                      │
      I2C0                  UART0                 UART1
-   GPIO4/5               GPIO0/1               GPIO4/5 *
+   GPIO4/5               GPIO0/1               GPIO8/9
        │                     │                      │
 ┌──────┴──────┐         ┌────┴────┐        ┌────────┴────────┐
 │  MPU-6050   │         │ NEO-7M  │        │ E22-400M30S     │
@@ -75,7 +75,7 @@ Interfaces covered:
 └─────────────┘
 
        PWM                  ADC                  GPIO
-  GPIO6/7/8            GPIO26 (ADC0)           GPIO20
+  GPIO6/7/10           GPIO26 (ADC0)           GPIO20
        │                     │                    │
 ┌──────┴──────┐        ┌─────┴────┐        ┌─────┴──────┐
 │ RW Motor    │        │ Vbatt    │        │ TPS3431    │
@@ -88,10 +88,6 @@ Interfaces covered:
 │ Magnetorqr  │
 │ ×3 DRV8833  │
 └─────────────┘
-
-* UART1 and I2C0 share GPIO4/GPIO5. The firmware activates
-  I2C0 for sensors and UART1 for TT&C as separate build
-  configurations — do not use simultaneously.
 ```
 
 ---
@@ -106,6 +102,10 @@ Interfaces covered:
 | SCL pin | **GPIO5** (`I2C0_SCL_PIN`) |
 | Pull-ups | 4.7 kΩ to 3.3 V (external, required — see BOM §10 #9) |
 
+> **Flight note**: For increased EMI margin and longer cable runs, the flight configuration
+> may reduce I2C0 speed to 100 kHz (`I2C0_SPEED_HZ = 100000`). All sensors (MPU-6050,
+> HMC5883L/LIS3MDL) are compatible with both 100 kHz and 400 kHz.
+
 **Connected devices:**
 
 | Device | I2C Address | Driver |
@@ -113,9 +113,8 @@ Interfaces covered:
 | MPU-6050 IMU | `0x68` (AD0=GND) | `src/drivers/imu/mpu6050.c` |
 | HMC5883L Magnetometer | `0x1E` | `src/drivers/mag/hmc5883l.c` |
 
-> **Shared pin conflict**: GPIO4/GPIO5 are also mapped to UART1 TX/RX. The firmware
-> selects one function at compile time. I2C0 is active during normal flight (sensor
-> reading); UART1 is active for TT&C communications. Do not enable both simultaneously.
+> **No pin conflict**: I2C0 uses GPIO4/5; UART1 (TT&C) uses GPIO8/9. Both buses can
+> be active simultaneously during flight operations.
 
 ---
 
@@ -203,12 +202,26 @@ baseline magnetometer:
 **Recommended driver architecture for clean migration:**
 ```
 src/drivers/mag/
-    mag_interface.h      ← common API: mag_init(), mag_read()
+    mag_interface.h      ← common API (EKF and momentum_dump depend only on this)
     mag_hmc5883l.c       ← lab implementation
     mag_lis3mdl.c        ← flight implementation (CDR)
 ```
-Switching sensor only requires selecting the implementation at compile time;
-the EKF (`ekf_update_mag()`) and `momentum_dump()` remain unchanged.
+
+```c
+/* mag_interface.h — sensor-agnostic magnetometer API */
+typedef struct {
+    float x;   /* [µT] */
+    float y;   /* [µT] */
+    float z;   /* [µT] */
+} mag_data_t;
+
+bool mag_init(void);
+bool mag_read(mag_data_t *data);
+```
+
+The EKF (`ekf_update_mag()`) and `momentum_dump()` use `mag_data_t` exclusively.
+Switching sensor requires only selecting the implementation at compile time — no
+changes to any control or estimation code.
 
 ---
 
@@ -224,6 +237,10 @@ the EKF (`ekf_update_mag()`) and `momentum_dump()` remain unchanged.
 | Protocol | NMEA 0183 — sentences `$GPGGA`, `$GPRMC` |
 | Logic voltage | 3.3 V |
 | Driver | `src/drivers/gps/neo7m.c` (planned) |
+
+> **Future note**: Increasing to 38400 bps reduces NMEA message latency and enables
+> higher fix update rates. Requires reconfiguring the NEO-7M via UBX protocol command
+> (`CFG-PRT`) before switching. Lab default is 9600 bps.
 
 **Output data:**
 
@@ -249,8 +266,8 @@ the EKF (`ekf_update_mag()`) and `momentum_dump()` remain unchanged.
 | Flight module | EBYTE E22-400M30S (SX1268, 433 MHz LoRa, 30 dBm) |
 | Lab module | HC-12 (Si4463, 433 MHz FSK, 20 dBm) |
 | Bus | UART1 (`uart1`) |
-| TX pin | **GPIO4** (`UART1_TX_PIN`) |
-| RX pin | **GPIO5** (`UART1_RX_PIN`) |
+| TX pin | **GPIO8** (`UART1_TX_PIN`) |
+| RX pin | **GPIO9** (`UART1_RX_PIN`) |
 | Baud rate | 115200 bps |
 | Protocol | KISS framing → CSP v2 (OBC addr=10, GS addr=1) |
 | Driver | `src/drivers/uart/pico_usart.c` |
@@ -313,7 +330,7 @@ SAW filter 433 MHz (TDK B39431) ← EMI isolation
 |------|----------|-------------|-------|
 | RW1 | **GPIO6** (`RW_MOTOR1_PIN`) | PWM3A | `AttitudeControlTask` |
 | RW2 | **GPIO7** (`RW_MOTOR2_PIN`) | PWM3B | `AttitudeControlTask` |
-| RW3 | **GPIO8** (`RW_MOTOR3_PIN`) | PWM4A | `AttitudeControlTask` |
+| RW3 | **GPIO10** (`RW_MOTOR3_PIN`) | PWM5A | `AttitudeControlTask` |
 
 > Direction GPIOs for TB6612 (AIN1/AIN2) to be assigned in `pico_pins.h`
 > during Phase 7 actuator HAL integration.
@@ -377,13 +394,13 @@ SAW filter 433 MHz (TDK B39431) ← EMI isolation
 HealthMonitorTask
       │  watchdog_hal_feed() every ~1 s
       ▼
-Internal MCU watchdog (RP2350 hardware)
+TPS3431 (GPIO20, 3 s timeout)
+      │  if kick missed (firmware hang)
+      ▼
+RESET line → RP2350 reboot
       │
       ▼
-External TPS3431 (GPIO20, 3 s timeout)
-      │  if kick missed
-      ▼
-Full system reset → boot → FM_BOOT → FM_SAFE
+Boot sequence → FM_BOOT → FM_SAFE
 ```
 
 **Driver**: `src/drivers/watchdog/watchdog_hal.c`  
@@ -413,7 +430,7 @@ Full system reset → boot → FM_BOOT → FM_SAFE
 | I2C0 (IMU) | GPIO4/5 | `src/drivers/imu/mpu6050.c` | `SensorReadTask` | ✅ Integrated |
 | I2C0 (Mag) | GPIO4/5 | `src/drivers/mag/hmc5883l.c` | `SensorReadTask` | ✅ Integrated |
 | UART0 (GPS) | GPIO0/1 | `src/drivers/gps/neo7m.c` | Navigation (planned) | 🔄 Planned |
-| UART1 (TT&C) | GPIO4/5 | `src/drivers/uart/pico_usart.c` | `CommandTask`, `TelemetryTask` | ✅ Integrated |
+| UART1 (TT&C) | GPIO8/9 | `src/drivers/uart/pico_usart.c` | `CommandTask`, `TelemetryTask` | ✅ Integrated |
 | PWM (RW) | GPIO6/7/8 | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | PWM (MTQ) | GPIO14/15/16 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | ADC0 (Vbatt) | GPIO26 | `src/services/eps/eps_monitor.c` | `HealthMonitorTask` | ✅ Integrated |
