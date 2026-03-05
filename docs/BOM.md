@@ -106,6 +106,8 @@ y notas de integración.
 | 6 | Transceiver TT&C | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 |
 | 6b | *(alternativa banco de pruebas)* | HC-12 (433 MHz FSK, TTL UART) | 2 | 🔄 Planificado | Solo para testing en tierra; 100 mW, $3/ud |
 
+> Ver también **§7 Estación Terrena** para el hardware de ground control.
+
 ### 6.1 Análisis de transceivers UHF/VHF
 
 **Requisitos del firmware para el TT&C:**
@@ -158,7 +160,52 @@ GPIO[libre]─────────────▶ AUX (busy/ready flag, opci
 
 ---
 
-## 7. Actuadores (ADCS)
+## 7. Estación Terrena (Ground Station)
+
+| # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
+|---|-----------|-------------|---------|--------|-------|
+| GS-1 | Radio GS | LORA32U4 II 915 MHz + antena IPEX | 1 | 🔄 Planificado | PC→USB→ATmega32U4→SX1276; ver §7.1 |
+| GS-2 | Radio GS alternativo | EBYTE E22-400M30S (433 MHz) | 1 | ❓ Por evaluar | Mismo módulo que el satélite; par simétrico |
+| GS-3 | PC / Laptop | Cualquier PC Linux/Mac/Win | 1 | ✅ Disponible | Corre el cliente CSP de ground (Phase 3) |
+
+### 7.1 LORA32U4 II como radio de Estación Terrena
+
+**Veredicto para GS: ⚠️ Usable con firmware custom a 915 MHz (solo pruebas en tierra)**
+
+Aunque no es apto para el OBC del satélite (ver §6.1), el LORA32U4 II tiene sentido como radio de la GS para el banco de pruebas:
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Conexión a PC** | USB nativo (ATmega32U4 tiene USB HW) → aparece como puerto serial `/dev/ttyACM0` |
+| **Chip RF** | SX1276 interno → mismo core que muchos módulos LoRa |
+| **Firmware requerido** | Bridge serial USB↔LoRa (ej. `RadioLib` o `arduino-lmic` con modo KISS) |
+| **Banda** | 915 MHz ISM — válida para pruebas en tierra en Región 2 (Américas); **no apta para vuelo** |
+| **Potencia TX** | 20 dBm (100 mW) — suficiente para distancias de banco (< 1 km) |
+| **Antena IPEX** | Conector IPEX (U.FL) con cable incluido → conectar antena de dipolo 915 MHz |
+| **Precio** | ~$18–22 |
+
+**Flujo de prueba en tierra:**
+```
+PC (cliente CSP Python/C)
+  └─ USB serial ─▶ LORA32U4 II (bridge KISS/LoRa @ 915 MHz)
+                        │
+                        │ RF 915 MHz
+                        │
+                   E22-400M30S o segundo LORA32U4 II
+                        │
+                        └─ UART1 ─▶ Pico 2W OBC (firmware KISS/CSP)
+```
+
+> **Nota importante**: Para pruebas tierra-tierra en banda 915 MHz, ambos extremos deben usar 915 MHz — el E22-400M30S por defecto es 433 MHz. Si se elige el LORA32U4 II como GS, el par de tierra sería: **LORA32U4 II (GS, 915) ↔ E22-900M30S (satélite, 915)**. Para vuelo real, migrar a 433/435 MHz y reemplazar el GS con un E22-400M30S conectado por UART a la PC.
+
+**Pendientes para usar el LORA32U4 II como GS:**
+- [ ] Escribir/adaptar firmware bridge KISS-serial para ATmega32U4 (Arduino + RadioLib)
+- [ ] Validar que el bridge KISS sea bit-a-bit compatible con `csp_if_kiss` del OBC
+- [ ] Definir banda final de vuelo (433 vs 915 MHz) para asegurar par correcto
+
+---
+
+## 8. Actuadores (ADCS)
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
@@ -167,7 +214,7 @@ GPIO[libre]─────────────▶ AUX (busy/ready flag, opci
 
 ---
 
-## 8. Misceláneos / Pasivos
+## 9. Misceláneos / Pasivos
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
@@ -176,7 +223,7 @@ GPIO[libre]─────────────▶ AUX (busy/ready flag, opci
 
 ---
 
-## 9. Resumen de asignación de pines (RP2350 / Pico 2W)
+## 10. Resumen de asignación de pines (RP2350 / Pico 2W)
 
 ```
 GPIO0  — UART0 TX  → 🔄 Reasignar a GPS TX (debug → USB CDC)
@@ -194,7 +241,7 @@ ADC4   — Sensor temperatura interno
 
 ---
 
-## 10. Pendientes y decisiones abiertas
+## 11. Pendientes y decisiones abiertas
 
 - [ ] Definir EPS: regulador, batería LiPo, y panel solar
 - [ ] Seleccionar transceiver UHF/VHF para TT&C (UART1)
@@ -205,8 +252,9 @@ ADC4   — Sensor temperatura interno
 
 ---
 
-## 11. Historial de cambios
+## 12. Historial de cambios
 
 | Versión | Fecha | Autor | Descripción |
 |---------|-------|-------|-------------|
 | 0.1 | 2026-03-05 | — | Creación inicial; GPS GY-NEO6Mv2 evaluado; sensores actitud documentados |
+| 0.2 | 2026-03-05 | — | Transceiver TT&C analizado; E22-400M30S recomendado; LORA32U4 II → GS |
