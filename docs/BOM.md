@@ -103,8 +103,8 @@ y notas de integración.
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
-| 6 | Transceiver TT&C (vuelo) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 |
-| 6b | Transceiver TT&C (GS + prototipo) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 Planificado | Plug-and-play KISS/CSP; 100 mW; ideal dev/GS; ver §6.2 |
+| 6 | Transceiver TT&C (vuelo) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planificado | UART transparente 3.3V, 30 dBm (1W); ver §6.1 — **comprar para vuelo** |
+| 6b | Transceiver TT&C (lab/GS) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 **Comprar ahora** | Plug-and-play KISS/CSP; mismo firmware que E22; ~$3/ud — ver §6.2 |
 
 > Ver también **§7 Estación Terrena** para el hardware de ground control.
 
@@ -199,14 +199,18 @@ GND        ───────────▶ GND
 
 > **Conclusión del link budget**: el HC-12 con 100 mW no tiene margen suficiente para un enlace LEO confiable a 600 km con antenas de dipolo. Sería viable solo con antenas yagi de alta ganancia en tierra (≥10 dBi), lo que complica la GS.
 
-#### Roles recomendados:
+#### Roles recomendados y plan de adquisición:
 
 | Rol | HC-12 | E22-400M30S |
 |-----|-------|-------------|
-| Desarrollo en banco (< 10 m) | ✅ Ideal — plug-and-play, barato | ✅ También válido |
+| **Pruebas de laboratorio (ahora)** | ✅ **Comprar ahora** — plug-and-play, barato, mismo firmware | ✅ También válido |
 | Pruebas campo corto (< 1 km) | ✅ Sobra potencia | ✅ |
 | Radio de Estación Terrena (GS) | ✅ Par económico con antena yagi | ✅ Par estándar |
-| **Transceiver de vuelo LEO** | ❌ Sin margen de enlace | ✅ **Usar este** |
+| **Transceiver de vuelo LEO** | ❌ Sin margen de enlace | ✅ **Comprar para vuelo** |
+
+> **Plan sugerido**: comprar 2× HC-12 ya (~$6–10 total) para iniciar todas las pruebas
+> de laboratorio KISS/CSP/telemetría. Cuando estén los E22-400M30S para vuelo,
+> **el firmware no cambia** — mismo UART, misma configuración, mismos pines.
 
 ---
 
