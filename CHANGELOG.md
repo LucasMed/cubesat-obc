@@ -5,17 +5,17 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/icd-obc-001
+## [Unreleased] — feature/adcs-des-001
 
 ### Added
-- **ICD-OBC-001 v1.0** (`docs/ICD-OBC-001.md`): Interface Control Document defining all
-  hardware/software interfaces for the CubeSat OBC. Covers I2C0 (MPU-6050, HMC5883L),
-  UART0 (GPS NEO-7M), UART1 (E22-400M30S / HC-12 TT&C), PWM (RW + MTQ actuators),
-  ADC0 (Vbatt), GPIO20 (TPS3431 watchdog), and USB CDC (debug). Includes bus topology
-  diagram, software ownership matrix, FDIR propagation chain, and verification methods.
-- **Magnetometer migration path** (ICD §6.1): HMC5883L retained as lab sensor (driver
-  fully integrated); LIS3MDL documented as flight recommendation with recommended
-  `mag_interface.h` abstraction layer for zero-impact driver swap at CDR.
+- **ADCS-DES-001 v0.1** (`docs/ADCS-DES-001.md`): ADCS Design Document — formal
+  specification of the complete attitude determination and control system. Covers:
+  EKF 6-state estimator (roll/pitch/yaw + gyro bias), RK2 midpoint integration,
+  LQR full-state controller with mode-scheduled gains (FM_NOMINAL ωn=10 rad/s,
+  FM_DETUMBLE ωn=30 rad/s), PID fallback, B×L cross-product momentum dump
+  (k_dump=0.01), magnetorquer actuation, FreeRTOS task rates (sensor 10 Hz /
+  control 20 Hz), controller dispatch table, fault IDs, and verification test
+  mapping (T-EKF-01..06, T-EKFM-01..07, T-LQR-01..07, T-MTM-01..05).
 
 ---
 
