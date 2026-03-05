@@ -1,6 +1,6 @@
 # Release Notes
 
-**Last Updated**: 2026-03-01
+**Last Updated**: 2026-03-04
 
 ---
 
@@ -145,13 +145,83 @@
 
 ---
 
+## v0.7.0 — Hardware Validation & Production Migration (2026-03-04)
+
+**Status**: ✅ Released  
+**Branch**: `dev`
+
+### Highlights
+- **Critical architecture fix**: FreeRTOS port migrated from ARM_CM0 (RP2040) to
+  `ARM_CM33_NTZ` (Cortex-M33 / RP2350) — resolves PendSV stack corruption caused
+  by mismatched `EXC_RETURN` unwinding between M0+ and M33 exception frames
+- `obc_main.c` production entry point fully validated on Pico 2W hardware:
+  all 7 tasks created, CYW43 LED blinking, telemetry streaming at ~2 Hz,
+  heap stable at **60,416 bytes free** across >10 heartbeats
+- `cyw43_arch_init()` moved inside `vStartupTask` (after scheduler start) to
+  avoid SMP spinlock deadlock on pre-scheduler hardware init
+- `blink_standalone/` example relocated into `examples/` tree
+- Full `pico_ci.sh` pipeline validated: 29/29 tests, `.uf2` build, smoke-test,
+  static analysis (0 issues), coverage (91.9% lines / 82.5% branches)
+- Sensor timing on hardware: min=99,954 µs, max=100,037 µs, avg=100,000 µs
+  (100 Hz loop, ±43 µs absolute jitter — within spec)
+- Host stub headers (`include/host/FreeRTOS.h`, `task.h`) hardened with
+  `pdPASS`, `BaseType_t`, `vTaskSuspend`, `vTaskPrioritySet` stubs so
+  clang-tidy reports 0 errors on host builds
+
+### Key Technical Finding
+`configNUMBER_OF_CORES = 1` — SMP dual-core intentionally disabled during
+initial bring-up (comment: *"re-enable when boot is stable"*). All tasks
+currently execute on Core 0. Core 1 remains idle. Enabling SMP and core-affinity
+pinning is gated on HW stability and is tracked for v1.0.0.
+
+### Stack High-Water Marks (hardware, single-core)
+| Task | HWM (words) | Stack alloc (words) | Utilisation |
+|------|-------------|---------------------|-------------|
+| Heartbeat | 1930 | 2048 | 94% free |
+| SensorRead | — | 2048 | not yet instrumented |
+| AttitudeCtrl | — | 2048 | not yet instrumented |
+| Telemetry | — | 2048 | not yet instrumented |
+| Command | — | 2048 | not yet instrumented |
+| HealthMon | — | 2048 | not yet instrumented |
+| LEDBlink | — | 2048 | not yet instrumented |
+
+> Full HWM instrumentation in `obc_main.c` heartbeat loop is planned for v0.7.1.
+
+### CI Pipeline Results
+| Stage | Result | Notes |
+|-------|--------|-------|
+| host-test | ✅ 29/29 | CTest, 0.13 s |
+| pico-build | ✅ PASS | 660,992 bytes `.uf2` |
+| emu-build | ✅ PASS | Thumb-16 smoke ELF, 67,052 bytes |
+| emulate | ✅ PASS | 6/6 boot strings + 3 STATUS packets, 91 ms |
+| static | ✅ PASS | clang-format + clang-tidy + cppcheck — 0 issues |
+| coverage | ✅ PASS | 91.9% lines, 82.5% branches |
+
+### Components
+| Component | Status |
+|-----------|--------|
+| FreeRTOS ARM_CM33_NTZ port | ✅ Boot stable, PendSV validated |
+| `obc_main.c` production code | ✅ Validated on Pico 2W HW |
+| CYW43 LED blink | ✅ Confirmed blinking |
+| CI pipeline (`pico_ci.sh`) | ✅ All 6 stages green |
+| Static analysis | ✅ 0 violations |
+| `examples/blink_standalone` | ✅ Moved to `examples/`, paths updated |
+
+---
+
 ## v1.0.0 — Flight Ready (TBD)
 
-**Status**: ⏳ Planned — Full hardware validation  
+**Status**: ⏳ Planned — Full hardware validation + SMP enablement  
 **Target**: Q3 2026
 
 ### Planned Features
+- Enable SMP dual-core (`configNUMBER_OF_CORES = 2`) with core-affinity pinning
+  validated on Pico 2W hardware
+- Full stack HWM instrumentation in production heartbeat loop
 - On-hardware integration test suite (real MPU6050 + HMC5883L)
 - Flash-backed persistent logging (Phase 3 logger backend)
-- Flight qualification testing (vibration, thermal, radiation)
+- FDIR authority chain formalised: EPS → Fault Manager → FMM (single path,
+  removing direct `fmm_request_transition` bypass from EPS Monitor)
 - Autonomous safe-mode transition end-to-end test (T-FMS-01, T-SAFE-01)
+- Flight qualification testing (vibration, thermal, radiation)
+- SAD v1.0 hardware-validated fields filled in (HWM, jitter, core assignment)

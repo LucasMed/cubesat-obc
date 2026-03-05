@@ -7,7 +7,7 @@
  *   2.  eps_monitor_init() returns 0; default voltage (7.6V) → NOMINAL
  *   3.  eps_monitor_tick() with 7.6 V → ENERGY_NOMINAL, no VBATT fault
  *   4.  Voltage drop to 7.2 V → ENERGY_LOW, FAULT_EPS_VBATT_LOW WARNING
- *   5.  Voltage drop to 6.8 V → ENERGY_CRITICAL, FAULT_EPS_VBATT_CRITICAL ERROR
+ *   5.  Voltage drop to 6.8 V → ENERGY_CRITICAL, FAULT_EPS_VBATT_CRITICAL CRITICAL
  *   6.  Voltage drop to 6.4 V → ENERGY_EMERGENCY, FAULT_EPS_VBATT_CRITICAL CRITICAL
  *   7.  Hysteresis: LOW state, inject 7.45 V → stays ENERGY_LOW
  *   8.  Hysteresis: LOW state, inject 7.55 V → recovers to ENERGY_NOMINAL
@@ -168,10 +168,11 @@ static void test_critical_voltage(void)
   CHECK(fault_is_active(FAULT_EPS_VBATT_CRITICAL), "FAULT_EPS_VBATT_CRITICAL must be active");
   fault_event_t ev = {0};
   CHECK(fault_get_event(FAULT_EPS_VBATT_CRITICAL, &ev), "must retrieve VBATT_CRITICAL event");
-  CHECK(ev.level == FAULT_LEVEL_ERROR, "ENERGY_CRITICAL must report ERROR severity");
+  CHECK(ev.level == FAULT_LEVEL_CRITICAL,
+        "ENERGY_CRITICAL must report CRITICAL severity (single FDIR path)");
   CHECK(!fault_is_active(FAULT_EPS_VBATT_LOW), "VBATT_LOW must be cleared when entering CRITICAL");
 
-  /* FMM must have transitioned to FM_SAFE */
+  /* FMM must be FM_SAFE via fault_manager → fmm_force_safe() (canonical path) */
   dl_snapshot_t dl = {0};
   data_layer_read(&dl);
   CHECK(dl.mode == FM_SAFE, "FMM must be FM_SAFE after ENERGY_CRITICAL");

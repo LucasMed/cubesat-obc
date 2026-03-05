@@ -5,6 +5,60 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — feature/pre-hw-integration-docs
+
+### Added
+- **SyRS v1.0** (`docs/requirements/SyRS_v1.0.md`): System Requirements Specification
+  covering functional, performance, interface, and FDIR requirements — validated against
+  the implemented codebase (v0.7.0 baseline). Fields marked `[IMPL]` are implemented and
+  hardware-verified; `[TBD-HW]` require physical sensor connection.
+- **SAD v1.0** (`docs/design/SAD_v1.0.md`): System Architecture Document describing the
+  as-built software stack, FreeRTOS task map (with measured HWM values), data flow,
+  FDIR authority chain, EKF/control architecture, CSP stack, HAL pattern, memory map,
+  and boot sequence. Reflects Pico 2W hardware measurements.
+- **Full per-task HWM instrumentation**: all 7 task stack high-water marks printed every
+  5 s in the ALIVE loop (`obc_main.c`). Max usage measured on hardware: Telemetry
+  180/2048 words (8.8%); all tasks ≥91% headroom.
+- **Heap watermark output**: `xPortGetMinimumEverFreeHeapSize()` added to Heartbeat and
+  ALIVE diagnostic prints. Host stub added to `include/host/FreeRTOS.h`.
+
+### Fixed
+- **FDIR dual-authority removed** (ARCH-02 closed): `eps_monitor.c` was invoking
+  `fmm_request_transition(FM_SAFE)` directly *in addition to* `fault_report()`, creating
+  two concurrent code paths to `FM_SAFE`. The direct call and `#include "flight_mode.h"`
+  are removed. Single canonical chain enforced: EPS → `fault_report(FAULT_LEVEL_CRITICAL)`
+  → FaultManager → `fmm_force_safe()`. Both `ENERGY_CRITICAL` and `ENERGY_EMERGENCY`
+  cases merged into one fall-through (resolves `bugprone-branch-clone` clang-tidy finding).
+- **SensorRead priority P3 → P4**: raised above AttitudeCtrl (P3) to guarantee the EKF
+  always has fresh sensor data before the control tick runs on every 100 ms cycle.
+- **`vTaskSuspend` removed from FSW**: the IMU-not-found path in `attitude_control_task`
+  replaced with a 5 s polling loop. No `vTaskSuspend` calls remain in flight software.
+  Task self-resumes when IMU becomes available (supports future hot-plug).
+- **`TaskHandle_t` captures**: all 7 task handles captured at `xTaskCreate` time (were
+  `NULL`). Handles gated under `#ifdef PICO_BUILD`; host build receives `NULL` via
+  `HPTR()` macro to avoid unused-variable errors.
+
+### Documentation
+- SyRS SYS-F-205 `[PLANNED]` → `[IMPL]`: single FDIR authority chain implemented.
+- SAD §4 task table: HWM column filled with measured hardware values; added "Used" column;
+  clarification note that HWM = remaining free words (high = good).
+- SAD §5.3 FDIR: replaced dual-path ASCII diagram with single canonical chain diagram;
+  added design rationale (audit log, no concurrent paths, single inhibit point).
+- SAD §5.3: added note that `vTaskSuspend` is avoided in FSW; `AttitudeCtrl` FM_SAFE
+  path uses early return, not task suspension.
+- SAD §9 memory map: added `xPortGetMinimumEverFreeHeapSize` line (~58 KB measured).
+- SAD §11: ARCH-02 and ARCH-03 closed.
+
+### Testing
+- **29/29 tests pass**. `test_eps_monitor.c` test 5 updated: expects `FAULT_LEVEL_CRITICAL`
+  (was `FAULT_LEVEL_ERROR`) matching the new single-path FDIR behaviour.
+- CI pipeline (6 stages): host-test ✅, pico-build ✅, emu-build ✅, emulate ✅,
+  static ✅, coverage ✅.
+- Hardware-validated on Pico 2W: 7 tasks, LED blink, telemetry @ 2 Hz, heap stable at
+  60,408 bytes, sensor timing avg=99,999 µs jitter <40 µs (100-sample measurement).
+
+---
+
 ## [0.7.0] - 2026-03-20
 
 ### Added (Phase 6 — Closed-Loop Stability & Architectural Consolidation)

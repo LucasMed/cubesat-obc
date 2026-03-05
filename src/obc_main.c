@@ -54,9 +54,11 @@ static void vHeartbeatTask(void *pvParameters)
   uint32_t tick = 0;
   for (;;)
   {
-    printf("[HB %lu] heap=%lu tick=%lu\r\n", (unsigned long)tick,
-           (unsigned long)xPortGetFreeHeapSize(), (unsigned long)xTaskGetTickCount());
-    printf("  HWM Heartbeat=%lu\r\n", (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    printf("[HB %lu] heap=%lu min_ever=%lu tick=%lu\r\n", (unsigned long)tick,
+           (unsigned long)xPortGetFreeHeapSize(), (unsigned long)xPortGetMinimumEverFreeHeapSize(),
+           (unsigned long)xTaskGetTickCount());
+    printf("  HWM Heartbeat=%lu (used=%lu)\r\n", (unsigned long)uxTaskGetStackHighWaterMark(NULL),
+           (unsigned long)(2048u - uxTaskGetStackHighWaterMark(NULL)));
     fflush(stdout); /* guarantee output even if pico short-circuit misbehaves */
     tick++;
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -125,6 +127,16 @@ static void vStartupTask(void *pvParameters)
   printf("  creating tasks...\r\n");
   fflush(stdout);
 
+#ifdef PICO_BUILD
+  /* Task handles — Pico only; HWM printed in ALIVE loop. */
+  static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
+  static TaskHandle_t h_cmd = NULL, h_health = NULL;
+  static TaskHandle_t h_led = NULL, h_hb = NULL;
+  #define HPTR(h) (&(h))
+#else
+  #define HPTR(h) (NULL)
+#endif
+
 #define CHK(ret, name)                                                                             \
   do                                                                                               \
   {                                                                                                \
@@ -143,21 +155,26 @@ static void vStartupTask(void *pvParameters)
   /* Create lower-priority tasks first; Heartbeat (highest pri) goes last so
    * it cannot preempt the startup task before all other tasks exist.
    * 2048 words (8 KB) per task: newlib printf with floats + EKF + CSP uses >4 KB. */
-  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 3, NULL),
+  CHK(xTaskCreate(vSensorReadTask, "SensorRead", 2048, NULL, tskIDLE_PRIORITY + 4, HPTR(h_sensor)),
       "SensorRead");
-  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3, NULL),
+  CHK(xTaskCreate(vAttitudeControlTask, "AttitudeCtrl", 2048, NULL, tskIDLE_PRIORITY + 3,
+                  HPTR(h_ctrl)),
       "AttitudeCtrl");
-  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, NULL),
+  CHK(xTaskCreate(vTelemetryTask, "Telemetry", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_telem)),
       "Telemetry");
-  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, NULL), "Command");
-  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+  CHK(xTaskCreate(vCommandTask, "Command", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_cmd)),
+      "Command");
+  CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1,
+                  HPTR(h_health)),
       "HealthMon");
 #ifdef PICO_BUILD
-  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, NULL), "LEDBlink");
-  /* Heartbeat at LOW priority — it’s just diagnostic, must not preempt Startup. */
-  CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, NULL),
+  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, &h_led), "LEDBlink");
+  /* Heartbeat at LOW priority — it's just diagnostic, must not preempt Startup. */
+  CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, &h_hb),
       "Heartbeat");
 #endif
+
+#undef HPTR
 
 #undef CHK
 
@@ -170,8 +187,21 @@ static void vStartupTask(void *pvParameters)
   vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
   for (;;)
   {
-    printf("[ALIVE] heap=%lu tick=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
-           (unsigned long)xTaskGetTickCount());
+    printf("[ALIVE] heap=%lu min_ever=%lu tick=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
+           (unsigned long)xPortGetMinimumEverFreeHeapSize(), (unsigned long)xTaskGetTickCount());
+#ifdef PICO_BUILD
+    /* HWM = remaining free words (high is good). used = 2048 - HWM. */
+    printf("  HWM SensorRead  =%4lu  AttitudeCtrl=%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(h_sensor),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_ctrl));
+    printf("  HWM Telemetry   =%4lu  Command     =%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(h_telem),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_cmd));
+    printf("  HWM HealthMon   =%4lu  LEDBlink    =%4lu  Heartbeat=%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(h_health),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_led),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_hb));
+#endif
     fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(5000));
   }
