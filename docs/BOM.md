@@ -57,6 +57,11 @@ Firmware compatibility status and integration notes are included for each compon
 
 **Firmware reference**: `config/pico_pins.h`, `src/CMakeLists.txt`
 
+> **PDR notes**:
+> - The RP2350 Cortex-M33 core exposes the **DWT cycle counter** (`DWT->CYCCNT`) — use it to measure WCET (Worst-Case Execution Time) of FreeRTOS tasks before CDR.
+> - The Pico 2W is **COTS (not space-grade)**. For flight, track TID/SEE susceptibility; consider conformal coating and latch-up protection on critical power rails.
+> - External hardware watchdog (§10 item #12) is recommended to ensure SAFE MODE recovery if the OBC hangs.
+
 ---
 
 ## 3. Attitude Sensors (ADCS)
@@ -64,12 +69,30 @@ Firmware compatibility status and integration notes are included for each compon
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
 | 2 | 6-DOF IMU | MPU-6050 (GY-521 module) | 2 | ✅ Integrated | I2C @ 400 kHz, addr 0x68; GPIO4 (SDA), GPIO5 (SCL) |
-| 3 | 3-axis Magnetometer | HMC5883L (GY-271 module) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — Phase 5 |
+| 3 | 3-axis Magnetometer | HMC5883L (GY-271 module) | 2 | ⚠️ Integrated (risk) | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — Phase 5; **see §3.1 — discontinued IC risk** |
 
 **Integration notes — Attitude sensors:**
 - IMU and magnetometer share I2C0 bus (`GPIO4`/`GPIO5`, fast-mode 400 kHz).
 - The EKF fuses accelerometer + gyroscope + magnetometer (3-state: roll/pitch/yaw).
+- I2C pull-up resistors (4.7 kΩ) on SDA/SCL are **confirmed required** — see §10 item #9.
 - Reference: `src/tasks/sensor_read_task.c`, `include/ekf.h`
+
+### 3.1 HMC5883L Discontinuation Risk
+
+> **⚠️ PDR Finding**: The HMC5883L magnetometer has been **discontinued by Honeywell**. Most GY-271 modules sold today contain a **QMC5883L clone** (QST Corporation) with a different register map and I2C address (`0x0D` vs `0x1E`). A driver built for HMC5883L will **silently fail or return garbage data** on a QMC5883L module.
+
+**Mitigation for lab prototype:**
+- Before using a GY-271 module, verify the IC markings on the chip itself.
+- If the IC is QMC5883L: either adapt the existing driver (`src/drivers/mag/hmc5883l.c`) or use a QMC5883L-specific driver, updating the I2C address and register definitions.
+
+**Flight-grade alternatives (CDR decision required):**
+
+| Component | Model | Interface | Temp range | Notes |
+|-----------|-------|-----------|-----------|-------|
+| IMU (upgrade) | **ICM-42688-P** (TDK InvenSense) | SPI / I2C | −40 to +85 °C | High-precision, DMP, actively produced; drop-in upgrade for MPU-6050 |
+| Magnetometer (replacement) | **LIS3MDL** (STMicroelectronics) | SPI / I2C | −40 to +85 °C | Low-power, 16-bit, actively produced; functional HMC5883L replacement |
+
+> **Lab decision**: the GY-271 is acceptable for prototype if the actual IC is confirmed. For flight, migrate to **LIS3MDL** on the custom OBC PCB (CDR scope).
 
 ---
 
@@ -132,7 +155,8 @@ Firmware compatibility status and integration notes are included for each compon
 | 6 | TT&C Transceiver (flight) | EBYTE E22-400M30S (SX1268, 433 MHz LoRa) | 2 | 🔄 Planned | Transparent UART 3.3V, 30 dBm (1W); see §6.1 — **buy for flight** |
 | 6b | TT&C Transceiver (lab/GS) | HC-12 Si4463 (433 MHz FSK, TTL UART) | 2 | 🔄 **Buy now** | Plug-and-play KISS/CSP; same firmware as E22; ~$3/unit — see §6.2 |
 | 6c | TT&C Antenna (lab) | 433 MHz whip/rubber-duck SMA (5–8 dBi) | 4 | 🔄 **Buy now** | 2× for HC-12 OBC+GS, 2× spare; ~$1–2 each |
-| 6d | TT&C Antenna (flight) | Custom λ/4 dipole at 434 MHz (~17.3 cm wire + radials) | 1 | 🔄 Planned | λ/4 with velocity factor 0.95 = 16.4 cm wire + ground plane; see §6.3 |
+| 6d | TT&C Antenna (flight) | Custom λ/4 dipole at 434 MHz (~17.3 cm wire + radials) | 1 | 🔄 Planned | λ/4 with velocity factor 0.95 = 16.4 cm wire + ground plane; see §6.3. For CubeSat deployment, prefer **steel tape-measure strip** (16.4 cm × 2 elements) — spring-loaded, self-deploying, robust against vibration |
+| 6e | TT&C EMI filter | SAW filter 433 MHz (e.g. TDK B39431-B3735-U410 or equivalent) | 2 | 🔄 Planned | Insert between antenna port and E22-400M30S RF input; attenuates out-of-band interference; critical for EMI immunity in CubeSat bus environment; ~$1–2 each |
 
 > See also **§7 Ground Station** for ground control hardware.
 
@@ -263,13 +287,14 @@ GND        ───────────▶ GND
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
-| GS-1 | GS Radio | LORA32U4 II 915 MHz + IPEX antenna | 1 | 🔄 Planned | PC→USB→ATmega32U4→SX1276; see §7.1 |
-| GS-2 | GS Radio (alternative) | EBYTE E22-400M30S (433 MHz) | 1 | ❓ To evaluate | Same module as satellite; symmetric pair |
+| GS-1 | GS Radio (bench / secondary) | LORA32U4 II 915 MHz + IPEX antenna | 1 | ⚠️ Secondary | PC→USB→ATmega32U4→SX1276; bench testing only (915 MHz); requires custom bridge firmware; see §7.1 |
+| GS-2 | GS Radio **(recommended)** | EBYTE E22-400M30S (433 MHz) + USB-UART adapter | 1 | 🔄 **Planned** | Identical hardware to satellite; symmetric 433 MHz pair; plug-and-play with existing KISS/CSP firmware; **preferred final GS**; see §7.2 |
 | GS-3 | PC / Laptop | Any Linux/Mac/Win PC | 1 | ✅ Available | Runs CSP ground client (Phase 3) |
+| GS-4 | USB-UART adapter | CP2102 or CH340G module (3.3V TTL, USB) | 1 | 🔄 **Buy now** | Links PC USB port to E22-400M30S UART; must be 3.3V TTL (not RS-232); ~$1–2 |
 
 ### 7.1 LORA32U4 II as Ground Station radio
 
-**Verdict for GS: ⚠️ Usable with custom firmware at 915 MHz (bench testing only)**
+**Verdict for GS: ⚠️ Secondary option — usable with custom firmware at 915 MHz (bench testing only). See §7.2 for the recommended GS configuration.**
 
 Although not suitable for the satellite OBC (see §6.1), the LORA32U4 II makes sense as a GS radio for bench testing:
 
@@ -302,6 +327,33 @@ PC (CSP Python/C client)
 - [ ] Validate that the KISS bridge is bit-for-bit compatible with the OBC's `csp_if_kiss`
 - [ ] Define final flight band (433 vs 915 MHz) to ensure correct pair
 
+### 7.2 Recommended Ground Station: E22-400M30S + USB-UART adapter
+
+**Verdict for GS: ✅ Recommended — no custom firmware required, symmetric 433 MHz pair**
+
+| Aspect | Detail |
+|--------|--------|
+| **PC connection** | CP2102 or CH340 USB-UART adapter → `/dev/ttyUSBx` on Linux |
+| **RF module** | E22-400M30S — identical to satellite module; transparent UART mode |
+| **Band** | 433 MHz — same as flight band; no reconfiguration needed |
+| **Firmware** | None required — same KISS/CSP Python/C client used for bench tests |
+| **TX power** | 30 dBm (1 W) — sufficient for full link budget test at bench and field |
+| **Antenna** | 433 MHz rubber-duck SMA (GS-side) — same as item 6c |
+| **Total GS cost** | ~$15 (E22) + ~$2 (USB-UART) = **~$17** |
+
+**GS wiring:**
+```
+PC (USB)
+  └─ CP2102 / CH340 (USB-UART)
+        ├─ TX (3.3V) ─────────────▶ RXD  E22-400M30S
+        ├─ RX ◀───────────────────── TXD  E22-400M30S
+        ├─ 3.3V ──────────────────▶ VCC
+        └─ GND ───────────────────▶ GND
+                                    M0/M1 → GND (transparent mode)
+```
+
+> **Migration path**: the lab HC-12 pair validates the KISS/CSP stack end-to-end. When E22 modules arrive, swap hardware — **no firmware changes**. The E22 GS replaces the LORA32U4 II for all flight-band testing.
+
 ---
 
 ## 8. Actuators (ADCS)
@@ -312,6 +364,19 @@ PC (CSP Python/C client)
 | 7b | Reaction Wheels **(lab)** | DC motor with encoder + TB6612 driver | 3 | 🔄 **Buy now** | Emulates inertia; direct PWM on GPIO6/7/8; see §8.1 |
 | 8 | Magnetorquers (flight) | Custom ferrite coil + H-bridge | 3 | ❓ To evaluate | GPIO14/15/16 (PWM7A/7B/0A); see §8.2 |
 | 8b | Magnetorquers **(lab)** | DRV8833 module + ferrite coil | 3 | 🔄 **Buy now** | Bidirectional PWM control; see §8.2 |
+
+> **⚠️ PDR Finding — ADCS Strategy: Magnetorquers First**
+>
+> The **magnetorquer subsystem alone** is sufficient for the first ADCS operational phase:
+> - **Detumbling** (B-dot control): reduce angular rate after deployment using only MTQs.
+> - **Safe mode attitude hold**: coarse pointing with MTQs + EKF; no reaction wheels required.
+>
+> Reaction wheels are needed only for **precision pointing** (Phase 2 ADCS). This means:
+> 1. The MTQ-only lab setup (`DRV8833 + ferrite coil`) should be the **first hardware validation target**.
+> 2. Reaction wheel hardware can be deferred until MTQ detumbling is verified in the loop.
+> 3. In a contingency scenario (RW failure), the satellite can still maintain safe mode with MTQs.
+>
+> **Firmware implication**: implement and validate `b_dot_control.c` (MTQ-only) before `lqr_control.c` (RW+MTQ full ADCS).
 
 ### 8.1 Reaction Wheels — lab options
 
@@ -561,9 +626,10 @@ Where:
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
-| 9 | I2C pull-up resistors | 4.7 kΩ 0402 | 4 | ❓ To evaluate | For SDA/SCL of I2C0 and I2C1 |
+| 9 | I2C pull-up resistors | 4.7 kΩ 0402 | 4 | 🔄 Planned | For SDA/SCL of I2C0 and I2C1; **confirmed required** — MPU-6050 and HMC5883L/LIS3MDL both need explicit pull-ups (§3.1) |
 | 10 | Debug connector | Micro-USB or USB-C | 1 | ✅ Integrated | USB CDC enabled in firmware |
 | 11 | Vbatt resistor divider | R1 = 330 kΩ, R2 = 100 kΩ (¼ W) | 2 | 🔄 Planned | Vbatt reading on ADC0/GPIO26; V_ADC = V_batt × 0.23 |
+| 12 | External watchdog | TPS3431 (or MCP1316, MAX706) | 1 | 🔄 Planned | GPIO20 (placeholder in `pico_pins.h`); triggers hardware reset if firmware hangs; critical for SAFE MODE recovery in LEO; ~$1–2 |
 
 ---
 
@@ -610,6 +676,16 @@ ADC4   — RP2350 internal temperature
 - [ ] Confirm manufacturers and suppliers (Mouser, DigiKey, AliExpress for prototype)
 - [ ] Validate radiation tolerance of components (polar LEO, ~97° orbit, proton and electron fluence)
 
+**PDR Result: ✅ PASS** — Architecture solid, RF design correct (E22 link budget verified at 2300 km slant), ADCS immature but acceptable at PDR gate.
+
+**Pending items for CDR:**
+- [ ] CDR: Complete flight EPS design (space-grade solar array, battery sizing, MPPT regulation)
+- [ ] CDR: Reaction wheels final specification (BLDC motor, encoder, moment of inertia budget)
+- [ ] CDR: OBC PCB design (replace Pico 2W breadboard assembly with custom RP2350 PCB)
+- [ ] CDR: Confirm HMC5883L vs LIS3MDL decision and update `src/drivers/mag/` accordingly
+- [ ] CDR: Qualify all flight components for TID/SEE radiation environment (polar LEO, ~97° orbit)
+- [ ] CDR: Measure WCET of all FreeRTOS tasks using DWT cycle counter and document timing budget
+
 ---
 
 ## 13. Changelog
@@ -625,6 +701,7 @@ ADC4   — RP2350 internal temperature
 | 0.7 | 2026-03-05 | — | Solar panel: 6V 1W lab spec + 4.5W flight sizing (§9.2); TT&C antennas added (6c/6d); §5 updated |
 | 0.8 | 2026-03-05 | — | Consolidated lab purchase list §14; estimated total ~$125–155 USD |
 | 0.9 | 2026-03-05 | — | Full document translated to English; acquisition notes cleaned up |
+| 1.0 | 2026-03-05 | — | PDR review incorporated: HMC5883L discontinuation flagged + flight alternatives (§3.1); I2C pull-ups confirmed (§10 #9); TPS3431 watchdog added (§10 #12); SAW filter 433 MHz added (§6e); deployable tape antenna noted (§6d); GS updated — E22+USB-UART promoted as recommended final GS (§7, §7.2); magnetorquers-first ADCS strategy documented (§8); DWT WCET note added (§2); CDR pending items + PDR PASS result added (§12) |
 
 ---
 
