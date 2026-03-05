@@ -346,29 +346,109 @@ GND          ──────────▶ GND
 
 | # | Componente | P/N / Modelo | Cantidad | Estado | Notas |
 |---|-----------|-------------|---------|--------|-------|
-| EPS-1 | Batería LiPo | (a definir) | 1 | ❓ Por evaluar | Ver §9.1 |
-| EPS-2 | Regulador 3.3V | (a definir) | 1 | ❓ Por evaluar | Ver §9.1 |
-| EPS-3 | Panel solar | (a definir) | 1–4 caras | ❓ Por evaluar | Ver §9.1 |
-| EPS-4 | Sensor voltaje batería | ADC0 en GPIO26 (interno) | 1 | ✅ Integrado | Divisor resistivo → ADC0 del Pico; ver `config/pico_pins.h` |
+| EPS-1 | Batería LiPo | **18650 1S 3.7V 3000–3500 mAh** (ej. Samsung 30Q, Panasonic NCR18650B) | 1–2 | 🔄 **Comprar ahora** | Bus principal; ver §9.1 |
+| EPS-2 | Boost converter 5V | **MT3608** o XL6009 (módulo) | 1 | 🔄 **Comprar ahora** | LiPo 3.7V → 5V bus; ver §9.1 |
+| EPS-3 | Cargador LiPo | **TP4056** con protección (módulo micro-USB) | 1 | 🔄 **Comprar ahora** | Carga 1S desde USB o panel solar; ver §9.1 |
+| EPS-4 | Panel solar (lab) | Panel 6V 1W (135×110 mm) | 1 | ❓ Por evaluar | Alimenta cargador TP4056 en lab outdoor / vuelo futuro |
+| EPS-5 | Sensor voltaje batería | ADC0 en GPIO26 (divisor resistivo) | 1 | ✅ Integrado | Driver ya en firmware; ver `config/pico_pins.h` |
 
-### 9.1 Requisitos del EPS desde el firmware
+### 9.1 Elección del voltaje de bus — Análisis
 
-El Pico 2W (RP2350) lee el voltaje de batería a través del ADC0 (`GPIO26`) con un divisor resistivo. El valor se publica en el Data Layer y se incluye en los paquetes de telemetría CSP.
+**Recomendación: Bus 5V regulado desde LiPo 1S (3.7V)**
 
-**Consumo estimado del sistema completo (lab):**
+#### Voltajes en juego
 
-| Subsistema | Componente | Consumo typ |
-|-----------|-----------|-------------|
-| OBC | Pico 2W @ 3.3V | ~100 mA (150 mA pico) |
-| IMU | MPU-6050 | ~3.9 mA |
-| Magnetómetro | HMC5883L | ~0.6 mA |
-| GPS | NEO-7M (cuando se integre) | ~45 mA |
-| TT&C lab | HC-12 TX activo | ~100 mA (TX) / 16 mA (RX) |
-| RW motors | 3× Motor N20 @ 5V | ~150–300 mA total |
-| Magnetorquers | 3× bobina ferrita @ 3.3V | ~300 mA total |
-| **Total estimado** | | **~700 mA – 1A @ 3.3V–5V** |
+| Componente | Voltaje de operación | Compatible con 5V bus |
+|-----------|---------------------|----------------------|
+| Pico 2W (VSYS) | **1.8–5.5V** → LDO interno → 3.3V | ✅ Conectar VSYS al bus 5V |
+| MPU-6050 (GY-521) | 3.3–5V (regulador onboard) | ✅ |
+| HMC5883L (GY-271) | 3.3V (regulador onboard) | ✅ |
+| GPS NEO-7M | 3.3–5V (regulador onboard) | ✅ |
+| HC-12 | **3.2–5.5V** | ✅ |
+| Motor N20 (via TB6612) | VM: **2.5–13.5V** → mejor a 5V | ✅ Más torque a 5V |
+| Bobinas ferrita (via DRV8833) | VM: 0–10.8V → diseñado a 3.3V | ✅ También funciona a 5V |
+| E22-400M30S (vuelo) | 3.3–5.5V | ✅ |
 
-> A definir en la siguiente iteración del BOM. Pendiente.
+> **Conclusión**: todos los componentes actuales y planificados aceptan 5V. El Pico 2W lo regula internamente a 3.3V para su lógica y los módulos de sensores tienen sus propios reguladores onboard.
+
+#### ¿Por qué 5V y no 3.3V?
+
+| Criterio | 3.3V bus | **5V bus** |
+|----------|---------|-----------|
+| Torque motores N20 | ⚠️ Reducido (~60% del nominal) | ✅ Nominal |
+| Margen de regulación | ❌ LiPo 3.7V → hay que bajar → pérdidas | ✅ LiPo 3.7V → boost a 5V → eficiente |
+| Pico 2W | ✅ Funciona (VSYS mín 1.8V) | ✅ Funciona mejor |
+| Simplicidad | ❌ Necesita LDO buck igualmente | ✅ Un solo boost converter |
+| Compatibilidad componentes | ✅ Todos funcionan | ✅ Todos funcionan |
+
+#### ¿Por qué 1S LiPo (3.7V) y no 2S (7.4V)?
+
+- 2S requiere regulador buck de mayor potencia para bajar a 5V → más componentes
+- 1S + MT3608 boost a 5V es el circuito más simple y eficiente para < 1A
+- Tensión de celda 1S (3.0–4.2V) siempre dentro del rango de VSYS del Pico
+
+#### Arquitectura EPS recomendada
+
+```
+                   TP4056 (cargador)
+USB/Solar 5V  ──▶  ├── CHRG/STDBY LED
+                   └── BAT+ / BAT-
+                          │
+                   LiPo 18650 1S
+                   3.0V – 4.2V
+                          │
+                   MT3608 boost
+                   3.7V → 5V @ 2A
+                          │
+              ┌───────────┴─────────────────┐
+              │                             │
+         5V BUS                         Divisor resistivo
+              │                         (R1=330kΩ, R2=100kΩ)
+    ┌─────────┼──────────────┐               │
+    │         │              │           GPIO26 (ADC0)
+  VSYS      VM TB6612      VM DRV8833    → Pico lee Vbatt
+  (Pico)   (motores RW)   (magnetorquers)
+    │
+  LDO 3.3V (interno Pico)
+    │
+  GPIO / I2C / UART (todos los sensores)
+```
+
+#### Divisor resistivo para lectura de Vbatt
+
+El ADC del Pico mide hasta 3.3V. La batería puede estar entre 3.0V–4.2V:
+
+$$V_{ADC} = V_{batt} \times \frac{R_2}{R_1 + R_2}$$
+
+Con $R_1 = 330\,\text{k}\Omega$ y $R_2 = 100\,\text{k}\Omega$:
+
+$$V_{ADC} = 4.2 \times \frac{100}{430} \approx 0.98\,\text{V} \quad \checkmark \text{ (dentro del rango ADC)}$$
+
+> Valores de resistencias a agregar en §10 Misceláneos.
+
+#### Consumo estimado del sistema completo y autonomía
+
+| Subsistema | Componente | Consumo typ @ 5V |
+|-----------|-----------|-----------------|
+| OBC | Pico 2W | ~80 mA |
+| IMU | MPU-6050 | ~4 mA |
+| Magnetómetro | HMC5883L | ~1 mA |
+| GPS | NEO-7M | ~45 mA |
+| TT&C | HC-12 TX activo | ~80 mA (TX) / 13 mA (RX) |
+| RW motors | 3× Motor N20 @ 5V | ~150–300 mA |
+| Magnetorquers | 3× bobina ferrita | ~240 mA |
+| **Total máximo** | **(todos activos)** | **~700 mA @ 5V = 3.5W** |
+| **Total nominal** | **(control activo, comms RX)** | **~400 mA @ 5V = 2W** |
+
+**Autonomía con 18650 3000 mAh @ 3.7V = 11.1 Wh:**
+
+| Escenario | Consumo | Autonomía estimada |
+|-----------|---------|-------------------|
+| Nominal (todo activo) | 2W | ~5.5 horas |
+| Máximo (actuadores full) | 3.5W | ~3 horas |
+| Solo OBC + comms (idle) | 0.5W | ~22 horas |
+
+> Para vuelo LEO (~90 min de órbita), con solar de 1W y consumo nominal de 2W hay que dimensionar la batería para cubrir el eclipse (~35 min). Análisis detallado en la iteración de vuelo del BOM.
 
 ---
 
@@ -378,6 +458,7 @@ El Pico 2W (RP2350) lee el voltaje de batería a través del ADC0 (`GPIO26`) con
 |---|-----------|-------------|---------|--------|-------|
 | 9 | Resistencias pull-up I2C | 4.7 kΩ 0402 | 4 | ❓ Por evaluar | Para SDA/SCL de I2C0 e I2C1 |
 | 10 | Conector debug | Micro-USB o USB-C | 1 | ✅ Integrado | USB CDC habilitado en firmware |
+| 11 | Divisor resistivo Vbatt | R1 = 330 kΩ, R2 = 100 kΩ (1/4 W) | 2 | 🔄 Planificado | Lectura Vbatt en ADC0/GPIO26; V_ADC = V_batt × 0.23 |
 
 ---
 
@@ -427,3 +508,4 @@ ADC4   — Temperatura interna RP2350
 | 0.2 | 2026-03-05 | — | Transceiver TT&C analizado; E22-400M30S recomendado; LORA32U4 II → GS |
 | 0.3 | 2026-03-05 | — | HC-12 Si4463 433 MHz evaluado: ✅ GS/desarrollo, ❌ vuelo LEO (link budget −5 dB) |
 | 0.4 | 2026-03-05 | — | Magnetorquer: setup limpio ferrita+DRV8833; P20/15 descartado; EPS stub §9 |
+| 0.5 | 2026-03-05 | — | EPS completo: bus 5V, LiPo 1S 18650, MT3608 boost, TP4056; análisis de autonomía |
