@@ -348,7 +348,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 |--------|-----------|---------|---------------------|-------|--------|
 | HW-01 | OBC: RP2350 / Pico 2W | §2 | FR-1..FR-12 (all tasks run on RP2350) | All 29/29 | ✅ |
 | HW-02 | IMU: MPU-6050 (I2C0, 0x68) | §3 | FR-1 (Attitude Sensing), FR-2 (EKF input) | T-SDM-01..03, T-EKF-01..06 | ✅ |
-| HW-03 | Magnetometer: LIS3MDL (I2C0, 0x1C) replacing HMC5883L | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ⚠️ CDR: migrate driver |
+| HW-03 | Magnetometer: HMC5883L (I2C0, 0x1E) — lab; LIS3MDL (0x1C) for flight | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ✅ Lab (HMC5883L); CDR: new LIS3MDL driver |
 | HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-13 (GPS positioning, future) — NMEA parser `src/drivers/gps/neo7m.c` pending | — | 🔄 Planned |
 | HW-05 | External watchdog: TPS3431, GPIO20, timeout=3 s | §10 #12 | FR-8 (Health Monitoring — `watchdog_hal_feed()` in `HealthMonitorTask`) | T-WDT-01..05, T-SAFE-01a..c | ✅ HAL ready |
 | HW-06 | TT&C: E22-400M30S UART1 @ 115200 baud | §6 | FR-7 (Telemetry TX via KISS/CSP), link margin +8.5 dB @ 2300 km | T-TLM-01..06 | ✅ |

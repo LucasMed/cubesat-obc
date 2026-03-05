@@ -69,7 +69,7 @@ Firmware compatibility status and integration notes are included for each compon
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
 | 2 | 6-DOF IMU | MPU-6050 (GY-521 module) | 2 | ✅ Integrated | I2C @ 400 kHz, addr 0x68; GPIO4 (SDA), GPIO5 (SCL) |
-| 3 | 3-axis Magnetometer | HMC5883L (GY-271 module) | 2 | ⚠️ Integrated (risk) | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — Phase 5; **see §3.1 — discontinued IC risk** |
+| 3 | 3-axis Magnetometer | HMC5883L (GY-271 module) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — Phase 5; see §3.1 for lab verification note and flight upgrade path |
 
 **Integration notes — Attitude sensors:**
 - IMU and magnetometer share I2C0 bus (`GPIO4`/`GPIO5`, fast-mode 400 kHz).
@@ -77,22 +77,22 @@ Firmware compatibility status and integration notes are included for each compon
 - I2C pull-up resistors (4.7 kΩ) on SDA/SCL are **confirmed required** — see §10 item #9.
 - Reference: `src/tasks/sensor_read_task.c`, `include/ekf.h`
 
-### 3.1 HMC5883L Discontinuation Risk
+### 3.1 HMC5883L — Lab Note & Flight Upgrade Recommendation
 
-> **⚠️ PDR Finding**: The HMC5883L magnetometer has been **discontinued by Honeywell**. Most GY-271 modules sold today contain a **QMC5883L clone** (QST Corporation) with a different register map and I2C address (`0x0D` vs `0x1E`). A driver built for HMC5883L will **silently fail or return garbage data** on a QMC5883L module.
+**Lab status: ✅ Keep for prototype** — The HMC5883L (GY-271) is easy to source for lab use and the driver (`src/drivers/mag/hmc5883l.c`) is fully integrated and tested. It remains the sensor of choice for all breadboard and lab validation phases.
 
-**Mitigation for lab prototype:**
-- Before using a GY-271 module, verify the IC markings on the chip itself.
-- If the IC is QMC5883L: either adapt the existing driver (`src/drivers/mag/hmc5883l.c`) or use a QMC5883L-specific driver, updating the I2C address and register definitions.
+> **⚠️ Procurement note**: The HMC5883L has been **discontinued by Honeywell**. Many GY-271 modules sold today contain a **QMC5883L clone** (QST Corporation) with a different register map and I2C address (`0x0D` vs `0x1E`). Before using a new GY-271 module, verify the IC markings on the chip itself.
+> - If the IC reads **HMC5883L**: driver works as-is.
+> - If the IC reads **QMC5883L**: adapt `src/drivers/mag/hmc5883l.c` (update I2C address to `0x0D` and register definitions), or use a QMC5883L-specific driver.
 
-**Flight-grade alternatives (CDR decision required):**
+**Flight upgrade recommendation (CDR decision):**
 
 | Component | Model | Interface | Temp range | Notes |
 |-----------|-------|-----------|-----------|-------|
-| IMU (upgrade) | **ICM-42688-P** (TDK InvenSense) | SPI / I2C | −40 to +85 °C | High-precision, DMP, actively produced; drop-in upgrade for MPU-6050 |
-| Magnetometer (replacement) | **LIS3MDL** (STMicroelectronics) | SPI / I2C | −40 to +85 °C | Low-power, 16-bit, actively produced; functional HMC5883L replacement. **Operating config**: continuous mode, ODR = 80 Hz, I2C addr `0x1C` (SA0=GND) |
+| IMU (optional upgrade) | **ICM-42688-P** (TDK InvenSense) | SPI / I2C | −40 to +85 °C | High-precision, DMP, actively produced; drop-in upgrade for MPU-6050 |
+| Magnetometer **(recommended for flight)** | **LIS3MDL** (STMicroelectronics) | SPI / I2C | −40 to +85 °C | Low-power, 16-bit, actively produced. Config: continuous mode, ODR = 80 Hz, I2C addr `0x1C` (SA0=GND) |
 
-> **Lab decision**: the GY-271 is acceptable for prototype if the actual IC is confirmed. For flight, migrate to **LIS3MDL** on the custom OBC PCB (CDR scope).
+> **Decision**: HMC5883L stays for lab prototype. For flight (CDR scope), migrate to **LIS3MDL** on the custom OBC PCB — new driver `src/drivers/mag/lis3mdl.c` required (register map differs; same I2C bus, addr `0x1C`).
 
 ---
 
