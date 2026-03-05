@@ -8,7 +8,7 @@
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
 
-#define CONTROL_LOOP_HZ 20
+#define CONTROL_LOOP_HZ 10
 
 // Reaction wheel params
 #define RW_MAX_OMEGA_RPM 4000.0f

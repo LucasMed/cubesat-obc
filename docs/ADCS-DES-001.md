@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Document ID | ADCS-DES-001 |
-| Version | 0.1 |
+| Version | 0.2 |
 | Status | Draft |
 | Subsystem | ADCS |
 | Date | 2026-03-05 |
@@ -42,7 +42,7 @@ SensorReadTask  (10 Hz)
 State Estimator — EKF (6-state)
   │  snap.state.attitude[3], snap.state.rates[3], snap.state.imu_ekf_valid
   ▼
-AttitudeControlTask  (20 Hz) — controller dispatch
+AttitudeControlTask  (10 Hz) — controller dispatch
   │
   ├─ FM_DETUMBLE ──────────► momentum_dump_step()  →  magnetorquer B×L
   ├─ FM_NOMINAL + EKF OK  ─► LQR (mode-scheduled gains)  →  attitude_dynamics
@@ -171,7 +171,7 @@ $$\mathbf{x}_{att} = [\phi,\ \theta,\ \psi]^T \quad [\text{rad}]$$
 
 This representation was selected because:
 
-- computationally lightweight for the RP2350 at 10–20 Hz rates
+- computationally lightweight for the RP2350 at 10 Hz rates
 - sufficient accuracy for coarse pointing in Phase 1
 - direct compatibility with accelerometer-derived roll/pitch and magnetometer yaw
 
@@ -203,8 +203,16 @@ Defined in `include/ekf.h`:
 
 ```c
 #define EKF_N 6   // state: [roll, pitch, yaw, bx, by, bz]
-#define EKF_M 2   // measurement: [roll_accel, pitch_accel]
+#define EKF_M 2   // accelerometer measurement dimension: [roll_accel, pitch_accel]
 ```
+
+> **Note on measurement dimensions:** The EKF implements two independent update steps
+> with separate measurement vectors. These are NOT applied simultaneously:
+> - `EKF_M_ACC = 2` — accelerometer update (roll + pitch), H ∈ ℝ²ˣ⁶
+> - `EKF_M_MAG = 1` — magnetometer yaw update, H ∈ ℝ¹ˣ⁶
+>
+> The header constant `EKF_M = 2` covers the accelerometer case only.
+> `ekf_update_mag()` uses a scalar (1×1) innovation internally.
 
 ### 6.2 Process Model (Continuous)
 
@@ -310,6 +318,12 @@ $$\mathbf{u} = -K\,\mathbf{x}_e$$
 $$\mathbf{x}_e = [\phi_e,\ \theta_e,\ \psi_e,\ \dot\phi_e,\ \dot\theta_e,\ \dot\psi_e]^T
 \quad [\text{rad},\ \text{rad/s}]$$
 
+> **Rate error convention:** The attitude setpoint is nadir-pointing (zero attitude).
+> The *rate* setpoint is also zero — the target is a stationary spacecraft. Therefore:
+> `rate_err[i] = 0 − snap.state.rates[i]` = negative of the measured body rate.
+> In the code: `lqr_compute(&g_lqr, att_err, snap.state.rates, torque)` passes the
+> raw gyro rates directly; the LQR gain matrix K has already absorbed the sign.
+
 **Control output (3×1):**
 
 $$\mathbf{u} = [\tau_\phi,\ \tau_\theta,\ \tau_\psi]^T \quad [\text{N}\cdot\text{m}]$$
@@ -374,6 +388,58 @@ void pid_init(pid_ctrl_t *p, float kp, float ki, float kd);
 float pid_update(pid_ctrl_t *p, float error, float dt);
 ```
 
+### 7.5 Torque Saturation
+
+The LQR and PID controllers compute unclamped torque commands. Before applying to
+the actuator model, the output is saturated to the physical limit of the magnetorquers:
+
+$$|\tau_{cmd,i}| \leq \tau_{max}$$
+
+Saturation is logged as `FAULT_CTRL_OUTPUT_SATURATED` (0x0201). This is a
+non-critical fault: control continues with clipped output.
+
+```c
+// Pseudo-code — saturation applied before attitude_dynamics_step()
+for (int i = 0; i < 3; i++)
+    torque[i] = fmaxf(-TORQUE_MAX, fminf(TORQUE_MAX, torque[i]));
+```
+
+The physical `TORQUE_MAX` is derived from the magnetorquer control authority
+(see §7.6 below).
+
+### 7.6 Control Authority Budget
+
+Verification that the magnetorquer can produce sufficient torque for control.
+
+**Magnetorquer maximum dipole:**
+
+$$m_{max} \approx 0.2 \ \text{A·m}^2 \quad \text{(DRV8833 driver + 50-turn coil estimate)}$$
+
+**Reference geomagnetic field (LEO 500–700 km SSO):**
+
+$$|\mathbf{B}| \approx 25\text{–}60 \ \mu\text{T}$$
+
+**Maximum available torque per axis:**
+
+$$\tau_{max} = m_{max} \times |\mathbf{B}|_{mean}
+             = 0.2 \times 40 \times 10^{-6}
+             \approx 8 \times 10^{-6} \ \text{N·m}$$
+
+**Verification against 1U inertia:**
+
+$$\alpha_{max} = \frac{\tau_{max}}{I_{xx}} = \frac{8 \times 10^{-6}}{0.01}
+              = 8 \times 10^{-4} \ \text{rad/s}^2$$
+
+For a 30° (0.52 rad) initial attitude error with zero angular rate:
+
+$$t_{settle} \approx \sqrt{\frac{2 \times 0.52}{8 \times 10^{-4}}} \approx 36 \ \text{s}
+\quad \text{(upper bound, open-loop)}$$
+
+The LQR closed-loop response (ωn = 10 rad/s, ζ = 1) achieves ≈ 0.4 s settling
+for small errors. For large initial errors the torque-saturation bound above
+gives the practical limit. **Conclusion: the magnetorquer authority is sufficient
+for Phase 1 coarse pointing.**
+
 ---
 
 ## 8. Detumbling — B×L Cross-Product Control
@@ -423,7 +489,23 @@ momentum_dump_step(&g_mdump, B, snap.state.rates, dipole);
 When B = **0** the `momentum_dump_step()` function safely outputs a zero dipole (guard
 against degenerate field). No spurious torque is applied.
 
-### 8.3 Transition out of DETUMBLE
+### 8.3 Convergence Estimate
+
+Expected detumble performance for a typical CubeSat deployment:
+
+| Parameter | Value |
+|-----------|-------|
+| Initial angular rate | ~10 °/s (typical separation event) |
+| Target angular rate | < 0.5 °/s (FMM transition threshold) |
+| Geomagnetic field | ~40 µT @ 500 km SSO |
+| Magnetorquer dipole | ~0.2 A·m² per axis |
+| Expected detumble time | **~1–2 orbits** (~90–180 minutes) |
+
+The convergence time is inversely proportional to `k_dump × |B|²`. Increasing
+`DETUMBLE_K_DUMP` above 0.01 will reduce convergence time at the cost of higher
+magnetorquer duty cycle.
+
+### 8.4 Transition out of DETUMBLE
 
 FM_DETUMBLE → FM_NOMINAL transition is requested by the FMM once the measured
 angular rate falls below the detumble threshold or a ground command is received.
@@ -479,7 +561,7 @@ them (I = diag(0.01, 0.01, 0.005) kg·m²).
 | Task function | File | Rate | FreeRTOS period |
 |--------------|------|------|----------------|
 | `vSensorReadTask` | `src/tasks/sensor_read_task.c` | **10 Hz** | `pdMS_TO_TICKS(100)` |
-| `vAttitudeControlTask` | `src/tasks/attitude_control_task.c` | **20 Hz** | `pdMS_TO_TICKS(50)` |
+| `vAttitudeControlTask` | `src/tasks/attitude_control_task.c` | **10 Hz** | `pdMS_TO_TICKS(100)` |
 
 Both tasks use `vTaskDelayUntil()` for deterministic wakeup.
 
@@ -530,11 +612,26 @@ ADCS faults reported to the Fault Manager (`src/services/fault/fault_manager.c`)
 |---------|-----|-----------|---------|
 | FAULT_EST_GYRO_TIMEOUT | 0x0101 | IMU gyro read timeout | Force FM_SAFE |
 | FAULT_EST_MAG_TIMEOUT | 0x0102 | Magnetometer read timeout | Degraded: yaw estimation disabled |
-| FAULT_EST_DIVERGENCE | 0x0103 | EKF state diverged | Reset estimator; PID fallback |
+| FAULT_EST_DIVERGENCE | 0x0103 | EKF state diverged (see reset conditions below) | Reset estimator; PID fallback |
 | FAULT_CTRL_OUTPUT_SATURATED | 0x0201 | Torque output clipped | Log warning; continue |
 | FAULT_CTRL_DEADLINE_MISS | 0x0203 | Control loop deadline missed | Log; increment miss counter |
 | FAULT_SENS_IMU_I2C_ERROR | 0x0401 | IMU I2C bus error | Force FM_SAFE |
 | FAULT_ACT_MTQ_FAULT | 0x0301 | Magnetorquer driver fault | Force FM_SAFE |
+
+### 13.1 EKF Reset Trigger Conditions
+
+The `FAULT_EST_DIVERGENCE` fault (0x0103) is raised and the estimator is reset when
+any of the following conditions are detected:
+
+| Condition | Threshold | Action |
+|-----------|-----------|--------|
+| Attitude state out of bounds | \|attitude[i]\| > π rad | Re-initialise `x` to zero; preserve bias estimate |
+| Covariance trace blow-up | tr(**P**) > P_trace_max | Re-initialise **P** to P₀ |
+| Gyro read timeout | no new data in > 2 control cycles | Raise FAULT_EST_GYRO_TIMEOUT; enter PID fallback |
+
+After reset, `imu_ekf_valid` is cleared in the Data Layer. The control task
+automatically falls back to PID until the EKF re-converges (typically < 5 s for
+roll/pitch, < 30 s for yaw depending on magnetic field observability).
 
 ---
 
@@ -562,7 +659,7 @@ cd build && ctest --output-on-failure -R "ekf|lqr|dynamics|momentum|pid"
 
 | Test ID | Description | Pass Criterion |
 |---------|-------------|---------------|
-| T-EKF-01 | Initialisation | State zero, P diagonal positive definite |
+| T-EKF-01 | Initialization | State zero, P diagonal positive definite |
 | T-EKF-02 | Predict-only propagation | State propagates from gyro; bias unchanged |
 | T-EKF-03 | Convergence (roll/pitch) | Error < ±2° in 5 s from 10° initial |
 | T-EKF-04 | Bias estimation | Roll/pitch bias converges within 10 s |
@@ -601,7 +698,7 @@ Validates the RK2 integrator and rigid-body propagation accuracy.
 
 | Test ID | Description | Pass Criterion |
 |---------|-------------|---------------|
-| T-MTM-01 | Initialisation | Gain stored correctly |
+| T-MTM-01 | Initialization | Gain stored correctly |
 | T-MTM-02 | Zero B field guard | Degenerate field → zero dipole |
 | T-MTM-03 | Known B and L_rw | Dipole matches analytic cross-product |
 | T-MTM-04 | Threshold check | `momentum_dump_needed()` correct above/below |
@@ -616,7 +713,7 @@ in closed-loop simulation and hardware-in-loop testing.
 
 **State:** x = [attitude[3], rates[3]] — Euler angles [rad] and body rates [rad/s]
 
-**Equations of motion** (linearised, principal-axis assumption):
+**Equations of motion** (linearized, principal-axis assumption):
 
 $$\dot{\theta}_i = \omega_i$$
 $$\dot{\omega}_i = \frac{\tau_i}{I_i}$$
