@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Document ID | ADCS-DES-001 |
-| Version | 0.2 |
+| Version | 0.3 |
 | Status | Draft |
 | Subsystem | ADCS |
 | Date | 2026-03-05 |
@@ -44,10 +44,11 @@ State Estimator — EKF (6-state)
   ▼
 AttitudeControlTask  (10 Hz) — controller dispatch
   │
-  ├─ FM_DETUMBLE ──────────► momentum_dump_step()  →  magnetorquer B×L
-  ├─ FM_NOMINAL + EKF OK  ─► LQR (mode-scheduled gains)  →  attitude_dynamics
-  ├─ FM_NOMINAL + no EKF  ─► PID fallback  →  attitude_dynamics
-  └─ FM_DIAGNOSTIC  ───────► PID  →  attitude_dynamics
+  ├─ FM_BOOT / FM_SAFE ► return immediately — no actuator output
+  ├─ FM_DETUMBLE ►►►►►►► momentum_dump_step()  →  magnetorquer (B-dot)
+  ├─ FM_NOMINAL + EKF OK  ► LQR (mode-scheduled gains)  →  attitude_dynamics
+  ├─ FM_NOMINAL + no EKF  ► PID fallback  →  attitude_dynamics
+  └─ FM_DIAGNOSTIC  ►►►►►►►► PID  →  attitude_dynamics
 ```
 
 **Component-to-source mapping:**
@@ -73,12 +74,13 @@ AttitudeControlTask  (10 Hz) — controller dispatch
 The spacecraft body frame is defined as:
 
 ```
-+X → spacecraft forward (ram direction)
++X → spacecraft forward (ram direction / velocity vector)
 +Y → spacecraft right
-+Z → spacecraft nadir
++Z → spacecraft nadir (towards Earth)
 ```
 
-All sensor measurements and actuator commands are expressed in this frame.
+The frame is **right-handed**: Z = X × Y. All sensor measurements, actuator
+commands, and control torques are expressed in this frame.
 
 ### 3.2 Inertial Reference Frame (I)
 
@@ -155,6 +157,12 @@ $$\psi_\text{meas} = \text{atan2}(-B_{h,y},\ B_{h,x}) + \delta_\text{declination
 
 The update is skipped if the horizontal field magnitude is below a small epsilon.
 
+> **HMC5883L field range note:** The HMC5883L full-scale range is ±1.3–8.1 Gauss
+> (configurable). The expected geomagnetic field in LEO (500–700 km SSO) is
+> **25–60 µT** (0.25–0.60 Gauss). The sensor must be configured for the lowest
+> gain setting to avoid saturation, and should be calibrated for hard/soft-iron
+> offsets before flight.
+
 ---
 
 ## 5. Attitude Representation
@@ -221,7 +229,37 @@ $$\dot{\mathbf{b}} = \mathbf{0} \quad \text{(random-walk, driven by process nois
 
 where **ω** = measured gyro rate, **b** = estimated gyro bias.
 
-### 6.3 RK2 Midpoint Integration (Prediction Step)
+### 6.3 EKF Equations (Discrete)
+
+**Prediction (time update):**
+
+$$\mathbf{x}_{k+1} = f(\mathbf{x}_k,\ \boldsymbol{\omega}_k) \quad \text{(RK2 integration, see §6.4)}$$
+
+$$P_{k+1} = F_k\,P_k\,F_k^T + Q$$
+
+where $F_k$ is the Jacobian of $f$ with respect to **x** (computed analytically
+as a first-order approximation of the continuous process model).
+
+**Measurement update (accelerometer):**
+
+$$\mathbf{y}_{acc} = \mathbf{z}_{acc} - h_{acc}(\mathbf{x})$$
+$$S_{acc} = H_{acc}\,P\,H_{acc}^T + R_{acc}$$
+$$K_{acc} = P\,H_{acc}^T\,S_{acc}^{-1}$$
+$$\mathbf{x} \leftarrow \mathbf{x} + K_{acc}\,\mathbf{y}_{acc}$$
+$$P \leftarrow (I - K_{acc}\,H_{acc})\,P$$
+
+**Measurement update (magnetometer yaw):**
+
+$$y_{mag} = z_{mag} - \psi \quad \text{(innovation, wrapped to } [-\pi, +\pi]\text{)}$$
+$$S_{mag} = H_{mag}\,P\,H_{mag}^T + r_{mag}$$
+$$K_{mag} = P\,H_{mag}^T / S_{mag}$$
+$$\mathbf{x} \leftarrow \mathbf{x} + K_{mag}\,y_{mag}$$
+$$P \leftarrow (I - K_{mag}\,H_{mag})\,P$$
+
+Both updates leave **b** (gyro bias) partially corrected via off-diagonal
+terms in P that couple attitude to bias.
+
+### 6.4 RK2 Midpoint Integration (Prediction Step)
 
 The prediction step propagates the state using a 2nd-order Runge-Kutta
 (midpoint) integrator, removing the O(dt²) truncation error of forward Euler:
@@ -442,21 +480,37 @@ for Phase 1 coarse pointing.**
 
 ---
 
-## 8. Detumbling — B×L Cross-Product Control
+## 8. Detumbling — B-dot Control Law
 
 After deployment, the spacecraft may carry angular momentum from the separation
-event. The FM_DETUMBLE mode uses the **B×L cross-product control law** to bleed
-off excess angular momentum via the magnetorquers.
+event. The FM_DETUMBLE mode uses the **B-dot law** to damp body angular rates
+via the magnetorquers.
 
-### 8.1 B×L Control Law
+> **B-dot vs B×L — terminology clarification:**
+> 
+> | Law | Formula | Purpose |
+> |-----|---------|--------|
+> | **B-dot** (detumble) | **m** = −k · d**B**/dt | Damp body angular rates after deployment |
+> | **B×L** (momentum dump) | **m** = −k (B̂ × **L**_rw) | Bleed stored momentum from reaction wheels |
+> 
+> The current Phase 1 implementation uses `momentum_dump_step()` to produce a
+> **B-dot-equivalent** command: with no reaction wheels, `L_rw = Iω ≈ ω` (phase
+> 1 approximation), so the cross-product law operates on the body rate directly
+> and behaves as a B-dot derivative controller. True B×L momentum dumping
+> (Phase 2+) will use the measured reaction-wheel angular momentum vector.
 
-$$\mathbf{m}_{cmd} = -k_{dump}\,\left(\hat{\mathbf{B}} \times \mathbf{L}_{rw}\right)$$
+### 8.1 Control Law (Phase 1 — B-dot Approximation)
+
+$$\mathbf{m}_{cmd} = -k_{dump}\,\left(\hat{\mathbf{B}} \times \boldsymbol{\omega}\right)$$
+
+This is equivalent to a B-dot derivative law when **B** rotates with the
+spacecraft body (dB/dt ≈ ω × B in body frame).
 
 | Symbol | Description | Units |
 |--------|-------------|-------|
 | **m**_cmd | magnetic dipole command | A·m² |
 | **B̂** | unit vector of local magnetic field | — |
-| **L**_rw | reaction-wheel angular momentum vector | kg·m²/s |
+| **L**_rw / **ω** | angular momentum / rate vector | kg·m²/s or rad/s |
 | k_dump | scalar control gain | A·m²·s / (kg·m²) |
 
 **Default gain** (`config.h`):
@@ -533,8 +587,26 @@ bool momentum_dump_needed(const float L_rw[3], float threshold);
 ### 10.1 Phase 1 — Magnetorquers (Active)
 
 | Actuator | Quantity | Driver | Function |
-|---------|---------|--------|---------|
+|---------|---------|--------|----------|
 | DRV8833 magnetorquer ×3 | 3-axis magnetic dipole | `src/actuators/magnetorquer.c` | detumble + coarse attitude control |
+
+**Commanded magnetic dipole moment:**
+
+$$\mathbf{m} = [m_x,\ m_y,\ m_z]^T \quad [\text{A·m}^2]$$
+
+**Generated torque on the spacecraft:**
+
+$$\boldsymbol{\tau} = \mathbf{m} \times \mathbf{B}$$
+
+where **B** is the local geomagnetic field vector [T]. The ADCS control law
+computes **m** and passes it directly to the actuator driver, closing the
+estimator → controller → actuator loop:
+
+```c
+// Control loop closure: controller → actuator
+float dipole[3];                              // [A·m²], computed by control law
+magnetorquer_set_moment(&g_mtq, dipole[0], dipole[1], dipole[2]);
+```
 
 **API:**
 
@@ -543,7 +615,7 @@ void magnetorquer_init(magnetorquer_t *mq);
 void magnetorquer_set_moment(magnetorquer_t *mq, float mx, float my, float mz);
 ```
 
-Commands are in A·m². The DRV8833 driver translates to PWM duty cycle.
+Commands are in A·m². The DRV8833 driver translates to PWM duty cycle on GPIO14/15/16.
 
 ### 10.2 Phase 2 — Reaction Wheels (Planned)
 
@@ -551,6 +623,9 @@ Three TB6612FNG-driven reaction wheels (GPIO6/7/10, PWM) are included in the
 hardware design. The software stub (`src/actuators/reaction_wheel.c`) exists but
 is not yet active in the control loop. The LQR and dynamics model already size for
 them (I = diag(0.01, 0.01, 0.005) kg·m²).
+
+When reaction wheels are integrated, the LQR torque output will be allocated to
+both the reaction wheels (primary) and magnetorquers (momentum management only).
 
 ---
 
@@ -598,7 +673,7 @@ The ADCS behaviour is fully governed by the FMM state machine:
 |------|-------|---------------|
 | FM_BOOT | 0 | No ADCS output. Hardware initialising. |
 | FM_SAFE | 1 | No ADCS output. Actuators disabled. EKF may run (telemetry only). |
-| FM_DETUMBLE | 2 | Momentum dump via B×L. Magnetorquers active. LQR/PID suppressed. |
+| FM_DETUMBLE | 2 | B-dot detumble via magnetorquers. LQR/PID suppressed. |
 | FM_NOMINAL | 3 | Full 3-axis control. LQR (if EKF valid) or PID fallback. |
 | FM_DIAGNOSTIC | 4 | PID only. Used for ground-commanded tuning and testing. |
 
@@ -625,8 +700,8 @@ any of the following conditions are detected:
 
 | Condition | Threshold | Action |
 |-----------|-----------|--------|
-| Attitude state out of bounds | \|attitude[i]\| > π rad | Re-initialise `x` to zero; preserve bias estimate |
-| Covariance trace blow-up | tr(**P**) > P_trace_max | Re-initialise **P** to P₀ |
+| Attitude state out of bounds | \|attitude[i]\| > π rad | Re-initialize `x` to zero; preserve bias estimate |
+| Covariance trace blow-up | tr(**P**) > P_trace_max | Re-initialize **P** to P₀ |
 | Gyro read timeout | no new data in > 2 control cycles | Raise FAULT_EST_GYRO_TIMEOUT; enter PID fallback |
 
 After reset, `imu_ekf_valid` is cleared in the Data Layer. The control task
