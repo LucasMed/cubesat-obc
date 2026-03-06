@@ -5,10 +5,27 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — feature/docs-reorg
+
+### Changed
+- **Documentation restructured** under ECSS-aligned hierarchy:
+  - `docs/ecss/{requirements,design,verification,standards}/` — formal ECSS review documents
+  - `docs/architecture/` — system architecture references
+  - `docs/dev/` — developer guides
+  - `docs/project/` — project management and phase plans
+- Existing ECSS documents renamed to formal document IDs:
+  `BOM.md` → `BOM-OBC-001.md`, `SAD_v1.0.md` → `SAD-OBC-001.md`,
+  `SyRS_v1.0.md` → `SyRS-OBC-001.md`, `SOFTWARE_REQUIREMENTS.md` → `SRS-OBC-001.md`,
+  `TRACEABILITY_MATRIX.md` → `RTM-OBC-001.md`, `TEST_PLANS.md` → `STP-OBC-001.md`
+- Removed duplicate `docs/CODING_STANDARDS.md` (canonical: `docs/ecss/standards/CODING_STANDARDS.md`)
+- Added `docs/README.md` — master documentation index organised by ECSS milestone
+
+---
+
 ## [Unreleased] — feature/adcs-des-001
 
 ### Added
-- **ADCS-DES-001 v0.1** (`docs/ADCS-DES-001.md`): ADCS Design Document — formal
+- **ADCS-DES-001 v0.1** (`docs/ecss/design/ADCS-DES-001.md`): ADCS Design Document — formal
   specification of the complete attitude determination and control system. Covers:
   EKF 6-state estimator (roll/pitch/yaw + gyro bias), RK2 midpoint integration,
   LQR full-state controller with mode-scheduled gains (FM_NOMINAL ωn=10 rad/s,
@@ -22,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.0] — feature/hardware-bom
 
 ### Added
-- **Hardware BOM v1.0** (`docs/BOM.md`): complete Bill of Materials for the CubeSat OBC reaching
+- **Hardware BOM v1.0** (`docs/ecss/design/BOM-OBC-001.md`): complete Bill of Materials for the CubeSat OBC reaching
   **PDR PASS** status. Covers all subsystems: OBC (RP2350/Pico 2W), ADCS sensors (MPU-6050 +
   LIS3MDL), GPS (NEO-7M), TT&C (E22-400M30S / HC-12), EPS (LiPo 18650 + MT3608 + TP4056),
   actuators (TB6612FNG RW + DRV8833 MTQ), ground station, and orbital parameters (SSO 500–700 km).
@@ -60,11 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.0] — feature/pre-hw-integration-docs
 
 ### Added
-- **SyRS v1.0** (`docs/requirements/SyRS_v1.0.md`): System Requirements Specification
+- **SyRS v1.0** (`docs/ecss/requirements/SyRS-OBC-001.md`): System Requirements Specification
   covering functional, performance, interface, and FDIR requirements — validated against
   the implemented codebase (v0.7.0 baseline). Fields marked `[IMPL]` are implemented and
   hardware-verified; `[TBD-HW]` require physical sensor connection.
-- **SAD v1.0** (`docs/design/SAD_v1.0.md`): System Architecture Document describing the
+- **SAD v1.0** (`docs/ecss/design/SAD-OBC-001.md`): System Architecture Document describing the
   as-built software stack, FreeRTOS task map (with measured HWM values), data flow,
   FDIR authority chain, EKF/control architecture, CSP stack, HAL pattern, memory map,
   and boot sequence. Reflects Pico 2W hardware measurements.
@@ -144,7 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now calls `flash_backend_flush()` automatically when capacity is reached; constant
   `LOG_RING_CAPACITY 64u` exported in `include/logger.h` (PR-26).
   Four sub-tests: T-LOG-01a..d (one CTest target `event_logger_test`).
-- **MISRA C deviations log** (`docs/standards/MISRA_DEVIATIONS.md`): all advisory
+- **MISRA C deviations log** (`docs/ecss/standards/MISRA_DEVIATIONS.md`): all advisory
   deviations documented with rationale; zero required or mandatory violations (PR-27).
 
 ### Changed

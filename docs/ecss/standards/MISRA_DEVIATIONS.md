@@ -112,7 +112,7 @@ introducing additional control-flow variables and output parameters,
 increasing the risk of logic errors without any measurable safety benefit.
 This pattern is explicitly acknowledged as advisory in MISRA-C:2012 (see
 Appendix A, Category Advisory).  It is also permitted by the project's
-Coding Standards (`docs/CODING_STANDARDS.md §3.6`).
+Coding Standards (`docs/ecss/standards/CODING_STANDARDS.md §3.6`).
 
 ---
 

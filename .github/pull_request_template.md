@@ -24,7 +24,7 @@ ctest --output-on-failure
 ## Checklist
 - [ ] I have followed the [Contributing Guidelines](CONTRIBUTING.md)
 - [ ] I have updated documentation if required
-- [ ] My code follows the project's [Coding Standards](docs/CODING_STANDARDS.md)
+- [ ] My code follows the project's [Coding Standards](docs/ecss/standards/CODING_STANDARDS.md)
 - [ ] I have added tests for my changes
 - [ ] All tests pass locally: `ctest --output-on-failure`
 - [ ] No compiler warnings: `-Wall -Wextra -pedantic`
