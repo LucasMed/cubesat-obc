@@ -5,7 +5,7 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/docs-reorg
+## [0.11.0] — feature/docs-reorg
 
 ### Changed
 - **Documentation restructured** under ECSS-aligned hierarchy:
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] — feature/adcs-des-001
+## [0.10.0] — feature/adcs-des-001
 
 ### Added
 - **ADCS-DES-001 v0.1** (`docs/ecss/design/ADCS-DES-001.md`): ADCS Design Document — formal
