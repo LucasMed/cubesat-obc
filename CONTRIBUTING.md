@@ -93,7 +93,7 @@ git checkout -b feature/your-feature-name
 
 ### 2. Make Your Changes
 
-- Follow the [Coding Standards](docs/CODING_STANDARDS.md)
+- Follow the [Coding Standards](docs/ecss/standards/CODING_STANDARDS.md)
 - Write clear, concise commit messages
 - Keep commits atomic (one logical change per commit)
 - Add/update tests for new functionality
@@ -146,7 +146,7 @@ git push origin feature/your-feature-name
 
 ## Pull Request Checklist
 
-- [ ] Code follows [Coding Standards](docs/CODING_STANDARDS.md)
+- [ ] Code follows [Coding Standards](docs/ecss/standards/CODING_STANDARDS.md)
 - [ ] Tests pass locally: `ctest --output-on-failure`
 - [ ] No compiler warnings: build with `-Wall -Wextra -pedantic`
 - [ ] Static analysis passes: `scripts/static_analysis.sh`
@@ -349,9 +349,9 @@ See [patches/README.md](patches/README.md) for details on what each patch fixes.
 
 ## Resources
 
-- [Coding Standards](docs/CODING_STANDARDS.md)
-- [Build Guide](docs/BUILD_GUIDE.md)
-- [Architecture](docs/ARCHITECTURE.md)
+- [Coding Standards](docs/ecss/standards/CODING_STANDARDS.md)
+- [Build Guide](docs/dev/BUILD_GUIDE.md)
+- [Architecture](docs/architecture/ARCHITECTURE.md)
 - [Patches](patches/README.md)
 - [FreeRTOS Docs](https://www.freertos.org/Documentation/161204_FreeRTOS_Reference_Manual_V10.0.0.pdf)
 

@@ -333,7 +333,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 - **Unit Test Coverage**: 27 unit tests + 2 integration test targets = **29 CTest executables** (29/29 passing)
 - **Integration Test Coverage**: 2 done (T-FMS-01, T-SAFE-01), 2 planned (hardware)
 - **Code Line Coverage**: 91.8% (src/control/ + src/core/ + src/services/ combined)
-- **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/standards/MISRA_DEVIATIONS.md`
+- **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/ecss/standards/MISRA_DEVIATIONS.md`
 - **Overall Readiness**: 96% (Phase 6 host-testable complete; hardware validation pending)
 - **Risk Level**: LOW
 

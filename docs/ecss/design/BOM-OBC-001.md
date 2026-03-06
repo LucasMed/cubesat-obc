@@ -167,7 +167,7 @@ Firmware compatibility status and integration notes are included for each compon
 - Protocol: **KISS framing** over the physical layer → radio must act as a **transparent UART pipe**
 - Stack: CSP v2 (OBC addr 10, GS addr 1); telemetry 1 Hz @ 29 bytes/packet
 
-> Firmware reference: [docs/PHASE3_COMM_SPEC.md](PHASE3_COMM_SPEC.md), `src/drivers/uart/pico_usart.c`
+> Firmware reference: [docs/project/PHASE3_COMM_SPEC.md](../../project/PHASE3_COMM_SPEC.md), `src/drivers/uart/pico_usart.c`
 
 **Evaluated candidates:**
 

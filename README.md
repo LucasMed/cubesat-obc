@@ -170,7 +170,7 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 **Quick checklist for PRs:**
 - [ ] Tests pass: `ctest --output-on-failure`
 - [ ] No warnings: compiles with `-Wall -Wextra -pedantic`
-- [ ] Code follows [Coding Standards](docs/CODING_STANDARDS.md)
+- [ ] Code follows [Coding Standards](docs/ecss/standards/CODING_STANDARDS.md)
 - [ ] CHANGELOG.md updated
 - [ ] Documentation updated (if applicable)
 
@@ -181,14 +181,14 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 | Document | Audience | Content |
 |----------|----------|---------|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Developers | How to contribute, code style, testing |
-| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | Developers | MISRA-like conventions, naming, safety |
-| [docs/standards/CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Developers | Full coding standards reference |
-| [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md) | Users | Build setup, Pico SDK, flashing, troubleshooting |
-| [docs/PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md) | Project Leads | Roadmap, current status, blockers |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Engineers | System design, data flow, decisions |
-| [docs/design/SYSTEM_DESIGN.md](docs/design/SYSTEM_DESIGN.md) | Engineers | Detailed system design document |
-| [docs/requirements/SOFTWARE_REQUIREMENTS.md](docs/requirements/SOFTWARE_REQUIREMENTS.md) | Engineers | Requirements specification (FR, NFR, IR) |
-| [docs/test_plans/TEST_PLANS.md](docs/test_plans/TEST_PLANS.md) | QA/Test | Test plans, coverage, execution |
+| [docs/ecss/standards/CODING_STANDARDS.md](docs/ecss/standards/CODING_STANDARDS.md) | Developers | Full coding standards reference (MISRA-like conventions, naming, safety) |
+| [docs/dev/BUILD_GUIDE.md](docs/dev/BUILD_GUIDE.md) | Users | Build setup, Pico SDK, flashing, troubleshooting |
+| [docs/project/PROJECT_PROGRESS.md](docs/project/PROJECT_PROGRESS.md) | Project Leads | Roadmap, current status, blockers |
+| [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Engineers | System design, data flow, decisions |
+| [docs/architecture/SYSTEM_DESIGN.md](docs/architecture/SYSTEM_DESIGN.md) | Engineers | Detailed system design document |
+| [docs/ecss/requirements/SRS-OBC-001.md](docs/ecss/requirements/SRS-OBC-001.md) | Engineers | Software Requirements Specification (FR, NFR, IR) |
+| [docs/ecss/verification/STP-OBC-001.md](docs/ecss/verification/STP-OBC-001.md) | QA/Test | Software Test Plan, coverage, execution |
+| [docs/README.md](docs/README.md) | Everyone | Full documentation index by ECSS milestone |
 | [docs/release/RELEASE_NOTES.md](docs/release/RELEASE_NOTES.md) | Everyone | Release notes per version |
 | [CHANGELOG.md](CHANGELOG.md) | Everyone | Version history, features, status |
 | [LICENSE](LICENSE) | Legal | MIT License terms |
