@@ -5,7 +5,18 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/fault-oi1-eps-emergency
+## [Unreleased] — feature/comms-des-001
+
+### Added
+- **COMMS-DES-001 v0.1** (`docs/ecss/design/COMMS-DES-001.md`): Communications Subsystem Design Document —
+  CSP/KISS/UART1 protocol stack, OBC address 10, GS address 1, TELEMETRY_PORT=10 (1 Hz downlink),
+  COMMAND_PORT=20 (uplink echo/reboot/set-mode), FreeRTOS task model (4 tasks), host vs Pico build
+  behaviour, error handling, and full test mapping (T-COM-01..02, T-TLM-01..06, T-CMD-01..05,
+  13/13 passing). 6 open items tracked (OI-1..OI-6).
+
+---
+
+## [0.17.0] — feature/fault-oi1-eps-emergency
 
 ### Changed
 - **`src/services/eps/eps_monitor.c`**: Close FAULT-DES-001 OI-1 — `ENERGY_EMERGENCY` branch now

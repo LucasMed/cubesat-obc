@@ -44,7 +44,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | FMM-DES-001 | Flight Mode Manager Design Document | ✅ v0.3 — Draft | [ecss/design/FMM-DES-001.md](ecss/design/FMM-DES-001.md) |
 | EPS-DES-001 | Electrical Power System Design Document | ✅ v0.1 — Draft | [ecss/design/EPS-DES-001.md](ecss/design/EPS-DES-001.md) |
 | FAULT-DES-001 | Fault Manager Design Document | ✅ v0.2 — Draft | [ecss/design/FAULT-DES-001.md](ecss/design/FAULT-DES-001.md) |
-| COMMS-DES-001 | Communications / TT&C Design Document | ❌ | — |
+| COMMS-DES-001 | Communications / TT&C Design Document | ✅ v0.1 — Draft | [ecss/design/COMMS-DES-001.md](ecss/design/COMMS-DES-001.md) |
 | OBC-DES-001 | OBC Hardware & CDH Design Document | ❌ | — |
 | DL-DES-001 | Data Layer / Storage Design Document | ✅ v0.1 — Draft | [ecss/design/DL-DES-001.md](ecss/design/DL-DES-001.md) |
 | RTM-OBC-001 | Requirements Traceability Matrix | ⚠️ | [ecss/verification/RTM-OBC-001.md](ecss/verification/RTM-OBC-001.md) |
