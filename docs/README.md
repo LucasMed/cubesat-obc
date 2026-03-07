@@ -47,7 +47,8 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | OBC-DES-001 | OBC Hardware & CDH Design Document | ❌ | — |
 | DL-DES-001 | Data Layer / Storage Design Document | ❌ | — |
 | RTM-OBC-001 | Requirements Traceability Matrix | ⚠️ | [ecss/verification/RTM-OBC-001.md](ecss/verification/RTM-OBC-001.md) |
-| STP-OBC-001 | Software Test Plan (preliminary) | ⚠️ | [ecss/verification/STP-OBC-001.md](ecss/verification/STP-OBC-001.md) |
+| STP-OBC-001 / TEST-PLAN-001 | Software Test Plan | ⚠️ **TODO**: exists as `TST-001 v3.0` (321 lines) but uses informal ID and lacks ECSS-E-ST-40C §5.7 structure (no SVVP, entry/exit criteria, test levels). Needs formalisation. | [ecss/verification/STP-OBC-001.md](ecss/verification/STP-OBC-001.md) |
+| ADCS-SIM-001 | ADCS Simulation & Verification Document | ❌ **TODO**: not created. Codebase has `closed_loop_sim.h` / `cls_*` infrastructure — needs design document covering simulation architecture, test scenarios, and verification results. | — |
 | FMEA-OBC-001 | FMEA Preliminary (software faults) | ❌ | — |
 
 ---
@@ -56,7 +57,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
-| SDD-OBC-001 | Software Design Document (all modules) | ⚠️ covered by SAD + DES docs | — |
+| FSW-SDD-001 / SDD-OBC-001 | Flight Software Design Description | ⚠️ **TODO**: no standalone document exists. Currently covered partially by `SAD-OBC-001` + individual `*-DES-001` subsystem docs. Needs a consolidated FSW-level SDD that cross-references all design documents. | — |
 | POWER-BDG-001 | Power Budget | ❌ | — |
 | LINK-BDG-001 | RF Link Budget | ❌ | — |
 | FMEA-OBC-002 | FMEA Detailed (HW + SW) | ❌ | — |
