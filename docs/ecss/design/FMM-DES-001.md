@@ -3,7 +3,7 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | FMM-DES-001                                   |
-| Version     | 0.2                                           |
+| Version     | 0.3                                           |
 | Status      | Draft                                         |
 | Date        | 2026-03-06                                    |
 | Author      | CubeSat OBC Team                              |
@@ -16,6 +16,7 @@
 |---------|------------|------------------|----------------------|
 | 0.1     | 2026-03-06 | CubeSat OBC Team | Initial draft — PDR  |
 | 0.2     | 2026-03-07 | CubeSat OBC Team | CDR review: ISR safety correction (§8.4, §13), FM_BOOT exit clarification (§5.1), mode change event (§8.6, §15), OI-5 added |
+| 0.3     | 2026-03-07 | CubeSat OBC Team | CDR review v0.2: authorized requesters table (§7.1), transition priority (§7.2), HK telemetry field (§11), mode timeout OI-6 |
 
 ---
 
@@ -216,13 +217,46 @@ static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
 
 **Transition trigger sources:**
 
-| Source                   | API called                      | Context               |
-|--------------------------|---------------------------------|-----------------------|
-| Ground command (CSP)     | `fmm_request_transition(target)`| Telemetry task        |
-| Fault Manager (CRITICAL) | `fmm_force_safe()`              | Fault Manager task    |
-| Watchdog timeout         | `fmm_force_safe()`              | Health Monitor task (⚠️ not ISR — see OI-5) |
-| EPS CRITICAL energy      | `fmm_force_safe()` via fault    | EPS Monitor task      |
-| Automatic (rate < thr.)  | `fmm_request_transition(FM_NOMINAL)` | ADCS task (Phase 2) |
+| Source                   | API called                           | Context                                      |
+|--------------------------|------------------------------------- |----------------------------------------------|
+| Ground command (CSP)     | `fmm_request_transition(target)`     | Telemetry task                               |
+| Fault Manager (CRITICAL) | `fmm_force_safe()`                   | Fault Manager task                           |
+| Watchdog timeout         | `fmm_force_safe()`                   | Health Monitor task (⚠️ not ISR — see OI-5)   |
+| EPS CRITICAL energy      | `fmm_force_safe()` via fault         | EPS Monitor task                             |
+| Automatic (rate < thr.)  | `fmm_request_transition(FM_NOMINAL)` | ADCS task (Phase 2)                          |
+
+### 7.1 Authorized Transition Requesters
+
+Only the following sources are permitted to call the FMM API. All other
+subsystems are read-only consumers of the mode via `data_layer_get_flight_mode()`.
+
+| Source              | Permitted API                            | Condition                                   |
+|---------------------|------------------------------------------|---------------------------------------------|
+| Ground command (CSP)| `fmm_request_transition(target)`        | Any uplink telecommand; subject to matrix   |
+| Fault Manager       | `fmm_force_safe()`                       | `FAULT_LEVEL_CRITICAL` raised               |
+| Health Monitor      | `fmm_force_safe()` via `fault_report()`  | Watchdog kick missed                        |
+| EPS Monitor         | `fmm_force_safe()` via `fault_report()`  | `ENERGY_CRITICAL` or `ENERGY_EMERGENCY`     |
+| ADCS task           | `fmm_request_transition(FM_NOMINAL)`     | ω < threshold sustained — Phase 2 only      |
+
+No other subsystem (telemetry task, sensor read task, etc.) may request a mode
+transition.
+
+### 7.2 Transition Priority
+
+When multiple sources request a transition concurrently, the following priority
+order applies (highest to lowest):
+
+```
+  1. FAULT_LEVEL_CRITICAL  (fmm_force_safe)   ← always wins
+  2. EPS critical/emergency (via fault path)
+  3. ADCS automatic (ω threshold — Phase 2)
+  4. Ground command (CSP telecommand)
+```
+
+In practice, simultaneous requests are serialized by the FreeRTOS scheduler
+because `fmm_force_safe()` paths run in higher-priority tasks than the telemetry
+task that processes ground commands. The fault path always executes before a
+ground-command transition can be written to the Data Layer.
 
 ---
 
@@ -392,6 +426,26 @@ of its control loop iteration.
 
 ADCS controller dispatch is defined in detail in ADCS-DES-001 §2.
 
+### 11.1 Housekeeping Telemetry Field
+
+The current flight mode is reported in every HK telemetry frame via the following field:
+
+| HK Field      | C Type    | Source field                   | Units / Encoding                      |
+|---------------|-----------|--------------------------------|---------------------------------------|
+| `flight_mode` | `uint8_t` | `obc_snapshot_t.mode` (Data Layer) | `flight_mode_t` enum value 0–4   |
+
+Ground software decoding:
+
+| Value | Mode name     |
+|-------|---------------|
+| 0     | FM_BOOT       |
+| 1     | FM_SAFE       |
+| 2     | FM_DETUMBLE   |
+| 3     | FM_NOMINAL    |
+| 4     | FM_DIAGNOSTIC |
+
+The field is populated by `data_layer_get_snapshot()` and included in the periodic HK beacon regardless of mode.
+
 ---
 
 ## 12. Data Layer Interface
@@ -487,6 +541,7 @@ FM_SAFE but are logged to the event ring buffer.
 | OI-3 | FM_SAFE timeout/recovery path (e.g. after successful fault clear) | Low |
 | OI-4 | `fmm_request_transition()` ISR-safety evaluation if fault_manager uses mutex | Low |
 | OI-5 | **ISR-safe forced safe path**: implement `fmm_force_safe_from_isr()` using `xSemaphoreGiveFromISR()` or a dedicated atomic flag polled by a task. Required before any hardware watchdog or timer ISR needs to trigger FM_SAFE directly. | High |
+| OI-6 | **Mode timeout**: define maximum dwell time per mode (e.g. FM_DETUMBLE ≤ 20 min, FM_BOOT ≤ 5 min). On timeout, transition to FM_SAFE. Required for fully autonomous FDIR; Phase 2 scope. | Medium |
 
 ---
 
