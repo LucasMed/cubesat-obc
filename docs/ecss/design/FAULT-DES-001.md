@@ -3,7 +3,7 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | FAULT-DES-001                                 |
-| Version     | 0.1                                           |
+| Version     | 0.2                                           |
 | Status      | Draft                                         |
 | Date        | 2026-03-07                                    |
 | Author      | CubeSat OBC Team                              |
@@ -14,6 +14,7 @@
 
 | Version | Date       | Author           | Description                                     |
 |---------|------------|------------------|-------------------------------------------------|
+| 0.2     | 2026-03-07 | CubeSat OBC Team | Close OI-1: implement `fault_report(FAULT_EPS_VBATT_EMERGENCY, ...)` in `eps_monitor.c`; update test 6; close OI-2 |
 | 0.1     | 2026-03-07 | CubeSat OBC Team | Initial draft — CDR; implements EPS-DES-001 OI-6 (`FAULT_EPS_VBATT_EMERGENCY`) |
 
 ---
@@ -232,12 +233,11 @@ Bits  [7:0] — fault index within subsystem
 Total active fault IDs: **25** (`FAULT_ID_COUNT`).
 
 > **Note — EPS-DES-001 OI-6 resolution**: `FAULT_EPS_VBATT_EMERGENCY` (0x0903)
-> was added in this document version. `FAULT_EPS_OVERCURRENT` shifted from
+> was added in v0.1. `FAULT_EPS_OVERCURRENT` shifted from
 > 0x0903 to 0x0904, and `FAULT_EPS_READ_ERROR` from 0x0904 to 0x0905. The
 > source `include/fault_ids.h` is updated accordingly. The EPS monitor
-> (`src/services/eps/eps_monitor.c`) must be updated to call
-> `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)` in the
-> ENERGY_EMERGENCY branch — tracked as OI-1 below.
+> `eps_monitor.c` ENERGY_EMERGENCY branch was updated in v0.2 to call
+> `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)` (OI-1 closed).
 
 ---
 
@@ -548,17 +548,16 @@ source. The FDIR calls made per energy state are:
 
 | Energy State        | Action taken by EPS monitor                                  |
 |---------------------|--------------------------------------------------------------|
-| `ENERGY_NOMINAL`    | `fault_clear(FAULT_EPS_VBATT_LOW)`, `fault_clear(FAULT_EPS_VBATT_CRITICAL)` |
-| `ENERGY_LOW`        | `fault_clear(FAULT_EPS_VBATT_CRITICAL)`, `fault_report(FAULT_EPS_VBATT_LOW, FAULT_LEVEL_WARNING)` |
+| `ENERGY_NOMINAL`    | `fault_clear(FAULT_EPS_VBATT_LOW)`, `fault_clear(FAULT_EPS_VBATT_CRITICAL)`, `fault_clear(FAULT_EPS_VBATT_EMERGENCY)` |
+| `ENERGY_LOW`        | `fault_clear(FAULT_EPS_VBATT_CRITICAL)`, `fault_clear(FAULT_EPS_VBATT_EMERGENCY)`, `fault_report(FAULT_EPS_VBATT_LOW, FAULT_LEVEL_WARNING)` |
 | `ENERGY_CRITICAL`   | `fault_clear(FAULT_EPS_VBATT_LOW)`, `fault_report(FAULT_EPS_VBATT_CRITICAL, FAULT_LEVEL_CRITICAL)` |
-| `ENERGY_EMERGENCY`  | **OI-1**: must call `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)` — not yet implemented |
+| `ENERGY_EMERGENCY`  | `fault_clear(FAULT_EPS_VBATT_LOW)`, `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)` |
 
-> **OI-1 (High / Phase 1)**: `eps_monitor.c` currently does not call
-> `fault_report(FAULT_EPS_VBATT_EMERGENCY, ...)` in the ENERGY_EMERGENCY branch.
-> The fault ID `FAULT_EPS_VBATT_EMERGENCY` (0x0903) was added to `fault_ids.h`
-> in this version (EPS-DES-001 OI-6 resolution). The EPS monitor source must be
-> updated to report this fault, providing independent mission-log visibility for
-> emergency energy events separate from CRITICAL battery events.
+> ~~**OI-1 (High / Phase 1)**~~: resolved in v0.2. `eps_monitor.c`
+> `ENERGY_EMERGENCY` branch now calls
+> `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)`, providing
+> independent mission-log visibility for emergency energy events separate from
+> CRITICAL battery events. Test 6 in `test_eps_monitor.c` updated to verify.
 
 ---
 
@@ -614,12 +613,12 @@ Total: **12 / 12 tests passing**.
 
 ## 18. Open Items
 
-| OI   | Severity | Phase   | Description                                                                |
-|------|----------|---------|----------------------------------------------------------------------------|
-| OI-1 | High     | Phase 1 | Update `src/services/eps/eps_monitor.c` ENERGY_EMERGENCY branch to call `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)`. Required for independent mission-log visibility of emergency battery events (EPS-DES-001 OI-6 partial resolution). |
-| OI-2 | Low      | Phase 1 | Add FDIR integration test: simulate `ENERGY_EMERGENCY` → verify `FAULT_EPS_VBATT_EMERGENCY` active + `FM_SAFE` set in one test cycle. |
-| OI-3 | Low      | Phase 2 | Add `fault_report_from_isr()` variant using `xSemaphoreGiveFromISR` pattern if any ISR-originated fault source is added in future hardware integration. |
-| OI-4 | Low      | Post-CDR | Update `FAULT_ID_COUNT` macro to 25 after the `FAULT_EPS_VBATT_EMERGENCY` addition verified in CI. Audit all `fault_ids.h` additions against this counter going forward. |
+| OI   | Severity | Phase   | Status  | Description                                                                |
+|------|----------|---------|---------|----------------------------------------------------------------------------|
+| OI-1 | High     | Phase 1 | **Closed v0.2** | ~~Update `src/services/eps/eps_monitor.c` ENERGY_EMERGENCY branch to call `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)`.~~ Implemented and verified in test 6. |
+| OI-2 | Low      | Phase 1 | **Closed v0.2** | ~~Add FDIR integration test: simulate `ENERGY_EMERGENCY` → verify `FAULT_EPS_VBATT_EMERGENCY` active + `FM_SAFE` set in one test cycle.~~ Test 6 in `test_eps_monitor.c` now verifies this path. |
+| OI-3 | Low      | Phase 2 | Open    | Add `fault_report_from_isr()` variant using `xSemaphoreGiveFromISR` pattern if any ISR-originated fault source is added in future hardware integration. |
+| OI-4 | Low      | Post-CDR | Open   | Audit all `fault_ids.h` additions against `FAULT_ID_COUNT` counter going forward. |
 
 ---
 
