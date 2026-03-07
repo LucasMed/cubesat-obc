@@ -41,8 +41,8 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | ICD-OBC-001 | Interface Control Document | ✅ v1.1 | [ecss/design/ICD-OBC-001.md](ecss/design/ICD-OBC-001.md) |
 | BOM-OBC-001 | Bill of Materials | ✅ v1.0.1 | [ecss/design/BOM-OBC-001.md](ecss/design/BOM-OBC-001.md) |
 | ADCS-DES-001 | ADCS Design Document | ✅ v1.0 — PDR | [ecss/design/ADCS-DES-001.md](ecss/design/ADCS-DES-001.md) |
-| FMM-DES-001 | Flight Mode Manager Design Document | ✅ v0.1 — Draft | [ecss/design/FMM-DES-001.md](ecss/design/FMM-DES-001.md) |
-| EPS-DES-001 | Electrical Power System Design Document | ❌ | — |
+| FMM-DES-001 | Flight Mode Manager Design Document | ✅ v0.3 — Draft | [ecss/design/FMM-DES-001.md](ecss/design/FMM-DES-001.md) |
+| EPS-DES-001 | Electrical Power System Design Document | ✅ v0.1 — Draft | [ecss/design/EPS-DES-001.md](ecss/design/EPS-DES-001.md) |
 | COMMS-DES-001 | Communications / TT&C Design Document | ❌ | — |
 | OBC-DES-001 | OBC Hardware & CDH Design Document | ❌ | — |
 | DL-DES-001 | Data Layer / Storage Design Document | ❌ | — |

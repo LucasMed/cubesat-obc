@@ -5,7 +5,26 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/fmm-des-001
+## [Unreleased] — feature/eps-des-001
+
+### Added
+- **EPS-DES-001 v0.2** (`docs/ecss/design/EPS-DES-001.md`): Electrical Power System Monitor Design
+  Document — Schmidt-trigger hysteresis energy state model, four-rail management, FDIR authority
+  chain (EPS → Fault Manager → FMM), HAL abstraction, ISR-safe critical-section locking, and
+  full test mapping (T-01..12, 12/12 passing).
+
+### Changed
+- **EPS-DES-001 §9**: Split `FAULT_EPS_VBATT_EMERGENCY` (0x0903) from `FAULT_EPS_VBATT_CRITICAL`
+  for independent mission-log visibility; OVERCURRENT → 0x0904, READ_ERROR → 0x0905.
+- **EPS-DES-001 §11.1**: Fixed initial state — `eps_monitor_init()` now derives `prev` from raw
+  classification (not assumed NOMINAL), preventing spurious transitions at boot on low battery.
+- **EPS-DES-001 §8.4**: Added `eps_apply_load_policy()` definition — formalises per-state
+  autonomous rail shedding (PAYLOAD off at LOW; PAYLOAD+COMMS+ADCS off at CRITICAL/EMERGENCY).
+- **EPS-DES-001 §4**: Added 5 s polling period justification (battery time constant >> 5 s).
+
+---
+
+## [0.12.0] — feature/fmm-des-001
 
 ### Added
 - **FMM-DES-001 v0.1** (`docs/ecss/design/FMM-DES-001.md`): Flight Mode Manager Design Document — formal
