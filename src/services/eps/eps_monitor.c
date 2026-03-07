@@ -177,25 +177,31 @@ static void handle_state_change(energy_state_t prev, energy_state_t next)
   case ENERGY_NOMINAL:
     fault_clear(FAULT_EPS_VBATT_LOW);
     fault_clear(FAULT_EPS_VBATT_CRITICAL);
+    fault_clear(FAULT_EPS_VBATT_EMERGENCY);
     break;
 
   case ENERGY_LOW:
     if (prev > ENERGY_LOW)
     {
-      /* Recovering from CRITICAL / EMERGENCY: clear the CRITICAL fault */
+      /* Recovering from CRITICAL / EMERGENCY: clear the deeper faults */
       fault_clear(FAULT_EPS_VBATT_CRITICAL);
+      fault_clear(FAULT_EPS_VBATT_EMERGENCY);
     }
     fault_report(FAULT_EPS_VBATT_LOW, FAULT_LEVEL_WARNING);
     break;
 
-  case ENERGY_CRITICAL: /* fall through */
-  case ENERGY_EMERGENCY:
+  case ENERGY_CRITICAL:
     fault_clear(FAULT_EPS_VBATT_LOW);
     /* Single FDIR authority chain: EPS → FaultMgr → FMM.
-     * CRITICAL level triggers fmm_force_safe() inside fault_manager.
-     * Both CRITICAL and EMERGENCY escalate to the same level — no direct
-     * fmm_request_transition() call (would bypass the fault audit log). */
+     * CRITICAL level triggers fmm_force_safe() inside fault_manager. */
     fault_report(FAULT_EPS_VBATT_CRITICAL, FAULT_LEVEL_CRITICAL);
+    break;
+
+  case ENERGY_EMERGENCY:
+    fault_clear(FAULT_EPS_VBATT_LOW);
+    /* EMERGENCY escalates with its own fault ID (FAULT-DES-001 OI-1).
+     * CRITICAL level triggers fmm_force_safe() inside fault_manager. */
+    fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL);
     break;
 
   default:

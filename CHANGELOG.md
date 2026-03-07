@@ -5,7 +5,20 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/fault-des-001
+## [Unreleased] — feature/fault-oi1-eps-emergency
+
+### Changed
+- **`src/services/eps/eps_monitor.c`**: Close FAULT-DES-001 OI-1 — `ENERGY_EMERGENCY` branch now
+  calls `fault_report(FAULT_EPS_VBATT_EMERGENCY, FAULT_LEVEL_CRITICAL)` (separate case, no fall-through).
+  `ENERGY_NOMINAL` and `ENERGY_LOW` recovery paths also clear `FAULT_EPS_VBATT_EMERGENCY`.
+- **`tests/unit/test_eps_monitor.c`**: Test 6 updated to assert `FAULT_EPS_VBATT_EMERGENCY` active
+  and `FAULT_EPS_VBATT_CRITICAL` not active in EMERGENCY state. Test 3 adds EMERGENCY not-active check.
+- **`docs/ecss/design/FAULT-DES-001.md`**: Bump to v0.2 — closes OI-1 and OI-2; updates Section 15
+  integration table and Open Items table.
+
+---
+
+## [0.16.0] — feature/fault-des-001
 
 ### Added
 - **FAULT-DES-001 v0.1** (`docs/ecss/design/FAULT-DES-001.md`): Fault Manager Design Document —

@@ -8,7 +8,7 @@
  *   3.  eps_monitor_tick() with 7.6 V → ENERGY_NOMINAL, no VBATT fault
  *   4.  Voltage drop to 7.2 V → ENERGY_LOW, FAULT_EPS_VBATT_LOW WARNING
  *   5.  Voltage drop to 6.8 V → ENERGY_CRITICAL, FAULT_EPS_VBATT_CRITICAL CRITICAL
- *   6.  Voltage drop to 6.4 V → ENERGY_EMERGENCY, FAULT_EPS_VBATT_CRITICAL CRITICAL
+ *   6.  Voltage drop to 6.4 V → ENERGY_EMERGENCY, FAULT_EPS_VBATT_EMERGENCY CRITICAL
  *   7.  Hysteresis: LOW state, inject 7.45 V → stays ENERGY_LOW
  *   8.  Hysteresis: LOW state, inject 7.55 V → recovers to ENERGY_NOMINAL
  *   9.  HAL read failure → FAULT_EPS_READ_ERROR active, state unchanged
@@ -121,6 +121,8 @@ static void test_nominal_voltage(void)
   CHECK(!fault_is_active(FAULT_EPS_VBATT_LOW), "VBATT_LOW must not be active at nominal voltage");
   CHECK(!fault_is_active(FAULT_EPS_VBATT_CRITICAL),
         "VBATT_CRITICAL must not be active at nominal voltage");
+  CHECK(!fault_is_active(FAULT_EPS_VBATT_EMERGENCY),
+        "VBATT_EMERGENCY must not be active at nominal voltage");
   printf("test_nominal_voltage: OK\n");
 }
 
@@ -194,8 +196,13 @@ static void test_emergency_voltage(void)
   CHECK(snap.state == ENERGY_EMERGENCY, "6.4 V must transition to ENERGY_EMERGENCY");
 
   fault_event_t ev = {0};
-  CHECK(fault_get_event(FAULT_EPS_VBATT_CRITICAL, &ev), "must retrieve VBATT_CRITICAL event");
+  CHECK(fault_is_active(FAULT_EPS_VBATT_EMERGENCY),
+        "FAULT_EPS_VBATT_EMERGENCY must be active in EMERGENCY state");
+  CHECK(fault_get_event(FAULT_EPS_VBATT_EMERGENCY, &ev), "must retrieve VBATT_EMERGENCY event");
   CHECK(ev.level == FAULT_LEVEL_CRITICAL, "ENERGY_EMERGENCY must report CRITICAL severity");
+  CHECK(!fault_is_active(FAULT_EPS_VBATT_CRITICAL),
+        "VBATT_CRITICAL must NOT be active in EMERGENCY state (separate fault ID)");
+  CHECK(!fault_is_active(FAULT_EPS_VBATT_LOW), "VBATT_LOW must be cleared when entering EMERGENCY");
 
   /* fault_manager calls fmm_force_safe() for CRITICAL-level faults */
   dl_snapshot_t dl = {0};
