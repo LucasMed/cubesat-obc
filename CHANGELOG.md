@@ -5,7 +5,22 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/srr-plans
+## [Unreleased] — feature/obc-des-001
+
+### Added
+- **OBC-DES-001 v0.1** (`docs/ecss/design/OBC-DES-001.md`): OBC Hardware & CDH Design Document —
+  RP2350/Pico 2W hardware platform (Cortex-M33, 520 KB SRAM, 2 MB flash, FPv5-SP FPU), full
+  GPIO pin assignment table (UART0/1, I2C0/1, PWM×6, ADC×3, WDT kick, LED), bus architecture
+  (I2C0 sensor bus 400 kHz, UART1 TT&C, PWM actuators, ADC power monitoring), FreeRTOS
+  configuration (ARM_CM33_NTZ, tick=1 kHz, heap=60 KB, stack overflow detection),
+  task model with HWM measurements (all tasks ≥91% headroom), boot sequence
+  (`main→vStartupTask→subsystems→tasks`), power architecture (VBATT/5V/3.3V rails,
+  battery voltage sense via ADC0, external watchdog TPS3431 on GPIO20), host vs target
+  build differences table, performance budget (CPU < 5%, heap free 60 KB). 8 open items.
+
+---
+
+## [0.18.0] — feature/srr-plans
 
 ### Added
 - **SDP-OBC-001 v1.0** (`docs/ecss/requirements/SDP-OBC-001.md`): Software Development Plan —

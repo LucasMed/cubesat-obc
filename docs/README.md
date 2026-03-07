@@ -45,7 +45,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | EPS-DES-001 | Electrical Power System Design Document | ✅ v0.1 — Draft | [ecss/design/EPS-DES-001.md](ecss/design/EPS-DES-001.md) |
 | FAULT-DES-001 | Fault Manager Design Document | ✅ v0.2 — Draft | [ecss/design/FAULT-DES-001.md](ecss/design/FAULT-DES-001.md) |
 | COMMS-DES-001 | Communications / TT&C Design Document | ✅ v0.1 — Draft | [ecss/design/COMMS-DES-001.md](ecss/design/COMMS-DES-001.md) |
-| OBC-DES-001 | OBC Hardware & CDH Design Document | ❌ | — |
+| OBC-DES-001 | OBC Hardware & CDH Design Document | ✅ v0.1 — Draft | [ecss/design/OBC-DES-001.md](ecss/design/OBC-DES-001.md) |
 | DL-DES-001 | Data Layer / Storage Design Document | ✅ v0.1 — Draft | [ecss/design/DL-DES-001.md](ecss/design/DL-DES-001.md) |
 | RTM-OBC-001 | Requirements Traceability Matrix | ⚠️ | [ecss/verification/RTM-OBC-001.md](ecss/verification/RTM-OBC-001.md) |
 | STP-OBC-001 / TEST-PLAN-001 | Software Test Plan | ⚠️ **TODO**: exists as `TST-001 v3.0` (321 lines) but uses informal ID and lacks ECSS-E-ST-40C §5.7 structure (no SVVP, entry/exit criteria, test levels). Needs formalisation. | [ecss/verification/STP-OBC-001.md](ecss/verification/STP-OBC-001.md) |
