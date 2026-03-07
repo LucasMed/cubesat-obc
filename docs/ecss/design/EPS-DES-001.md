@@ -6,7 +6,7 @@
 | **Title**        | Electrical Power System Monitor Design Document |
 | **Project**      | CubeSat OBC — RP2350 / Pico 2W             |
 | **Subsystem**    | Electrical Power System (EPS)              |
-| **Version**      | 0.1                                        |
+| **Version**      | 0.2                                        |
 | **Status**       | Draft                                      |
 | **Date**         | 2026-03-07                                 |
 | **Author**       | OBC Software Team                          |
@@ -19,8 +19,7 @@
 
 | Version | Date       | Author          | Description                        |
 |---------|------------|-----------------|------------------------------------|
-| 0.1     | 2026-03-07 | OBC SW Team     | Initial draft                      |
-
+| 0.1     | 2026-03-07 | OBC SW Team     | Initial draft                      || 0.2     | 2026-03-07 | OBC SW Team     | CDR review: separate EMERGENCY fault ID (OI-3 resolved); fix initial state to use raw classification; add `eps_apply_load_policy()` (§8.4); polling period justified |
 ---
 
 ## Table of Contents
@@ -106,6 +105,12 @@ controller IC) is out of scope and is covered in `BOM-OBC-001`.
 
 The EPS Monitor is a software service (not a task in its own right) that is
 called every 5 seconds from the Health Monitor Task (`health_monitor_task.c`).
+The 5 s polling period is appropriate because the battery time constant
+(capacity / maximum discharge rate) for a 2S Li-ion cell is on the order of
+hundreds of seconds — voltage changes relevant to state transitions occur on a
+timescale much longer than 5 s, making the poll rate conservative rather than
+latency-critical.
+
 It follows a poll-classify-report pattern:
 
 ```
@@ -159,7 +164,7 @@ States are ordered by severity: NOMINAL (0) is best, EMERGENCY (3) is worst.
 | ADCS rail         | Full (RW + MTQ)    | MTQ only                 | Disabled           | Disabled           |
 | OBC rail          | Always enabled     | Always enabled           | Always enabled     | Always enabled     |
 | Flight mode       | Unchanged          | Unchanged                | FM_SAFE requested  | FM_SAFE forced     |
-| Fault raised      | None / cleared     | `FAULT_EPS_VBATT_LOW`    | `FAULT_EPS_VBATT_CRITICAL` | `FAULT_EPS_VBATT_CRITICAL` |
+| Fault raised      | None / cleared     | `FAULT_EPS_VBATT_LOW`    | `FAULT_EPS_VBATT_CRITICAL` | `FAULT_EPS_VBATT_EMERGENCY` |
 
 ---
 
@@ -256,6 +261,25 @@ At PDR, rail enable/disable is tracked in software only (flag in `g_snapshot`).
 Physical GPIO control of power switches (MOSFETs / load switches) is a Phase 2
 hardware integration item — see OI-1.
 
+### 8.4 Autonomous Load-Shedding Policy
+
+The policy table in §5.1 is enforced by `eps_apply_load_policy(energy_state_t state)`,
+called internally at the end of `eps_monitor_tick()` on every state transition:
+
+| State             | PAYLOAD rail | COMMS rail   | ADCS rail      |
+|-------------------|--------------|--------------|----------------|
+| ENERGY_NOMINAL    | Enabled      | Enabled      | Enabled        |
+| ENERGY_LOW        | Disabled     | Enabled      | Enabled        |
+| ENERGY_CRITICAL   | Disabled     | Disabled     | Disabled       |
+| ENERGY_EMERGENCY  | Disabled     | Disabled     | Disabled       |
+
+The OBC rail is never modified.  `eps_apply_load_policy()` calls `eps_set_power()`
+for each affected rail; the change is logged via the event logger.
+
+> **Note (Phase 2)**: Until OI-1 (GPIO actuation) is implemented, the policy
+> updates the software flag only.  The table above is authoritative for the
+> planned hardware behavior.
+
 ---
 
 ## 9. FDIR Chain and Fault Reporting
@@ -276,19 +300,20 @@ eps_monitor_tick()
 
 | Energy state          | Fault ID                   | Level                  | Action                      |
 |-----------------------|----------------------------|------------------------|-----------------------------|
-| ENERGY_LOW            | `FAULT_EPS_VBATT_LOW`      | `FAULT_LEVEL_WARNING`  | Logged; no mode change      |
-| ENERGY_CRITICAL       | `FAULT_EPS_VBATT_CRITICAL` | `FAULT_LEVEL_CRITICAL` | Fault Mgr → `fmm_force_safe()` |
-| ENERGY_EMERGENCY      | `FAULT_EPS_VBATT_CRITICAL` | `FAULT_LEVEL_CRITICAL` | Same as CRITICAL (no separate fault ID needed) |
-| HAL read failure      | `FAULT_EPS_READ_ERROR`     | `FAULT_LEVEL_ERROR`    | Logged; state unchanged (fail-safe) |
+| ENERGY_LOW            | `FAULT_EPS_VBATT_LOW`      | `FAULT_LEVEL_WARNING`  | Logged; no mode change                       |
+| ENERGY_CRITICAL       | `FAULT_EPS_VBATT_CRITICAL` | `FAULT_LEVEL_CRITICAL` | Fault Mgr → `fmm_force_safe()`               |
+| ENERGY_EMERGENCY      | `FAULT_EPS_VBATT_EMERGENCY`| `FAULT_LEVEL_CRITICAL` | Fault Mgr → `fmm_force_safe()` (distinct ID for mission log visibility) |
+| HAL read failure      | `FAULT_EPS_READ_ERROR`     | `FAULT_LEVEL_ERROR`    | Logged; state unchanged (fail-safe)          |
 
 ### 9.3 Fault Clearing
 
 On state improvement, faults are cleared:
 
-| Recovery               | Faults cleared                                      |
-|------------------------|-----------------------------------------------------|
-| Any state → NOMINAL    | `FAULT_EPS_VBATT_LOW`, `FAULT_EPS_VBATT_CRITICAL`  |
-| CRITICAL/EMERGENCY → LOW | `FAULT_EPS_VBATT_CRITICAL`                       |
+| Recovery                 | Faults cleared                                                          |
+|--------------------------|-------------------------------------------------------------------------|
+| Any state → NOMINAL      | `FAULT_EPS_VBATT_LOW`, `FAULT_EPS_VBATT_CRITICAL`, `FAULT_EPS_VBATT_EMERGENCY` |
+| EMERGENCY → CRITICAL/LOW | `FAULT_EPS_VBATT_EMERGENCY`                                             |
+| CRITICAL/EMERGENCY → LOW | `FAULT_EPS_VBATT_CRITICAL`                                              |
 
 ### 9.4 Fault IDs
 
@@ -296,10 +321,11 @@ Defined in `include/fault_ids.h`, subsystem block `0x09xx`:
 
 | Macro                      | ID       | Description                        |
 |----------------------------|----------|------------------------------------|
-| `FAULT_EPS_VBATT_LOW`      | `0x0901` | Voltage below LOW threshold        |
-| `FAULT_EPS_VBATT_CRITICAL` | `0x0902` | Voltage below CRITICAL threshold   |
-| `FAULT_EPS_OVERCURRENT`    | `0x0903` | Bus overcurrent detected           |
-| `FAULT_EPS_READ_ERROR`     | `0x0904` | EPS telemetry read failure         |
+| `FAULT_EPS_VBATT_LOW`       | `0x0901` | Voltage below LOW threshold (< 7.4 V)      |
+| `FAULT_EPS_VBATT_CRITICAL`  | `0x0902` | Voltage below CRITICAL threshold (< 7.0 V) |
+| `FAULT_EPS_VBATT_EMERGENCY` | `0x0903` | Voltage below EMERGENCY threshold (< 6.6 V)|
+| `FAULT_EPS_OVERCURRENT`     | `0x0904` | Bus overcurrent detected                   |
+| `FAULT_EPS_READ_ERROR`      | `0x0905` | EPS telemetry read failure                 |
 
 ---
 
@@ -336,8 +362,9 @@ int eps_monitor_init(void);
 
 - Performs an initial `eps_hal_read()`.
 - Sets all rails enabled.
-- Classifies initial energy state (no hysteresis on first read, assumed NOMINAL
-  as starting `prev`).
+- Classifies initial energy state using **raw classification only** (no hysteresis
+  — `prev` is set to the raw state itself, not assumed NOMINAL).  This avoids a
+  spurious degradation event if the battery is already low at boot.
 - On HAL failure: sets `ENERGY_NOMINAL` (fail-safe), raises `FAULT_EPS_READ_ERROR`.
 - Returns 0 on success, negative on failure.
 - Must be called from `system_init()` before the EPS task starts.
@@ -485,7 +512,7 @@ Tests are in `tests/unit/test_eps_monitor.c`.  All 12 test cases pass.
 | T-03  | `eps_monitor_tick()` at 7.6 V → `ENERGY_NOMINAL`, no fault      | ✅     |
 | T-04  | 7.2 V → `ENERGY_LOW`, `FAULT_EPS_VBATT_LOW` WARNING             | ✅     |
 | T-05  | 6.8 V → `ENERGY_CRITICAL`, `FAULT_EPS_VBATT_CRITICAL` CRITICAL  | ✅     |
-| T-06  | 6.4 V → `ENERGY_EMERGENCY`, same fault as CRITICAL              | ✅     |
+| T-06  | 6.4 V → `ENERGY_EMERGENCY`, `FAULT_EPS_VBATT_EMERGENCY` CRITICAL | ✅     |
 | T-07  | Hysteresis: LOW state + 7.45 V → stays `ENERGY_LOW`             | ✅     |
 | T-08  | Hysteresis: LOW state + 7.55 V → recovers to `ENERGY_NOMINAL`   | ✅     |
 | T-09  | HAL read failure → `FAULT_EPS_READ_ERROR`, state unchanged       | ✅     |
@@ -501,6 +528,7 @@ Tests are in `tests/unit/test_eps_monitor.c`.  All 12 test cases pass.
 |------|----------------------------------------------------------------------------|----------|-------|
 | OI-1 | Implement physical GPIO actuation for power rails (MOSFET / load switch control) | High | 2 |
 | OI-2 | Integrate INA219 (or equivalent ADC IC) strong-symbol `eps_hal_read()` driver | High | 2 |
-| OI-3 | Add overcurrent detection: `FAULT_EPS_OVERCURRENT` (0x0903) path not yet implemented | Medium | 2 |
-| OI-4 | Define load-shedding policy per rail per energy state (currently manual via `eps_set_power()`) | Medium | 2 |
+| OI-3 | Add overcurrent detection: `FAULT_EPS_OVERCURRENT` (0x0904) path not yet implemented | Medium | 2 |
+| OI-4 | Implement `eps_apply_load_policy()` in source (policy defined in §8.4; not yet in `eps_monitor.c`) | Medium | 1 |
+| OI-6 | Update `fault_ids.h` to add `FAULT_EPS_VBATT_EMERGENCY` (0x0903) and renumber OVERCURRENT→0x0904, READ_ERROR→0x0905 | High | 1 |
 | OI-5 | Add `timestamp_ms` population in `eps_monitor_tick()` (field exists in snapshot but is always 0) | Low | 1 |
