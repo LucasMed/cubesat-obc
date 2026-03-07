@@ -5,7 +5,18 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/fmm-des-001
+## [Unreleased] — feature/eps-des-001
+
+### Added
+- **EPS-DES-001 v0.1** (`docs/ecss/design/EPS-DES-001.md`): Electrical Power System Monitor Design
+  Document — formal specification of the Schmidt-trigger hysteresis energy state model
+  (`ENERGY_NOMINAL/LOW/CRITICAL/EMERGENCY`), four-rail management, FDIR authority chain
+  (EPS → Fault Manager → FMM), HAL abstraction, ISR-safe critical-section locking, and
+  full test mapping (T-01..12, 12/12 passing).
+
+---
+
+## [0.12.0] — feature/fmm-des-001
 
 ### Added
 - **FMM-DES-001 v0.1** (`docs/ecss/design/FMM-DES-001.md`): Flight Mode Manager Design Document — formal
