@@ -114,13 +114,15 @@ extern "C"
   /* EPS faults (0x0901 – 0x09FF)                                       */
   /* ------------------------------------------------------------------ */
 
-#define FAULT_EPS_VBATT_LOW (FAULT_SUBSYS_EPS | 0x01u) /**< Battery voltage below LOW threshold */
+#define FAULT_EPS_VBATT_LOW (FAULT_SUBSYS_EPS | 0x01u) /**< Battery voltage below LOW threshold   */
 #define FAULT_EPS_VBATT_CRITICAL                                                                   \
-  (FAULT_SUBSYS_EPS | 0x02u) /**< Battery voltage below CRIT threshold */
+  (FAULT_SUBSYS_EPS | 0x02u) /**< Battery voltage below CRITICAL threshold (7.0 V) */
+#define FAULT_EPS_VBATT_EMERGENCY                                                                  \
+  (FAULT_SUBSYS_EPS | 0x03u) /**< Battery voltage below EMERGENCY threshold (6.6 V) */
 #define FAULT_EPS_OVERCURRENT                                                                      \
-  (FAULT_SUBSYS_EPS | 0x03u) /**< Bus overcurrent detected              */
+  (FAULT_SUBSYS_EPS | 0x04u) /**< Bus overcurrent detected              */
 #define FAULT_EPS_READ_ERROR                                                                       \
-  (FAULT_SUBSYS_EPS | 0x04u) /**< EPS telemetry read failure            */
+  (FAULT_SUBSYS_EPS | 0x05u) /**< EPS telemetry read failure            */
 
   /* ------------------------------------------------------------------ */
   /* Telemetry faults (0x0A01 – 0x0AFF)                                 */
@@ -133,7 +135,7 @@ extern "C"
   /* Total number of tracked fault IDs                                   */
   /* ------------------------------------------------------------------ */
 
-#define FAULT_ID_COUNT 22u /**< Must equal the total number of FAULT_* macros above */
+#define FAULT_ID_COUNT 25u /**< Must equal the total number of FAULT_* macros above */
 
 #ifdef __cplusplus
 }
