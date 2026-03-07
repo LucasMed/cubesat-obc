@@ -17,9 +17,10 @@
  *   DIAGNOSTIC |  N     Y      N         Y         —
  *
  * Transitions TO FM_SAFE are always allowed from any mode
- * (fmm_force_safe() hard-codes this path and may be called from ISR).
+ * (fmm_force_safe() hard-codes this path — task context only, NOT ISR-safe).
  *
- * FAULT_LEVEL_CRITICAL blocks ALL transitions except to FM_SAFE.
+ * NOTE: data_layer_set_flight_mode() uses xSemaphoreTake() (mutex).
+ * fmm_force_safe() must NOT be called from ISR context. See FMM-DES-001 OI-5.
  *
  * Spec ref: SPEC-2-FMM v1.1, SPEC-2 v2.0 §4.1
  */
@@ -116,8 +117,9 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
 
 void fmm_force_safe(void)
 {
-  /* Bypasses matrix and fault checks — safe for ISR context because
-   * data_layer_set_flight_mode uses a critical section, not a mutex. */
+  /* Bypasses matrix and fault checks.
+   * WARNING: NOT ISR-safe — data_layer_set_flight_mode() uses xSemaphoreTake().
+   * All callers must be in task context. See FMM-DES-001 OI-5. */
   data_layer_set_flight_mode(FM_SAFE);
 }
 

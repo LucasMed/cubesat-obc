@@ -5,6 +5,17 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — feature/fmm-des-001
+
+### Added
+- **FMM-DES-001 v0.1** (`docs/ecss/design/FMM-DES-001.md`): Flight Mode Manager Design Document — formal
+  specification of the five-mode state machine (`FM_BOOT`, `FM_SAFE`, `FM_DETUMBLE`, `FM_NOMINAL`,
+  `FM_DIAGNOSTIC`). Covers: allowed-transition matrix, `fmm_request_transition()` / `fmm_force_safe()`
+  API, fault integration (CRITICAL → FM_SAFE), EPS energy-state mapping, per-mode subsystem
+  behaviour table, threading model, and verification test mapping (T-FMM-01..09, T-FMM-INT-01..04).
+
+---
+
 ## [0.11.0] — feature/docs-reorg
 
 ### Changed
