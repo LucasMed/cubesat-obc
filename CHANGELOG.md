@@ -5,7 +5,17 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/mrr-docs
+## [Unreleased] — feature/dl-des-001
+
+### Added
+- **DL-DES-001 v0.1** (`docs/ecss/design/DL-DES-001.md`): Data Layer Abstraction Design Document —
+  single-mutex shared state bus (`dl_snapshot_t`), 12-function public API, seq-counter stale-copy
+  detection, ISR-safety constraints, `system_state` legacy shim, units convention (rad/rad·s⁻¹/°C/V/µT),
+  initialisation sequence, FreeRTOS threading model, and full test mapping (T-DL-01..09, 9/9 passing).
+
+---
+
+## [0.14.0] — feature/mrr-docs
 
 ### Added
 - **MRD-OBC-001 v1.0** (`docs/ecss/requirements/MRD-OBC-001.md`): Mission Requirements Document /
