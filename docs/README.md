@@ -14,9 +14,9 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
-| MRD-OBC-001 | Mission Requirements Document / ConOps | ❌ | — |
-| SMP-OBC-001 | System Management Plan | ⚠️ | see `docs/project/` |
-| PAP-OBC-001 | Product Assurance Plan | ❌ | — |
+| MRD-OBC-001 | Mission Requirements Document / ConOps | ✅ v1.0 — Approved | [ecss/requirements/MRD-OBC-001.md](ecss/requirements/MRD-OBC-001.md) |
+| SMP-OBC-001 | System Management Plan | ✅ v1.0 — Approved | [ecss/requirements/SMP-OBC-001.md](ecss/requirements/SMP-OBC-001.md) |
+| PAP-OBC-001 | Product Assurance Plan | ✅ v1.0 — Approved | [ecss/requirements/PAP-OBC-001.md](ecss/requirements/PAP-OBC-001.md) |
 
 ---
 

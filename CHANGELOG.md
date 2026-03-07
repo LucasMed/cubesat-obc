@@ -5,7 +5,22 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/eps-des-001
+## [Unreleased] — feature/mrr-docs
+
+### Added
+- **MRD-OBC-001 v1.0** (`docs/ecss/requirements/MRD-OBC-001.md`): Mission Requirements Document /
+  ConOps — mission objectives (MO-1..7), orbital parameters (SSO 600 km), 5 flight phases,
+  mission requirements (MIS-P/D/C/O/E), constraints, assumptions, ground segment description.
+- **SMP-OBC-001 v1.0** (`docs/ecss/requirements/SMP-OBC-001.md`): System Management Plan —
+  project organisation, ECSS lifecycle model, review gate schedule (MRR→AR/QR), branching
+  policy, CI/CD pipeline, risk register (R-1..6), documentation hierarchy.
+- **PAP-OBC-001 v1.0** (`docs/ecss/requirements/PAP-OBC-001.md`): Product Assurance Plan —
+  ECSS-Q-ST-80C Class B classification, MISRA compliance policy (0 required/mandatory violations),
+  test and coverage requirements (≥90% line), non-conformance process, fail-safe analysis.
+
+---
+
+## [0.13.0] — feature/eps-des-001
 
 ### Added
 - **EPS-DES-001 v0.2** (`docs/ecss/design/EPS-DES-001.md`): Electrical Power System Monitor Design
