@@ -5,7 +5,36 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/comms-des-001
+## [Unreleased] — feature/srr-plans
+
+### Added
+- **SDP-OBC-001 v1.0** (`docs/ecss/requirements/SDP-OBC-001.md`): Software Development Plan —
+  development environment (Ubuntu 22.04, GCC, ARM GCC, Pico SDK submodule), coding standards
+  (C11, no dynamic allocation, `-Wall -Wextra -pedantic`), phased lifecycle (Phase 1–7), branching
+  strategy, CMake build system, CI pipeline (ubuntu-22.04 pinned), code review process, release
+  management (SemVer, ECSS baseline tags), documentation management. 3 open items.
+- **SVVP-OBC-001 v1.0** (`docs/ecss/verification/SVVP-OBC-001.md`): Software Verification &
+  Validation Plan — 4 verification levels (Unit/Integration/System/HIL), Unity test framework,
+  existing 29/29 passing test suites catalogued, integration scenarios INT-01..05, system scenarios
+  SYS-01..07, static analysis plan (clang-format-14/clang-tidy-14/cppcheck), coverage targets
+  (≥80% line / ≥70% branch, ≥90% for safety-critical), regression strategy, entry/exit criteria
+  per review gate. 5 open items.
+- **CMP-OBC-001 v1.0** (`docs/ecss/requirements/CMP-OBC-001.md`): Configuration Management Plan —
+  full CI inventory (SW-001..010, DOC-001..006, TP-001..004), VCS policy (protected branches,
+  PR-gated merges), baseline management (MRR/SRR/PDR/CDR tags on `main`), change control
+  (Class A/B/C), build reproducibility (pinned submodule SHAs, pinned clang-format-14),
+  submodule update procedure, release artefact management (UF2, coverage, test XML),
+  FCA/PCA audit schedule. 4 open items.
+- **RMP-OBC-001 v1.0** (`docs/ecss/requirements/RMP-OBC-001.md`): Risk Management Plan —
+  5×5 likelihood/consequence matrix, 22-entry risk register across SW/HW/Schedule/Resource/
+  Operational categories; critical risks: RISK-SW-001 (FreeRTOS SMP), RISK-SW-010 (watchdog
+  not connected), RISK-SC-001..003 (CDR backlog / HIL / integration tests); high-priority
+  mitigations with owners and target phases; risk dashboard (2 critical, 5 high, 11 medium,
+  3 low, 1 closed). 4 open items.
+
+---
+
+## [Unreleased — merged] — feature/comms-des-001
 
 ### Added
 - **COMMS-DES-001 v0.1** (`docs/ecss/design/COMMS-DES-001.md`): Communications Subsystem Design Document —

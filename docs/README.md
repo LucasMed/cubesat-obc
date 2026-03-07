@@ -26,10 +26,10 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 |---|---|---|---|
 | SyRS-OBC-001 | System Requirements Specification | ✅ | [ecss/requirements/SyRS-OBC-001.md](ecss/requirements/SyRS-OBC-001.md) |
 | SRS-OBC-001 | Software Requirements Specification | ✅ | [ecss/requirements/SRS-OBC-001.md](ecss/requirements/SRS-OBC-001.md) |
-| SDP-OBC-001 | Software Development Plan | ❌ | — |
-| SVVP-OBC-001 | Software Verification & Validation Plan | ❌ | — |
-| CMP-OBC-001 | Configuration Management Plan | ❌ | — |
-| RMP-OBC-001 | Risk Management Plan | ❌ | — |
+| SDP-OBC-001 | Software Development Plan | ✅ v1.0 — Approved | [ecss/requirements/SDP-OBC-001.md](ecss/requirements/SDP-OBC-001.md) |
+| SVVP-OBC-001 | Software Verification & Validation Plan | ✅ v1.0 — Approved | [ecss/verification/SVVP-OBC-001.md](ecss/verification/SVVP-OBC-001.md) |
+| CMP-OBC-001 | Configuration Management Plan | ✅ v1.0 — Approved | [ecss/requirements/CMP-OBC-001.md](ecss/requirements/CMP-OBC-001.md) |
+| RMP-OBC-001 | Risk Management Plan | ✅ v1.0 — Approved | [ecss/requirements/RMP-OBC-001.md](ecss/requirements/RMP-OBC-001.md) |
 
 ---
 
