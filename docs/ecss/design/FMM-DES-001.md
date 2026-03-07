@@ -3,7 +3,7 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | FMM-DES-001                                   |
-| Version     | 0.1                                           |
+| Version     | 0.2                                           |
 | Status      | Draft                                         |
 | Date        | 2026-03-06                                    |
 | Author      | CubeSat OBC Team                              |
@@ -15,6 +15,7 @@
 | Version | Date       | Author           | Description          |
 |---------|------------|------------------|----------------------|
 | 0.1     | 2026-03-06 | CubeSat OBC Team | Initial draft — PDR  |
+| 0.2     | 2026-03-07 | CubeSat OBC Team | CDR review: ISR safety correction (§8.4, §13), FM_BOOT exit clarification (§5.1), mode change event (§8.6, §15), OI-5 added |
 
 ---
 
@@ -147,9 +148,9 @@ exclusively by the matrix in §6.
 
 | Mode          | Numeric | Entry Condition                                   | Exit Condition                                |
 |---------------|---------|---------------------------------------------------|-----------------------------------------------|
-| FM_BOOT       | 0       | Power-on reset; set by `flight_mode_manager_init()` | Rate < `DETUMBLE_RATE_THRESHOLD` or ground command |
+| FM_BOOT       | 0       | Power-on reset; set by `flight_mode_manager_init()` | **Current**: ground command `BOOT→DETUMBLE` only. **Phase 2**: automatic when angular rate estimate available from ADCS. |
 | FM_SAFE       | 1       | Any `FAULT_LEVEL_CRITICAL` event; or `fmm_force_safe()` | Ground command `SAFE→DETUMBLE` only   |
-| FM_DETUMBLE   | 2       | Ground command or auto from FM_BOOT/FM_SAFE        | `ω < 0.05 rad/s` sustained → FM_NOMINAL; or fault |
+| FM_DETUMBLE   | 2       | Ground command or auto from FM_BOOT/FM_SAFE        | `ω < 0.05 rad/s` sustained → FM_NOMINAL (Phase 2); or fault |
 | FM_NOMINAL    | 3       | Ground command from FM_DETUMBLE/FM_DIAGNOSTIC      | Ground command or fault                       |
 | FM_DIAGNOSTIC | 4       | Ground command from FM_NOMINAL only               | Ground command; or any fault                  |
 
@@ -174,8 +175,8 @@ DIAGNOSTIC │  ✗     ✓      ✗         ✓         —
 2. **FAULT_LEVEL_CRITICAL blocks all non-SAFE transitions** — `fmm_request_transition()`
    returns `FMM_ERR_FAULT_BLOCK` if a CRITICAL fault is active and the target is
    not FM_SAFE.
-3. **`fmm_force_safe()`** additionally bypasses the fault-level check, making it
-   safe for ISR and watchdog callback context.
+3. **`fmm_force_safe()`** additionally bypasses the fault-level check but is
+   **not ISR-safe** (uses mutex via Data Layer). See OI-5.
 
 Implementation (`src/services/fmm/flight_mode_manager.c`):
 
@@ -219,7 +220,7 @@ static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
 |--------------------------|---------------------------------|-----------------------|
 | Ground command (CSP)     | `fmm_request_transition(target)`| Telemetry task        |
 | Fault Manager (CRITICAL) | `fmm_force_safe()`              | Fault Manager task    |
-| Watchdog timeout         | `fmm_force_safe()`              | ISR / Health Monitor  |
+| Watchdog timeout         | `fmm_force_safe()`              | Health Monitor task (⚠️ not ISR — see OI-5) |
 | EPS CRITICAL energy      | `fmm_force_safe()` via fault    | EPS Monitor task      |
 | Automatic (rate < thr.)  | `fmm_request_transition(FM_NOMINAL)` | ADCS task (Phase 2) |
 
@@ -244,9 +245,9 @@ once during `system_init()` before any task is created.
 flight_mode_t fmm_get_mode(void);
 ```
 
-Returns the current mode. Thread-safe via `taskENTER_CRITICAL`. Subsystems that
+Returns the current mode. Subsystems that
 poll frequently should prefer `data_layer_get_flight_mode()` from an already-read
-snapshot to avoid repeated critical sections.
+snapshot to avoid repeated mutex acquisitions.
 
 ### 8.3 Request Transition
 
@@ -278,8 +279,15 @@ void fmm_force_safe(void);
 ```
 
 Writes `FM_SAFE` directly to the Data Layer. Bypasses both the matrix and the
-fault-level check. Safe to call from ISR context because
-`data_layer_set_flight_mode()` uses a `taskENTER_CRITICAL` section, not a mutex.
+fault-level check.
+
+> ⚠️ **Not ISR-safe.** Despite the comment in the source code, `data_layer_set_flight_mode()`
+> uses `xSemaphoreTake()` (a FreeRTOS mutex), which **cannot be called from ISR context**.
+> All current callers (`fault_manager.c`, `health_monitor_task.c`) run in task context.
+> See OI-5 for the planned ISR-safe path.
+
+Logging: a `LOG_EVT_SAFE_ENTRY` (0x0001, Class A) event is emitted by the Fault
+Manager after calling `fmm_force_safe()`.
 
 ### 8.5 Mode Name
 
@@ -289,6 +297,26 @@ const char *fmm_mode_name(flight_mode_t mode);
 
 Returns a constant null-terminated string (`"BOOT"`, `"SAFE"`, `"DETUMBLE"`,
 `"NOMINAL"`, `"DIAGNOSTIC"`, or `"UNKNOWN"`). Used exclusively for logging.
+
+### 8.6 Mode Change Event
+
+Every successful transition accepted by `fmm_request_transition()` or
+`fmm_force_safe()` shall emit a `LOG_EVT_MODE_CHANGE` (0x0101, Class B)
+persistent log event carrying the old and new mode values.
+
+```
+[LOG_EVT_MODE_CHANGE | old_mode | new_mode | timestamp_us]
+```
+
+This event is the primary input for:
+- Ground-station FDIR analysis
+- Post-pass telemetry review
+- Anomaly investigation (mode thrashing, unexpected SAFE entries)
+
+> **Implementation note (OI-5 dependency):** The event emission is currently
+> handled by `fault_manager.c` only for `FM_SAFE` entry. A dedicated
+> `LOG_EVT_MODE_CHANGE` call inside `fmm_request_transition()` is planned as
+> part of OI-5 / Phase 2 hardening.
 
 ---
 
@@ -379,8 +407,9 @@ flight_mode_t data_layer_get_flight_mode(void);
 ```
 
 The mode field lives in `obc_snapshot_t.mode` (`include/data_layer.h:54`).
-`data_layer_set_flight_mode()` uses a `taskENTER_CRITICAL` section and is
-therefore safe from both task and ISR context.
+`data_layer_set_flight_mode()` uses `xSemaphoreTake()` (a FreeRTOS mutex) and is
+therefore safe from **task context only**. It must not be called from ISR context.
+See OI-5 for the planned ISR-safe write path.
 
 ---
 
@@ -392,13 +421,14 @@ re-entrant-safe:
 | Function                    | Internal locking                  | ISR-safe |
 |-----------------------------|-----------------------------------|----------|
 | `flight_mode_manager_init()`| None (called before scheduler)    | No       |
-| `fmm_get_mode()`            | `taskENTER_CRITICAL` (via DL)     | Yes      |
-| `fmm_request_transition()`  | `taskENTER_CRITICAL` (via DL)     | No*      |
-| `fmm_force_safe()`          | `taskENTER_CRITICAL` (via DL)     | Yes      |
+| `fmm_get_mode()`            | `xSemaphoreTake` mutex (via DL)   | No       |
+| `fmm_request_transition()`  | `xSemaphoreTake` mutex (via DL)   | No       |
+| `fmm_force_safe()`          | `xSemaphoreTake` mutex (via DL)   | **No** ⚠️ |
 | `fmm_mode_name()`           | None (read-only constant table)   | Yes      |
 
-\* `fmm_request_transition()` calls `fault_get_highest_level()` which may use a
-mutex internally. Use `fmm_force_safe()` from ISR context.
+> ⚠️ **ISR-safe path not yet implemented.** The Data Layer uses `xSemaphoreTake()`
+> (FreeRTOS mutex) for all writes. None of the FMM write functions may be called
+> from interrupt context. See OI-5.
 
 ---
 
@@ -435,6 +465,7 @@ FM_SAFE but are logged to the event ring buffer.
 | T-FMM-07      | `FAULT_LEVEL_CRITICAL` blocks non-SAFE transitions           | Returns `FMM_ERR_FAULT_BLOCK` with mock fault active |
 | T-FMM-08      | `fmm_force_safe()` sets FM_SAFE unconditionally              | Mode == FM_SAFE after call from any starting mode   |
 | T-FMM-09      | `fmm_mode_name()` returns correct strings                    | String equality for all 5 modes + UNKNOWN case      |
+| T-FMM-10      | `LOG_EVT_MODE_CHANGE` emitted on every accepted transition   | Event ring buffer contains correct old/new mode values after each transition |
 
 ### 15.2 Integration Tests
 
@@ -451,10 +482,11 @@ FM_SAFE but are logged to the event ring buffer.
 
 | ID   | Description                                                        | Priority |
 |------|--------------------------------------------------------------------|----------|
-| OI-1 | Automatic FM_BOOT → FM_DETUMBLE transition (rate threshold check) — currently ground-commanded only | Medium |
+| OI-1 | Automatic FM_BOOT → FM_DETUMBLE transition (rate threshold check) — **current implementation is ground-commanded only** | Medium |
 | OI-2 | Automatic FM_DETUMBLE → FM_NOMINAL transition (ω < threshold sustained over N samples) — Phase 2 | Medium |
 | OI-3 | FM_SAFE timeout/recovery path (e.g. after successful fault clear) | Low |
 | OI-4 | `fmm_request_transition()` ISR-safety evaluation if fault_manager uses mutex | Low |
+| OI-5 | **ISR-safe forced safe path**: implement `fmm_force_safe_from_isr()` using `xSemaphoreGiveFromISR()` or a dedicated atomic flag polled by a task. Required before any hardware watchdog or timer ISR needs to trigger FM_SAFE directly. | High |
 
 ---
 
