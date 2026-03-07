@@ -45,7 +45,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | EPS-DES-001 | Electrical Power System Design Document | ✅ v0.1 — Draft | [ecss/design/EPS-DES-001.md](ecss/design/EPS-DES-001.md) |
 | COMMS-DES-001 | Communications / TT&C Design Document | ❌ | — |
 | OBC-DES-001 | OBC Hardware & CDH Design Document | ❌ | — |
-| DL-DES-001 | Data Layer / Storage Design Document | ❌ | — |
+| DL-DES-001 | Data Layer / Storage Design Document | ✅ v0.1 — Draft | [ecss/design/DL-DES-001.md](ecss/design/DL-DES-001.md) |
 | RTM-OBC-001 | Requirements Traceability Matrix | ⚠️ | [ecss/verification/RTM-OBC-001.md](ecss/verification/RTM-OBC-001.md) |
 | STP-OBC-001 / TEST-PLAN-001 | Software Test Plan | ⚠️ **TODO**: exists as `TST-001 v3.0` (321 lines) but uses informal ID and lacks ECSS-E-ST-40C §5.7 structure (no SVVP, entry/exit criteria, test levels). Needs formalisation. | [ecss/verification/STP-OBC-001.md](ecss/verification/STP-OBC-001.md) |
 | ADCS-SIM-001 | ADCS Simulation & Verification Document | ❌ **TODO**: not created. Codebase has `closed_loop_sim.h` / `cls_*` infrastructure — needs design document covering simulation architecture, test scenarios, and verification results. | — |
