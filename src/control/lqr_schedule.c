@@ -44,7 +44,7 @@ static const float K_DETUMBLE[LQR_M][LQR_N] = {
 
 void lqr_schedule_apply(lqr_t *lqr, flight_mode_t mode)
 {
-  const float(*gains)[LQR_N];
+  const float (*gains)[LQR_N];
 
   switch (mode)
   {

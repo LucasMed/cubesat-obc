@@ -114,7 +114,7 @@ extern "C"
   /* EPS faults (0x0901 – 0x09FF)                                       */
   /* ------------------------------------------------------------------ */
 
-#define FAULT_EPS_VBATT_LOW (FAULT_SUBSYS_EPS | 0x01u) /**< Battery voltage below LOW threshold   */
+#define FAULT_EPS_VBATT_LOW (FAULT_SUBSYS_EPS | 0x01u) /**< Battery voltage below LOW threshold */
 #define FAULT_EPS_VBATT_CRITICAL                                                                   \
   (FAULT_SUBSYS_EPS | 0x02u) /**< Battery voltage below CRITICAL threshold (7.0 V) */
 #define FAULT_EPS_VBATT_EMERGENCY                                                                  \
