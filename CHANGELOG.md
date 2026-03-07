@@ -5,7 +5,22 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/dl-des-001
+## [Unreleased] — feature/fault-des-001
+
+### Added
+- **FAULT-DES-001 v0.1** (`docs/ecss/design/FAULT-DES-001.md`): Fault Manager Design Document —
+  32-slot flat fault table, 4-level severity model (NONE/WARNING/ERROR/CRITICAL), CRITICAL→`fmm_force_safe()`
+  FDIR chain, WARNING auto-clear ageing policy (30 s), ISR-safe `taskENTER_CRITICAL` locking, fault ID
+  catalogue (10 subsystems, 25 IDs), and full test mapping (T-FM-01..12, 12/12 passing).
+
+### Changed
+- **`include/fault_ids.h`**: Implements EPS-DES-001 OI-6 — adds `FAULT_EPS_VBATT_EMERGENCY` (0x0903)
+  for independent emergency battery event visibility; `FAULT_EPS_OVERCURRENT` renumbered to 0x0904,
+  `FAULT_EPS_READ_ERROR` to 0x0905; `FAULT_ID_COUNT` updated from 22 to 25. All 29/29 tests pass.
+
+---
+
+## [0.15.0] — feature/dl-des-001
 
 ### Added
 - **DL-DES-001 v0.1** (`docs/ecss/design/DL-DES-001.md`): Data Layer Abstraction Design Document —

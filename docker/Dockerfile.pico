@@ -44,11 +44,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Testing & coverage
     lcov \
     gcovr \
-    # Static analysis
+    # Static analysis (pinned to v14 — must match CI runner/ubuntu-22.04)
     cppcheck \
     clang \
-    clang-format \
-    clang-tidy \
+    clang-format-14 \
+    clang-tidy-14 \
     clang-tools \
     # Python (gcovr, scripts)
     python3 \
