@@ -5,7 +5,24 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/sdp-rev1-mrr-observations
+## [Unreleased] — feature/fsw-sdd-001
+
+### Added
+- **FSW-SDD-001 v0.1** (`docs/ecss/design/FSW-SDD-001.md`): Flight Software Design Description —
+  CDR-level consolidated FSW design document with 18 sections: software architecture overview
+  (4-layer: Task/Service/DLA/Driver), module inventory (full `src/` directory tree + call graph),
+  task design (9 tasks with priority rationale, period, HWM, stack budget), service layer design
+  (FMM state machine, Fault Manager escalation path, EPS Schmidt trigger, Event Logger 3-class
+  storage, EKF 6-state filter, LQR gain scheduling, Momentum Dump, CommInit), DLA API and
+  staleness detection, Driver/HAL layer (I²C, MPU6050, HMC5883L, temperature, UART, watchdog),
+  boot sequence call graph with SMP spinlock rationale, inter-task communication (DLA-only,
+  no queue sharing), memory budget (heap + per-task HWM table), FDIR integration (fault severity
+  mapping, watchdog crash recovery, ISR safety table), build system portability table, 12-row
+  traceability to SRS requirements, 7 open items. Cross-references all 8 `*-DES-001` docs.
+
+---
+
+## [0.21.0] — feature/sdp-rev1-mrr-observations
 
 ### Changed
 - **SDP-OBC-001 v1.1** (`docs/ecss/requirements/SDP-OBC-001.md`): Revision addressing MRR review
