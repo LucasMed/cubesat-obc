@@ -33,8 +33,8 @@
 11. [Command Uplink Interface](#11-command-uplink-interface)
 12. [Built-in CSP Services](#12-built-in-csp-services)
 13. [FreeRTOS Task Model](#13-freertos-task-model)
-14. [Initialisation Sequence](#14-initialization-sequence)
-15. [Host Build Behaviour](#15-host-build-behavior)
+14. [Initialization Sequence](#14-initialization-sequence)
+15. [Host Build Behavior](#15-host-build-behavior)
 16. [Error Handling](#16-error-handling)
 17. [Test Mapping](#17-test-mapping)
 18. [Open Items](#18-open-items)
@@ -386,7 +386,7 @@ before returning. This ensures no CSP buffer leaks on any code path.
 
 libcsp v2.x registers the following services automatically on `csp_init()`:
 
-| Port | Service        | Behaviour                                     |
+| Port | Service        | Behavior                                     |
 |------|----------------|-----------------------------------------------|
 | 0    | Ping           | Responds with identical payload, measures RTT |
 | 1    | Process list   | Returns FreeRTOS task list (Pico: via `vTaskList`) |
