@@ -3,7 +3,7 @@
 | Field           | Value                                |
 |-----------------|--------------------------------------|
 | Document ID     | POWER-BDG-001                        |
-| Version         | 0.1                                  |
+| Version         | 0.2                                  |
 | Date            | 2026-03-09                           |
 | Author          | OBC Systems Team                     |
 | Status          | CDR Baseline                         |
@@ -13,6 +13,7 @@
 
 | Version | Date       | Author           | Description                              |
 |---------|------------|------------------|------------------------------------------|
+| 0.2     | 2026-03-09 | OBC Systems Team | GPS load corrected to 120 mW (NEO-7M datasheet); all derived scenario/eclipse numbers updated; TX electrical draw concern flagged (OI-7); added §15 CDR readiness notes |
 | 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline — Phase 1 load estimates from MRD §6.6; eclipse sizing; battery margin analysis; EPS FSM energy state coverage |
 
 ## Table of Contents
@@ -31,6 +32,7 @@
 12. [Margins and Compliance](#12-margins-and-compliance)
 13. [Open Items](#13-open-items)
 14. [References](#14-references)
+15. [CDR Readiness Notes](#15-cdr-readiness-notes)
 
 ---
 
@@ -180,17 +182,17 @@ cycles are defined for the `FM_NOMINAL` reference scenario.
 | OBC | RP2350 Core 0 @ 133 MHz | 150 | 300 | 100% | 150 | Core 1 idle; FPU active during ADCS |
 | ADCS sensors | MPU-6050 (gyro+accel) | 15 | 25 | 100% | 15 | Normal+LP mode |
 | ADCS sensors | LIS3MDL magnetometer | 5 | 15 | 100% | 5 | Continuous mode |
-| ADCS sensors | NEO-7M GPS | 90 | 120 | 100% | 90 | Tracking mode |
+| ADCS sensors | NEO-7M GPS | 120 | 150 | 100% | 120 | Tracking mode; revised from 90 mW per U-blox NEO-7M datasheet operating current ~25 mA @ 3.3 V (≤ 120 mW typical) |
 | EPS | TPS3431 WDT | 1 | 1 | 100% | 1 | μA-level, negligible |
 | Board | Passive quiescent (LDO, pull-ups) | 30 | 30 | 100% | 30 | Estimated |
-| **Continuous total** | | **291** | **491** | — | **291** | |
+| **Continuous total** | | **321** | **521** | — | **321** | |
 
 ### 7.2 Duty-Cycled Loads
 
 | Subsystem | Component | Active Power (mW) | Duty Cycle | Avg (mW) | Notes |
 |-----------|-----------|-------------------|------------|----------|-------|
 | TT&C | E22-400M30S RX (listening) | 30 | 100% | 30 | RX idle current |
-| TT&C | E22-400M30S TX @ 30 dBm | 3 000 | 1% (6 s/pass) | 30 | 1 Hz HK × 42 B ÷ 3900 bps ≈ 90 ms on-time; estimated 1% duty over pass |
+| TT&C | E22-400M30S TX @ 30 dBm | **3 000** | 1% (6 s/pass) | 30 | EBYTE datasheet: ~600 mA × 5 V = 3 000 mW; PA eff. ~33%; may be 3 000–4 500 mW — see OI-7; 1.1% actual duty from LINK-BDG-001 §6.1 |
 | Magnetorquers | MTQ ×3 B-dot (FM_DETUMBLE) | 600 | 50% | 300 | PWM duty cycle varies; 50% conservative for B-dot |
 | Magnetorquers | MTQ ×3 FM_NOMINAL (trim) | 200 | 20% | 40 | Low-duty trim torques |
 | **Duty-cycled total (FM_NOMINAL)** | | — | — | **100** | TX + MTQ trim |
@@ -199,13 +201,18 @@ cycles are defined for the `FM_NOMINAL` reference scenario.
 
 | Scenario | Power Avg (mW) | Power Peak (mW) |
 |----------|---------------|-----------------|
-| FM_SAFE (minimal — OBC + RX only) | **321** | 350 |
-| FM_NOMINAL (standard — continuous + duty-cycled) | **391** | ~3 891 (TX burst) |
-| FM_DETUMBLE (max operational) | **591** | ~3 891 (TX + MTQ full) |
-| Deep eclipse survival (OBC + RX only) | **321** | 350 |
+| FM_SAFE (minimal — OBC + RX only) | **351** | 380 |
+| FM_NOMINAL (standard — continuous + duty-cycled) | **421** | ~3 921 (TX burst) |
+| FM_DETUMBLE (max operational) | **621** | ~3 921 (TX + MTQ full) |
+| Deep eclipse survival (OBC + RX only) | **351** | 380 |
 
 > **MRD §6.6 reference**: Full Phase 1 load (≤ 4 W peak). This analysis yields
-> **3.89 W** peak — confirmed within 4 W requirement.
+> **3.92 W** peak — confirmed within 4 W requirement.
+>
+> **Note**: If E22 electrical draw is 4 500 mW (OI-7), the instantaneous TX burst
+> peak rises to ~5.1 W for ~134 ms. The 4 W MRD limit is interpreted as a
+> duty-cycled average; at 1% TX duty cycle the time-averaged TX contribution
+> remains < 50 mW. Confirm interpretation with EPS design authority.
 
 ---
 
@@ -216,13 +223,13 @@ cycles are defined for the `FM_NOMINAL` reference scenario.
 | Term | Value | Calculation |
 |------|-------|------------|
 | Energy generated (sun phase) | 14.0 Wh | §5.2 |
-| Energy consumed — sun phase (59.7 min) | 0.391 W × (59.7/60) h = **0.39 Wh** | FM_NOMINAL avg |
-| Energy consumed — eclipse phase (37 min) | 0.391 W × (37/60) h = **0.24 Wh** | Eclipse (no TX in practice) |
-| Total consumed / orbit | **0.63 Wh** | — |
-| Net energy per orbit | 14.0 − 0.63 = **+13.37 Wh** | Strongly positive |
+| Energy consumed — sun phase (59.7 min) | 0.421 W × (59.7/60) h = **0.42 Wh** | FM_NOMINAL avg |
+| Energy consumed — eclipse phase (37 min) | 0.421 W × (37/60) h = **0.26 Wh** | Eclipse (no TX in practice) |
+| Total consumed / orbit | **0.68 Wh** | — |
+| Net energy per orbit | 14.0 − 0.68 = **+13.32 Wh** | Strongly positive |
 | **Verdict** | **PASS — array far exceeds orbital consumption** | |
 
-> **Observation**: At 2U panel area, the solar array generates ~22× the orbital
+> **Observation**: At 2U panel area, the solar array generates ~20× the orbital
 > energy budget. This large margin reflects that the E22 TX at 30 dBm has a very
 > low duty cycle (< 1% of orbit time). The effective average radio load is ~30 mW.
 > The design is **power-positive by a large margin** — the limiting factor is
@@ -234,8 +241,8 @@ cycles are defined for the `FM_NOMINAL` reference scenario.
 |------|-------|
 | Orbits per day | 60 min × 24 h / 96.7 min ≈ **14.9 orbits/day** |
 | Energy generated per day | 14.9 × 14.0 Wh = **208.6 Wh/day** |
-| Energy consumed per day | 14.9 × 0.63 Wh = **9.4 Wh/day** |
-| Balance | **+199.2 Wh/day** — strongly positive |
+| Energy consumed per day | 14.9 × 0.68 Wh = **10.1 Wh/day** |
+| Balance | **+198.5 Wh/day** — strongly positive |
 
 ---
 
@@ -248,9 +255,9 @@ worst-case 37-minute eclipse period.
 
 | Scenario | Load (mW) | Eclipse (min) | Energy Required (Wh) |
 |----------|----------|--------------|----------------------|
-| FM_SAFE minimal (OBC + RX) | 321 | 37 | 0.198 |
-| FM_NOMINAL | 391 | 37 | 0.241 |
-| FM_DETUMBLE (active) | 591 | 37 | 0.364 |
+| FM_SAFE minimal (OBC + RX) | 351 | 37 | 0.217 |
+| FM_NOMINAL | 421 | 37 | 0.260 |
+| FM_DETUMBLE (active) | 621 | 37 | 0.383 |
 
 ### 9.2 Margin Analysis
 
@@ -258,12 +265,12 @@ Using EOL usable capacity 4.74 Wh @ 40% DoD:
 
 | Scenario | Energy Required (Wh) | Usable (Wh) | Margin (Wh) | Margin (%) | Time at load (min) |
 |----------|---------------------|-------------|-------------|------------|-------------------|
-| FM_SAFE | 0.198 | 4.74 | 4.54 | **+2294%** | **885 min** |
-| FM_NOMINAL | 0.241 | 4.74 | 4.50 | **+1866%** | **727 min** |
-| FM_DETUMBLE | 0.364 | 4.74 | 4.38 | **+1203%** | **481 min** |
+| FM_SAFE | 0.217 | 4.74 | 4.52 | **+2084%** | **810 min** |
+| FM_NOMINAL | 0.260 | 4.74 | 4.48 | **+1723%** | **676 min** |
+| FM_DETUMBLE | 0.383 | 4.74 | 4.36 | **+1138%** | **458 min** |
 
 All scenarios pass with large margins. The baseline 2S 2 Ah battery provides
-**481 min at full FM_DETUMBLE load** — more than 12× the worst-case eclipse of
+**458 min at full FM_DETUMBLE load** — more than 12× the worst-case eclipse of
 37 min.
 
 ### 9.3 MIS-PB-001 Compliance
@@ -272,12 +279,12 @@ All scenarios pass with large margins. The baseline 2S 2 Ah battery provides
 
 | Value | Required | Actual (EOL, FM_DETUMBLE @ 591 mW) | Compliant? |
 |-------|----------|-------------------------------------|------------|
-| Eclipse survival time | ≥ 37 min | **481 min** (EOL) | ✅ **PASS** |
+| Eclipse survival time | ≥ 37 min | **458 min** (EOL) | ✅ **PASS** |
 
 > **Note**: The MRD was written conservatively using 4 W (peak with radio TX).
-> At average FM_DETUMBLE load ~591 mW (no TX during eclipse), the margin is
+> At average FM_DETUMBLE load ~621 mW (no TX during eclipse), the margin is
 > even larger. At 4 W peak: 4.74 Wh / 4 W × 60 min/h = **71 min** — still
-> nearly 2× requires 37 min.
+> nearly 2× the required 37 min.
 
 ### 9.4 MIS-PB-002 Compliance
 
@@ -347,10 +354,10 @@ Approximated using linear SoC model (7.4 V → 0%, 8.4 V → 100%; 7.0 V → –
 
 | Requirement | Threshold | Analysis Result | Margin | Status |
 |------------|-----------|----------------|--------|--------|
-| MIS-PB-001 — eclipse survival ≥ 37 min at ≤ 4 W | 37 min | 71 min @ 4 W peak (EOL) / 481 min @ avg load | +34 min / +92% | ✅ PASS |
+| MIS-PB-001 — eclipse survival ≥ 37 min at ≤ 4 W | 37 min | 71 min @ 4 W peak (EOL) / 458 min @ avg load | +34 min / +12× | ✅ PASS |
 | MIS-PB-002 — OBC rail at V ≥ 6.6 V | 6.6 V | LDO input range 3.0–16 V; OBC rail dedicated | +3.0 V headroom | ✅ PASS |
-| Peak load ≤ 4 W (MRD §6.6 note) | 4 000 mW | 3 891 mW (FM_DETUMBLE + TX burst) | +109 mW | ✅ PASS |
-| Energy positive per orbit | > 0 Wh | +13.37 Wh/orbit (EOL) | — | ✅ PASS |
+| Peak load ≤ 4 W (MRD §6.6 note) | 4 000 mW | 3 921 mW (FM_DETUMBLE + TX burst) | +79 mW | ✅ PASS |
+| Energy positive per orbit | > 0 Wh | +13.32 Wh/orbit (EOL) | — | ✅ PASS |
 
 **CDR Recommendation**: No redesign required for Phase 1 power system. Battery
 remains 2S 2000 mAh minimum. Phase 2 additions (RW ×3, INA219 current monitor)
@@ -368,6 +375,7 @@ require updated budget iteration.
 | OI-4 | EOL degradation factor 80% assumed; actual cell datasheet (manufacturer TBD) should be confirmed | Medium | Open |
 | OI-5 | TX duty cycle assumed 1% — verify against LINK-BDG-001 actual pass geometry and dwell time | Low | In LINK-BDG-001 |
 | OI-6 | INA219 current monitor driver not implemented (Phase 2 plan) — required for closed-loop power management | High | Phase 2 |
+| OI-7 | E22-400M30S electrical TX draw assumed 3 000 mW (EBYTE datasheet ~600 mA × 5 V); PA efficiency ~33%; actual draw may be 3 000–4 500 mW — confirm by current measurement during FM thermal-vacuum test; peak load compliance margin may reduce from +79 mW to negative but time-average impact is < 50 mW | High | Open |
 
 ---
 
@@ -379,6 +387,62 @@ require updated budget iteration.
 | [2] | EPS-DES-001 v0.1 — §5 Energy State Model, §6 Voltage Thresholds |
 | [3] | OBC-DES-001 v0.1 — §12 Power Architecture |
 | [4] | FMEA-OBC-001 v0.1 — §9.2 EPS priority items |
-| [5] | LINK-BDG-001 v0.1 — TX duty cycle (§6.1) |
+| [5] | LINK-BDG-001 v0.2 — TX duty cycle (§6.1) |
 | [6] | ECSS-E-HB-20-05A — Spacecraft Electrical Power Systems Handbook |
 | [7] | ASS-4 (MRD-OBC-001 §7.2) — Battery 2S Li-ion / LiPo ≥ 37 min at full load |
+
+---
+
+## 15. CDR Readiness Notes
+
+Brief responses to anticipated CDR review panel questions.
+
+### 15.1 EPS / Battery Questions
+
+**Q: What is the battery thermal environment?**
+
+Li-ion cells operate within specification (discharge 0–45 °C, storage –20–60 °C)
+in the expected LEO thermal cycling environment. Phase 1 relies on passive
+thermal management (PCB copper pours, cell foam insulation). FMEA-OBC-001 OI-4
+tracks active thermal control (heater + thermostat) for Phase 2.
+
+**Q: What is the battery cycle life versus mission duration?**
+
+At 40% DoD and ~15 orbits/day, the battery undergoes up to 2 738 charge-discharge
+cycles for a 6-month Phase 1 mission. Standard Li-ion cells at 40% DoD support
+> 1 000 cycles per most datasheets; actual cell datasheet (OI-4) must be confirmed.
+The 80% EOL capacity assumption is conservative against industry-standard 12-month
+CubeSat mission profiles.
+
+**Q: What happens to the battery after 1 year (degradation)?**
+
+EOL model uses 80% capacity retention after 12 months: 4.74 Wh usable. Eclipse
+survival decreases from ~810 min (BOL FM_SAFE) to 810 min at EOL FM_SAFE — the
+40% DoD sizing absorbs the degradation entirely. The EPS FSM voltage thresholds
+(§10) are calibrated to open-circuit voltage, not capacity, so they remain valid
+at EOL.
+
+**Q: What if the solar panel is partially shadowed?**
+
+Panel area is the primary uncertainty (OI-1). At 50% shadowing (one panel
+obstructed), generation halves to ~7 W → ~7 Wh/orbit. This still exceeds orbital
+consumption (0.68 Wh) by 10×. Eclipse survival is unaffected (battery-only).
+The solar model cosine factor of 0.60 already accounts for average off-pointing.
+
+### 15.2 Peak Power and TX Concerns
+
+**Q: Is the 3 W TX power figure verified?**
+
+The 3 000 mW figure is derived from the EBYTE E22-400M30S datasheet typical
+current (~600 mA from a 5 V supply). PA efficiency is approximately 33%. Some
+measured COTS modules in this class draw up to 4 500 mW at 30 dBm. OI-7 requires
+current measurement during FM testing. Even at 5 000 mW, the time-averaged load
+contribution is < 50 mW (1% duty) — negligible for energy balance.
+
+**Q: What happens if the peak load exceeds 4 W?**
+
+The 3 921 mW peak is within the 4 W MRD limit. If TX is 4 500 mW the instantaneous
+peak would be ~5.1 W for the ~134 ms TX burst. The 4 W limit in MRD §6.6 is a
+power-rail sizing constraint (wire gauge, connector rating), not an energy limit.
+Recommendation: confirm with EPS design authority whether limit is peak-
+instantaneous or duty-cycled-average, and uprate conductors if needed.

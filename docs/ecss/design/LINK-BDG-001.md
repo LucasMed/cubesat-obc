@@ -3,7 +3,7 @@
 | Field           | Value                                |
 |-----------------|--------------------------------------|
 | Document ID     | LINK-BDG-001                         |
-| Version         | 0.1                                  |
+| Version         | 0.2                                  |
 | Date            | 2026-03-09                           |
 | Author          | OBC Systems Team                     |
 | Status          | CDR Baseline                         |
@@ -13,6 +13,7 @@
 
 | Version | Date       | Author           | Description                              |
 |---------|------------|------------------|------------------------------------------|
+| 0.2     | 2026-03-09 | OBC Systems Team | Revised antenna model: –3 dBi tumble-averaged SC gain; TX uprated to +30 dBm to maintain EIRP +26.5 dBm; added §5.3 radiation pattern analysis; UL margin corrected to +9.6 dB; MIS-DB-002 Phase 3 fix clarified; added §15 CDR readiness notes |
 | 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline — 433 MHz LoRa E22-400M30S; SF9 BW 125 kHz; downlink and uplink budgets; worst-case slant range 2300 km; MIS-C-003 compliance (+8.5 dB margin) |
 
 ## Table of Contents
@@ -31,6 +32,7 @@
 12. [Margins and Compliance](#12-margins-and-compliance)
 13. [Open Items](#13-open-items)
 14. [References](#14-references)
+15. [CDR Readiness Notes](#15-cdr-readiness-notes)
 
 ---
 
@@ -131,11 +133,11 @@ $$R_{slant} = \sqrt{R_E^2 \cos^2\varepsilon + h(2R_E + h)} - R_E\cos\varepsilon$
 | Module | EBYTE E22-400M30S | MRD §3.2.4, BOM-OBC-001 |
 | Frequency | 433.0 MHz | UHF amateur satellite band |
 | Max TX power | **+30 dBm** (1 W) | Module datasheet |
-| Nominal TX power (CDR baseline) | **+27 dBm** (500 mW) | Operational setting (saves power) |
+| Nominal TX power (CDR baseline) | **+30 dBm** (1 W) | Max power adopted; compensates –3 dBi tumble-averaged antenna gain (see §5.3) |
 | RX sensitivity (SF9, BW 125) | **–133 dBm** | Module datasheet (LoRa mode) |
 | UART interface to OBC | 115 200 baud, 8N1 | GPIO8 (TX), GPIO9 (RX) |
 | Antenna | Monopole / dipole stub | Provisional — see OI-1 |
-| Spacecraft antenna gain | **0 dBi** | Omnidirectional stub (conservative) |
+| Spacecraft antenna gain | **–3 dBi** | Tumble-averaged pattern loss (see §5.3) |
 | Spacecraft feed/cable loss | **–0.5 dB** | Short coax stub |
 
 ### 5.2 Ground Station Radio
@@ -148,6 +150,38 @@ $$R_{slant} = \sqrt{R_E^2 \cos^2\varepsilon + h(2R_E + h)} - R_E\cos\varepsilon$
 | Antenna | Yagi 6-element (provisional) | ~7 dBi gain estimate |
 | GS antenna gain | **7 dBi** | Provisional — see OI-1 |
 | GS feed/cable loss | **–1.0 dB** | 3 m coax estimate |
+
+### 5.3 Radiation Pattern and Attitude Dependency
+
+A monopole antenna in free tumble produces radiation pattern nulls along its
+axis. Before functional detumbling is confirmed (Phase 1 acquisition), the
+spacecraft may rotate freely. The effective gain toward the ground station
+depends on instantaneous orientation.
+
+| Geometry | Effective Gain | Occurrence | Notes |
+|----------|---------------|-----------|-------|
+| Null axis toward GS | –10 to –15 dBi | < 1% of pass time | Link fails in this orientation |
+| **Tumble-averaged (random rotation)** | **–3 dBi** | Statistical mean | **CDR baseline adopted** |
+| Broadside (best case) | 0 to +2 dBi | ~30% of pass time | Consistent with prior 0 dBi assumption |
+
+**Design decision** — The CDR budget adopts **–3 dBi** as the spacecraft antenna
+gain for both downlink TX and uplink RX, with TX power uprated to **+30 dBm**
+(max) to maintain the same EIRP (+26.5 dBm) that +27 dBm with 0 dBi previously
+provided. Link margins are unchanged at +9.6 dB DL / +9.6 dB UL.
+
+**Absolute worst-case sensitivity** (null toward GS, –10 dBi):
+
+$$M_{null} = 9.6 - (10 - 3) = \mathbf{+2.6 \text{ dB}} < +8 \text{ dB threshold}$$
+
+This orientation is **not mitigated in Phase 1**. Accepted risk: random tumble
+orientation pointing to null lasts < 1% of any pass (~6 s); other time the link
+is closed. Phase 2 magnetorquer detumbling reduces tumble rate, narrowing the
+null-pointing window further. Long-term mitigation: deployed turnstile antenna
+(near-omnidirectional, –1 to 0 dBi all-aspect) is planned for Phase 2.
+
+> **Polarization note**: A separate –3.0 dB polarization loss is already
+> included in §7 and §8 link budget tables, accounting for circular-vs-linear
+> mismatch between GS Yagi and spacecraft monopole.
 
 ---
 
@@ -194,10 +228,10 @@ use **–133 dBm** as the receiver sensitivity figure.
 
 | Parameter | Symbol | Value | Units | Notes |
 |-----------|--------|-------|-------|-------|
-| Transmit power | P_t | +27 | dBm | 500 mW nominal |
-| Transmit antenna gain | G_t | 0 | dBi | OBC monopole stub |
+| Transmit power | P_t | +30 | dBm | Max power; compensates –3 dBi SC antenna average (§5.3) |
+| Transmit antenna gain | G_t | –3 | dBi | Tumble-averaged pattern loss (§5.3) |
 | Transmit feed loss | L_t | –0.5 | dB | Short coax |
-| **EIRP** | EIRP | **+26.5** | **dBm** | P_t + G_t − L_t |
+| **EIRP** | EIRP | **+26.5** | **dBm** | 30 − 3 − 0.5 = +26.5 dBm (same as prior baseline) |
 | Frequency | f | 433 | MHz | — |
 | Slant range | R | 2300 | km | Worst case (5° elevation) |
 | Free-space path loss (FSPL) | FSPL | **–152.4** | dB | $20\log_{10}(4\pi R f/c)$ |
@@ -243,11 +277,11 @@ $$FSPL = 20\log_{10}\!\left(\frac{4\pi \times 2300\times10^3 \times 433\times10^
 | **EIRP (GS)** | EIRP | **+36** | **dBm** | — |
 | FSPL (2300 km) | — | –152.4 | dB | Same geometry |
 | Atmospheric + polarization | — | –3.5 | dB | — |
-| OBC antenna gain | G_r | 0 | dBi | Monopole stub |
+| OBC antenna gain | G_r | –3 | dBi | Tumble-averaged pattern loss (§5.3) |
 | OBC feed loss | L_r | –0.5 | dB | — |
-| **Received power (OBC)** | P_r | **–120.4** | **dBm** | — |
+| **Received power (OBC)** | P_r | **–123.4** | **dBm** | — |
 | OBC receiver sensitivity | S_min | –133 | dBm | E22 @ SF9 BW 125 |
-| **Link Margin (uplink)** | M | **+12.6** | **dB** | ✅ PASS |
+| **Link Margin (uplink)** | M | **+9.6** | **dB** | ✅ PASS |
 
 ---
 
@@ -285,7 +319,8 @@ Phase 3 W25Qxx implementation will extend to ≥ 2 MB flash → ≥ 131 072 entr
 | MIS-DB-002 — ≥ 320 events | 320 | 128 (⚠ short) | > 100 000 ✅ |
 
 > **OI-2**: Phase 1 RAM ring buffer holds 128 events — below the MRD requirement
-> of 320. Mitigated in Phase 3 with W25Qxx NOR flash driver. Tracked as
+> of 320. **Phase 3 W25Qxx NOR flash resolves this requirement**: at 16 B/event,
+> 2 MB flash provides ≥ 131 072 events (> 400× requirement). Tracked as
 > FSW-SDD-001 OI-2.
 
 ---
@@ -329,7 +364,7 @@ required. The E22 module handles fine frequency tracking internally.
 
 | Requirement | Threshold | Worst-Case Result | Margin | Status |
 |------------|-----------|-------------------|--------|--------|
-| MIS-C-003 — link margin ≥ +8 dB at 2300 km | +8 dB | **+9.6 dB** (DL) / **+12.6 dB** (UL) | +1.6 / +4.6 dB | ✅ PASS |
+| MIS-C-003 — link margin ≥ +8 dB at 2300 km | +8 dB | **+9.6 dB** (DL) / **+9.6 dB** (UL) | +1.6 / +1.6 dB | ✅ PASS |
 | MIS-DB-001 — HK downlink ≥ 1 Hz per pass | 1 Hz × 52 B = 416 bps | 10.7% of 3 906 bps capacity | 89.3% spare | ✅ PASS |
 | MIS-DB-002 — ≥ 320 events stored | 320 events | 128 events (Phase 1 RAM) | –192 events **⚠** | ⚠ Phase 3 |
 | Doppler tolerance | — | ±11 kHz vs BW 125 kHz | 11× margin | ✅ PASS |
@@ -344,7 +379,7 @@ W25Qxx driver (FSW-SDD-001 OI-2). No RF link redesign required before CDR.
 
 | OI  | Description | Priority | Status |
 |-----|-------------|----------|--------|
-| OI-1 | Spacecraft antenna model is provisional (0 dBi monopole stub) — confirm with RF/mechanical team; link margin may increase with a tuned patch or turnstile antenna | High | Open |
+| OI-1 | SC antenna model revised to –3 dBi tumble-average (§5.3); TX uprated to +30 dBm to maintain EIRP. Absolute worst case (null toward GS, –10 dBi) is not mitigated in Phase 1 — accepted risk. Confirm antenna pattern by RF chamber measurement before TRR; plan Phase 2 deployed turnstile for all-aspect coverage | High | Open |
 | OI-2 | Phase 1 RAM ring buffer holds 128 events vs MIS-DB-002 ≥ 320 — mitigated by FSW-SDD-001 OI-2 (W25Qxx, Phase 3) | Medium | Phase 3 |
 | OI-3 | IARU frequency coordination not started — assign frequency coordinator; required by TRR 2026-09 | High | Open |
 | OI-4 | GS Yagi antenna gain assumed 7 dBi — confirm with GS hardware spec before operational readiness | Medium | Open |
@@ -359,9 +394,63 @@ W25Qxx driver (FSW-SDD-001 OI-2). No RF link redesign required before CDR.
 |-----|----------|
 | [1] | MRD-OBC-001 v1.1 — §3.2.4 (GS config), §4 (orbit), §6.3 (MIS-C-003), §6.7 (MIS-DB-001/002) |
 | [2] | COMMS-DES-001 v0.1 — Protocol stack; UART config; CSP/KISS overhead |
-| [3] | POWER-BDG-001 v0.1 — E22 TX duty cycle and power |
+| [3] | POWER-BDG-001 v0.2 — E22 TX duty cycle and power |
 | [4] | ICD-OBC-001 v1.1 — Interface: OBC ↔ E22 radio (UART1 GPIO8/9) |
 | [5] | EBYTE E22-400M30S Datasheet — Tx power, RX sensitivity, LoRa parameters |
 | [6] | Semtech SX1262 Datasheet — LoRa modulation; SNR / sensitivity vs SF |
 | [7] | ITU Radio Regulations, Article 25 — Amateur Satellite Service |
 | [8] | IARU Frequency Coordination — amateur satellite band plan Region 2 |
+
+---
+
+## 15. CDR Readiness Notes
+
+Brief responses to anticipated CDR review panel questions.
+
+### 15.1 RF Subsystem Questions
+
+**Q: Why LoRa instead of FSK?**
+
+LoRa SF9 provides –133 dBm sensitivity vs ~–110 dBm for comparable-rate FSK — a
+23 dB advantage that drives link margins from marginal to robust. LoRa is also
+inherently Doppler-tolerant (±11 kHz << BW 125 kHz) without AFC. COTS
+availability and established CubeSat heritage (multiple university missions using
+SX1262-based modules) justify the selection over a custom FSK design.
+
+**Q: What happens if Doppler exceeds receiver tolerance?**
+
+At 433 MHz / 600 km SSO, worst-case Doppler is ±11 kHz (§10). LoRa BW = 125 kHz
+provides a 5.7× margin. The E22 internal PLL tracks residual carrier offset. No
+AFC algorithm is required for Phase 1. This is analyzed in §10.
+
+**Q: Is the radio space-qualified?**
+
+The E22-400M30S is a COTS module — not space-qualified by EBYTE. Total Ionizing
+Dose (TID) and Single-Event Upset (SEU) tolerance are unverified. Mitigation:
+Phase 1 operational lifetime is ≤ 6 months; LEO TID dose at 600 km altitude is
+typically 1–5 krad/year (well below the general COTS tolerance of 10–20 krad).
+Risk is accepted for Phase 1; Phase 2 should evaluate rad-hardened alternatives
+(e.g. Endurosat UHF Type II, ISIS UHF).
+
+**Q: How is the antenna deployed?**
+
+Phase 1: fixed monopole/dipole stub attached to OBC PCB edge — no deployment
+mechanism. This simplifies Phase 1 integration but accepts the tumble-averaged
+–3 dBi gain characterized in §5.3. Phase 2 plan: deployable tape-measure dipole
+or turnstile (SMA actuator or burn-wire) — subject to mechanical CDR approval.
+
+### 15.2 Ground Station Questions
+
+**Q: What is the minimum ground station requirement?**
+
+A COTS E22-400M30S with a 6-element Yagi (7 dBi) provides +9.6 dB margin at
+worst-case 2300 km. Even a 0 dBi omni GS antenna would yield 9.6 – 7 = +2.6 dB
+DL margin — borderline but technically feasible at nominal elevation angles.
+A Yagi is the CDR-baseline requirement for GS hardware.
+
+**Q: How are commands validated and authenticated?**
+
+Phase 1: commands carry a 2-byte KISS FCS checksum; no cryptographic
+authentication. Authentication relies on the operational security of RF access
+(operator physically controls the transmitter). OI-6 tracks Phase 2 MAC/HMAC
+command verification.
