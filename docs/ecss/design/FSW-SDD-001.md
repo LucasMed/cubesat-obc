@@ -5,7 +5,7 @@
 | **Document ID**  | FSW-SDD-001                                        |
 | **Title**        | Flight Software Design Description                 |
 | **Project**      | CubeSat OBC — RP2350 / Pico 2W                     |
-| **Version**      | 0.1                                                |
+| **Version**      | 0.2                                                |
 | **Status**       | Draft — CDR Baseline                               |
 | **Date**         | 2026-03-09                                         |
 | **Author**       | OBC Systems Team                                   |
@@ -19,6 +19,7 @@
 | Version | Date       | Author           | Description                         |
 |---------|------------|------------------|-------------------------------------|
 | 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline                |
+| 0.2     | 2026-03-09 | OBC Systems Team | Address CDR review observations: SRAM regions table (§13.2), CPU budget estimate (§14), FMM transition conditions (§8.1), EPS execution context (§8.3, §7.7), logger flash driver target (§8.4), HK packet table (§7.5), Command ACK format (§7.6), OI-2/OI-4 clarifications, new OI-8 (heap sizing) |
 
 ---
 
@@ -37,11 +38,12 @@
 11. [Boot Sequence](#11-boot-sequence)
 12. [Inter-Task Communication](#12-inter-task-communication)
 13. [Memory Management](#13-memory-management)
-14. [Error Handling and FDIR Integration](#14-error-handling-and-fdir-integration)
-15. [Build System and Platform Portability](#15-build-system-and-platform-portability)
-16. [Traceability to Requirements](#16-traceability-to-requirements)
-17. [Open Items](#17-open-items)
-18. [References](#18-references)
+14. [CPU Budget Estimate](#14-cpu-budget-estimate)
+15. [Error Handling and FDIR Integration](#15-error-handling-and-fdir-integration)
+16. [Build System and Platform Portability](#16-build-system-and-platform-portability)
+17. [Traceability to Requirements](#17-traceability-to-requirements)
+18. [Open Items](#18-open-items)
+19. [References](#19-references)
 
 ---
 
@@ -94,7 +96,7 @@ MRD-OBC-001 (mission)
 
 ### 1.4 Document Identifier
 
-`FSW-SDD-001 v0.1`
+`FSW-SDD-001 v0.2`
 
 ---
 
@@ -393,9 +395,26 @@ runnable task always executes.
 
 - Runs at 1 Hz (`vTaskDelay(pdMS_TO_TICKS(1000))`).
 - Calls `dl_read_snapshot()` to get a consistent state copy.
-- Serializes a fixed-format HK packet (flight mode, attitude, rates, battery
-  voltage, energy state, fault flags).
-- Sends packet via CSP over KISS-framed UART1 (`comm_init`-managed routing).
+- Serializes a fixed-format HK packet (see table below) via CSP over KISS-framed UART1 (`comm_init`-managed routing).
+
+**HK Telemetry Packet Fields** (CSP port 10, fixed layout, little-endian):
+
+| # | Field | Type | Size | Source |
+|---|-------|------|------|--------|
+| 1 | `timestamp_ms` | `uint32_t` | 4 B | `xTaskGetTickCount()` |
+| 2 | `flight_mode` | `uint8_t` | 1 B | `dl_snapshot.mode` |
+| 3 | `energy_state` | `uint8_t` | 1 B | `dl_snapshot.energy` |
+| 4 | `roll_rad` | `float` | 4 B | `dl_snapshot.state.attitude[0]` |
+| 5 | `pitch_rad` | `float` | 4 B | `dl_snapshot.state.attitude[1]` |
+| 6 | `yaw_rad` | `float` | 4 B | `dl_snapshot.state.attitude[2]` |
+| 7 | `rate_x_rads` | `float` | 4 B | `dl_snapshot.state.rates[0]` |
+| 8 | `rate_y_rads` | `float` | 4 B | `dl_snapshot.state.rates[1]` |
+| 9 | `rate_z_rads` | `float` | 4 B | `dl_snapshot.state.rates[2]` |
+| 10 | `battery_v` | `float` | 4 B | `dl_snapshot.state.battery_v` |
+| 11 | `fault_flags` | `uint32_t` | 4 B | Active fault bitmask |
+| 12 | `imu_valid` | `uint8_t` | 1 B | `dl_snapshot.state.imu_valid` |
+| 13 | _padding_ | — | 3 B | Alignment |
+| **Total** | | | **42 B** | |
 
 ### 7.6 Command Task (`src/tasks/command_task.c`)
 
@@ -404,11 +423,16 @@ runnable task always executes.
   - Mode change → `fmm_request_transition()`
   - Parameter set → subsystem service functions
   - Log dump → `log_read_recent()`
-- ACKs each successfully executed TC with a CSP reply packet.
+- ACKs each successfully executed TC with a CSP reply packet on the same port:
+  - `result` (1 B): `0x00` = accepted, `0x01` = rejected, `0x02` = invalid.
+  - `echo_seq` (2 B): sequence number mirrored from the received TC header.
+  - `reason` (1 B, on rejection): `fmm_result_t` or driver error code.
 
 ### 7.7 HealthMon Task (`src/tasks/health_monitor_task.c`)
 
 - Runs at 1 Hz.
+- Calls `eps_monitor_tick()` — evaluates the Schmidt-trigger voltage FSM and
+  updates the DLA `energy_state` field (see §8.3).
 - Kicks the hardware watchdog via `watchdog_hal_kick()`.
 - Reads DLA to verify sensor data freshness (checks `imu_valid`, `mag_valid`).
 - If sensor data is older than 2 s (`seq` counter stale): raises
@@ -425,15 +449,29 @@ runnable task always executes.
 **Header**: `include/flight_mode.h`  
 **Full design**: `FMM-DES-001`
 
-The FMM implements the five-state flight mode machine:
+The FMM implements the five-state flight mode machine. Transition conditions
+are shown on each arc; `fmm_force_safe()` is the unconditional FDIR path.
 
 ```
-FM_BOOT(0) ──► FM_SAFE(1) ──► FM_DETUMBLE(2) ──► FM_NOMINAL(3)
-                 ▲                                      |
-                 └──────────── any mode ◄───────────────┘
-                               fmm_force_safe()
-                 FM_DIAGNOSTIC(4) ◄──► FM_NOMINAL(3)
+FM_BOOT(0) ─[boot done]─► FM_SAFE(1) ─[GS cmd]─► FM_DETUMBLE(2)
+                              ▲                          │
+         fmm_force_safe()     │              [ω < 2 °/s + GS cmd]
+         (FDIR / ISR)         │                          ▼
+                              ├──────────────────── FM_NOMINAL(3)
+                              │                       ↕ [GS cmd]
+                              └──────────────── FM_DIAGNOSTIC(4)
 ```
+
+**Transition conditions:**
+
+| From | To | Condition |
+|------|----|-----------|
+| FM_BOOT | FM_SAFE | Boot sequence complete (`vStartupTask` subsystem init done) |
+| FM_SAFE | FM_DETUMBLE | Ground command; or autonomous LEOP timeout |
+| FM_DETUMBLE | FM_NOMINAL | Ground command after ω ≤ 2 °/s (MO-2) |
+| FM_NOMINAL | FM_DIAGNOSTIC | Ground command only |
+| FM_DIAGNOSTIC | FM_NOMINAL | Ground command only |
+| Any | FM_SAFE | `fmm_force_safe()` — FDIR CRITICAL fault or unconditional GS command |
 
 **Key APIs:**
 
@@ -497,9 +535,16 @@ Implements a two-threshold Schmidt trigger on battery voltage to derive the
 | `ENERGY_LOW`      | Vbatt < 7.2 V (falling) | Non-essential loads shed |
 | `ENERGY_CRITICAL` | Vbatt < 6.6 V (falling) | All non-OBC loads shed; fault raised |
 
-The monitor reads `dl_read_snapshot().state.battery_v` (written by
-`SensorRead` from ADC0). State transitions write back to the DLA energy field
-via `dl_write_energy_state()`.
+The monitor reads `battery_v` from the DLA (written by `SensorRead` from ADC0).
+`eps_monitor_tick()` is called by `vHealthMonitorTask` at 1 Hz
+(`src/tasks/health_monitor_task.c` line 33), which ensures periodic FSM
+evaluation without requiring a dedicated task. State transitions write back to
+the DLA energy field via `dl_write_energy_state()`.
+
+> **Execution guarantee**: `vHealthMonitorTask` runs at priority 1 (lowest).
+> If it is blocked for any reason, the TPS3431 WDT fires before the next
+> `watchdog_hal_kick()` deadline, resetting the OBC. This provides an implicit
+> liveness guarantee for the EPS monitor evaluation loop.
 
 ### 8.4 Event Logger
 
@@ -519,7 +564,9 @@ Each `log_event_t` record is exactly **40 bytes**:
 `timestamp_ms(4) + event_id(2) + severity(1) + subsystem(1) + data[32]`.
 
 The flash backend is currently a **stub** (`flash_backend_stub.c`) that mirrors
-writes to a RAM array. A real flash driver is tracked as OI-4 in OBC-DES-001.
+writes to a RAM array. A real NOR flash driver targeting the **W25Qxx SPI NOR**
+family (JEDEC-compatible, 2 MB, supported via Pico SDK `hardware/flash.h`) is
+planned for Phase 3. See OI-2.
 
 ### 8.5 Extended Kalman Filter (EKF)
 
@@ -752,29 +799,48 @@ The only heap consumer is the FreeRTOS heap used at initialization for:
 - Task stacks (allocated by `xTaskCreate` internally)
 - CSP internal queues and router state (allocated during `comm_init`)
 
-### 13.2 Heap Budget
+### 13.2 SRAM Memory Regions
 
-| Consumer | Allocation | Notes |
-|----------|------------|-------|
-| Startup task stack | 8 192 B | Demoted to ALIVE after init |
-| SensorRead stack | 8 192 B | |
-| AttitudeCtrl stack | 8 192 B | Largest user: EKF + LQR matrices |
-| Telemetry stack | 8 192 B | |
-| Command stack | 8 192 B | |
-| HealthMon stack | 8 192 B | |
-| LEDBlink stack (Pico) | 8 192 B | |
-| Heartbeat stack (Pico) | 8 192 B | |
-| CSP router + queues | ~4 000 B | `libcsp` internal allocation during init |
-| **Total allocated** | **~68 KB** | |
-| **Heap configured** | **60 KB** | `configTOTAL_HEAP_SIZE` in `FreeRTOSConfig.h` |
-| **Free at runtime** | **60 416 B** | Measured: `xPortGetFreeHeapSize()` post-init |
+The RP2350 provides 520 KB of on-chip SRAM. The Pico SDK linker script
+(`memmap_default.ld`) partitions it as follows:
 
-> **Note**: The 60 KB heap figure and stack totals appear inconsistent because
-> the Pico SDK allocates stacks from `SYS_RAM` (the second SRAM bank) separately
-> from the FreeRTOS heap region. FreeRTOS heap tracks only queue/semaphore/CSP
-> allocations. Stack memory comes from a different pool.
+| Region | Base Address | Configured Size | Contents |
+|--------|-------------|-----------------|----------|
+| Flash (XIP) | `0x10000000` | 2 MB | `.text`, `.rodata`, constants; flash log backend (Phase 3) |
+| SRAM — `.data` / `.bss` | `0x20000000` | ~30 KB (measured) | Global variables, static buffers, FreeRTOS kernel data structures |
+| SRAM — FreeRTOS heap | (heap4 static array in `.bss`) | 60 KB (`configTOTAL_HEAP_SIZE`) | Task TCBs, task stacks, CSP queues, mutexes |
+| SRAM — remaining | — | ~430 KB | Linker-reserved for IRQ stacks, Pico SDK runtime, CORE1 stack |
 
-### 13.3 Stack High Water Marks (HWM)
+On the **host (Linux/x86) build**, task stacks are backed by the system
+allocator (`heap_3.c`), so `xPortGetFreeHeapSize()` reflects available
+virtual memory rather than a fixed 60 KB pool.
+
+### 13.3 Heap Budget
+
+| Consumer | Build | Allocation | Notes |
+|----------|-------|------------|-------|
+| Startup task stack | Both | 8 192 B | `vStartupTask`; exits after init |
+| SensorRead stack | Both | 8 192 B | |
+| AttitudeCtrl stack | Both | 8 192 B | EKF + LQR matrices |
+| Telemetry stack | Both | 8 192 B | |
+| Command stack | Both | 8 192 B | |
+| HealthMon stack | Both | 8 192 B | |
+| LEDBlink stack | Pico only | 8 192 B | GPIO LED blink |
+| Heartbeat stack | Pico only | 8 192 B | CAN heartbeat |
+| CSP router + queues | Both | ~4 096 B | `libcsp` internal alloc during `comm_init` |
+| **Total (Pico build)** | **Pico** | **~82 KB** | **Exceeds `configTOTAL_HEAP_SIZE = 60 KB` — see OI-8** |
+| **Total (host build)** | **Host** | **~5 KB** | Host: 5 tasks + CSP; measured free heap 60 416 B |
+| **Heap configured** | Both | **60 KB** | `configTOTAL_HEAP_SIZE` in `config/FreeRTOSConfig.h` |
+
+> **Build discrepancy (OI-8 — HIGH)**: The host build creates 5 tasks and uses
+> `heap_3.c` (backed by system `malloc`), so `xPortGetFreeHeapSize()` returns
+> ~60 KB free. The Pico hardware build creates 10 tasks; their stacks are
+> allocated from the fixed `heap_4.c` pool, requiring ~82 KB — exceeding the
+> configured 60 KB. Resolution options: (a) increase `configTOTAL_HEAP_SIZE`
+> to ≥ 96 KB; or (b) migrate to `xTaskCreateStatic` to place stacks in the
+> remaining ~430 KB SRAM. See OI-8.
+
+### 13.4 Stack High Water Marks (HWM)
 
 From hardware measurement (OBC-DES-001 §15). HWM = remaining free words
 (higher is better; 2048 word stacks):
@@ -792,16 +858,49 @@ All tasks have ≥ 88% stack headroom. Stack overflow detection is enabled
 
 ---
 
-## 14. Error Handling and FDIR Integration
+## 14. CPU Budget Estimate
 
-### 14.1 General Error Handling Policy
+> **Status**: Estimates based on WCET analysis of algorithm complexity and
+> measured cycle counts on Cortex-M33 @ 133 MHz. Profiling on hardware is
+> tracked under OI-3.
+
+### 14.1 Task CPU Load (Core 0, 133 MHz)
+
+| Task | Period (ms) | Est. WCET (ms) | Est. CPU Load |
+|------|------------|----------------|---------------|
+| SensorRead | 100 | 3.0 | 3.0% |
+| AttitudeCtrl | 100 | 8.0 | 8.0% |
+| Telemetry | 1 000 | 4.0 | 0.4% |
+| Command | event-driven | 1.0 | < 0.1% |
+| HealthMon | 1 000 | 2.0 | 0.2% |
+| LEDBlink (Pico) | 500 | 0.1 | < 0.1% |
+| Heartbeat (Pico) | 1 000 | 0.5 | < 0.1% |
+| **Total estimate** | — | — | **~12–13%** |
+
+### 14.2 Caveats and Assumptions
+
+- WCET estimates assume: IMU I²C transfer at 400 kHz (SensorRead), EKF
+  propagation + LQR update (AttitudeCtrl).
+- **Core 1** is idle in the CDR single-core baseline (OI-4); all load is on
+  Core 0.
+- FreeRTOS scheduler overhead (~1–2%) and interrupt service routines (WDT,
+  UART RX) are not included; total system load remains well under 20%.
+- Margin at CDR: ~80 MIPS headroom against 133 MIPS Core 0 rated frequency.
+- Hardware profiling using DWT cycle counters is planned for Phase 2 FM
+  qualification testing (OI-3).
+
+---
+
+## 15. Error Handling and FDIR Integration
+
+### 15.1 General Error Handling Policy
 
 - All driver init functions return `int` (0 = success, negative = error).
 - All error paths inside tasks call `fault_manager_report()` — never silently
   discard errors.
 - No `assert()` in flight code; assertions are replaced by fault reports.
 
-### 14.2 Fault Severity Mapping
+### 15.2 Fault Severity Mapping
 
 | Event | Level | Action |
 |-------|-------|--------|
@@ -811,7 +910,7 @@ All tasks have ≥ 88% stack headroom. Stack overflow detection is enabled
 | Stack overflow detected | `FAULT_LEVEL_CRITICAL` | Watchdog scratch write → reset |
 | CSP router init failed | `FAULT_LEVEL_CRITICAL` | Log; `fmm_force_safe()` |
 
-### 14.3 Watchdog Recovery
+### 15.3 Watchdog Recovery
 
 The `HealthMon` task kicks the TPS3431 external watchdog every 1 s.
 If `HealthMon` is blocked (stack overflow, deadlock, priority inversion),
@@ -831,7 +930,7 @@ WDT fires
 
 This mechanism provides crash diagnosis without requiring an external debugger.
 
-### 14.4 ISR Safety
+### 15.4 ISR Safety
 
 The following functions are safe to call from ISR context:
 
@@ -845,9 +944,9 @@ All other service and DLA APIs must be called from task context only.
 
 ---
 
-## 15. Build System and Platform Portability
+## 16. Build System and Platform Portability
 
-### 15.1 CMake Build Configurations
+### 16.1 CMake Build Configurations
 
 | Build Dir | Target | `PICO_BUILD` | Purpose |
 |-----------|--------|-------------|---------|
@@ -855,7 +954,7 @@ All other service and DLA APIs must be called from task context only.
 | `build_pico/` | RP2350 | ON | Flash-ready UF2 |
 | `build_emu/` | x86_64 (emulation) | ON (partial) | Emulator tests |
 
-### 15.2 Platform Guard Pattern
+### 16.2 Platform Guard Pattern
 
 Every hardware-dependent file pair uses a `PICO_BUILD` compile-time guard:
 
@@ -871,7 +970,7 @@ endif()
 This ensures the same source tree produces both a fully testable host binary
 and a hardware-flashed Pico image without `#ifdef` pollution in business logic.
 
-### 15.3 Host vs Target Differences
+### 16.3 Host vs Target Differences
 
 | Aspect | Host (test build) | Pico (target build) |
 |--------|-------------------|---------------------|
@@ -885,7 +984,7 @@ and a hardware-flashed Pico image without `#ifdef` pollution in business logic.
 
 ---
 
-## 16. Traceability to Requirements
+## 17. Traceability to Requirements
 
 | SRS Requirement | Satisfied By | Design Ref |
 |-----------------|--------------|------------|
@@ -897,6 +996,8 @@ and a hardware-flashed Pico image without `#ifdef` pollution in business logic.
 | SRS-D-001 (FDIR CRITICAL → FM_SAFE) | `fault_manager.c` + `fmm_force_safe()` | §8.1, §8.2 |
 | SRS-D-002 (WDT recovery ≤ 10 s) | `watchdog_hal_pico.c` + boot check | §10.6, §11.1 |
 | SRS-D-003 (log CRITICAL to flash before FM_SAFE) | `fault_manager_report()` → `log_event(CLASS_CRITICAL)` | §8.2, §8.4 |
+
+Full traceability matrix is maintained in RTM-OBC-001.
 | SRS-D-005 (OBC rail uninterruptible) | EPS FSM only sheds payload rail | §8.3 |
 | MIS-PB-001 (battery ≥ 37 min) | EPS load shedding at ENERGY_CRITICAL | §8.3 |
 | MIS-DB-002 (≥ 320 events stored) | Logger ring buffer capacity 64 → flash flush | §8.4 |
@@ -905,21 +1006,22 @@ Full traceability matrix is in `RTM-OBC-001`.
 
 ---
 
-## 17. Open Items
+## 18. Open Items
 
 | OI | Description | Priority | Linked Doc | Status |
 |----|-------------|----------|------------|--------|
 | OI-1 | I²C pin conflict: `config.h` (GPIO 16/17) vs. `pico_pins.h` (GPIO 4/5) — must resolve before hardware validation | High | OBC-DES-001 OI-6 | Open |
-| OI-2 | Flash backend is a RAM stub (`flash_backend_stub.c`); real NOR flash driver needed for Class A/B log persistence | High | OBC-DES-001 OI-4, DL-DES-001 | Open |
+| OI-2 | Flash backend is a RAM stub (`flash_backend_stub.c`); real **W25Qxx SPI NOR** driver (JEDEC, 2 MB, Pico SDK `hardware/flash.h`) needed for Class A/B log persistence — planned Phase 3 | High | OBC-DES-001 OI-4, DL-DES-001 | Open |
 | OI-3 | `AttitudeCtrl` WCET not yet measured via DWT cycle counter; required for timing budget sign-off | High | OBC-DES-001 OI-3 | Open |
-| OI-4 | SMP (Core 1) disabled pending HIL boot stability test; dual-core enable planned for v1.0.0 | Medium | OBC-DES-001 OI-1, RMP-OBC-001 RISK-SW-001 | Open |
+| OI-4 | SMP (Core 1) disabled pending HIL boot stability test; **CDR baseline = single-core operation on Core 0**; dual-core enable planned for v1.0.0 | Medium | OBC-DES-001 OI-1, RMP-OBC-001 RISK-SW-001 | Open |
 | OI-5 | Momentum dump trigger threshold not formally verified against RW saturation spec | Medium | ADCS-DES-001 | Open |
 | OI-6 | FMEA-OBC-001 not yet written; fault table in fault_ids.h is the interim hazard input source | Medium | MRD-OBC-001 §6.2.1 | Open |
 | OI-7 | `vStartupTask` ALIVE loop remains alive post-init at priority 1 — should be replaced by a proper idle monitor or deleted; tracked for v1.0.0 | Low | SAD-OBC-001 | Open |
+| OI-8 | Pico hardware build requires ~82 KB FreeRTOS heap (10 tasks × 8 KB + TCBs + CSP ~4 KB) but `configTOTAL_HEAP_SIZE = 60 KB`; host build unaffected (5 tasks, heap_3). Resolution: increase to ≥ 96 KB or migrate to `xTaskCreateStatic` | **High** | config/FreeRTOSConfig.h | Open |
 
 ---
 
-## 18. References
+## 19. References
 
 | Ref | Document |
 |-----|----------|
