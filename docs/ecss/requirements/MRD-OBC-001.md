@@ -5,7 +5,7 @@
 | **Document ID**  | MRD-OBC-001                                       |
 | **Title**        | Mission Requirements Document / Concept of Operations |
 | **Project**      | CubeSat OBC — RP2350 / Pico 2W                    |
-| **Version**      | 1.0                                               |
+| **Version**      | 1.1                                               |
 | **Status**       | Approved — MRR Baseline                           |
 | **Date**         | 2026-03-07                                        |
 | **Author**       | OBC Systems Team                                  |
@@ -19,6 +19,7 @@
 | Version | Date       | Author          | Description              |
 |---------|------------|-----------------|--------------------------|
 | 1.0     | 2026-03-07 | OBC Systems Team | Initial MRR baseline     |
+| 1.1     | 2026-03-09 | OBC Systems Team | Add mission success criteria table, top-level system architecture diagram, top mission hazards, power budget, data budget, mission lifetime justification |
 
 ---
 
@@ -95,7 +96,17 @@ Hardware design details are in `BOM-OBC-001`. Software architecture is in
 | MO-6  | Validate persistent event logging across power cycles (flash ring buffer) | Secondary | ≥ 320 events stored; Class A events survive reset |
 | MO-7  | Achieve ECSS-Q-ST-80C software standards compliance (MISRA C, traceability, test coverage ≥ 90%) | Secondary | 0 MISRA required/mandatory violations; line coverage ≥ 90% |
 
-### 2.4 Mission Lifetime
+### 2.4 Mission Success Criteria
+
+The following three-level framework defines mission success per ESA practice (ECSS-E-ST-10-06C §5.3).
+
+| Level | Criterion | Metric |
+|-------|-----------|--------|
+| **Minimum** | Satellite boots; OBC sustains FreeRTOS scheduler; HK telemetry received on ground during LEOP | ≥ 1 HK packet received; FM_SAFE maintained for ≥ 24 h |
+| **Nominal** | ADCS detumble successful; ground command uplink executed; OBC recovers from watchdog reset | ω < 2 °/s after FM_DETUMBLE; ≥ 1 TC/pass executed; FM_SAFE recovery within 10 s of reset |
+| **Full** | 3-axis nadir pointing < 1° accuracy; payload rail enabled; ≥ 90% test coverage; ECSS doc baseline complete | LQR error < 1° RMS sustained for ≥ 1 orbit; all MO-1..MO-7 satisfied |
+
+### 2.5 Mission Lifetime
 
 | Phase       | Duration          | Description                                 |
 |-------------|-------------------|---------------------------------------------|
@@ -103,6 +114,15 @@ Hardware design details are in `BOM-OBC-001`. Software architecture is in
 | Qualification | 2026-07 – 2026-09 | Environmental testing, EMC, vibration      |
 | Launch readiness | 2026-10        | Flight image build, final PDR/CDR/TRR      |
 | On-orbit    | ≥ 12 months       | Nominal operations; target 24 months       |
+
+The ≥ 12-month lifetime target is supported by the following design considerations:
+
+- **Battery degradation**: Li-ion 2S pack at 600 km SSO experiences ≈ 5 500 charge/discharge cycles/year.
+  Cells with ≥ 500 full-cycle life at DoD ≤ 40% retain > 90% initial capacity over 12 months.
+- **Radiation tolerance**: Total ionising dose at 600 km is ≈ 5–10 krad/year (behind 1 mm Al shielding).
+  The RP2350 is COTS-unqualified; watchdog recovery (MIS-D-002) mitigates accumulated soft-error effects.
+- **Thermal cycling**: ≈ 5 800 thermal cycles/year (one per 94-min orbit). Solder joint fatigue on the
+  Pico 2W module is not expected to be life-limiting at 12 months; risk reassessed at CDR (MIS-E-001).
 
 ---
 
@@ -159,6 +179,40 @@ Fault detected (Fault Manager)
 | Ground software | Host application receiving binary CSP packets over KISS framing |
 | Command protocol | CSP port 20 (command), port 10 (telemetry) |
 | Link budget margin | +8.5 dB at 2300 km slant range (horizon pass) |
+
+### 3.3 Top-Level System Architecture
+
+```
+                    ┌─────────────────────┐
+                    │   Ground Station     │
+                    │   (GS Console)      │
+                    └──────────┬──────────┘
+                               │ 433 MHz LoRa / KISS–CSP
+                     ┌─────────▼─────────┐
+                     │  RF Radio          │
+                     │  E22-400M30S       │
+                     └─────────┬─────────┘
+                               │ UART1
+          ┌────────────────────▼────────────────────────────────┐
+          │                  OBC (RP2350)                        │
+          │  FreeRTOS / ARM_CM33_NTZ                             │
+          │  ┌────────────┐  ┌────────────┐  ┌─────────────┐    │
+          │  │  Fault Mgr │  │ Flight Mode│  │   Event     │    │
+          │  │  (FMM)     │  │    Mgr     │  │   Logger    │    │
+          │  └────────────┘  └────────────┘  └─────────────┘    │
+          └───┬──────────────┬──────────────┬───────────────────┘
+              │ I²C @ 400kHz │ PWM×6        │ GPIO / ADC
+  ┌───────────▼──┐    ┌──────▼──────┐   ┌───▼──────────────┐
+  │  ADCS Suite  │    │  Actuators  │   │      EPS         │
+  │  MPU6050 IMU │    │  MTQ ×3     │   │  INA219 (Ph2)    │
+  │  LIS3MDL Mag │    │  RW ×3(Ph2) │   │  TPS3431 WDT     │
+  │  NEO-7M GPS  │    └─────────────┘   │  ADC0 Vbatt      │
+  └──────────────┘                      └──────────────────┘
+```
+
+The OBC is the single master on all buses. The Ground Station communicates exclusively
+through the TT&C radio link (UART1). No direct inter-subsystem buses exist in Phase 1 —
+all data paths route through the OBC.
 
 ---
 
@@ -229,6 +283,18 @@ Full flight mode design is in `FMM-DES-001`.
 | MIS-D-004 | The OBC shall maintain operation at battery voltages ≥ 6.6 V (ENERGY_CRITICAL) with non-essential loads shed | Mandatory | Test (EPS monitor tick with injected voltage) |
 | MIS-D-005 | The OBC rail shall not be interruptive by software | Mandatory | Inspection (code review) |
 
+#### 6.2.1 Top Mission Hazards
+
+The following hazards drive the dependability requirements above and will feed `FMEA-OBC-001`.
+
+| # | Hazard | Likelihood | Mitigation | Linked Req |
+|---|--------|------------|------------|------------|
+| H-1 | Battery depletion → OBC loses power mid-orbit | Medium | Load shedding (EPS FSM); OBC rail isolated from non-essential rails | MIS-D-004, MIS-D-005 |
+| H-2 | ADCS tumble → uncontrolled rotation | Medium | Autonomous FM_DETUMBLE on ω > threshold; B-dot available in any flight mode | MIS-D-001 |
+| H-3 | OBC crash / unhandled exception → watchdog reset | Low | TPS3431 HW watchdog; pre-reset crash state logged to flash | MIS-D-002, MIS-D-003 |
+| H-4 | RF link loss → no GS contact for multiple passes | Low | FM_SAFE listen-only mode; autonomous FDIR continues without GS | MIS-C-004 |
+| H-5 | Flash event log corruption | Low | Typed ring-buffer headers; Class A events CRC-protected; power-fail-safe write | MIS-D-003 |
+
 ### 6.3 Communication Requirements
 
 | Req ID | Requirement | Priority | Verification |
@@ -254,6 +320,49 @@ Full flight mode design is in `FMM-DES-001`.
 | MIS-O-002 | The OBC shall provide flight mode status in every HK telemetry packet | Mandatory | Test |
 | MIS-O-003 | The OBC shall log all flight mode transitions to the persistent event logger | Mandatory | Test |
 | MIS-O-004 | Ground operators shall be able to command a mode change from any mode to FM_SAFE without preconditions | Mandatory | Test |
+
+### 6.6 Power Budget Requirements
+
+The following estimates drive EPS sizing (full analysis deferred to `POWER-BDG-001` — Phase 3).
+
+| Subsystem | Typical (mW) | Peak (mW) | Notes |
+|-----------|-------------|-----------|-------|
+| OBC (RP2350) | 150 | 300 | Core 1 idle; FPU active during ADCS |
+| ADCS sensors (MPU6050 + LIS3MDL) | 20 | 40 | Continuous I²C polling |
+| GPS (NEO-7M) | 90 | 120 | Acquisition peak at power-on |
+| TT&C radio (E22-400M30S) | 800 | 3 000 | TX peak at 30 dBm |
+| Magnetorquers ×3 (Phase 1) | 200 | 600 | Scaled to detumble duty cycle |
+| Reaction wheels ×3 (Phase 2) | 500 | 1 500 | TBD at Phase 2 |
+| Payload | TBD | TBD | OI-1 — payload undefined |
+| **Total (Phase 1, no payload)** | **~1 260** | **~4 060** | |
+
+> **Battery sizing note** (ASS-4): usable energy at DoD 40% for a 2S 2 Ah LiPo ≈ 2.2 Wh,
+> supporting ~33 min at 4 W peak load. Full sizing and margin analysis in `POWER-BDG-001`.
+
+| Req ID | Requirement | Priority | Verification |
+|--------|-------------|----------|--------------|
+| MIS-PB-001 | The EPS battery shall provide ≥ 37 min of operation at Phase 1 full load (≤ 4 W) | Mandatory | Analysis (`POWER-BDG-001`) |
+| MIS-PB-002 | The OBC 3.3 V rail shall remain powered at battery voltages ≥ 6.6 V (ENERGY_CRITICAL threshold) | Mandatory | Test |
+
+### 6.7 Data Budget Requirements
+
+The following estimates bound downlink data volume for link planning (full analysis in `LINK-BDG-001` — Phase 3).
+
+| Data Type | Rate | Volume per Pass (12 min) | Notes |
+|-----------|------|--------------------------|-------|
+| HK telemetry (downlink) | 1 Hz × ~40 B/packet | ~29 KB | CSP + KISS framing overhead included |
+| Telecommands (uplink) | ~5 TC/pass × 20 B | ~0.1 KB | Nominal ops scenario |
+| Event log dump (on demand) | ~320 events × 16 B | ~5 KB | GS-triggered during pass |
+| Attitude telemetry (high-rate) | 10 Hz × 24 B/packet | ~173 KB | FM_DIAGNOSTIC only |
+
+> **LoRa link capacity note**: at SF9 BW 125 kHz CR 4/5, bit rate ≈ 3 900 bps. A 12-min pass
+> provides ~3.5 MB raw capacity — well above HK + TC budget. High-rate attitude telemetry in
+> FM_DIAGNOSTIC is intentionally limited to available link margin.
+
+| Req ID | Requirement | Priority | Verification |
+|--------|-------------|----------|--------------|
+| MIS-DB-001 | The TT&C link shall support downlink of full HK telemetry every pass at ≥ 1 Hz | Mandatory | Analysis (`LINK-BDG-001`) |
+| MIS-DB-002 | The on-board flash ring buffer shall store ≥ 320 events between ground station contacts | Mandatory | Test |
 
 ---
 

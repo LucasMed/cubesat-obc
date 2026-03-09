@@ -5,7 +5,20 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/obc-des-001
+## [Unreleased] — feature/mrd-rev1-mrr-observations
+
+### Changed
+- **MRD-OBC-001 v1.1** (`docs/ecss/requirements/MRD-OBC-001.md`): Revision addressing MRR review
+  board observations — added §2.4 Mission Success Criteria table (Minimum/Nominal/Full levels),
+  §2.5 lifetime justification (battery degradation, radiation, thermal cycling rationale),
+  §3.3 top-level system architecture ASCII diagram (GS↔Radio↔OBC↔ADCS/Actuators/EPS),
+  §6.2.1 Top Mission Hazards table (H-1..H-5 with likelihood and linked requirements),
+  §6.6 Power Budget Requirements (subsystem-level power estimates, MIS-PB-001/002),
+  §6.7 Data Budget Requirements (HK/TC/event-log/attitude volumes, MIS-DB-001/002).
+
+---
+
+## [0.19.0] — feature/obc-des-001
 
 ### Added
 - **OBC-DES-001 v0.1** (`docs/ecss/design/OBC-DES-001.md`): OBC Hardware & CDH Design Document —
