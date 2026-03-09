@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — feature/fsw-sdd-001
 
 ### Added
+- **FSW-SDD-001 v0.2** (`docs/ecss/design/FSW-SDD-001.md`): Revision addressing CDR review
+  observations — §7.5 HK telemetry packet table (13 fields, ~42 B, CSP port 10, little-endian);
+  §7.6 Command ACK format (`result`/`echo_seq`/`reason` fields); §8.1 FMM transition conditions
+  table (6 arcs with explicit triggers and `fmm_force_safe()` FDIR path); §8.3 EPS execution
+  context clarification (`eps_monitor_tick()` called by `vHealthMonitorTask` at 1 Hz, WDT
+  liveness guarantee); §8.4 logger flash driver target named (W25Qxx SPI NOR, Phase 3);
+  §13.2 RP2350 physical SRAM bank map (SRAM0–SRAM5 with base addresses, sizes, aliases, and
+  linker-level region breakdown); §13.3 heap budget split by host vs Pico build, revealing
+  ~82 KB needed vs 60 KB configured (OI-8 HIGH); §14 CPU Budget Estimate (8-task load table,
+  ~13% Core 0 total, DWT profiling planned OI-3); OI-2 updated with W25Qxx target; OI-4
+  updated with explicit CDR single-core baseline; OI-8 added (heap sizing — HIGH priority);
+  §17 traceability note referencing RTM-OBC-001; §15–19 section renumbering.
+
 - **FSW-SDD-001 v0.1** (`docs/ecss/design/FSW-SDD-001.md`): Flight Software Design Description —
   CDR-level consolidated FSW design document with 18 sections: software architecture overview
   (4-layer: Task/Service/DLA/Driver), module inventory (full `src/` directory tree + call graph),
