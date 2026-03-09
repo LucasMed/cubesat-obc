@@ -58,7 +58,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
-| FSW-SDD-001 / SDD-OBC-001 | Flight Software Design Description | ⚠️ **TODO**: no standalone document exists. Currently covered partially by `SAD-OBC-001` + individual `*-DES-001` subsystem docs. Needs a consolidated FSW-level SDD that cross-references all design documents. | — |
+| FSW-SDD-001 | Flight Software Design Description | ✅ v0.1 — Draft | [ecss/design/FSW-SDD-001.md](ecss/design/FSW-SDD-001.md) |
 | POWER-BDG-001 | Power Budget | ❌ | — |
 | LINK-BDG-001 | RF Link Budget | ❌ | — |
 | FMEA-OBC-002 | FMEA Detailed (HW + SW) | ❌ | — |
