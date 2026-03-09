@@ -5,7 +5,11 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/cdr-budgets-fmea
+## [Unreleased]
+
+---
+
+## [0.23.0] — 2026-03-09 — feature/cdr-budgets-fmea (#26)
 
 ### Added
 - **FMEA-OBC-001 v0.1** (`docs/ecss/design/FMEA-OBC-001.md`): CDR Failure Mode and Effects
@@ -13,18 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   response mapping (LOG/HK/FS/WDT/AUTO-CLR); MRD §6.2.1 hazard coverage (H-1..H-5); 9-item
   RPN priority list; SPF analysis (EPS emergency, I²C bus-stuck, over-temperature); mitigation
   status with Phase 2/3 tracking (M-01..M-10); 4 open items.
-- **POWER-BDG-001 v0.1** (`docs/ecss/design/POWER-BDG-001.md`): CDR Power Budget — orbital
+- **POWER-BDG-001 v0.2** (`docs/ecss/design/POWER-BDG-001.md`): CDR Power Budget — orbital
   parameters (600 km SSO, 37 min max eclipse); solar array model (EOL 14.1 W, 14.0 Wh/orbit);
   battery model (2S 2000 mAh, 40% DoD, 4.74 Wh usable EOL); Phase 1 load breakdown (FM_SAFE
-  321 mW / FM_NOMINAL 391 mW / FM_DETUMBLE 591 mW / peak 3.89 W); eclipse survival analysis
-  (481 min @ FM_DETUMBLE — 13× 37-min requirement); MIS-PB-001 PASS (+34 min margin);
-  MIS-PB-002 PASS (LDO works to 3 V input); power rail shedding order table; 6 open items.
-- **LINK-BDG-001 v0.1** (`docs/ecss/design/LINK-BDG-001.md`): CDR Link Budget — 433 MHz LoRa
-  E22-400M30S; SF9 BW 125 kHz CR 4/5 (3 906 bps raw / ~1 758 bps payload); downlink worst-case
-  horizon pass (5°, 2300 km): EIRP +26.5 dBm, FSPL 152.4 dB, received –123.4 dBm,
-  margin **+9.6 dB** (MIS-C-003 ≥ +8 dB ✅); uplink margin +12.6 dB; HK data 10.7% of
-  capacity (MIS-DB-001 ✅); Doppler ±11 kHz << 125 kHz BW (no AFC needed); MIS-DB-002
-  RAM shortfall flagged (Phase 3 W25Qxx fix); 6 open items.
+  351 mW / FM_NOMINAL 421 mW / FM_DETUMBLE 621 mW / peak 3.92 W); eclipse survival analysis
+  (458 min @ FM_DETUMBLE — 12× 37-min requirement); MIS-PB-001 PASS (+34 min margin);
+  MIS-PB-002 PASS (LDO works to 3 V input); GPS load corrected to 120 mW (NEO-7M datasheet);
+  TX PA efficiency concern flagged (OI-7); CDR readiness Q&A §15; power rail shedding order
+  table; 7 open items.
+- **LINK-BDG-001 v0.2** (`docs/ecss/design/LINK-BDG-001.md`): CDR Link Budget — 433 MHz LoRa
+  E22-400M30S; SF9 BW 125 kHz CR 4/5 (3 906 bps raw / ~1 758 bps payload); SC antenna revised
+  to −3 dBi tumble-averaged (§5.3 radiation pattern analysis); TX uprated to +30 dBm maintaining
+  EIRP +26.5 dBm; DL worst-case (5°, 2300 km) margin **+9.6 dB** (MIS-C-003 ≥ +8 dB ✅);
+  UL margin +9.6 dB; HK 10.7% of capacity (MIS-DB-001 ✅); Doppler ±11 kHz << BW (no AFC);
+  MIS-DB-002 shortfall: Phase 3 W25Qxx resolves to ≥ 131 072 events; CDR readiness Q&A §15;
+  6 open items.
 
 ---
 
