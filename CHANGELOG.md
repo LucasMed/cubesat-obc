@@ -5,7 +5,18 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/mrd-rev1-mrr-observations
+## [Unreleased] — feature/sdp-rev1-mrr-observations
+
+### Changed
+- **SDP-OBC-001 v1.1** (`docs/ecss/requirements/SDP-OBC-001.md`): Revision addressing MRR review
+  observations — added §6.1 Programme Review Schedule (MRR/SRR/PDR/CDR/TRR/AR/Launch milestone
+  dates), §6.3 Verification Strategy Summary (unit/integration/HIL/environmental table),
+  §10.4 Bus-Factor Mitigation (documentation completeness, repository redundancy, reproducible
+  build, mentor review). New OI-4 for schedule date confirmation post-SRR gate.
+
+---
+
+## [0.20.0] — feature/mrd-rev1-mrr-observations
 
 ### Changed
 - **MRD-OBC-001 v1.1** (`docs/ecss/requirements/MRD-OBC-001.md`): Revision addressing MRR review

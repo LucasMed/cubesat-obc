@@ -1,11 +1,20 @@
 # Software Development Plan
 
 **Document ID**: SDP-OBC-001
-**Version**: 1.0
-**Date**: 2026-03-07
+**Version**: 1.1
+**Date**: 2026-03-09
 **Status**: Approved — SRR Baseline
 **Standard**: ECSS-E-ST-40C §5.4, ECSS-Q-ST-80C
 **Project**: CubeSat OBC Flight Software (RP2350 / Pico 2W)
+
+---
+
+## Change History
+
+| Version | Date       | Author           | Description |
+|---------|------------|------------------|-------------|
+| 1.0     | 2026-03-07 | OBC Systems Team | Initial SRR baseline |
+| 1.1     | 2026-03-09 | OBC Systems Team | Add programme review schedule (§6.2), verification strategy summary (§6.3), bus-factor mitigation (§10.4) |
 
 ---
 
@@ -216,7 +225,23 @@ The project follows a phased development model aligned with ECSS review gates:
 | Phase 6 | TRR | System integration, hardware validation | ❌ Planned |
 | Phase 7 | AR/QR | Qualification testing, flight build | ❌ Planned |
 
-### 6.1 Entry Criteria per Review Gate
+### 6.1 Programme Review Schedule
+
+The following milestone schedule drives all SDP/SVVP/CMP/RMP planning dates.
+
+| Review Gate | Target Date   | Key Deliverables |
+|-------------|---------------|------------------|
+| **MRR**     | 2026-03       | MRD-OBC-001, ConOps baseline |
+| **SRR**     | 2026-04       | SyRS, SRS, SDP, SVVP, CMP, RMP |
+| **PDR**     | 2026-05       | SAD, ICD, BOM, all subsystem architectures |
+| **CDR**     | 2026-06       | All `*-DES-001` design docs, static analysis clean, 100% unit tests |
+| **TRR**     | 2026-08       | ITP, HIL test procedure, integration test results |
+| **AR / QR** | 2026-09–10    | Qualification test report, SCI, flight build |
+| **Launch**  | 2026-10       | Flight image locked, pre-launch review complete |
+
+> Dates are targets. Schedule risks are tracked in `RMP-OBC-001` (RISK-SC-001..003).
+
+### 6.2 Entry Criteria per Review Gate
 
 | Review | Entry Criteria |
 |---|---|
@@ -225,6 +250,20 @@ The project follows a phased development model aligned with ECSS review gates:
 | **CDR** | All `*-DES-001` subsystem design documents delivered; static analysis clean; 100% unit tests passing |
 | **TRR** | All CDR deliverables approved; integration test plan (ITP-OBC-001) written; hardware available |
 | **AR/QR** | TRR exit criteria met; qualification tests passed; SCI released |
+
+### 6.3 Verification Strategy Summary
+
+The project uses a layered verification strategy. Full details are in `SVVP-OBC-001`.
+
+| Level | Method | Scope | Gate |
+|-------|--------|-------|------|
+| **Unit testing** | CTest + Unity framework on host (x86_64 Linux) | Individual functions and modules; 29 test suites; ≥ 80% line coverage target | SRR / CDR |
+| **Integration testing** | Closed-loop simulation on host (`closed_loop_test`); CSP stack validation (`comm_init_test`) | Subsystem interactions (ADCS ↔ FMM ↔ EPS ↔ Fault Manager) | CDR / TRR |
+| **HIL testing** | Real RP2350 hardware with sensor injection via I²C stimulator | FreeRTOS scheduler behaviour; watchdog; SMP stability; boot timing | TRR |
+| **Environmental testing** | Thermal cycling (−20 °C to +60 °C); random vibration (≥ 14.1 g$_{rms}$) | Hardware survival and functional verification per MIS-E-001/002 | AR/QR |
+
+> Coverage threshold of ≥ 80% (unit) and ≥ 90% (safety-critical paths) is tracked per SVVP-OBC-001 §6.
+> OI-2 below tracks formal endorsement of these thresholds in this SDP.
 
 ---
 
@@ -372,6 +411,19 @@ Changes to `fault_manager.c`, `flight_mode_manager.c`, or `eps_monitor.c` requir
 review by the FDIR subsystem responsible engineer and a comment confirming the
 fault tree has been re-evaluated.
 
+### 10.4 Bus-Factor Mitigation
+
+The project is currently developed by a single engineer with mentor review
+(bus factor = 1). The following mitigations reduce knowledge-loss risk:
+
+| Mitigation | Implementation |
+|------------|----------------|
+| **Documentation completeness** | All design decisions recorded in ECSS docs (`*-DES-001`, `SAD-OBC-001`, `ICD-OBC-001`); open items tracked with owners |
+| **Code self-documentation** | Conventional Commits history; inline rationale comments for non-obvious decisions; `LESSON_LEARNED.md` maintained |
+| **Repository redundancy** | GitHub as primary remote; local clone on development machine; CI artifacts (`cubesat_obc_pico.uf2`) retained in GitHub Actions for 90 days |
+| **Reproducible build** | All toolchain versions pinned (`ubuntu-22.04`, `clang-format-14`, ARM GCC 12.x, Pico SDK submodule SHA-locked); any developer can reproduce the build from a clean clone |
+| **Mentor review** | All PRs require at least one approving review before merge to `dev` |
+
 ---
 
 ## 11. Release Management
@@ -456,3 +508,4 @@ Document versions follow `M.m` where:
 | OI-1 | Define formal entry/exit criteria for TRR and AR/QR gates | Medium | PM | Open |
 | OI-2 | Formalize coverage target: current threshold informal (80%), needs SDP endorsement | Medium | SW Lead | Open |
 | OI-3 | Hardware-in-loop test procedure not yet defined (planned Phase 6) | Low | HW/SW | Open |
+| OI-4 | Update §6.1 schedule dates after SRR gate confirmation | Medium | PM | Open |
