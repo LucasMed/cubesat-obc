@@ -801,15 +801,29 @@ The only heap consumer is the FreeRTOS heap used at initialization for:
 
 ### 13.2 SRAM Memory Regions
 
-The RP2350 provides 520 KB of on-chip SRAM. The Pico SDK linker script
-(`memmap_default.ld`) partitions it as follows:
+The RP2350 provides **520 KB** of on-chip SRAM organised as six physical banks.
+The Pico SDK accesses them via a striped alias at `0x20000000` (interleaved
+across SRAM0–SRAM3 for bandwidth) and an unstriped alias at `0x21000000`.
 
-| Region | Base Address | Configured Size | Contents |
-|--------|-------------|-----------------|----------|
-| Flash (XIP) | `0x10000000` | 2 MB | `.text`, `.rodata`, constants; flash log backend (Phase 3) |
-| SRAM — `.data` / `.bss` | `0x20000000` | ~30 KB (measured) | Global variables, static buffers, FreeRTOS kernel data structures |
-| SRAM — FreeRTOS heap | (heap4 static array in `.bss`) | 60 KB (`configTOTAL_HEAP_SIZE`) | Task TCBs, task stacks, CSP queues, mutexes |
-| SRAM — remaining | — | ~430 KB | Linker-reserved for IRQ stacks, Pico SDK runtime, CORE1 stack |
+**Physical SRAM bank map (RP2350):**
+
+| Bank | Base Address | Size | Alias | Default Use |
+|------|-------------|------|-------|-------------|
+| SRAM0 | `0x20000000` | 128 KB | Striped (Core 0 / Core 1 interleaved) | `.data`, `.bss`, FreeRTOS heap, stack pool |
+| SRAM1 | `0x20020000` | 128 KB | Striped | Continuation of heap / task stacks |
+| SRAM2 | `0x20040000` | 128 KB | Striped | Continuation; CORE1 stack tail |
+| SRAM3 | `0x20060000` | 128 KB | Striped | Reserved / future expansion |
+| SRAM4 | `0x20080000` | 4 KB | Unstriped (scratch) | USB + DMA descriptors (Pico SDK) |
+| SRAM5 | `0x20081000` | 4 KB | Unstriped (scratch) | USB + DMA descriptors (Pico SDK) |
+
+**Linker-level regions (`memmap_default.ld`):**
+
+| Region | Address Range | Size | FSW Usage |
+|--------|--------------|------|-----------|
+| Flash XIP | `0x10000000` – `0x101FFFFF` | 2 MB | `.text`, `.rodata`, vector table, constants; NOR log backend (Phase 3) |
+| SRAM `.data` / `.bss` | `0x20000000` + | ~30 KB (measured) | Globals, static buffers, FreeRTOS scheduler data structures |
+| FreeRTOS heap (`heap_4`) | (static array inside `.bss`) | 60 KB configured | Task TCBs, task stacks, CSP queues, mutexes — see OI-8 |
+| SRAM remaining | — | ~430 KB | IRQ stack, Pico SDK runtime, CORE1 stack, future `xTaskCreateStatic` pools |
 
 On the **host (Linux/x86) build**, task stacks are backed by the system
 allocator (`heap_3.c`), so `xPortGetFreeHeapSize()` reflects available
