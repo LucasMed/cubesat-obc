@@ -5,7 +5,11 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — feature/fsw-sdd-001
+## [Unreleased]
+
+---
+
+## [0.22.0] — 2026-03-09 — feature/fsw-sdd-001 (#25)
 
 ### Added
 - **FSW-SDD-001 v0.2** (`docs/ecss/design/FSW-SDD-001.md`): Revision addressing CDR review
