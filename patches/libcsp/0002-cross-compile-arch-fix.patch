@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000002 Mon Sep 17 00:00:00 2001
+From: CubeSat OBC Dev <dev@cubesat-obc.local>
+Date: Mon, 10 Mar 2026 00:00:00 +0000
+Subject: [PATCH] fix: exclude cross-compilation targets from POSIX arch
+
+The Pico SDK sets CMAKE_SYSTEM_NAME to "PICO" rather than the CMake
+convention "Generic".  libcsp's platform-detection block:
+
+    if(UNIX AND NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
+      set(CSP_POSIX 1)
+    endif()
+
+evaluates to TRUE on a Linux host cross-compiling for RP2350, so
+CSP_POSIX gets set to 1 as a normal CMake variable.  Two downstream
+effects break the Pico build:
+
+1. configure_file() generates autoconfig.h with #define CSP_POSIX 1,
+   so csp_semaphore.h tries to #include <semaphore.h> — absent in the
+   arm-none-eabi sysroot.
+
+2. arch/CMakeLists.txt enters posix/ whose find_package(Threads REQUIRED)
+   fails for arm-none-eabi.
+
+Fix both at the source by adding NOT CMAKE_CROSSCOMPILING to the POSIX
+detection guard, and add a safety belt in arch/CMakeLists.txt.
+
+ CMakeLists.txt          | 5 +++--
+ src/arch/CMakeLists.txt | 5 ++++-
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -57,8 +57,10 @@ endif()
+ # --------------------------------------------------
+ # PLATFORM DETECTION (FIXED)
+ # --------------------------------------------------
+ 
+-# POSIX = Linux + macOS + BSD
+-if(UNIX AND NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
++# POSIX = Linux + macOS + BSD; exclude cross-compilation targets (e.g. Pico
++# SDK sets CMAKE_SYSTEM_NAME to "PICO" not CMake's "Generic" convention, so
++# the STREQUAL "Generic" guard alone is insufficient).
++if(UNIX AND NOT CMAKE_SYSTEM_NAME STREQUAL "Generic" AND NOT CMAKE_CROSSCOMPILING)
+   set(CSP_POSIX 1)
+ endif()
+ 
+diff --git a/src/arch/CMakeLists.txt b/src/arch/CMakeLists.txt
+--- a/src/arch/CMakeLists.txt
++++ b/src/arch/CMakeLists.txt
+@@ -1,4 +1,8 @@
+-if(CSP_POSIX)
++# When CMAKE_SYSTEM_NAME is not "Generic" (e.g. Pico SDK sets it to "PICO"),
++# libcsp's platform detection sets CSP_POSIX=1 even for cross-compilation
++# targets.  Guard with NOT CMAKE_CROSSCOMPILING so embedded/FreeRTOS builds
++# fall through to the freertos arch.
++if(CSP_POSIX AND NOT CMAKE_CROSSCOMPILING)
+   add_subdirectory(posix)
+ elseif(CSP_FREERTOS)
+   add_subdirectory(freertos)

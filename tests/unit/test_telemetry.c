@@ -21,10 +21,12 @@
 
 static uint32_t s_tick = 1000u;
 
+/* cppcheck-suppress unusedFunction -- test mock, reserved for future hook use */
 static uint32_t mock_xTaskGetTickCount(void)
 {
   return s_tick;
 }
+/* cppcheck-suppress unusedFunction -- test mock, reserved for future hook use */
 static void mock_vTaskDelayUntil(uint32_t *prev, uint32_t inc)
 {
   *prev += inc;
@@ -112,12 +114,14 @@ static void reset_all(void)
 static void set_state(flight_mode_t mode, energy_state_t energy, float att0, float att1, float att2,
                       float r0, float r1, float r2, float temp, int imu_ok, int temp_ok)
 {
-  float att[3] = {att0, att1, att2};
-  float rates[3] = {r0, r1, r2};
   data_layer_set_flight_mode(mode);
   data_layer_set_energy_state(energy);
   if (imu_ok)
+  {
+    float att[3] = {att0, att1, att2};
+    float rates[3] = {r0, r1, r2};
     data_layer_write_imu(att, rates);
+  }
   if (temp_ok)
     data_layer_write_temp(temp);
 }
@@ -137,6 +141,10 @@ static void test_tlm_full_packet_in_nominal(void)
   CHECK(s_send_dest == 1, "dest = GN_ADDRESS");
   CHECK(s_send_dport == TELEMETRY_PORT, "port correct");
   CHECK(s_send_pkt != NULL, "packet not NULL");
+  if (s_send_pkt == NULL)
+  {
+    return;
+  } /* guard: CHECK does not abort */
 
   csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
   CHECK((uint32_t)s_send_pkt->length == sizeof(csp_telemetry_packet_t), "packet length");

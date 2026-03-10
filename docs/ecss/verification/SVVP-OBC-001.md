@@ -308,13 +308,24 @@ HIL testing is required to verify:
 - UART1 physical timing (115200 baud, KISS framing integrity)
 - IMU I2C transaction correctness at 400 kHz
 - FreeRTOS task jitter (control loop ≤ ±22 µs, validated Phase 2)
-- Boot-to-operational time ≤ 5 s (NFR-7)
-- Hardware watchdog response
+- Boot-to-operational time ≤ 10 s (SYS-NF-005)
+- Hardware watchdog response (T-HIL-WDT-01)
+- Task stack headroom — all tasks ≥ 20% free (T-HIL-STK-01..05)
+- Nominal power budget ≤ 2 W (T-HIL-PWR-01)
 
-### 10.2 HIL Test Procedure Reference
+### 10.2 HIL Test Cases
 
-Detailed HIL test procedures are deferred to **ATP-OBC-001** (Acceptance Test
-Procedure), a TRR deliverable. The HIL configuration is defined in Section 6.3.
+Detailed HIL test procedures are defined in **STP-OBC-001 §10** (added per SRR-OBC-001 ACT-14).
+
+| Test ID | Description | Pass Criterion | Milestone |
+|---|---|---|---|
+| T-HIL-WDT-01 | HW watchdog fires within 8 s of HM task suspension | Reset within ≤ 8 s; clean reboot ≤ 10 s | CDR |
+| T-HIL-STK-01..05 | FreeRTOS task stack HWMs across 60 s nominal run | All tasks ≥ 20% headroom | CDR |
+| T-HIL-PWR-01 | OBC total current draw during nominal operation | ≤ 400 mA mean, ≤ 600 mA peak (5 V rail) | CDR |
+
+### 10.3 HIL Configuration
+
+Defined in Section 6.3 of this document.
 
 ---
 
@@ -447,5 +458,5 @@ in CI test output provide fine-grained traceability.
 | OI-1 | Formal coverage threshold not yet enforced in CI (80% target informal) | High | CI Lead | Open |
 | OI-2 | Integration test suite (`tests/integration/`) not yet created | High | SW Lead | Open |
 | OI-3 | SIL emulation scenarios (SYS-01..07) not yet scripted | Medium | SW Lead | Open |
-| OI-4 | HIL test procedure (ATP-OBC-001) deferred to TRR | Low | HW/SW | Open |
+| OI-4 | HIL test procedure (ATP-OBC-001) deferred to TRR. HIL test cases T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01 defined in STP-OBC-001 §10 per SRR-OBC-001 ACT-14 | Low | HW/SW | Partially Closed |
 | OI-5 | MC/DC coverage not yet collected (tool selection pending) | Low | SW Lead | Open |

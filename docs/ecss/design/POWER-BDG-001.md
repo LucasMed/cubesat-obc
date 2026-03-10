@@ -14,7 +14,7 @@
 | Version | Date       | Author           | Description                              |
 |---------|------------|------------------|------------------------------------------|
 | 0.2     | 2026-03-09 | OBC Systems Team | GPS load corrected to 120 mW (NEO-7M datasheet); all derived scenario/eclipse numbers updated; TX electrical draw concern flagged (OI-7); added §15 CDR readiness notes |
-| 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline — Phase 1 load estimates from MRD §6.6; eclipse sizing; battery margin analysis; EPS FSM energy state coverage |
+| 0.3     | 2026-03-10 | OBC Systems Team | Phase 7 payload baseline: add FM_PAYLOAD scenario to §7, §8, §9; close OI-3; PM_PAYLOAD power at 581 mW avg (412 mW payload + 421 mW OBC-stack) |
 
 ## Table of Contents
 
@@ -48,8 +48,8 @@ Phase 1.
 ### 1.2 Scope
 
 - Phase 1 only: OBC + ADCS sensors + TT&C radio + Magnetorquers ×3.
-- Reaction wheels (Phase 2) and payload (TBD — MRD OI-1) are identified as
-  open items.
+- Phase 2 additions (reaction wheels) are identified as open items.
+- Payload suite PLS-001 (PAYLOAD-SPEC-001) is included as a Phase 7 addendum in §7.4, §8.3, §9.4.
 - All values are estimates at CDR; updated measurements required during FM
   qualification.
 
@@ -205,7 +205,23 @@ cycles are defined for the `FM_NOMINAL` reference scenario.
 | FM_NOMINAL (standard — continuous + duty-cycled) | **421** | ~3 921 (TX burst) |
 | FM_DETUMBLE (max operational) | **621** | ~3 921 (TX + MTQ full) |
 | Deep eclipse survival (OBC + RX only) | **351** | 380 |
+### 7.4 Payload Suite PLS-001 Load Additions (Phase 7)
 
+Added during `FM_PAYLOAD` on top of the FM_NOMINAL continuous load baseline.
+See PAYLOAD-SPEC-001 §9 for derivation.
+
+| Instrument | Active Power (mW) | Notes |
+|------------|-------------------|-------|
+| CAM-001 (IMX219 SPI bridge) | 300 | During image readout (~2.4 s); standby ~50 mW |
+| MAG-001 (RM3100, 10 Hz CMM) | 30 | Continuous during FM_PAYLOAD |
+| RAD-001 (PIN diode + TIA, 1 Hz) | 80 | Continuous during FM_PAYLOAD |
+| **Payload total (active capture)** | **410 mW** | Peak during capture |
+| **Payload total (standby — mag/rad only)** | **160 mW** | Continuous baseline |
+
+| Scenario | Power Avg (mW) | Power Peak (mW) |
+|----------|---------------|------------------|
+| FM_PAYLOAD (MAG+RAD active, CAM standby) | **581** | ~3 921 (TX burst) |
+| FM_PAYLOAD (active image capture) | **831** | ~3 831 (capture, no TX) |
 > **MRD §6.6 reference**: Full Phase 1 load (≤ 4 W peak). This analysis yields
 > **3.92 W** peak — confirmed within 4 W requirement.
 >
@@ -258,6 +274,7 @@ worst-case 37-minute eclipse period.
 | FM_SAFE minimal (OBC + RX) | 351 | 37 | 0.217 |
 | FM_NOMINAL | 421 | 37 | 0.260 |
 | FM_DETUMBLE (active) | 621 | 37 | 0.383 |
+| FM_PAYLOAD (MAG+RAD, no capture) | 581 | 37 | 0.358 |
 
 ### 9.2 Margin Analysis
 
@@ -268,6 +285,7 @@ Using EOL usable capacity 4.74 Wh @ 40% DoD:
 | FM_SAFE | 0.217 | 4.74 | 4.52 | **+2084%** | **810 min** |
 | FM_NOMINAL | 0.260 | 4.74 | 4.48 | **+1723%** | **676 min** |
 | FM_DETUMBLE | 0.383 | 4.74 | 4.36 | **+1138%** | **458 min** |
+| FM_PAYLOAD (avg) | 0.358 | 4.74 | 4.38 | **+1224%** | **490 min** |
 
 All scenarios pass with large margins. The baseline 2S 2 Ah battery provides
 **458 min at full FM_DETUMBLE load** — more than 12× the worst-case eclipse of
@@ -371,7 +389,7 @@ require updated budget iteration.
 |-----|-------------|----------|--------|
 | OI-1 | Solar panel area not finalized — mechanical team to confirm 2U panel count and area; TBD value used in §5 | High | Open |
 | OI-2 | Reaction wheel power (Phase 2) not included — requires motor driver characterization (~1500 mW peak ×3) | Medium | Phase 2 |
-| OI-3 | Payload power unknown (MRD OI-1) — budget must be re-run once payload is defined | Medium | Blocked |
+| OI-3 | ~~Payload power unknown (MRD OI-1) — budget must be re-run once payload is defined~~ **CLOSED** — PAYLOAD-SPEC-001 §9: payload PLS-001 adds 410 mW peak / 160 mW avg; FM_PAYLOAD scenario added to §7.4 and §9 | Medium | **Closed** |
 | OI-4 | EOL degradation factor 80% assumed; actual cell datasheet (manufacturer TBD) should be confirmed | Medium | Open |
 | OI-5 | TX duty cycle assumed 1% — verify against LINK-BDG-001 actual pass geometry and dwell time | Low | In LINK-BDG-001 |
 | OI-6 | INA219 current monitor driver not implemented (Phase 2 plan) — required for closed-loop power management | High | Phase 2 |

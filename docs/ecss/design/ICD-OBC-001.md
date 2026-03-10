@@ -2,9 +2,9 @@
 ## CubeSat OBC Hardware/Software Interface
 
 **Document ID**: ICD-OBC-001  
-**Version**: 1.0  
-**Date**: 2026-03-05  
-**Status**: Released  
+**Version**: 1.2  
+**Date**: 2026-03-10  
+**Status**: Released — Phase 7 amendment (GPS re-scoped)  
 **Branch merged**: `feature/hardware-bom`  
 **Depends on**: SAD v1.0, BOM v1.0, `config/pico_pins.h`
 
@@ -20,12 +20,13 @@ Interfaces covered:
 
 | Bus / Interface | Peripherals |
 |----------------|------------|
-| I2C0 | MPU-6050 IMU, HMC5883L Magnetometer |
-| UART0 | GPS NEO-7M |
+| I2C0 | MPU-6050 IMU, HMC5883L Magnetometer, **RM3100 Scientific Magnetometer (Phase 7)** |
+| UART0 | GPS NEO-7M GY-NEO6Mv2 — Phase 7 (re-scoped, FR-18/19) |
 | UART1 | TT&C Radio E22-400M30S / HC-12 |
 | PWM | Reaction Wheels (RW1–3), Magnetorquers (MTQ X/Y/Z) |
-| ADC | Battery voltage, temperature |
-| GPIO | External watchdog TPS3431, status LED |
+| ADC | Battery voltage, temperature, **RAD-001 radiation sensor (Phase 7)** |
+| SPI1 | **CAM-001 camera (IMX219 SPI bridge) (Phase 7)** |
+| GPIO | External watchdog TPS3431, status LED, **PAYLOAD_ENABLE, CAM_TRIGGER, RAD_RESET (Phase 7)** |
 | USB CDC | Debug console |
 
 > **Authoritative pin source**: `config/pico_pins.h`
@@ -112,6 +113,7 @@ Interfaces covered:
 |--------|------------|--------|
 | MPU-6050 IMU | `0x68` (AD0=GND) | `src/drivers/imu/mpu6050.c` |
 | HMC5883L Magnetometer | `0x1E` | `src/drivers/mag/hmc5883l.c` |
+| **RM3100 Scientific MAG** | **`0x20`** (SA0=SA1=0) | `src/drivers/payload/rm3100.c` **— Phase 7** |
 
 > **No pin conflict**: I2C0 uses GPIO4/5; UART1 (TT&C) uses GPIO8/9. Both buses can
 > be active simultaneously during flight operations.
@@ -148,12 +150,14 @@ bool mpu6050_read(imu_data_t *data);   // returns gyro [rad/s] + accel [m/s²]
 
 | Parameter | Value |
 |-----------|-------|
-| Sensor | HMC5883L (GY-271 module) |
+| **Configuration Status** | **EM LOCKED** — HMC5883L (GY-271), I2C `0x1E`. CDR candidate: LIS3MDL I2C `0x1C` (SA0=GND). Part selection per ACT-11 (SRR-OBC-001 2026-03-10). |
+| Sensor | HMC5883L (GY-271 module) — Engineering Model |
 | Bus | I2C0 |
 | Address | `0x1E` |
 | GPIO | GPIO4 (SDA), GPIO5 (SCL) |
-| Driver | `src/drivers/mag/hmc5883l.c` |
+| Driver | `src/drivers/mag/hmc5883l.c` [EM]; `src/drivers/mag/lis3mdl.c` [CDR — not yet created] |
 | Output rate | 75 Hz (configured in driver) |
+| ⚠️ Clone risk | QMC5883L (I2C `0x0D`, different register map) found in some GY-271 modules. Verify IC markings. |
 
 **Output data:**
 
@@ -227,16 +231,21 @@ changes to any control or estimation code.
 
 ## 7. GPS Interface (NEO-7M)
 
+> **✅ ACTIVE — Formally re-scoped into Phase 7**  
+> AIR-OBC-001 ACT-06 resolved via **Option A** (2026-03-10).  
+> Requirements **FR-18** (NMEA parse ≥ 1 Hz), **FR-19** (UTC sync ± 500 ms), and **IR-10** (UART0 interface)  
+> added to SRS-OBC-001 v2.3. Driver `src/drivers/gps/neo7m.c` and `GpsTask` planned for Phase 7 **WP-7.10**.
+
 | Parameter | Value |
 |-----------|-------|
 | Module | GY-NEO6Mv2 with NEO-7M |
 | Bus | UART0 (`uart0`) |
 | TX pin | **GPIO0** (`UART0_TX_PIN`) |
 | RX pin | **GPIO1** (`UART0_RX_PIN`) |
-| Baud rate | 9600 bps |
-| Protocol | NMEA 0183 — sentences `$GPGGA`, `$GPRMC` |
-| Logic voltage | 3.3 V |
-| Driver | `src/drivers/gps/neo7m.c` (planned) |
+| Baud rate | 9600 bps (reconfigurable to 38400 via UBX `CFG-PRT`) |
+| Protocol | NMEA 0183 — `$GPGGA` (position + altitude + UTC), `$GPRMC` (position + speed + date) |
+| Driver | `src/drivers/gps/neo7m.c` — **Phase 7 (WP-7.10)** |
+| Status | **Active — Phase 7 integration (PLAN-007 WP-7.10)** |
 
 > **Future note**: Increasing to 38400 bps reduces NMEA message latency and enables
 > higher fix update rates. Requires reconfiguring the NEO-7M via UBX protocol command
@@ -253,9 +262,14 @@ changes to any control or estimation code.
 > fully routed to **USB CDC** (`pico_enable_stdio_usb = 1` in `src/CMakeLists.txt`).
 > UART0 is exclusively reserved for GPS.
 
-**Pending firmware work:**
+**Phase 7 firmware deliverables (WP-7.10):**
 - [ ] NMEA parser driver `src/drivers/gps/neo7m.c`
-- [ ] FreeRTOS GPS task (parse + write to DLA)
+- [ ] FreeRTOS GPS task `src/tasks/gps_task.c` (1 Hz, parse + write to DLA)
+- [ ] Data Layer: `gps_fix_t` struct, `data_layer_set_gps_fix()`, `data_layer_get_gps_fix()`
+- [ ] UTC clock sync: `rtc_set_datetime()` on valid `$GPRMC` fix (within ± 500 ms)
+- [ ] Unit tests: `tests/unit/test_gps.c` (T-GPS-01..04)
+- [ ] Fault IDs: `FAULT_GPS_TIMEOUT`, `FAULT_GPS_PARSE_ERR` in `fault_ids.h`
+- [ ] Telemetry: GPS lat/lon/alt/UTC fields in HK packet
 
 ---
 
@@ -429,11 +443,16 @@ Boot sequence → FM_BOOT → FM_SAFE
 |-----------|------|------------|-----------|--------|
 | I2C0 (IMU) | GPIO4/5 | `src/drivers/imu/mpu6050.c` | `SensorReadTask` | ✅ Integrated |
 | I2C0 (Mag) | GPIO4/5 | `src/drivers/mag/hmc5883l.c` | `SensorReadTask` | ✅ Integrated |
+| I2C0 (RM3100 — Ph.7) | GPIO4/5, 0x20 | `src/drivers/payload/rm3100.c` | `PayloadTask` | ⏳ Phase 7 |
 | UART0 (GPS) | GPIO0/1 | `src/drivers/gps/neo7m.c` | Navigation (planned) | 🔄 Planned |
 | UART1 (TT&C) | GPIO8/9 | `src/drivers/uart/pico_usart.c` | `CommandTask`, `TelemetryTask` | ✅ Integrated |
-| PWM (RW) | GPIO6/7/8 | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
+| PWM (RW) | GPIO6/7/**3** | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | PWM (MTQ) | GPIO14/15/16 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | ADC0 (Vbatt) | GPIO26 | `src/services/eps/eps_monitor.c` | `HealthMonitorTask` | ✅ Integrated |
+| ADC1 (RAD-001 — Ph.7) | GPIO27 | `src/drivers/payload/radiation_driver.c` | `PayloadTask` | ⏳ Phase 7 |
+| SPI1 (CAM-001 — Ph.7) | GPIO10/11/12/13 | `src/drivers/payload/camera_driver.c` | `PayloadTask` | ⏳ Phase 7 |
+| GPIO21 (PAYLOAD_EN — Ph.7) | GPIO21 | `src/services/payload/payload_manager.c` | `PayloadTask` | ⏳ Phase 7 |
+| GPIO22 (CAM_TRIGGER — Ph.7) | GPIO22 | `src/drivers/payload/camera_driver.c` | `PayloadTask` | ⏳ Phase 7 |
 | GPIO (WDI) | GPIO20 | `src/drivers/watchdog/watchdog_hal.c` | `HealthMonitorTask` | ✅ HAL integrated |
 | USB CDC | — | stdio USB (Pico SDK) | All tasks (printf) | ✅ Integrated |
 
@@ -465,10 +484,75 @@ FM_SAFE MODE (magnetorquers only, telemetry heartbeat only)
 | EPS EMERGENCY | `FAULT_EPS_EMERGENCY` | CRITICAL | → FM_SAFE |
 | Watchdog miss | — | — | Hardware reset → FM_SAFE |
 | UART1 TX stall | `FAULT_COMMS_TX_FAIL` | WARNING | Log; skip telemetry cycle |
+| SPI1 camera timeout (Phase 7) | `FAULT_PAYLOAD_CAM_FAIL` | WARNING | Retry 1×; log; disable CAM for session |
+| ADC1 out-of-range (Phase 7) | `FAULT_PAYLOAD_ADC_OVERRANGE` | WARNING | Log; skip sample |
+| Payload storage full (Phase 7) | `FAULT_PAYLOAD_STORAGE_FULL` | ERROR | Disable new captures; ground notification |
 
 ---
 
-## 15. Interface Verification Methods
+## 15. Payload Suite Interface (PLS-001) — Phase 7
+
+Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
+
+### 15.1 SPI1 — Camera Interface (CAM-001)
+
+| Parameter     | Value                                  |
+|---------------|----------------------------------------|
+| Peripheral    | SPI1 (`spi1`)                          |
+| SCK           | **GPIO10** — ⚠️ reassign RW3 to GPIO3  |
+| MOSI          | **GPIO11**                             |
+| MISO          | **GPIO12**                             |
+| CSn (camera)  | **GPIO13**                             |
+| Max clock     | 10 MHz                                 |
+| Module        | Arducam IMX219 SPI bridge (or equivalent) |
+| Driver        | `src/drivers/payload/camera_driver.c`  |
+
+> **GPIO10 conflict**: Current ICD §9.1 assigns GPIO10 to RW3 PWM (PWM5A).
+> Phase 7 PCB shall relocate RW3 to **GPIO3** (PWM1B — available after GPS
+> descope of UART0). No software change required beyond updating `pico_pins.h`
+> and the RW3 PWM slice/channel binding.
+
+### 15.2 I2C0 Addition — Scientific Magnetometer (MAG-001)
+
+| Parameter  | Value                              |
+|------------|------------------------------------|
+| Bus        | I2C0 (existing GPIO4/5)            |
+| Address    | `0x20` (SA0=SA1=0)                 |
+| Sensor     | PNI RM3100                         |
+| Driver     | `src/drivers/payload/rm3100.c`     |
+| Rate       | 10 Hz (CMM mode, Phase 7)          |
+
+> No new PCB traces needed. RM3100 shares the existing I2C0 bus.
+> I2C0 bus load with 3 devices at 400 kHz is within spec (capacitance < 200 pF).
+
+### 15.3 ADC1 — Radiation Detector (RAD-001)
+
+| Parameter  | Value                                      |
+|------------|--------------------------------------------|
+| ADC channel| ADC1                                       |
+| GPIO       | **GPIO27**                                 |
+| Input      | TIA output, 0–3.3 V                        |
+| Driver     | `src/drivers/payload/radiation_driver.c`   |
+| Rate       | 1 Hz (Phase 7)                             |
+
+### 15.4 Payload Control GPIOs
+
+| Signal         | GPIO   | Direction | Active | Software owner |
+|----------------|--------|-----------|--------|----------------|
+| PAYLOAD_ENABLE | GPIO21 | OUT       | High   | `payload_manager.c` |
+| CAM_TRIGGER    | GPIO22 | OUT       | High   | `camera_driver.c`   |
+| RAD_RESET      | GPIO2  | OUT       | High   | `radiation_driver.c` — GPIO2 free (UART0 descoped) |
+
+### 15.5 Interface Verification Methods (Payload)
+
+| Interface | Method | Acceptance criterion |
+|-----------|--------|---------------------|
+| SPI1 (CAM-001) | SPI loopback + image capture | JPEG size 50–500 KB, no SPI errors |
+| I2C0 (RM3100) | Unit test + hardware read | ACK at 0x20; mag vector 30–60 µT |
+| ADC1 (RAD-001) | Known voltage reference + field test | ADC reading within ±1% of reference |
+---
+
+## 16. Interface Verification Methods
 
 | Interface | Method | Acceptance criterion |
 |-----------|--------|---------------------|

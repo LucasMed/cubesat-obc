@@ -21,6 +21,23 @@ Requirements marked `[PLANNED]` are not yet implemented (target: v1.0.0).
 
 ---
 
+## 1.1 Mission Objective to SyRS Requirement Cross-Reference
+
+*Added per SRR-OBC-001 ACT-08 — provides top-down traceability from MRD-OBC-001
+mission objectives to system-level requirements in this document.*
+
+| MO   | Mission Objective (MRD-OBC-001 §2.3)                              | Implementing SyRS Requirements            |
+|------|-------------------------------------------------------------------|-------------------------------------------|
+| MO-1 | 3-axis attitude determination via EKF                             | SYS-F-101, SYS-F-102, SYS-F-103, SYS-F-104, SYS-F-105, SYS-F-106 |
+| MO-2 | 3-axis attitude control — B-dot detumbling (MTQ) + LQR pointing (RW) | SYS-F-111, SYS-F-112, SYS-F-113, SYS-F-114, SYS-F-115, **SYS-F-120, SYS-F-121, SYS-F-122, SYS-F-123** |
+| MO-3 | Autonomous FDIR: FM_SAFE transition within 10 s of CRITICAL fault | SYS-F-201, SYS-F-204, SYS-F-205, SYS-F-211, SYS-F-212, SYS-F-213 |
+| MO-4 | Bidirectional TT&C over 433 MHz LoRa (E22-400M30S)               | SYS-F-401, SYS-F-402, SYS-F-403, SYS-F-404, SYS-F-405, SYS-F-406, SYS-F-407, **SYS-F-450** |
+| MO-5 | Energy-aware subsystem management (EPS Schmitt-trigger, rail shedding) | SYS-F-201, SYS-F-202, SYS-F-203, SYS-F-204, SYS-F-205 |
+| MO-6 | Persistent event logging across power cycles (Class-A events survive reset) | SYS-F-301, SYS-F-302, SYS-F-303, SYS-F-304 |
+| MO-7 | ECSS-Q-ST-80C compliance (MISRA C, traceability, ≥90% test coverage) | SYS-NF-001, SYS-NF-002, SYS-NF-003 |
+
+---
+
 ## 2. System Overview
 
 The OBC software executes on a Raspberry Pi Pico 2W (RP2350, Cortex-M33) under
@@ -109,6 +126,25 @@ vector (`dB/dt`).
 `[IMPL]` In `FM_SAFE` and `FM_BOOT`, the attitude control task shall produce no
 actuator output.
 
+### SYS-F-120 — Reaction Wheel Performance
+
+*Added per SRR-OBC-001 ACT-13. Values derived from `config.h` constants and closed-loop simulation model (`closed_loop_sim.h`). Hardware: custom 1U RW assembly.*
+
+#### SYS-F-121 — RW Maximum Angular Speed  
+`[IMPL]` Each reaction wheel axis shall support a maximum angular velocity of **4000 RPM** (≈ 419 rad/s).  
+*Source: `RW_MAX_OMEGA_RPM = 4000.0f` in `config.h`. Fault `FAULT_ACT_RW_SPEED_LIMIT` is raised on exceedance.*
+
+#### SYS-F-122 — RW Maximum Generated Torque  
+`[IMPL]` Each reaction wheel axis shall generate a maximum continuous torque of **1 mN·m** per axis.  
+*Source: `CLS_TAU_SAT = 1.0e-3 N·m` in `closed_loop_sim.h`. Sized for 1U CubeSat inertia `I = diag(0.01, 0.01, 0.005) kg·m²`.*
+
+#### SYS-F-123 — RW Maximum Momentum Storage  
+`[PLANNED]` Each reaction wheel axis shall store a maximum angular momentum of **0.42 N·m·s** before saturation ( = `RW_INERTIA × RW_MAX_OMEGA_RPM_RAD_S` = 0.001 × 418.9).  
+
+#### SYS-F-124 — Momentum Dump Activation Threshold  
+`[IMPL]` The system shall initiate a B×L momentum dump when the total reaction-wheel angular momentum vector magnitude exceeds **0.5 mN·m·s**.  
+*Source: `CLS_MOM_THRESH = 5.0e-4 N·m·s` in `closed_loop_sim.h`; runtime threshold passed to `momentum_dump_needed()` via `attitude_control_task.c`.*
+
 ---
 
 ## 5. FDIR & Energy Management Requirements
@@ -179,8 +215,9 @@ from eviction by lower-priority entries in the ring buffer.
 accessible from all service layers.
 
 #### SYS-F-304 — Flash Backend  
-`[PLANNED]` The logger shall persist Class-A events to flash memory to survive
-power cycling.
+`[IMPL]` The logger shall persist Class-A events to flash memory to survive
+power cycling.  
+*Implemented in `src/core/flash_backend.c` (ACT-16, 2026-03-10): round-robin 4-sector log region at top of 2 MB flash (`0x1FC000–0x1FFFFF`), 16-byte header (magic `OBCLOGV1` + CRC-32 + length), interrupt-disabled erase+program via Pico SDK `hardware_flash`. Recovery path: `flash_backend_recover()`. Host build retains stub in `flash_backend_stub.c`.*
 
 ---
 
@@ -189,7 +226,8 @@ power cycling.
 ### SYS-F-400 — CSP Communication
 
 #### SYS-F-401 — Protocol Stack  
-`[IMPL]` The OBC shall run the `libcsp` v1.x stack on FreeRTOS SMP.
+`[IMPL]` The OBC shall run the `libcsp` v2.2 stack (CSP protocol version 2) on FreeRTOS (single-core configuration; SMP planned per SYS-P-003).  
+*Version confirmed: `third_party/libcsp/CMakeLists.txt` — `project(CSP VERSION 2.2)`, default protocol version `csp_conf.version = 2` in `src/csp_init.c`. Resolved per SRR-OBC-001 ACT-02.*
 
 #### SYS-F-402 — Transport  
 `[IMPL]` CSP shall be transported over UART1 using KISS framing (`pico_usart`
@@ -213,6 +251,34 @@ temperature, mode, flags (attitude and rates zeroed).
 
 #### SYS-F-407 — Command Types  
 `[IMPL]` The OBC shall handle at minimum: `CMD_ECHO` and `CMD_REBOOT` commands.
+
+#### SYS-F-450 — RF Link Margin  
+`[PLANNED]` The RF link subsystem (E22-400M30S, 433 MHz band) shall achieve a minimum **6 dB** link margin in both uplink and downlink paths under the worst-case orbital geometry: altitude 600 km, elevation angle 5°, with OBC transmit power ≤ 30 dBm (+30 dBm E22 maximum) and ground station receive antenna gain ≥ 3 dBi (quarter-wave whip equivalent).  
+*Verification method: analysis via LINK-BDG-001 link budget (planned CDR deliverable). COMMS-DES-001 §6 provides physical layer parameters. Added per SRR-OBC-001 ACT-12.*
+
+---
+
+## 7.5 Payload Power Management
+
+*Added per SRR-OBC-001 ACT-04. Payload concept: a low-power science/demonstration module (e.g., camera module or beacon transmitter) powered by a dedicated EPS-controlled GPIO rail. Hardware definition deferred to CDR.*
+
+#### SYS-F-500 — Payload Rail Enable/Disable  
+`[PLANNED]` The OBC shall enable and disable the payload power rail via a dedicated GPIO output pin under FMM control.  
+*Payload rail shall be OFF in FM_BOOT, FM_SAFE, and FM_DETUMBLE. Rail may be enabled only in FM_NOMINAL and FM_DIAGNOSTIC.*
+
+#### SYS-F-501 — Payload Rail FMM Interlock  
+`[PLANNED]` The FMM shall inhibit payload rail activation unless energy state is `ENERGY_NOMINAL`.  
+*Rationale: Prevents payload from drawing power when the battery is below safe operating voltage.*
+
+#### SYS-F-502 — Payload Rail Fault Detection  
+`[PLANNED]` The EPS Monitor shall detect payload rail overcurrent (current draw exceeding configured threshold) and report `FAULT_PAYLOAD_OVERCURRENT` at `FAULT_LEVEL_WARNING`.  
+*On second consecutive overcurrent event: escalate to `FAULT_LEVEL_CRITICAL` and command rail off.*
+
+#### SYS-F-503 — Payload Rail Telemetry  
+`[PLANNED]` Telemetry packets shall include a 1-bit payload rail status flag (enabled/disabled) in the housekeeping frame.
+
+#### SYS-F-504 — Payload Rail Command  
+`[PLANNED]` The OBC shall accept an uplink command `CMD_PAYLOAD_ENABLE` / `CMD_PAYLOAD_DISABLE` on CSP Port 20 to activate/deactivate the payload rail, subject to FMM and energy state interlocks (SYS-F-501).
 
 ---
 

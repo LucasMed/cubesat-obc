@@ -316,6 +316,79 @@ gcovr -r ../src .
 | Line Coverage | 64% | ~80% | ~85% (estimated) | ~88% (estimated) | >85% |
 | Test targets | 6 | 17 | 19 | **23** | ≥19 |
 | Tests passing | 6/6 | 17/17 | 19/19 | **23/23** | 23/23 |
-| New test IDs | — | T-FMM, T-FMS, T-EPS, T-LOG, T-SDM, T-TLM, T-HM | T-DYN, T-EKF, T-LQR, T-SRF, T-ACT | **T-WDT, T-MDT, T-MAG, T-EKFM** | — |
+| New test IDs | — | T-FMM, T-FMS, T-EPS, T-LOG, T-SDM, T-TLM, T-HM | T-DYN, T-EKF, T-LQR, T-SRF, T-ACT | **T-WDT, T-MDT, T-MAG, T-EKFM** | **T-HIL-WDT, T-HIL-STK, T-HIL-PWR** |
 
 *Note: Phase 4 added two new test executables (`test_ekf`, `test_lqr`) and expanded `test_sensor_read_task` (7→10) and `test_attitude_control_task` (8→11). Missing coverage remains restricted to FreeRTOS `while(1)` task loops and `#ifdef PICO_BUILD` hardware branches not reachable in host builds.*
+
+---
+
+## 10. HIL Test Cases
+
+*Added per SRR-OBC-001 ACT-14. These tests require physical RP2350 hardware. All are CDR-milestone items; host-stub equivalents exist for unit testing only.*
+
+### T-HIL-WDT-01 — Hardware Watchdog Timeout
+
+| Field | Value |
+|---|---|
+| **Test ID** | T-HIL-WDT-01 |
+| **Type** | Hardware-in-the-Loop (HIL) |
+| **SyRS Ref** | FR-12 (SRS-OBC-001), SYS-NF-001 |
+| **Pass Criterion** | Watchdog fires within ≤ 8 s of health monitor task suspension; OBC resets and boots cleanly |
+
+**Procedure:**
+1. Flash nominal firmware to RP2350.
+2. Confirm OBC boots to `FM_NOMINAL` (USB CDC `MODE: NOMINAL`).
+3. On debug build: inject `vTaskSuspend(health_monitor_handle)` via GDB.
+4. Start a stopwatch.
+5. Observe watchdog reset: USB CDC disconnects and re-enumerates.
+6. Record elapsed time from suspension to reset.
+7. PASS if elapsed ≤ 8 s and post-reset boot completes to `FM_NOMINAL` within 10 s.
+
+---
+
+### T-HIL-STK-01..05 — FreeRTOS Task Stack High-Water Marks
+
+| Field | Value |
+|---|---|
+| **Test IDs** | T-HIL-STK-01 (`AttitudeCtrlTask`), T-HIL-STK-02 (`SensorReadTask`), T-HIL-STK-03 (`TelemetryTask`), T-HIL-STK-04 (`CommandTask`), T-HIL-STK-05 (`HealthMonitorTask`) |
+| **Type** | HIL — runtime measurement |
+| **SyRS Ref** | SYS-NF-006 (Stack Safety) |
+| **Pass Criterion** | All tasks show ≥ 20% stack headroom (HWM ≤ 80% of allocated stack depth) after 60 s nominal operation |
+
+**Procedure:**
+1. Flash debug firmware with `uxTaskGetStackHighWaterMark()` reporting enabled.
+2. Boot to `FM_NOMINAL` and operate for 60 s.
+3. Command `CMD_ECHO` or trigger debug print to dump HWMs via USB CDC.
+4. Record HWM for each task; calculate headroom = `(allocated − HWM) / allocated × 100%`.
+5. PASS if all headrooms ≥ 20%.
+
+---
+
+### T-HIL-PWR-01 — Nominal Power Profile
+
+| Field | Value |
+|---|---|
+| **Test ID** | T-HIL-PWR-01 |
+| **Type** | HIL — power measurement |
+| **SyRS Ref** | NFR-4 (SRS-OBC-001: ≤ 2 W nominal), SYS-F-201 (EPS monitoring) |
+| **Pass Criterion** | Total OBC current draw ≤ 400 mA at 5 V (≤ 2 W) across 60 s nominal window |
+
+**Procedure:**
+1. Connect USB power meter or bench PSU with current readout (mA precision).
+2. Flash nominal firmware; boot to `FM_NOMINAL`.
+3. Record mean and peak current over 60 s with all tasks running (ADCS stub active).
+4. PASS if mean ≤ 400 mA and peak transient ≤ 600 mA.
+
+---
+
+### HIL Test Summary
+
+| Test ID | Description | Hardware Required | Milestone |
+|---|---|---|---|
+| T-HIL-WDT-01 | Watchdog timeout fires within 8 s | RP2350, GDB probe | CDR |
+| T-HIL-STK-01 | `AttitudeCtrlTask` stack HWM ≥ 20% headroom | RP2350 | CDR |
+| T-HIL-STK-02 | `SensorReadTask` stack HWM ≥ 20% headroom | RP2350 | CDR |
+| T-HIL-STK-03 | `TelemetryTask` stack HWM ≥ 20% headroom | RP2350 | CDR |
+| T-HIL-STK-04 | `CommandTask` stack HWM ≥ 20% headroom | RP2350 | CDR |
+| T-HIL-STK-05 | `HealthMonitorTask` stack HWM ≥ 20% headroom | RP2350 | CDR |
+| T-HIL-PWR-01 | Nominal power ≤ 2 W (400 mA @ 5 V) | RP2350, power meter | CDR |

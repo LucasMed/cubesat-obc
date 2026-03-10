@@ -29,6 +29,7 @@ quat_t q_identity(void)
   return q;
 }
 
+/* cppcheck-suppress unusedFunction -- Pico/integration build API */
 quat_t q_from_axis_angle(float ax, float ay, float az, float angle_rad)
 {
   /* Normalise axis */
@@ -150,6 +151,7 @@ void q_to_euler(quat_t q, float *roll_rad, float *pitch_rad, float *yaw_rad)
   *yaw_rad = atan2f(siny_cosp, cosy_cosp);
 }
 
+/* cppcheck-suppress unusedFunction -- Pico/integration build API */
 float q_dot(quat_t p, quat_t q)
 {
   return p.w * q.w + p.x * q.x + p.y * q.y + p.z * q.z;

@@ -90,7 +90,7 @@ Hardware design details are in `BOM-OBC-001`. Software architecture is in
 |-------|-----------|----------|-------------------|
 | MO-1  | Demonstrate 3-axis attitude determination via EKF (gyro + accel + magnetometer) | Primary | EKF converges in < 60 s; attitude error < 5° RMS in FM_NOMINAL |
 | MO-2  | Demonstrate 3-axis attitude control — B-dot detumbling (MTQ) and LQR precision pointing (RW) | Primary | FM_DETUMBLE reduces angular rate to < 2 °/s; FM_NOMINAL holds pointing to < 1° |
-| MO-3  | Validate autonomous FDIR: fault detection → FM_SAFE transition without ground command | Primary | FAULT_LEVEL_CRITICAL event triggers FM_SAFE within 1 orbit |
+| MO-3  | Validate autonomous FDIR: fault detection → FM_SAFE transition without ground command | Primary | FAULT_LEVEL_CRITICAL event triggers FM_SAFE within 10 s (2× Health Monitor period; measured from fault detection to FMM state change). *(Amended from "1 orbit" per SRR-OBC-001 ACT-07 — original metric was a non-constraint.)* |
 | MO-4  | Demonstrate bidirectional TT&C over 433 MHz LoRa link (E22-400M30S) | Primary | HK telemetry received on ground; uplink command executed within 1 pass |
 | MO-5  | Validate energy-aware subsystem management (EPS Schmidt-trigger, rail shedding) | Primary | Load shedding activates within 5 s of ENERGY_CRITICAL; OBC rail never interrupted |
 | MO-6  | Validate persistent event logging across power cycles (flash ring buffer) | Secondary | ≥ 320 events stored; Class A events survive reset |

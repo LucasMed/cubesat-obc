@@ -106,6 +106,7 @@ void vAttitudeControlTask_Step(void)
 void vAttitudeControlTask(void *pvParameters)
 {
   (void)pvParameters;
+  /* cppcheck-suppress unreadVariable -- updated each cycle by vTaskDelayUntil */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(100);  // 10 Hz
 
@@ -153,6 +154,7 @@ void vAttitudeControlTask(void *pvParameters)
 
   while (1)
   {
+    /* cppcheck-suppress unreadVariable -- macro writes back updated wake time */
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
 #ifdef PICO_BUILD

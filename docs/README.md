@@ -41,7 +41,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | ICD-OBC-001 | Interface Control Document | ✅ v1.1 | [ecss/design/ICD-OBC-001.md](ecss/design/ICD-OBC-001.md) |
 | BOM-OBC-001 | Bill of Materials | ✅ v1.0.1 | [ecss/design/BOM-OBC-001.md](ecss/design/BOM-OBC-001.md) |
 | ADCS-DES-001 | ADCS Design Document | ✅ v1.0 — PDR | [ecss/design/ADCS-DES-001.md](ecss/design/ADCS-DES-001.md) |
-| FMM-DES-001 | Flight Mode Manager Design Document | ✅ v0.3 — Draft | [ecss/design/FMM-DES-001.md](ecss/design/FMM-DES-001.md) |
+| FMM-DES-001 | Flight Mode Manager Design Document | ✅ v0.4 — Phase 7 updated | [ecss/design/FMM-DES-001.md](ecss/design/FMM-DES-001.md) |
 | EPS-DES-001 | Electrical Power System Design Document | ✅ v0.1 — Draft | [ecss/design/EPS-DES-001.md](ecss/design/EPS-DES-001.md) |
 | FAULT-DES-001 | Fault Manager Design Document | ✅ v0.2 — Draft | [ecss/design/FAULT-DES-001.md](ecss/design/FAULT-DES-001.md) |
 | COMMS-DES-001 | Communications / TT&C Design Document | ✅ v0.1 — Draft | [ecss/design/COMMS-DES-001.md](ecss/design/COMMS-DES-001.md) |
@@ -59,8 +59,10 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | Doc ID | Title | Status | File |
 |---|---|---|---|
 | FSW-SDD-001 | Flight Software Design Description | ✅ v0.1 — Draft | [ecss/design/FSW-SDD-001.md](ecss/design/FSW-SDD-001.md) |
-| POWER-BDG-001 | Power Budget | ❌ | — |
-| LINK-BDG-001 | RF Link Budget | ❌ | — |
+| POWER-BDG-001 | Power Budget | ✅ v0.3 — CDR Baseline + Phase 7 payload | [ecss/design/POWER-BDG-001.md](ecss/design/POWER-BDG-001.md) |
+| LINK-BDG-001 | RF Link Budget | ✅ v0.2 — CDR Baseline | [ecss/design/LINK-BDG-001.md](ecss/design/LINK-BDG-001.md) |
+| PAYLOAD-SPEC-001 | Scientific Payload Specification (PLS-001) | ✅ v0.1 — Phase 7 Draft | [ecss/design/PAYLOAD-SPEC-001.md](ecss/design/PAYLOAD-SPEC-001.md) |
+| FMEA-OBC-001 | FMEA Preliminary (software faults) | ✅ v0.1 — Draft | [ecss/design/FMEA-OBC-001.md](ecss/design/FMEA-OBC-001.md) |
 | FMEA-OBC-002 | FMEA Detailed (HW + SW) | ❌ | — |
 | STS-OBC-001 | Software Test Specification | ❌ | — |
 
@@ -142,6 +144,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | Phase 4 Plan | [project/PHASE4_PLAN.md](project/PHASE4_PLAN.md) |
 | Phase 5 Plan | [project/PHASE5_PLAN.md](project/PHASE5_PLAN.md) |
 | Phase 6 Plan | [project/PHASE6_PLAN.md](project/PHASE6_PLAN.md) |
+| Phase 7 Plan — Payload Integration | [project/PHASE7_PAYLOAD_PLAN.md](project/PHASE7_PAYLOAD_PLAN.md) |
 
 ---
 

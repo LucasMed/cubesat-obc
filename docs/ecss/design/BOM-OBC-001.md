@@ -92,7 +92,7 @@ Firmware compatibility status and integration notes are included for each compon
 | IMU (optional upgrade) | **ICM-42688-P** (TDK InvenSense) | SPI / I2C | −40 to +85 °C | High-precision, DMP, actively produced; drop-in upgrade for MPU-6050 |
 | Magnetometer **(recommended for flight)** | **LIS3MDL** (STMicroelectronics) | SPI / I2C | −40 to +85 °C | Low-power, 16-bit, actively produced. Config: continuous mode, ODR = 80 Hz, I2C addr `0x1C` (SA0=GND) |
 
-> **Decision**: HMC5883L stays for lab prototype. For flight (CDR scope), migrate to **LIS3MDL** on the custom OBC PCB — new driver `src/drivers/mag/lis3mdl.c` required (register map differs; same I2C bus, addr `0x1C`).
+> **Decision (locked — ACT-11, SRR-OBC-001, 2026-03-10)**: HMC5883L (GY-271) is the **Engineering Model baseline**. For flight (CDR scope), migrate to **LIS3MDL** on the custom OBC PCB — new driver `src/drivers/mag/lis3mdl.c` required (register map differs; same I2C bus, addr `0x1C` SA0=GND). No action required at SRS/SRS level for EM build.
 
 ---
 

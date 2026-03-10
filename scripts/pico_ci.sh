@@ -80,10 +80,12 @@ run_host_test() {
         -DCMAKE_BUILD_TYPE=Debug \
         -DPICO_ENABLED=OFF \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        2>&1 | tee -a "$ARTIFACTS/build.log"
+        2>&1 | tee -a "$ARTIFACTS/build.log" \
+  || { fail "Host CMake configure: FAIL"; record 1 "host-test"; return 1; }
 
   cmake --build "$BUILD_HOST" --parallel "$(nproc)" \
-        2>&1 | tee -a "$ARTIFACTS/build.log"
+        2>&1 | tee -a "$ARTIFACTS/build.log" \
+  || { fail "Host CMake build: FAIL"; record 1 "host-test"; return 1; }
 
   mkdir -p "$ARTIFACTS/test_results"
 
@@ -118,7 +120,8 @@ run_pico_build() {
         -DPICO_ENABLED=ON \
         -DPICO_SDK_PATH="${PICO_SDK_PATH}" \
         -DPICO_BOARD=pico2_w \
-        2>&1 | tee -a "$ARTIFACTS/build.log"
+        2>&1 | tee -a "$ARTIFACTS/build.log" \
+  || { fail "Pico CMake configure: FAIL (see artifacts/build.log)"; record 1 "pico-build"; return 1; }
 
   cmake --build "$BUILD_PICO" \
         --target cubesat_obc_pico \
@@ -325,12 +328,14 @@ COMMAND="${1:-all}"
 
 case "$COMMAND" in
   all)
-    run_host_test
-    run_pico_build
-    run_emu_build
-    run_emulate
-    run_static
-    run_coverage
+    # Run all stages; failures are recorded per-stage so the pipeline always
+    # reaches print_summary and shows the full pass/fail picture.
+    run_host_test  || true
+    run_pico_build || true
+    run_emu_build  || true
+    run_emulate    || true
+    run_static     || true
+    run_coverage   || true
     ;;
   host-test)   run_host_test ;;
   pico-build)  run_pico_build ;;

@@ -3,9 +3,9 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | FMM-DES-001                                   |
-| Version     | 0.3                                           |
+| Version     | 0.4                                           |
 | Status      | Draft                                         |
-| Date        | 2026-03-06                                    |
+| Date        | 2026-03-10                                    |
 | Author      | CubeSat OBC Team                              |
 | Reviewed by | —                                             |
 | Approved by | —                                             |
@@ -17,6 +17,7 @@
 | 0.1     | 2026-03-06 | CubeSat OBC Team | Initial draft — PDR  |
 | 0.2     | 2026-03-07 | CubeSat OBC Team | CDR review: ISR safety correction (§8.4, §13), FM_BOOT exit clarification (§5.1), mode change event (§8.6, §15), OI-5 added |
 | 0.3     | 2026-03-07 | CubeSat OBC Team | CDR review v0.2: authorized requesters table (§7.1), transition priority (§7.2), HK telemetry field (§11), mode timeout OI-6 |
+| 0.4     | 2026-03-10 | CubeSat OBC Team | Phase 7 payload baseline: add FM_PAYLOAD (§5), update transition matrix (§6, §7), update subsystem table (§11), update HK encoding table (§11.1); new authorized requester (§7.1) |
 
 ---
 
@@ -32,7 +33,7 @@
 8. [FMM API](#8-fmm-api)
 9. [Fault Integration](#9-fault-integration)
 10. [EPS Integration](#10-eps-integration)
-11. [Subsystem Behaviour per Mode](#11-subsystem-behaviour-per-mode)
+11. [Subsystem Behavior per Mode](#11-subsystem-behavior-per-mode)
 12. [Data Layer Interface](#12-data-layer-interface)
 13. [FreeRTOS Threading Model](#13-freertos-threading-model)
 14. [Fault IDs](#14-fault-ids)
@@ -53,10 +54,10 @@ context queries the FMM rather than maintaining its own mode variable.
 
 ### 1.2 Scope
 
-The FMM governs five discrete operational modes (`FM_BOOT`, `FM_SAFE`,
-`FM_DETUMBLE`, `FM_NOMINAL`, `FM_DIAGNOSTIC`) and enforces the allowed-transition
-rules defined in §6. It integrates with the Fault Manager to force an immediate
-`FM_SAFE` transition on any `FAULT_LEVEL_CRITICAL` event.
+The FMM governs six discrete operational modes (`FM_BOOT`, `FM_SAFE`,
+`FM_DETUMBLE`, `FM_NOMINAL`, `FM_DIAGNOSTIC`, `FM_PAYLOAD`) and enforces the
+allowed-transition rules defined in §6. It integrates with the Fault Manager to
+force an immediate `FM_SAFE` transition on any `FAULT_LEVEL_CRITICAL` event.
 
 ### 1.3 Design Basis
 
@@ -137,13 +138,14 @@ typedef enum {
     FM_DETUMBLE   = 2,  /* Angular-rate reduction via B-dot law        */
     FM_NOMINAL    = 3,  /* Normal three-axis attitude control          */
     FM_DIAGNOSTIC = 4,  /* Ground-commanded diagnostic / testing mode  */
+    FM_PAYLOAD    = 5,  /* Scientific payload operations — PLS-001     */
     FM_COUNT            /* Sentinel — not a valid mode                 */
 } flight_mode_t;
 ```
 
-Higher numeric values indicate progressively more nominal operation; this
-ordering is used only for documentation — the transition rules are defined
-exclusively by the matrix in §6.
+Numeric values are assigned sequentially. Transition rules are defined
+exclusively by the matrix in §6; the numeric ordering carries no priority
+semantics.
 
 ### 5.1 Mode Descriptions
 
@@ -152,21 +154,23 @@ exclusively by the matrix in §6.
 | FM_BOOT       | 0       | Power-on reset; set by `flight_mode_manager_init()` | **Current**: ground command `BOOT→DETUMBLE` only. **Phase 2**: automatic when angular rate estimate available from ADCS. |
 | FM_SAFE       | 1       | Any `FAULT_LEVEL_CRITICAL` event; or `fmm_force_safe()` | Ground command `SAFE→DETUMBLE` only   |
 | FM_DETUMBLE   | 2       | Ground command or auto from FM_BOOT/FM_SAFE        | `ω < 0.05 rad/s` sustained → FM_NOMINAL (Phase 2); or fault |
-| FM_NOMINAL    | 3       | Ground command from FM_DETUMBLE/FM_DIAGNOSTIC      | Ground command or fault                       |
+| FM_NOMINAL    | 3       | Ground command from FM_DETUMBLE/FM_DIAGNOSTIC/FM_PAYLOAD | Ground command or fault                |
 | FM_DIAGNOSTIC | 4       | Ground command from FM_NOMINAL only               | Ground command; or any fault                  |
+| FM_PAYLOAD    | 5       | Ground command from FM_NOMINAL only (nadir-pointing must be established) | Ground command to FM_NOMINAL/FM_SAFE; or any FAULT_LEVEL_CRITICAL |
 
 ---
 
 ## 6. Allowed-Transition Matrix
 
 ```
-From \ To  │ BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC
-───────────┼──────────────────────────────────────────
-BOOT       │  —     ✓      ✓         ✗         ✗
-SAFE       │  ✗     —      ✓         ✗         ✗
-DETUMBLE   │  ✗     ✓      —         ✓         ✗
-NOMINAL    │  ✗     ✓      ✓         —         ✓
-DIAGNOSTIC │  ✗     ✓      ✗         ✓         —
+From \ To  │ BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC  PAYLOAD
+───────────┼────────────────────────────────────────────────────
+BOOT       │  —     ✓      ✓         ✗         ✗           ✗
+SAFE       │  ✗     —      ✓         ✗         ✗           ✗
+DETUMBLE   │  ✗     ✓      —         ✓         ✗           ✗
+NOMINAL    │  ✗     ✓      ✓         —         ✓           ✓
+DIAGNOSTIC │  ✗     ✓      ✗         ✓         —           ✗
+PAYLOAD    │  ✗     ✓      ✗         ✓         ✗           —
 ```
 
 **Special rules:**
@@ -178,17 +182,20 @@ DIAGNOSTIC │  ✗     ✓      ✗         ✓         —
    not FM_SAFE.
 3. **`fmm_force_safe()`** additionally bypasses the fault-level check but is
    **not ISR-safe** (uses mutex via Data Layer). See OI-5.
+4. **FM_PAYLOAD** is reachable only from `FM_NOMINAL`. Transitioning to
+   `FM_PAYLOAD` while in any other mode returns `FMM_ERR_NOT_ALLOWED`.
 
 Implementation (`src/services/fmm/flight_mode_manager.c`):
 
 ```c
 static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
-    /*               BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC */
-    /* FM_BOOT       */ {0, 1, 1, 0, 0},
-    /* FM_SAFE       */ {0, 0, 1, 0, 0},
-    /* FM_DETUMBLE   */ {0, 1, 0, 1, 0},
-    /* FM_NOMINAL    */ {0, 1, 1, 0, 1},
-    /* FM_DIAGNOSTIC */ {0, 1, 0, 1, 0},
+    /*               BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC  PAYLOAD */
+    /* FM_BOOT       */ {0, 1, 1, 0, 0, 0},
+    /* FM_SAFE       */ {0, 0, 1, 0, 0, 0},
+    /* FM_DETUMBLE   */ {0, 1, 0, 1, 0, 0},
+    /* FM_NOMINAL    */ {0, 1, 1, 0, 1, 1},
+    /* FM_DIAGNOSTIC */ {0, 1, 0, 1, 0, 0},
+    /* FM_PAYLOAD    */ {0, 1, 0, 1, 0, 0},
 };
 ```
 
@@ -237,6 +244,7 @@ subsystems are read-only consumers of the mode via `data_layer_get_flight_mode()
 | Health Monitor      | `fmm_force_safe()` via `fault_report()`  | Watchdog kick missed                        |
 | EPS Monitor         | `fmm_force_safe()` via `fault_report()`  | `ENERGY_CRITICAL` or `ENERGY_EMERGENCY`     |
 | ADCS task           | `fmm_request_transition(FM_NOMINAL)`     | ω < threshold sustained — Phase 2 only      |
+| Payload Manager     | `fmm_request_transition(FM_SAFE)`        | Storage full or instrument critical fault — Phase 7 |
 
 No other subsystem (telemetry task, sensor read task, etc.) may request a mode
 transition.
@@ -409,20 +417,22 @@ conditions and drives FM_SAFE via the Fault Manager — it does **not** call
 
 ---
 
-## 11. Subsystem Behaviour per Mode
+## 11. Subsystem Behavior per Mode
 
 Each subsystem reads the flight mode from the Data Layer snapshot at the start
 of its control loop iteration.
 
-| Subsystem            | FM_BOOT | FM_SAFE     | FM_DETUMBLE         | FM_NOMINAL            | FM_DIAGNOSTIC |
-|----------------------|---------|-------------|---------------------|-----------------------|---------------|
-| ADCS (attitude ctrl) | No output | No output | B-dot momentum dump | LQR (or PID fallback) | PID           |
-| Sensor read task     | Active  | Active      | Active              | Active                | Active        |
-| Telemetry task       | Minimal HK | Minimal HK (temp only, attitude zeroed) | Full ADCS TLM | Full ADCS TLM | Full ADCS TLM |
-| EPS Monitor          | Active  | Active      | Active              | Active                | Active        |
-| Health Monitor       | Active  | Active      | Active              | Active                | Active        |
-| CSP / Ground comms   | Listen  | Listen      | Listen              | Listen + uplink       | Listen + uplink |
-| Reaction wheels      | Off     | Off         | Off (MTQ only)      | Active (Phase 2)      | Active (Phase 2) |
+| Subsystem            | FM_BOOT | FM_SAFE     | FM_DETUMBLE         | FM_NOMINAL            | FM_DIAGNOSTIC | FM_PAYLOAD |
+|----------------------|---------|-------------|---------------------|-----------------------|---------------|------------|
+| ADCS (attitude ctrl) | No output | No output | B-dot momentum dump | LQR (or PID fallback) | PID           | LQR nadir-pointing |
+| Sensor read task     | Active  | Active      | Active              | Active                | Active        | Active     |
+| Telemetry task       | Minimal HK | Minimal HK (temp only, attitude zeroed) | Full ADCS TLM | Full ADCS TLM | Full ADCS TLM | Full ADCS TLM + payload HK |
+| EPS Monitor          | Active  | Active      | Active              | Active                | Active        | Active     |
+| Health Monitor       | Active  | Active      | Active              | Active                | Active        | Active     |
+| CSP / Ground comms   | Listen  | Listen      | Listen              | Listen + uplink       | Listen + uplink | Listen + uplink |
+| Reaction wheels      | Off     | Off         | Off (MTQ only)      | Active (Phase 2)      | Active (Phase 2) | Active (Phase 2) |
+| Payload task (PLS-001) | Off   | Off         | Off                 | Off                   | Off           | **Active** — MAG@10 Hz, RAD@1 Hz, CAM on cmd |
+| 5V PAYLOAD rail      | Off     | Off         | Off                 | Off                   | Off           | **Enabled** (GPIO21) |
 
 ADCS controller dispatch is defined in detail in ADCS-DES-001 §2.
 
@@ -443,6 +453,7 @@ Ground software decoding:
 | 2     | FM_DETUMBLE   |
 | 3     | FM_NOMINAL    |
 | 4     | FM_DIAGNOSTIC |
+| 5     | FM_PAYLOAD    |
 
 The field is populated by `data_layer_get_snapshot()` and included in the periodic HK beacon regardless of mode.
 
