@@ -41,43 +41,47 @@ This matrix maps functional and non-functional requirements to implementation mo
 
 ### Attitude Determination Subsystem
 ```
-SYS-REQ 1: "Determine spacecraft attitude within ±5°"
-├── FR-1: Attitude Sensing (IMU readout)
-├── FR-2: Attitude Determination (Euler computation)
+SYS-F-101..106 (Attitude Estimation): "Determine spacecraft attitude within ±5°"
+├── FR-1: Attitude Sensing (IMU readout) → SYS-F-106 (estimation rate ≥10 Hz)
+├── FR-2: Attitude Determination (EKF) → SYS-F-101..105 (state vector, RK2, bias, accel/mag update)
 ├── NFR-2: Determinism (consistent sampling)
 └── Test Cases:
     ├── test_pid (validates PID integration with attitude error)
     ├── test_dynamics (validates Euler integration numerical accuracy)
-    └── Phase 4: Kalman filter validation
+    └── ekf_test, ekf_mag_test (SyRS §10 traceability)
 ```
 
 ### Attitude Control Subsystem
 ```
-SYS-REQ 2: "Control spacecraft attitude to nadir-pointing (±10°)"
-├── FR-3: Rate Control (PID loops)
-├── FR-4: Attitude Control (error-to-torque mapping)
+SYS-F-111..115 (Attitude Control): "Control spacecraft attitude to nadir-pointing (±1°)"
+├── FR-3: Rate Control (PID fallback) → SYS-F-112
+├── FR-4: Attitude Control (LQR dispatch) → SYS-F-111, SYS-F-113
 ├── FR-5: RW Actuation (apply torque)
+├── FR-6: MTQ actuation (B-dot momentum dump) → SYS-F-114
+├── SYS-F-115: Safe-mode actuator inhibit in FM_SAFE/FM_BOOT
 ├── NFR-1: Real-Time Scheduling (control loop timing)
 └── Test Cases:
     ├── test_pid (control law validation)
     ├── test_actuators (torque application)
+    ├── lqr_test, lqr_schedule_test
     └── Phase 2: End-to-end control loop test
 ```
 
 ### Telemetry & Health Subsystem
 ```
-SYS-REQ 3: "Transmit vehicle state and health to ground station"
-├── FR-7: Telemetry TX (data formatting + transmission)
+SYS-F-403..407 (CSP Telemetry/Command): "Transmit vehicle state and health to ground station"
+├── FR-7: Telemetry TX (data formatting + transmission) → SYS-F-403..405
 ├── FR-8: Health Monitoring (bus, thermal, RW status)
+├── SYS-F-406..407: Command reception on CSP Port 20
 ├── NFR-4: Power Efficiency (low-power telemetry rate)
 └── Test Cases:
-    ├── Phase 3: WiFi/UART integration test
+    ├── Phase 3: UART/KISS/CSP integration test (WiFi descoped per SRR ACT-05)
     └── Phase 3: Power budget validation
 ```
 
 ### Data Layer Subsystem (PR-2)
 ```
-SYS-REQ 4: "All subsystems share vehicle state via a thread-safe snapshot API"
+SYS-NF-001 (Host Testability / DLA): "All subsystems share vehicle state via a thread-safe snapshot API"
 ├── FR-1: Attitude Sensing (DLA write path)
 ├── FR-4: Attitude Control (DLA read path)
 └── Test Cases:
@@ -87,10 +91,11 @@ SYS-REQ 4: "All subsystems share vehicle state via a thread-safe snapshot API"
 
 ### Safety & Fault Subsystem (PRs 3–5)
 ```
-SYS-REQ 5: "OBC shall enter SAFE mode within 100 ms of detecting a CRITICAL fault"
-├── FR-9: Flight Mode Management
-├── FR-10: Fault Aggregation (CRITICAL → fmm_force_safe)
-├── FR-11: EPS Monitoring (EMERGENCY → fmm_force_safe)
+SYS-F-201..205, SYS-F-211..213 (FDIR): "OBC shall enter SAFE mode within 10 s of detecting a CRITICAL fault"
+├── FR-9: Flight Mode Management (FSM) → SYS-F-115, SYS-F-204
+├── FR-10: Fault Aggregation (CRITICAL → fmm_force_safe) → SYS-F-205
+├── FR-11: EPS Monitoring (EMERGENCY → fmm_force_safe) → SYS-F-201..205
+├── FR-12: Watchdog (Health Monitor feed) → SYS-F-211..213
 └── Test Cases:
     ├── test_fmm (T-FMM-01..11)
     ├── test_fault_manager (T-FMS-02..04)
@@ -99,10 +104,10 @@ SYS-REQ 5: "OBC shall enter SAFE mode within 100 ms of detecting a CRITICAL faul
 
 ### Logging Subsystem (PR-6)
 ```
-SYS-REQ 6: "All CRITICAL events shall be persisted and readable via ground command"
-├── FR-12: Event Logging
+SYS-F-301..304 (Persistent Ring Logger): "All CRITICAL events shall be persisted and readable via ground command"
+├── FR-12: Event Logging → SYS-F-301..303 [IMPL], SYS-F-304 [PLANNED]
 └── Test Cases:
-    └── test_logger (T-LOG-01..03)
+    └── test_logger (T-LOG-01..03); T-LOG-04 (flash persistence — pending SYS-F-304)
 ```
 
 ---
@@ -145,49 +150,49 @@ SYS-REQ 6: "All CRITICAL events shall be persisted and readable via ground comma
 
 ### Test: `test_fmm` (PR-3)
 - **Scope**: Flight Mode FSM transitions and guards
-- **Requirements Covered**: FR-9 (Flight Mode Management), SYS-REQ-5
+- **Requirements Covered**: FR-9 (Flight Mode Management), SYS-F-204, SYS-F-115
 - **Test IDs**: T-FMM-01..11
 - **Result**: **PASS** 11/11
 
 ### Test: `test_fault_manager` (PR-4)
 - **Scope**: Fault table management, FSM levels, CRITICAL→SAFE trigger, anti-cascade
-- **Requirements Covered**: FR-10 (Fault Aggregation), SYS-REQ-5
+- **Requirements Covered**: FR-10 (Fault Aggregation), SYS-F-205, SYS-F-204
 - **Test IDs**: T-FMS-02..04
 - **Result**: **PASS** 12/12
 
 ### Test: `test_eps_monitor` (PR-5)
 - **Scope**: Battery voltage state machine with Schmidt-trigger hysteresis
-- **Requirements Covered**: FR-11 (EPS Monitoring), SYS-REQ-5
+- **Requirements Covered**: FR-11 (EPS Monitoring), SYS-F-201..205
 - **Test IDs**: T-EPS-03..05
 - **Result**: **PASS** 12/12
 
 ### Test: `test_logger` (PR-6)
 - **Scope**: Ring buffer, Class-A eviction protection, ordered log retrieval
-- **Requirements Covered**: FR-12 (Event Logging), SYS-REQ-6
+- **Requirements Covered**: FR-12 (Event Logging), SYS-F-301..303
 - **Test IDs**: T-LOG-01..03
 - **Result**: **PASS** 12/12
 
 ### Test: `test_sensor_read_task` (PR-7)
 - **Scope**: DLA write path, gyro deg/s→rad/s conversion, HAL isolation
-- **Requirements Covered**: FR-1 (Attitude Sensing), SYS-REQ-4
+- **Requirements Covered**: FR-1 (Attitude Sensing), SYS-F-106, SYS-NF-001
 - **Test IDs**: T-SDM-01..03 (partial coverage)
 - **Result**: **PASS** 7/7
 
 ### Test: `test_attitude_control_task` (PR-8)
 - **Scope**: DLA read path, FM guard (NOMINAL/DIAGNOSTIC only), imu_valid guard
-- **Requirements Covered**: FR-4 (Attitude Control), SYS-REQ-4
+- **Requirements Covered**: FR-4 (Attitude Control), SYS-F-111..113, SYS-NF-001
 - **Test IDs**: T-SDM-04..05 (partial coverage)
 - **Result**: **PASS** 8/8
 
 ### Test: `test_telemetry` (PR-9)
 - **Scope**: DLA read path, FM guard (FM_SAFE → HK-only), energy state encoding in flags
-- **Requirements Covered**: FR-7 (Telemetry TX), SYS-REQ-3
+- **Requirements Covered**: FR-7 (Telemetry TX), SYS-F-403..405
 - **Test IDs**: T-TLM-01..06
 - **Result**: **PASS** 6/6
 
 ### Test: `test_health_monitor_task` (PR-10)
 - **Scope**: Tick wiring — `fault_manager_tick()` and `eps_monitor_tick()` called on every Step
-- **Requirements Covered**: FR-8 (Health Monitoring), FR-10 (Fault Aggregation), SYS-REQ-5
+- **Requirements Covered**: FR-8 (Health Monitoring), FR-10 (Fault Aggregation), SYS-F-211..213, SYS-F-201..205
 - **Test IDs**: T-HM-01..03
 - **Result**: **PASS** 3/3
 
@@ -253,7 +258,7 @@ T-ACT-09..11: Attitude Control Task — LQR/PID dispatch (PR-15)
   └─ Status: ✅ All 3 passing
 
 T-WDT-01..05: Hardware Watchdog HAL (PR-16)
-  └─ Validates: SYS-REQ-4 (fault-tolerant safe-mode, watchdog supervision)
+  └─ Validates: SYS-F-211..213, SYS-F-213 (fault-tolerant safe-mode, watchdog supervision)
   └─ Status: ✅ All 5 passing
 
 T-MDT-01..05: Momentum Dump algorithm (PR-17)
@@ -277,24 +282,24 @@ T-QAT-01..05: Unit-quaternion library — multiply, rotate, normalize, slerp, to
   └─ Status: ✅ All 5 passing
 
 T-LQRS-01..03: LQR gain scheduling — table lookup by energy state + angular momentum (PR-23)
-  └─ Validates: FR-4 (Attitude Control — gain scheduling), SYS-REQ-4 (adaptive gains)
+  └─ Validates: FR-4 (Attitude Control — gain scheduling), SYS-NF-001 (adaptive gains)
   └─ Status: ✅ All 3 passing
 
 T-CLS-01..06: Closed-loop simulation — EKF → LQR → RK2-dynamics stability harness (PR-24)
-  └─ Validates: FR-2 (EKF), FR-4 (LQR), FR-3 (RK2 dynamics), SYS-REQ-1 (attitude stabilisation)
+  └─ Validates: FR-2 (EKF), FR-4 (LQR), FR-3 (RK2 dynamics), SYS-F-101..106 (attitude stabilization)
   └─ Criterion: settling within 30 s, residual ω < 0.05 rad/s
   └─ Status: ✅ All 6 passing
 
 T-FMS-01a..d: Fault-to-safe integration — CRITICAL fault → FM_SAFE within 100 ms ticks (PR-25)
-  └─ Validates: FR-10 (Fault Aggregation → fmm_force_safe), SYS-REQ-5 (safe-mode latency)
+  └─ Validates: FR-10 (Fault Aggregation → fmm_force_safe), SYS-F-201..205 (FDIR safe-mode latency)
   └─ Status: ✅ All 4 sub-tests passing
 
 T-SAFE-01a..c: Watchdog miss → safe-mode integration — watchdog_hal_triggered() path (PR-25)
-  └─ Validates: FR-8 (Health Monitoring), FR-10 (Fault Aggregation), SYS-REQ-5
+  └─ Validates: FR-8 (Health Monitoring), FR-10 (Fault Aggregation), SYS-F-211..213, SYS-F-201..205
   └─ Status: ✅ All 3 sub-tests passing
 
 T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers flash write (PR-26)
-  └─ Validates: FR-12 (Persistent Event Logging via flash_backend_flush()), SYS-REQ-6
+  └─ Validates: FR-12 (Persistent Event Logging via flash_backend_flush()), SYS-F-301..304
   └─ Status: ✅ All 4 sub-tests passing
 ```
 
@@ -307,7 +312,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | **Phase 1** (Complete) | Unit Testing (C code) | FR-3, FR-5, FR-6 (control & actuators) | ✅ 100% tests passing |
 | **Phase 2** | Integration Testing (Pico SDK) | FR-1, FR-2, FR-7, NFR-1, NFR-2 | Deadline met in simulation |
 | **Phase 3** | Communication Testing (WiFi/UART) | FR-7, FR-8, NFR-4 | Packets received, power <2W |
-| **Spec-Alignment PRs 1–8** | Unit Testing (host build) | FR-9..12, SYS-REQ-4..6, FR-1/FR-4 DLA path | ✅ 16/16 passing |
+| **Spec-Alignment PRs 1–8** | Unit Testing (host build) | FR-9..12, SYS-F-101..106, SYS-NF-001, SYS-F-201..205, SYS-F-301..304, FR-1/FR-4 DLA path | ✅ 16/16 passing |
 | **Spec-Alignment PRs 9–10** | Unit Testing (host build) | FR-7 DLA migration (T-TLM-01..06), FR-8 tick wiring (T-HM-01..03) | ✅ 17/17 passing |
 | **Phase 4 PRs 11–15** | Unit Testing (host build) | FR-2 (EKF), FR-3 (RK2/dynamics), FR-4 (LQR dispatch) | ✅ 19/19 passing |
 | **Phase 5 PRs 16–20** | Unit Testing (host build) | FR-2 (yaw/mag), FR-5 (momentum dump), FR-8 (watchdog HAL) | ✅ 23/23 passing |

@@ -227,16 +227,24 @@ changes to any control or estimation code.
 
 ## 7. GPS Interface (NEO-7M)
 
+> **⚠️ DESCOPED — SRR-OBC-001 ACT-06 (2026-03-10)**  
+> The GPS receiver (NEO-7M on UART0) is **not activated in this release**.  
+> UART0 (GPIO0/1) is reserved for future GPS integration. No functional requirements  
+> for GPS exist in SRS-OBC-001 or SyRS-OBC-001 at this baseline.  
+> Hardware connector may be populated on the engineering model for future use;  
+> the driver (`src/drivers/gps/neo7m.c`) and FreeRTOS GPS task are not built.  
+> GPS integration will be scoped, requirements-allocated, and ICD-updated in a future release.
+
 | Parameter | Value |
 |-----------|-------|
 | Module | GY-NEO6Mv2 with NEO-7M |
 | Bus | UART0 (`uart0`) |
 | TX pin | **GPIO0** (`UART0_TX_PIN`) |
 | RX pin | **GPIO1** (`UART0_RX_PIN`) |
-| Baud rate | 9600 bps |
-| Protocol | NMEA 0183 — sentences `$GPGGA`, `$GPRMC` |
-| Logic voltage | 3.3 V |
-| Driver | `src/drivers/gps/neo7m.c` (planned) |
+| Baud rate | 9600 bps (default; unused) |
+| Protocol | NMEA 0183 (not parsed in this release) |
+| Driver | `src/drivers/gps/neo7m.c` — **not built** |
+| Status | **Reserved — inactive in this release** |
 
 > **Future note**: Increasing to 38400 bps reduces NMEA message latency and enables
 > higher fix update rates. Requires reconfiguring the NEO-7M via UBX protocol command

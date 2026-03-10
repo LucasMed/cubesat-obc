@@ -85,11 +85,10 @@ status `CLOSED` before the PDR baseline is formally locked.
 | **ID** | ACT-01 |
 | **Source** | MAJ-01 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
-| **Target Milestone** | PDR baseline lock |
-| **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
-| **Affected Documents** | `SRS-OBC-001` (header) |
+| **Status**       | `CLOSED` — 2026-03-10                             |
+| **Target Milestone** | PDR baseline lock                             |
+| **Responsible** | Systems Engineering Lead                          |
+| **Due Date** | 2026-03-10                                            |
 
 **Title:** Correct SRS Internal Document Identifier from `REQ-001` to `SRS-OBC-001`
 
@@ -118,11 +117,10 @@ breaks formal configuration management traceability per ECSS-E-ST-40C §5.3.
 | **ID** | ACT-02 |
 | **Source** | MAJ-02 |
 | **Priority** | **CRITICAL** |
-| **Status** | `OPEN` |
-| **Target Milestone** | PDR baseline lock |
-| **Responsible** | Communications Lead |
-| **Due Date** | TBD |
-| **Affected Documents** | `SyRS-OBC-001` SYS-F-401; `ARCHITECTURE.md` §7; `COMMS-DES-001`; `ICD-OBC-001` |
+| **Status**       | `CLOSED` — 2026-03-10                             |
+| **Target Milestone** | PDR baseline lock                             |
+| **Responsible** | Communications Lead                               |
+| **Due Date** | 2026-03-10                                            |
 
 **Title:** Resolve CSP Version Conflict — v1.x vs. v2.x
 
@@ -154,11 +152,10 @@ ground station. This is a blocking functional incompatibility.
 | **ID** | ACT-03 |
 | **Source** | MAJ-03 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
-| **Target Milestone** | PDR baseline lock |
-| **Responsible** | Software Lead |
-| **Due Date** | TBD |
-| **Affected Documents** | `SRS-OBC-001` NFR-6; `RMP-OBC-001` |
+| **Status**       | `CLOSED` — 2026-03-10                             |
+| **Target Milestone** | PDR baseline lock                             |
+| **Responsible** | Software Lead                                     |
+| **Due Date** | 2026-03-10                                            |
 
 **Title:** Verify Flash Footprint and Resolve NFR-6 Ambiguity
 
@@ -188,10 +185,10 @@ discrepancy is unacknowledged; NFR-6 is marked "TBC" with no open item.
 | **ID** | ACT-04 |
 | **Source** | MAJ-04 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (Option A: payload concept defined in SyRS §7.5) |
 | **Target Milestone** | PDR baseline lock |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `MRD-OBC-001` §2.3 MO-6; `SyRS-OBC-001`; `ICD-OBC-001`; `FMEA-OBC-001` |
 
 **Title:** Define Payload Subsystem at Mission Concept Level (or Formally Descope MO-6)
@@ -224,10 +221,10 @@ interface definitions, or FDIR provisions exist for a payload. FMEA excludes it 
 | **ID** | ACT-05 |
 | **Source** | MAJ-05 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 |
 | **Target Milestone** | PDR baseline lock |
 | **Responsible** | Communications Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `SRS-OBC-001` IR-4; `ICD-OBC-001`; `ARCHITECTURE.md` |
 
 **Title:** Replace IR-4 Ground Station Interface with Actual UART1/CSP/KISS/E22 Requirement
@@ -257,10 +254,10 @@ interface has never been formally descoped.
 | **ID** | ACT-06 |
 | **Source** | MAJ-06 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (Option B: GPS formally descoped in ICD-OBC-001 §7) |
 | **Target Milestone** | PDR baseline lock |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `SRS-OBC-001`; `SyRS-OBC-001`; `ICD-OBC-001` §3; `FMEA-OBC-001` |
 
 **Title:** Manage GPS Interface — Add Requirements or Formally Descope
@@ -292,10 +289,10 @@ unmanaged interface consuming hardware resources.
 | **ID** | ACT-07 |
 | **Source** | MAJ-07 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 |
 | **Target Milestone** | PDR baseline lock |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `MRD-OBC-001` §2.3 MO-3 |
 
 **Title:** Amend MO-3 FDIR Response Time from "1 orbit" to a Meaningful Budget
@@ -328,10 +325,10 @@ within seconds. The mission objective must reflect engineering reality.
 | **ID** | ACT-08 |
 | **Source** | TG-01 |
 | **Priority** | MEDIUM |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 |
 | **Target Milestone** | PDR |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `SyRS-OBC-001` §1 |
 
 **Title:** Add MO→SyRS Cross-Reference Table to SyRS §1
@@ -362,10 +359,10 @@ Example format:
 | **ID** | ACT-09 |
 | **Source** | MIN-01, TG-04 |
 | **Priority** | MEDIUM |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 |
 | **Target Milestone** | PDR |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `RTM-OBC-001` |
 
 **Title:** Align RTM System Requirement Identifiers to SyRS SYS-F-xxx Numbering
@@ -402,10 +399,10 @@ Mapping" section with the corresponding SyRS IDs.
 | **ID** | ACT-10 |
 | **Source** | MIN-02, MIN-03 |
 | **Priority** | MEDIUM |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 |
 | **Target Milestone** | PDR |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `SyRS-OBC-001` SYS-F-401; `SRS-OBC-001` NFR-7 |
 
 **Title:** Correct SYS-F-401 SMP Reference; Harmonize NFR-7 Boot Time
@@ -645,45 +642,53 @@ mission objective MO-6 (*"Class A events survive reset"*) cannot be fully satisf
 
 | Priority | Total | Open | In-Progress | Resolved | Closed |
 |---|---|---|---|---|---|
-| CRITICAL | 1 | 1 (ACT-02) | — | — | — |
-| HIGH | 9 | 9 | — | — | — |
-| MEDIUM | 6 | 6 | — | — | — |
-| **Total** | **16** | **16** | **0** | **0** | **0** |
+| CRITICAL | 1 | — | — | — | 1 (ACT-02) |
+| HIGH | 9 | 3 (ACT-11,14,16) | — | — | 6 |
+| MEDIUM | 6 | 3 (ACT-12,13,15) | — | — | 3 |
+| **Total** | **16** | **6** | **0** | **0** | **10** |
 
 ### By Milestone
 
-| Milestone | Items | Critical/High | Medium |
-|---|---|---|---|
-| PDR Baseline Lock | 10 | ACT-01..07 + ACT-08..10 | ACT-08, ACT-09, ACT-10 |
-| CDR | 6 | ACT-11, ACT-14, ACT-16 | ACT-12, ACT-13, ACT-15 |
+| Milestone | Items | Critical/High | Medium | Status |
+|---|---|---|---|---|
+| PDR Baseline Lock | 10 | ACT-01..07 | ACT-08, ACT-09, ACT-10 | **ALL CLOSED** |
+| CDR | 6 | ACT-11, ACT-14, ACT-16 | ACT-12, ACT-13, ACT-15 | OPEN |
 
 ### By Responsible Lead
 
-| Lead | Items Assigned |
-|---|---|
-| Systems Engineering | ACT-01, ACT-04, ACT-06, ACT-07, ACT-08, ACT-09, ACT-10, ACT-15 |
-| Communications | ACT-02, ACT-05, ACT-12 |
-| Software | ACT-03, ACT-14, ACT-16 |
-| Hardware | ACT-11 |
-| ADCS | ACT-13 |
+| Lead | Items Assigned | Open |
+|---|---|---|
+| Systems Engineering | ACT-01, ACT-04, ACT-06, ACT-07, ACT-08, ACT-09, ACT-10, ACT-15 | ACT-15 |
+| Communications | ACT-02, ACT-05, ACT-12 | ACT-12 |
+| Software | ACT-03, ACT-14, ACT-16 | ACT-14, ACT-16 |
+| Hardware | ACT-11 | ACT-11 |
+| ADCS | ACT-13 | ACT-13 |
 
 ### PDR Readiness (as of 2026-03-10)
 
 ```
-PDR Blocking Items: 10 / 10 OPEN
+PDR Blocking Items: 10 / 10 CLOSED
 
-[ ] ACT-01  HIGH     SRS document ID
-[!] ACT-02  CRITICAL CSP version conflict
-[ ] ACT-03  HIGH     Flash footprint NFR-6
-[ ] ACT-04  HIGH     Payload definition
-[ ] ACT-05  HIGH     Ground station IR-4
-[ ] ACT-06  HIGH     GPS interface management
-[ ] ACT-07  HIGH     MO-3 FDIR response time
-[ ] ACT-08  MEDIUM   MO→SyRS traceability table
-[ ] ACT-09  MEDIUM   RTM identifier alignment
-[ ] ACT-10  MEDIUM   SYS-F-401 SMP + NFR-7 boot time
+[x] ACT-01  HIGH     SRS document ID
+[x] ACT-02  CRITICAL CSP version conflict
+[x] ACT-03  HIGH     Flash footprint NFR-6
+[x] ACT-04  HIGH     Payload definition
+[x] ACT-05  HIGH     Ground station IR-4
+[x] ACT-06  HIGH     GPS interface management
+[x] ACT-07  HIGH     MO-3 FDIR response time
+[x] ACT-08  MEDIUM   MO→SyRS traceability table
+[x] ACT-09  MEDIUM   RTM identifier alignment
+[x] ACT-10  MEDIUM   SYS-F-401 SMP + NFR-7 boot time
 
-PDR GATE: NOT READY — 10 items open (1 CRITICAL)
+PDR GATE: READY — all 10 PDR-blocking items CLOSED (2026-03-10)
+
+CDR Items Remaining: 6 / 6 OPEN
+[ ] ACT-11  HIGH     Magnetometer part number lock
+[ ] ACT-12  MEDIUM   RF link margin SyRS requirement
+[ ] ACT-13  MEDIUM   RW performance requirements
+[ ] ACT-14  HIGH     HIL test cases (WDT, stack, power)
+[ ] ACT-15  MEDIUM   FMEA baseline v0.2
+[ ] ACT-16  HIGH     flash_backend.c implementation
 ```
 
 ---

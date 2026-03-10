@@ -21,6 +21,23 @@ Requirements marked `[PLANNED]` are not yet implemented (target: v1.0.0).
 
 ---
 
+## 1.1 Mission Objective to SyRS Requirement Cross-Reference
+
+*Added per SRR-OBC-001 ACT-08 — provides top-down traceability from MRD-OBC-001
+mission objectives to system-level requirements in this document.*
+
+| MO   | Mission Objective (MRD-OBC-001 §2.3)                              | Implementing SyRS Requirements            |
+|------|-------------------------------------------------------------------|-------------------------------------------|
+| MO-1 | 3-axis attitude determination via EKF                             | SYS-F-101, SYS-F-102, SYS-F-103, SYS-F-104, SYS-F-105, SYS-F-106 |
+| MO-2 | 3-axis attitude control — B-dot detumbling (MTQ) + LQR pointing (RW) | SYS-F-111, SYS-F-112, SYS-F-113, SYS-F-114, SYS-F-115 |
+| MO-3 | Autonomous FDIR: FM_SAFE transition within 10 s of CRITICAL fault | SYS-F-201, SYS-F-204, SYS-F-205, SYS-F-211, SYS-F-212, SYS-F-213 |
+| MO-4 | Bidirectional TT&C over 433 MHz LoRa (E22-400M30S)               | SYS-F-401, SYS-F-402, SYS-F-403, SYS-F-404, SYS-F-405, SYS-F-406, SYS-F-407 |
+| MO-5 | Energy-aware subsystem management (EPS Schmitt-trigger, rail shedding) | SYS-F-201, SYS-F-202, SYS-F-203, SYS-F-204, SYS-F-205 |
+| MO-6 | Persistent event logging across power cycles (Class-A events survive reset) | SYS-F-301, SYS-F-302, SYS-F-303, SYS-F-304 |
+| MO-7 | ECSS-Q-ST-80C compliance (MISRA C, traceability, ≥90% test coverage) | SYS-NF-001, SYS-NF-002, SYS-NF-003 |
+
+---
+
 ## 2. System Overview
 
 The OBC software executes on a Raspberry Pi Pico 2W (RP2350, Cortex-M33) under
@@ -189,7 +206,8 @@ power cycling.
 ### SYS-F-400 — CSP Communication
 
 #### SYS-F-401 — Protocol Stack  
-`[IMPL]` The OBC shall run the `libcsp` v1.x stack on FreeRTOS SMP.
+`[IMPL]` The OBC shall run the `libcsp` v2.2 stack (CSP protocol version 2) on FreeRTOS (single-core configuration; SMP planned per SYS-P-003).  
+*Version confirmed: `third_party/libcsp/CMakeLists.txt` — `project(CSP VERSION 2.2)`, default protocol version `csp_conf.version = 2` in `src/csp_init.c`. Resolved per SRR-OBC-001 ACT-02.*
 
 #### SYS-F-402 — Transport  
 `[IMPL]` CSP shall be transported over UART1 using KISS framing (`pico_usart`
@@ -213,6 +231,30 @@ temperature, mode, flags (attitude and rates zeroed).
 
 #### SYS-F-407 — Command Types  
 `[IMPL]` The OBC shall handle at minimum: `CMD_ECHO` and `CMD_REBOOT` commands.
+
+---
+
+## 7.5 Payload Power Management
+
+*Added per SRR-OBC-001 ACT-04. Payload concept: a low-power science/demonstration module (e.g., camera module or beacon transmitter) powered by a dedicated EPS-controlled GPIO rail. Hardware definition deferred to CDR.*
+
+#### SYS-F-500 — Payload Rail Enable/Disable  
+`[PLANNED]` The OBC shall enable and disable the payload power rail via a dedicated GPIO output pin under FMM control.  
+*Payload rail shall be OFF in FM_BOOT, FM_SAFE, and FM_DETUMBLE. Rail may be enabled only in FM_NOMINAL and FM_DIAGNOSTIC.*
+
+#### SYS-F-501 — Payload Rail FMM Interlock  
+`[PLANNED]` The FMM shall inhibit payload rail activation unless energy state is `ENERGY_NOMINAL`.  
+*Rationale: Prevents payload from drawing power when the battery is below safe operating voltage.*
+
+#### SYS-F-502 — Payload Rail Fault Detection  
+`[PLANNED]` The EPS Monitor shall detect payload rail overcurrent (current draw exceeding configured threshold) and report `FAULT_PAYLOAD_OVERCURRENT` at `FAULT_LEVEL_WARNING`.  
+*On second consecutive overcurrent event: escalate to `FAULT_LEVEL_CRITICAL` and command rail off.*
+
+#### SYS-F-503 — Payload Rail Telemetry  
+`[PLANNED]` Telemetry packets shall include a 1-bit payload rail status flag (enabled/disabled) in the housekeeping frame.
+
+#### SYS-F-504 — Payload Rail Command  
+`[PLANNED]` The OBC shall accept an uplink command `CMD_PAYLOAD_ENABLE` / `CMD_PAYLOAD_DISABLE` on CSP Port 20 to activate/deactivate the payload rail, subject to FMM and energy state interlocks (SYS-F-501).
 
 ---
 
