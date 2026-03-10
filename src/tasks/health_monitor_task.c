@@ -39,6 +39,7 @@ void vHealthMonitorTask_Step(void)
 void vHealthMonitorTask(void *pvParameters)
 {
   (void)pvParameters;
+  /* cppcheck-suppress unreadVariable -- updated each cycle by vTaskDelayUntil */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(5000);  // 5 Hz (0.2 Hz logical)
 
@@ -48,6 +49,7 @@ void vHealthMonitorTask(void *pvParameters)
   while (1)
   {
     vHealthMonitorTask_Step();
+    /* cppcheck-suppress unreadVariable -- macro writes back updated wake time */
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }

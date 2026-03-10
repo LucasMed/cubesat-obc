@@ -320,6 +320,10 @@ static void test_mode_name(void)
   {
     const char *name = fmm_mode_name(m);
     CHECK(name != NULL, "fmm_mode_name must not return NULL");
+    if (name == NULL)
+    {
+      continue;
+    } /* guard: CHECK does not abort */
     CHECK(name[0] != '\0', "fmm_mode_name must not return empty string");
   }
   /* Out-of-range must return a safe fallback string */

@@ -10,6 +10,7 @@
  * flight targets. See MISRA_DEVIATIONS.md §21.6-D3. */
 #include <stdio.h>
 
+/* cppcheck-suppress unusedFunction -- called from Pico sensor drivers */
 int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
 {
   (void)printf("[Host I2C] Init: SDA=%u, SCL=%u, Baud=%u\n", sda_pin, scl_pin, baudrate);
@@ -23,6 +24,7 @@ int i2c_bus_write(uint8_t addr, const uint8_t *data, size_t len)
   return 0;
 }
 
+/* cppcheck-suppress unusedFunction -- called from Pico sensor drivers */
 int i2c_bus_read(uint8_t addr, uint8_t *data, size_t len)
 {
   (void)printf("[Host I2C] Read from 0x%02X: %zu bytes\n", addr, len);

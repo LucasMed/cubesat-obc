@@ -85,6 +85,7 @@ int mpu6050_read_raw(float accel[3], float gyro[3])
   return 0;
 }
 
+/* cppcheck-suppress unusedFunction -- called from sensor_read_task on Pico */
 int mpu6050_read(float *roll, float *pitch, float *yaw)
 {
   float accel[3];

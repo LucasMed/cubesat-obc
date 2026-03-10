@@ -101,6 +101,7 @@ void vTelemetryTask_Step(void)
 void vTelemetryTask(void *pvParameters)
 {
   (void)pvParameters;
+  /* cppcheck-suppress unreadVariable -- updated each cycle by vTaskDelayUntil */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(1000);  // 1 Hz
 
@@ -110,6 +111,7 @@ void vTelemetryTask(void *pvParameters)
   while (1)
   {
     vTelemetryTask_Step();
+    /* cppcheck-suppress unreadVariable -- macro writes back updated wake time */
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }
