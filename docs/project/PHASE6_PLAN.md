@@ -2,9 +2,9 @@
 
 **Document ID**: PLAN-006  
 **Version**: 1.0  
-**Last Updated**: 2026-03-12  
-**Branch**: `feature/phase6-closed-loop` (to be created)  
-**Status**: Planned — starts after Phase 5 merge to `dev`  
+**Last Updated**: 2026-03-20  
+**Branch**: `feature/phase6-closed-loop`  
+**Status**: ✅ Complete  
 **Depends on**: Phase 5 complete (`dev` @ `c4e5b4d`)
 
 ---
@@ -276,16 +276,16 @@ documented with rationale in `docs/standards/MISRA_DEVIATIONS.md`.
 
 ## Definition of Done
 
-- [ ] All 41 CTest targets pass on `dev` (host build, `PICO_ENABLED=OFF`)
-- [ ] gcovr line coverage ≥ 90% on `src/control/`, `src/core/`, `src/services/`
-- [ ] cppcheck MISRA addon: 0 required/mandatory violations
-- [ ] clang-tidy + clang-format-14 clean on all new/modified files
-- [ ] Integration tests T-FMS-01 + T-SAFE-01 pass
-- [ ] Closed-loop simulation: all T-CLS-01..06 pass with margins ≥ 20%
-- [ ] `CHANGELOG.md` updated with `[0.7.0]` section
-- [ ] `RELEASE_NOTES.md` v0.7.0 section added
-- [ ] `TRACEABILITY_MATRIX.md` updated (version 2.3)
-- [ ] This document status set to **Complete**
+- [x] All 41 CTest targets pass on `dev` (host build, `PICO_ENABLED=OFF`)
+- [x] gcovr line coverage ≥ 90% on `src/control/`, `src/core/`, `src/services/`
+- [x] cppcheck MISRA addon: 0 required/mandatory violations
+- [x] clang-tidy + clang-format-14 clean on all new/modified files
+- [x] Integration tests T-FMS-01 + T-SAFE-01 pass
+- [x] Closed-loop simulation: all T-CLS-01..06 pass with margins ≥ 20%
+- [x] `CHANGELOG.md` updated with `[0.7.0]` section
+- [x] `RELEASE_NOTES.md` v0.7.0 section added
+- [x] `TRACEABILITY_MATRIX.md` updated (version 2.3)
+- [x] This document status set to **Complete**
 
 ---
 

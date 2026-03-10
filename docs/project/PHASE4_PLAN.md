@@ -2,9 +2,9 @@
 
 **Document ID**: PLAN-004  
 **Version**: 1.0  
-**Last Updated**: 2026-03-02  
+**Last Updated**: 2026-03-08  
 **Branch**: `feature/phase4-advanced-control`  
-**Status**: In Progress
+**Status**: ✅ Complete
 
 ---
 
@@ -66,8 +66,8 @@ tests/unit/
 - Update `test_dynamics.c` with energy-conservation check
 
 **Acceptance criteria**:
-- [ ] Numerical error < 1e-4 rad for 10 s simulation at 50 Hz
-- [ ] `test_dynamics` still passes (17/17 total)
+- [x] Numerical error < 1e-4 rad for 10 s simulation at 50 Hz
+- [x] `test_dynamics` still passes (17/17 total)
 
 ---
 
@@ -107,9 +107,9 @@ void ekf_get_bias(const ekf_t *ekf, float bias[3]);
 ```
 
 **Acceptance criteria**:
-- [ ] Converges to within ±2° of truth within 5 s from cold start (test_ekf)
-- [ ] Gyro-bias estimate converges to injected bias ±0.5°/s within 10 s
-- [ ] No dynamic memory allocation
+- [x] Converges to within ±2° of truth within 5 s from cold start (test_ekf)
+- [x] Gyro-bias estimate converges to injected bias ±0.5°/s within 10 s
+- [x] No dynamic memory allocation
 
 ---
 
@@ -146,9 +146,9 @@ Controller selection in `attitude_control_task.c`:
 - `FLIGHT_MODE_SAFE` / `FLIGHT_MODE_BOOT` → zero torque
 
 **Acceptance criteria**:
-- [ ] LQR stabilises 30° initial error to < 1° within 30 s in simulation
-- [ ] Zero steady-state error for constant disturbance torque ≤ 1e-4 N·m
-- [ ] `test_lqr` passes; 17+N/17+N total tests
+- [x] LQR stabilizes 30° initial error to < 1° within 30 s in simulation
+- [x] Zero steady-state error for constant disturbance torque ≤ 1e-4 N·m
+- [x] `test_lqr` passes; 17+N/17+N total tests
 
 ---
 
@@ -161,9 +161,9 @@ Controller selection in `attitude_control_task.c`:
 - Add `imu_ekf_valid` flag to `dl_snapshot_t`
 
 **Acceptance criteria**:
-- [ ] EKF runs within `sensor_read_task` 10 Hz budget (<50 ms)
-- [ ] All existing DLA-based tests still pass
-- [ ] `test_sensor_read_task` updated for EKF path
+- [x] EKF runs within `sensor_read_task` 10 Hz budget (<50 ms)
+- [x] All existing DLA-based tests still pass
+- [x] `test_sensor_read_task` updated for EKF path
 
 ---
 
@@ -176,9 +176,9 @@ Controller selection in `attitude_control_task.c`:
 - Update `CHANGELOG.md` with Phase 4 entry
 
 **Acceptance criteria**:
-- [ ] All 17+ tests still pass
-- [ ] Static analysis (clang-format + clang-tidy + cppcheck) clean
-- [ ] `FR-2` marked complete in traceability matrix
+- [x] All 17+ tests still pass
+- [x] Static analysis (clang-format + clang-tidy + cppcheck) clean
+- [x] `FR-2` marked complete in traceability matrix
 
 ---
 

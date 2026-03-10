@@ -64,6 +64,23 @@
   - `pico_flash` + FreeRTOS conflict — resolved by isolating flash calls behind a weak-symbol HAL stub; host build uses stub.
   - `tasks_lib` missing `core_lib` dependency — fixed in `src/tasks/CMakeLists.txt`.
 
+---
+
+### Phase 4: Advanced Control ✅ PRs 11–15 (2026-03-08)
+- **Goal**: Implement EKF attitude estimator, LQR controller, RK2 dynamics, and wire them into running tasks.
+- **Branch**: `feature/phase4-advanced-control`
+- **Outcomes (PRs 11–15 committed, 19/19 tests passing)**:
+
+| PR | Commit | Description | Tests |
+|----|--------|-------------|-------|
+| PR-11 | `93a8559` | RK2 midpoint dynamics integrator | dynamics_test: 5/5 ✅ |
+| PR-12 | `5812ba1` | EKF estimator (6-state, bias correction) | ekf_test: 6/6 ✅ |
+| PR-13 | `916672d` | LQR controller (3×6 gain matrix) | lqr_test: 7/7 ✅ |
+| PR-14 | `96f969d` | Sensor fusion — EKF integrated into sensor_read_task | sensor_read_task_test: 10/10 ✅ |
+| PR-15 | `254bde1` | LQR/PID dispatch in attitude_control_task | attitude_control_task_test: 11/11 ✅ |
+
+---
+
 ### Phase 5: Flight Readiness ✅ PRs 16–20 (2026-03-12)
 - **Goal**: Hardware abstraction layer for all remaining peripherals; full yaw observability.
 - **Branch**: `feature/phase5-flight-ready`
@@ -110,21 +127,6 @@
 | PR-25 | `36afd95` | Integration tests T-FMS-01a..d + T-SAFE-01a..c; watchdog safe-mode path | test_fault_safe: ✅  test_safe_trigger: ✅ |
 | PR-26 | `ff630b2` | Flash-backend stub + event logger flush hook | event_logger_test: 4/4 ✅ |
 | PR-27 | `454fcdf` | MISRA C audit (0 required/mandatory violations) + gcovr 91.8% | — |
-
----
-
-### Phase 4: Advanced Control ✅ PRs 11–15 (2026-03-08)
-- **Goal**: Implement EKF attitude estimator, LQR controller, RK2 dynamics, and wire them into running tasks.
-- **Branch**: `feature/phase4-advanced-control`
-- **Outcomes (PRs 11–15 committed, 19/19 tests passing)**:
-
-| PR | Commit | Description | Tests |
-|----|--------|-------------|-------|
-| PR-11 | `93a8559` | RK2 midpoint dynamics integrator | dynamics_test: 5/5 ✅ |
-| PR-12 | `5812ba1` | EKF estimator (6-state, bias correction) | ekf_test: 6/6 ✅ |
-| PR-13 | `916672d` | LQR controller (3×6 gain matrix) | lqr_test: 7/7 ✅ |
-| PR-14 | `96f969d` | Sensor fusion — EKF integrated into sensor_read_task | sensor_read_task_test: 10/10 ✅ |
-| PR-15 | `254bde1` | LQR/PID dispatch in attitude_control_task | attitude_control_task_test: 11/11 ✅ |
 
 ---
 

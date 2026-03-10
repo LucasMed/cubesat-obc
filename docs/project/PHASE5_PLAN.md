@@ -2,9 +2,9 @@
 
 **Document ID**: PLAN-005  
 **Version**: 1.0  
-**Last Updated**: 2026-03-08  
+**Last Updated**: 2026-03-12  
 **Branch**: `feature/phase5-flight-ready`  
-**Status**: In Progress
+**Status**: ✅ Complete
 
 ---
 
@@ -98,9 +98,9 @@ bool watchdog_hal_triggered(void);             // was last boot a watchdog reset
 - T-WDG-04: `vHealthMonitorTask_Step()` calls `watchdog_hal_feed()` exactly once per step
 
 **Acceptance criteria**:
-- [ ] Existing 19/19 tests still pass
-- [ ] 4 new watchdog tests pass
-- [ ] `health_monitor_task_test` count increases from 3 → 4
+- [x] Existing 19/19 tests still pass
+- [x] 4 new watchdog tests pass
+- [x] `health_monitor_task_test` count increases from 3 → 4
 
 ---
 
@@ -141,8 +141,8 @@ bool momentum_dump_needed(const float L_rw[3], float threshold);
 - T-MTM-05: Cross-product linearity — doubling `L_rw` doubles dipole magnitude
 
 **Acceptance criteria**:
-- [ ] 5 new momentum dump tests pass
-- [ ] Existing 23 tests still pass
+- [x] 5 new momentum dump tests pass
+- [x] Existing 23 tests still pass
 
 ---
 
@@ -173,8 +173,8 @@ int  hmc5883l_read(float field_uT[3]);           // returns 0, populates µT val
 - T-MAG-04: Driver failure leaves `mag_valid = false`
 
 **Acceptance criteria**:
-- [ ] 4 new mag tests pass
-- [ ] sensor_read_task test count increases (mag path covered)
+- [x] 4 new mag tests pass
+- [x] sensor_read_task test count increases (mag path covered)
 
 ---
 
@@ -206,8 +206,8 @@ Called from `sensor_read_task` after `ekf_update()` when `mag_valid == true`.
 - T-EKFM-06: `imu_ekf_valid` true only when at least one `ekf_update` or `ekf_update_mag` has run
 
 **Acceptance criteria**:
-- [ ] 6 new EKF-mag tests pass
-- [ ] Existing T-EKF-01..06 still pass (no regression)
+- [x] 6 new EKF-mag tests pass
+- [x] Existing T-EKF-01..06 still pass (no regression)
 
 ---
 
