@@ -1,7 +1,7 @@
 # Software Requirements Specification
 
 **Document ID**: SRS-OBC-001  
-**Version**: 2.2  
+**Version**: 2.3  
 **Last Updated**: 2026-03-10  
 **Status**: Active  
 **Standard**: Based on ECSS-E-ST-10-06C
@@ -15,6 +15,7 @@
 | 2.0     | 2026-03-08 | OBC Systems Team     | Initial active baseline                                              |
 | 2.1     | 2026-03-10 | OBC Systems Team     | SRR-OBC-001 AIR resolution: ACT-01 (doc ID), ACT-03 (NFR-6 budget), ACT-05 (IR-4 interface), ACT-10-B (NFR-7 boot time) |
 | 2.2     | 2026-03-10 | OBC Systems Team     | Phase 7 payload baseline: FR-13..17, NFR-9, IR-7..9, new §5 PLD-R-001..005; refs PAYLOAD-SPEC-001 |
+| 2.3     | 2026-03-10 | OBC Systems Team     | GPS re-scoped into Phase 7 (AIR-OBC-001 ACT-06 Option A): FR-18..19, IR-10; ICD-OBC-001 §7 activated; WP-7.10 added |
 
 ---
 
@@ -39,6 +40,8 @@
 | **FR-15** | The system shall sample the RAD-001 radiation detector (PIN diode ADC1) at ≥ 1 Hz during `FM_PAYLOAD` and accumulate total dose to non-volatile storage | Must | 7 | ⏳ Phase 7 |
 | **FR-16** | The system shall enable and disable the 5V payload power rail (GPIO21) on entry to and exit from `FM_PAYLOAD` respectively | Must | 7 | ⏳ Phase 7 |
 | **FR-17** | The system shall include payload housekeeping data (MAG-001 field vector, RAD-001 dose rate, CAM-001 image count) in the telemetry stream during `FM_PAYLOAD` | Should | 7 | ⏳ Phase 7 |
+| **FR-18** | The system shall read NMEA sentences (`$GPGGA`, `$GPRMC`) from the NEO-7M GPS module (GY-NEO6Mv2) via UART0 at ≥ 1 Hz during `FM_NOMINAL` and `FM_PAYLOAD`, and publish parsed position (latitude, longitude, altitude) and UTC time to the Data Layer | Must | 7 | ⏳ Phase 7 |
+| **FR-19** | The system shall synchronise the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition | Should | 7 | ⏳ Phase 7 |
 
 ---
 
@@ -71,6 +74,7 @@
 | **IR-7** | CAM-001 camera (IMX219) via SPI bridge: SPI1, GPIO10(SCK)/GPIO11(MOSI)/GPIO12(MISO)/GPIO13(CSn), ≤ 10 MHz | SPI1 | ⏳ Phase 7 |
 | **IR-8** | MAG-001 scientific magnetometer (RM3100): I2C0 GPIO4/5, address 0x20, ≤ 400 kHz (shares bus with IMU and ADCS MAG) | I2C0 | ⏳ Phase 7 |
 | **IR-9** | RAD-001 radiation detector (PIN diode): ADC1 GPIO27, analogue 0–3.3 V, 12-bit | ADC | ⏳ Phase 7 |
+| **IR-10** | GPS module (GY-NEO6Mv2 / NEO-7M): UART0 GPIO0 (TX) / GPIO1 (RX), 9600 baud, NMEA 0183 (`$GPGGA` / `$GPRMC`); 3.3 V supply (always-on rail) | UART0 | ⏳ Phase 7 |
 
 ---
 
@@ -116,9 +120,9 @@ allocated to Phase 7 and are baselined at Phase 7 PDR.
 
 | Category | Total | Implemented | In Progress | TBD/Phase 7 | TBC |
 |----------|-------|-------------|-------------|-------------|-----|
-| Functional | 17 | 9 | 2 | 6 | 0 |
+| Functional | 19 | 9 | 2 | 8 | 0 |
 | Non-Functional | 9 | 5 | 0 | 3 | 1 |
-| Interface | 9 | 1 | 0 | 8 | 0 |
+| Interface | 10 | 1 | 0 | 9 | 0 |
 | Safety | 5 | 4 | 1 | 0 | 0 |
 | Payload (PLD-R) | 5 | 0 | 0 | 5 | 0 |
-| **Total** | **45** | **19** | **3** | **22** | **1** |
+| **Total** | **48** | **19** | **3** | **25** | **1** |

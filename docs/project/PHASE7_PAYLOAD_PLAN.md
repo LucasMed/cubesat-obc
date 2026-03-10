@@ -1,7 +1,7 @@
 # Phase 7: Scientific Payload Integration — Plan
 
 **Document ID**: PLAN-007  
-**Version**: 0.1  
+**Version**: 0.2  
 **Last Updated**: 2026-03-10  
 **Branch**: `feature/phase7-payload`  
 **Status**: Planning  
@@ -32,6 +32,12 @@ Select and integrate external storage (SD card or W25Q128 SPI flash),
 assign and resolve the GPIO10 / RW3 conflict, and validate the full payload
 pipeline on the Pico 2W hardware.
 
+**Track D — GPS Integration**  
+Formally integrate the NEO-7M GPS receiver (GY-NEO6Mv2) on UART0 (GPIO0/1):
+NMEA parser driver, FreeRTOS `GpsTask` (1 Hz), UTC clock sync, and telemetry
+fields. Resolves AIR-OBC-001 ACT-06 Option A; adds FR-18, FR-19, IR-10 to
+SRS-OBC-001 v2.3.
+
 | Area | Phase 6 state | Phase 7 target |
 |------|--------------|----------------|
 | Flight mode | 5 modes (BOOT..DIAGNOSTIC) | 6 modes (+ FM_PAYLOAD) |
@@ -41,6 +47,7 @@ pipeline on the Pico 2W hardware.
 | FM_PAYLOAD unit tests | N/A | T-PLD-TSK-01..06 + instrument drivers |
 | FM_PAYLOAD integration tests | N/A | T-PLD-INT-01..04 |
 | GPIO conflict | None | RW3 reassigned GPIO10 → GPIO3 |
+| GPS driver | None | `neo7m.c` NMEA parser, `GpsTask` 1 Hz, UTC sync (FR-18/19) |
 | Power budget | Phase 1 only | FM_PAYLOAD scenario added (POWER-BDG-001 §7.4) |
 
 **Duration estimate**: 6–8 weeks  
@@ -250,12 +257,34 @@ service delivers file in chunks over UART1.
 
 ---
 
+### WP-7.10 — GPS NEO-7M Integration (Track D)
+
+**Objective**: Formally integrate the GPS module (GY-NEO6Mv2 / NEO-7M) on UART0 (GPIO0/1),
+implementing the NMEA driver, FreeRTOS task, UTC time synchronisation, and telemetry fields.
+Resolves AIR-OBC-001 ACT-06 (Option A).
+
+| Task | Description | Owner | Estimate | Status |
+|------|-------------|-------|----------|--------|
+| T-7.10.1 | Create `include/gps_driver.h`: API `gps_init()`, `gps_read_fix()`, `gps_get_last_fix()` | SW | 30 min | ⏳ |
+| T-7.10.2 | Implement `src/drivers/gps/neo7m.c`: UART0 init (9600 baud), NMEA sentence tokenizer, `$GPGGA`/`$GPRMC` parser, fix validity check (field count + checksum) | SW | 3 h | ⏳ |
+| T-7.10.3 | Implement `src/tasks/gps_task.c`: 1 Hz `vTaskDelayUntil` loop; call `gps_read_fix()`; write to `data_layer_set_gps_fix()` | SW | 2 h | ⏳ |
+| T-7.10.4 | Data Layer extension: add `gps_fix_t` (lat, lon, alt\_m, utc\_s, fix\_valid) to `obc_snapshot_t`; implement `data_layer_set/get_gps_fix()` | SW | 1 h | ⏳ |
+| T-7.10.5 | Unit tests `tests/unit/test_gps.c` (T-GPS-01..04): mock UART buffer; parse `$GPGGA` valid; parse `$GPRMC` valid; invalid checksum rejected; stale-fix flag after 5 s | SW | 2 h | ⏳ |
+| T-7.10.6 | UTC sync: on valid `$GPRMC` fix call `rtc_set_datetime()`; verify accuracy ≤ ± 500 ms (FR-19) | SW | 1 h | ⏳ |
+| T-7.10.7 | Add `FAULT_GPS_TIMEOUT` (UART0 silent > 10 s) and `FAULT_GPS_PARSE_ERR` to `fault_ids.h`; add fault reports in driver | SW | 1 h | ⏳ |
+| T-7.10.8 | Update telemetry: add `lat`, `lon`, `alt_m`, `utc_s`, `gps_valid` fields to HK packet in `telemetry_task.c` | SW | 1 h | ⏳ |
+| T-7.10.9 | Hardware validation: connect GY-NEO6Mv2 to GPIO0/1; verify cold-start fix ≤ 5 min (clear sky); NMEA sentences visible in USB CDC monitor | HW | 2 h | ⏳ |
+
+**Exit criteria**: T-GPS-01..04 pass on host build; GPS fix visible in telemetry HK with non-zero lat/lon; hardware cold-start fix confirmed.
+
+---
+
 ## Schedule
 
 ```
 2026-Apr-01  WP-7.1 start (FMM extension — depends on Phase 6 merge)
-2026-Apr-01  WP-7.2, 7.3 start (drivers — host build, no HW required)
-2026-Apr-08  Hardware procurement complete (RM3100, Arducam, PIN diode)
+2026-Apr-01  WP-7.2, 7.3, 7.10 start (drivers — host build, no HW required)
+2026-Apr-08  Hardware procurement complete (RM3100, Arducam, PIN diode, GY-NEO6Mv2)
 2026-Apr-08  WP-7.5 start (GPIO conflict — first HW task)
 2026-Apr-15  WP-7.2, 7.3 complete; WP-7.4 camera driver start
 2026-Apr-22  WP-7.6 storage selection and driver complete
@@ -279,7 +308,8 @@ Total calendar time: ~7 weeks.
 | TIA front-end | OPAx134 or similar low-bias JFET op-amp + passives | 1 kit | ~$10 | 1 week | Digi-Key |
 | Storage | SPI microSD breakout (OTRONIC or Adafruit) | 1 | ~$5 | 1 week | local / Amazon |
 | microSD card | 2 GB Class 10 (SDHC) | 1 | ~$5 | local | local |
-| **Total** | | | **~$240** | | |
+| GPS Module | GY-NEO6Mv2 / NEO-7M + patch antenna | 2 | ~$15 | 1 week | Online / AliExpress |
+| **Total** | | | **~$270** | | |
 
 > **Note**: If Arducam IMX219 SPI module is unavailable, the OV2640-based
 > Arducam Mini 2MP (2 MP, 20 fps, native SPI) is a compatible drop-in with
@@ -298,6 +328,8 @@ Total calendar time: ~7 weeks.
 | External storage (SD/flash) SPI conflicts with SPI1 camera bus | Low | High | Use separate SPI0 for storage (GPIO2/3) while SPI1 dedicates to camera |
 | FreeRTOS task count increase causes stack overflow | Low | Medium | Increase `configTOTAL_HEAP_SIZE` in FreeRTOSConfig.h; monitor with `uxTaskGetStackHighWaterMark()` |
 | Ground downlink insufficient for all payload data | High | Medium | Implement per-instrument decimation selectable by ground command (already architected in PAYLOAD-SPEC-001 §10.2) |
+| GPS cold-start time > 5 min in lab (no clear-sky view) | Medium | Low | Pre-load almanac via UBX `CFG-AOP`; hot-start < 1 s; use external clear-sky window for first fix |
+| UART0 / debug pin conflict | Resolved | — | Debug fully routed to USB CDC (`pico_enable_stdio_usb=1`); UART0 exclusively available for GPS |
 
 ---
 
@@ -307,10 +339,11 @@ Phase 7 is **complete** when:
 
 - [ ] All WP-7.1 through WP-7.9 tasks are ✅ Done
 - [ ] `bash scripts/pico_ci.sh all` exits 0 with all 6 stages green
-- [ ] Unit test count ≥ 39 (29 existing + 10 new payload tests)
+- [ ] Unit test count ≥ 43 (29 existing + 10 payload + 4 GPS tests)
 - [ ] `cppcheck` reports 0 errors / 0 warnings on new `src/drivers/payload/` and `src/tasks/payload_task.c`
 - [ ] FM_PAYLOAD → FM_SAFE transition confirmed on hardware (LED indicator)
 - [ ] At least one JPEG image captured and stored on external media in flight-software context
 - [ ] PAYLOAD-SPEC-001 §13 compliance matrix fully populated
-- [ ] RTM-OBC-001 traces updated for FR-13..17 and PLD-R-001..005
+- [ ] RTM-OBC-001 traces updated for FR-13..19 and PLD-R-001..005
+- [ ] GPS fix visible in telemetry HK packet on hardware (lat/lon/UTC non-zero after ≤ 5 min with clear sky)
 - [ ] Phase 7 PR reviewed and merged to `dev`

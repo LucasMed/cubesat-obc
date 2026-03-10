@@ -2,9 +2,9 @@
 ## CubeSat OBC Hardware/Software Interface
 
 **Document ID**: ICD-OBC-001  
-**Version**: 1.1  
+**Version**: 1.2  
 **Date**: 2026-03-10  
-**Status**: Released — Phase 7 amendment  
+**Status**: Released — Phase 7 amendment (GPS re-scoped)  
 **Branch merged**: `feature/hardware-bom`  
 **Depends on**: SAD v1.0, BOM v1.0, `config/pico_pins.h`
 
@@ -21,7 +21,7 @@ Interfaces covered:
 | Bus / Interface | Peripherals |
 |----------------|------------|
 | I2C0 | MPU-6050 IMU, HMC5883L Magnetometer, **RM3100 Scientific Magnetometer (Phase 7)** |
-| UART0 | GPS NEO-7M (descoped) |
+| UART0 | GPS NEO-7M GY-NEO6Mv2 — Phase 7 (re-scoped, FR-18/19) |
 | UART1 | TT&C Radio E22-400M30S / HC-12 |
 | PWM | Reaction Wheels (RW1–3), Magnetorquers (MTQ X/Y/Z) |
 | ADC | Battery voltage, temperature, **RAD-001 radiation sensor (Phase 7)** |
@@ -231,13 +231,10 @@ changes to any control or estimation code.
 
 ## 7. GPS Interface (NEO-7M)
 
-> **⚠️ DESCOPED — SRR-OBC-001 ACT-06 (2026-03-10)**  
-> The GPS receiver (NEO-7M on UART0) is **not activated in this release**.  
-> UART0 (GPIO0/1) is reserved for future GPS integration. No functional requirements  
-> for GPS exist in SRS-OBC-001 or SyRS-OBC-001 at this baseline.  
-> Hardware connector may be populated on the engineering model for future use;  
-> the driver (`src/drivers/gps/neo7m.c`) and FreeRTOS GPS task are not built.  
-> GPS integration will be scoped, requirements-allocated, and ICD-updated in a future release.
+> **✅ ACTIVE — Formally re-scoped into Phase 7**  
+> AIR-OBC-001 ACT-06 resolved via **Option A** (2026-03-10).  
+> Requirements **FR-18** (NMEA parse ≥ 1 Hz), **FR-19** (UTC sync ± 500 ms), and **IR-10** (UART0 interface)  
+> added to SRS-OBC-001 v2.3. Driver `src/drivers/gps/neo7m.c` and `GpsTask` planned for Phase 7 **WP-7.10**.
 
 | Parameter | Value |
 |-----------|-------|
@@ -245,10 +242,10 @@ changes to any control or estimation code.
 | Bus | UART0 (`uart0`) |
 | TX pin | **GPIO0** (`UART0_TX_PIN`) |
 | RX pin | **GPIO1** (`UART0_RX_PIN`) |
-| Baud rate | 9600 bps (default; unused) |
-| Protocol | NMEA 0183 (not parsed in this release) |
-| Driver | `src/drivers/gps/neo7m.c` — **not built** |
-| Status | **Reserved — inactive in this release** |
+| Baud rate | 9600 bps (reconfigurable to 38400 via UBX `CFG-PRT`) |
+| Protocol | NMEA 0183 — `$GPGGA` (position + altitude + UTC), `$GPRMC` (position + speed + date) |
+| Driver | `src/drivers/gps/neo7m.c` — **Phase 7 (WP-7.10)** |
+| Status | **Active — Phase 7 integration (PLAN-007 WP-7.10)** |
 
 > **Future note**: Increasing to 38400 bps reduces NMEA message latency and enables
 > higher fix update rates. Requires reconfiguring the NEO-7M via UBX protocol command
@@ -265,9 +262,14 @@ changes to any control or estimation code.
 > fully routed to **USB CDC** (`pico_enable_stdio_usb = 1` in `src/CMakeLists.txt`).
 > UART0 is exclusively reserved for GPS.
 
-**Pending firmware work:**
+**Phase 7 firmware deliverables (WP-7.10):**
 - [ ] NMEA parser driver `src/drivers/gps/neo7m.c`
-- [ ] FreeRTOS GPS task (parse + write to DLA)
+- [ ] FreeRTOS GPS task `src/tasks/gps_task.c` (1 Hz, parse + write to DLA)
+- [ ] Data Layer: `gps_fix_t` struct, `data_layer_set_gps_fix()`, `data_layer_get_gps_fix()`
+- [ ] UTC clock sync: `rtc_set_datetime()` on valid `$GPRMC` fix (within ± 500 ms)
+- [ ] Unit tests: `tests/unit/test_gps.c` (T-GPS-01..04)
+- [ ] Fault IDs: `FAULT_GPS_TIMEOUT`, `FAULT_GPS_PARSE_ERR` in `fault_ids.h`
+- [ ] Telemetry: GPS lat/lon/alt/UTC fields in HK packet
 
 ---
 

@@ -254,7 +254,7 @@ interface has never been formally descoped.
 | **ID** | ACT-06 |
 | **Source** | MAJ-06 |
 | **Priority** | HIGH |
-| **Status** | `CLOSED` — 2026-03-10 (Option B: GPS formally descoped in ICD-OBC-001 §7) |
+| **Status** | `CLOSED` — 2026-03-10 (Option A implemented: FR-18/19/IR-10 added to SRS-OBC-001 v2.3; ICD-OBC-001 §7 activated; WP-7.10 added to PHASE7_PAYLOAD_PLAN) |
 | **Target Milestone** | PDR baseline lock |
 | **Responsible** | Systems Engineering Lead |
 | **Due Date** | 2026-03-10 |
@@ -278,7 +278,12 @@ unmanaged interface consuming hardware resources.
 3. Document descope decision in SRS change history.
 
 **Acceptance Criteria:**
-- [ ] Either GPS requirements exist in SRS/SyRS with FMEA coverage, OR GPS is formally marked as inactive in ICD with documented rationale.
+- [x] GPS requirements FR-18 (NMEA parse ≥ 1 Hz) and FR-19 (UTC sync ± 500 ms) added to SRS-OBC-001 v2.3
+- [x] IR-10 (UART0 GPS interface) added to SRS-OBC-001 v2.3
+- [x] ICD-OBC-001 §7 GPS interface activated (Phase 7, WP-7.10)
+- [x] WP-7.10 GPS Integration added to PHASE7_PAYLOAD_PLAN
+- [ ] FMEA-OBC-001 GPS failure modes (UART0 timeout, NMEA parse fail) — Phase 7 WP-7.10.7
+- [ ] `fault_ids.h` GPS fault IDs (`FAULT_GPS_TIMEOUT`, `FAULT_GPS_PARSE_ERR`) — Phase 7 WP-7.10.7
 
 ---
 
