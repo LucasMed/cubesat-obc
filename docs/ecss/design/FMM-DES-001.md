@@ -33,7 +33,7 @@
 8. [FMM API](#8-fmm-api)
 9. [Fault Integration](#9-fault-integration)
 10. [EPS Integration](#10-eps-integration)
-11. [Subsystem Behaviour per Mode](#11-subsystem-behaviour-per-mode)
+11. [Subsystem Behavior per Mode](#11-subsystem-behavior-per-mode)
 12. [Data Layer Interface](#12-data-layer-interface)
 13. [FreeRTOS Threading Model](#13-freertos-threading-model)
 14. [Fault IDs](#14-fault-ids)
@@ -417,7 +417,7 @@ conditions and drives FM_SAFE via the Fault Manager — it does **not** call
 
 ---
 
-## 11. Subsystem Behaviour per Mode
+## 11. Subsystem Behavior per Mode
 
 Each subsystem reads the flight mode from the Data Layer snapshot at the start
 of its control loop iteration.

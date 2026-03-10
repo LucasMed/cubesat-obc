@@ -69,7 +69,7 @@ the existing OBC bus without PCB redesign to the core OBC processor board.
 | Instrument | Scientific Objective                              |
 |------------|---------------------------------------------------|
 | CAM-001    | Earth observation: surface imaging in LEO         |
-| MAG-001    | Field characterisation: mapping terrestrial geomagnetic field |
+| MAG-001    | Field characterization: mapping terrestrial geomagnetic field |
 | RAD-001    | Space environment: monitoring particle radiation dose in LEO |
 
 Together these three instruments support studies in:
@@ -165,7 +165,7 @@ Ground uplink: ENABLE_PAYLOAD command
 OBC: fmm_request_transition(FM_PAYLOAD)
       │
       ▼
-payload_task: enable 5V rail, initialise instruments
+payload_task: enable 5V rail, initialize instruments
       │
       ├─ periodic: log MAG-001 @ 10 Hz → flash
       ├─ periodic: log RAD-001 @ 1 Hz  → flash
@@ -229,7 +229,7 @@ Ground contact: downlink stored payload data via TT&C (CSP)
 
 | Activity        | Trigger      | Duration | Notes |
 |-----------------|-------------|----------|-------|
-| Initialisation  | FM_PAYLOAD entry | < 500 ms | SPI bridge power-on, register init |
+| Initialization  | FM_PAYLOAD entry | < 500 ms | SPI bridge power-on, register init |
 | Image capture   | Ground command CAM_TRIGGER | ~2 s (readout + JPEG compress) | |
 | Data transfer   | Internal MISO stream | ~1.5 s @ 10 MHz SPI | frame transfer to OBC RAM buffer |
 | JPEG compress   | On-module (bridge) or OBC | ~0.5 s | depends on bridge capability |
@@ -340,7 +340,7 @@ voltage by a transimpedance amplifier and sampled by the RP2350 ADC.
 - MeV-range protons (trapped proton belts, SAA)
 - High-energy electrons (outer Van Allen belt passages)
 - Heavy ions (galactic cosmic rays)
-- Total Ionising Dose (TID) accumulation
+- Total Ionizing Dose (TID) accumulation
 
 > **Limitation**: A single unshielded PIN diode does not discriminate between
 > particle species. For dose-rate estimation only. Particle identification
@@ -544,7 +544,7 @@ typedef enum {
 | FAULT_LEVEL_CRITICAL | Exit | `fmm_force_safe()` — payload rail immediately shut off |
 | `ENERGY_CRITICAL` EPS state | Exit | Fault → FM_SAFE; payload rail shed first (shedding order #1) |
 
-### 11.3 Subsystem Behaviour in FM_PAYLOAD
+### 11.3 Subsystem Behavior in FM_PAYLOAD
 
 | Subsystem            | FM_PAYLOAD Behaviour                                           |
 |----------------------|----------------------------------------------------------------|
@@ -611,7 +611,7 @@ tests/unit/
 | `PayloadTask`   | 3        | 2 048         | 100 ms   | MAG every 100 ms (10 Hz); RAD every 1000 ms; CAM on notification |
 | Existing tasks  | 4 (ADCS), 2 (sensor, HLT, CMD, TLM) | — | — | Priorities unchanged |
 
-### 12.3 Task Behaviour
+### 12.3 Task Behavior
 
 ```c
 void payload_task(void *params) {
