@@ -320,6 +320,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | **MISRA C Audit** | Static analysis + deviation log | All source files | ✅ 0 required/mandatory violations; 91.8% line coverage |
 | **Phase 4** | Sensor Fusion Testing (Kalman) | FR-2, FR-3, FR-4 (enhanced) | Attitude error <5° RMS |
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
+| **CDR HIL (planned)** | Hardware-in-the-Loop / STP-OBC-001 §10 | FR-12 (watchdog), NFR-4 (power), SYS-NF-006 (stack) | T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01 — ⏳ CDR milestone |
 
 ---
 

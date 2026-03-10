@@ -31,7 +31,7 @@
 | **FR-8** | The system shall monitor bus voltage, temperature, and task health | Should | 2 | ✅ Implemented (Phase SA) |
 | **FR-9** | The system shall support flashing firmware via USB (UF2 format) | Must | 2 | ✅ Verified |
 | **FR-10** | The system shall provide USB CDC serial debug output | Should | 2 | ✅ Verified |
-| **FR-11** | The system shall read 3-axis magnetometer via I2C at ≥10 Hz | Must | 5 | 🔄 PR-18 (HMC5883L stub) |
+| **FR-11** | The system shall read 3-axis magnetic field vector via I2C at ≥10 Hz and publish it to the EKF and momentum-dump service. **[EM: HMC5883L GY-271, I2C0 `0x1E`, 75 Hz — locked per ACT-11. CDR/FM: LIS3MDL I2C0 `0x1C` SA0=GND, 80 Hz — driver TBD]** | Must | 5 | 🔄 PR-18 (stub driver; I2C integration pending) |
 | **FR-12** | The system shall feed the hardware watchdog from the health monitor task | Must | 5 | 🔄 PR-16 (watchdog HAL) |
 
 ---

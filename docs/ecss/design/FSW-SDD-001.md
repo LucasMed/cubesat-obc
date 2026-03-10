@@ -563,10 +563,13 @@ Three-class storage model:
 Each `log_event_t` record is exactly **40 bytes**:
 `timestamp_ms(4) + event_id(2) + severity(1) + subsystem(1) + data[32]`.
 
-The flash backend is currently a **stub** (`flash_backend_stub.c`) that mirrors
-writes to a RAM array. A real NOR flash driver targeting the **W25Qxx SPI NOR**
-family (JEDEC-compatible, 2 MB, supported via Pico SDK `hardware/flash.h`) is
-planned for Phase 3. See OI-2.
+The flash backend is implemented in `src/core/flash_backend.c` (ACT-16, 2026-03-10).
+On Pico builds it uses the Pico SDK `hardware/flash.h` (`flash_range_erase` +
+`flash_range_program`) with interrupt protection. The log region occupies the
+top 16 KB of the 2 MB internal flash (`0x1FC000`–0x1FFFFF`), using a 4-sector
+round-robin scheme with a 16-byte header (magic `OBCLOGV1` + CRC-32 + length).
+A recovery path `flash_backend_recover()` replays valid sectors on boot.
+Host builds retain the stub in `flash_backend_stub.c`. See SYS-F-304 (`[IMPL]`).
 
 ### 8.5 Extended Kalman Filter (EKF)
 
@@ -1025,7 +1028,7 @@ Full traceability matrix is in `RTM-OBC-001`.
 | OI | Description | Priority | Linked Doc | Status |
 |----|-------------|----------|------------|--------|
 | OI-1 | I²C pin conflict: `config.h` (GPIO 16/17) vs. `pico_pins.h` (GPIO 4/5) — must resolve before hardware validation | High | OBC-DES-001 OI-6 | Open |
-| OI-2 | Flash backend is a RAM stub (`flash_backend_stub.c`); real **W25Qxx SPI NOR** driver (JEDEC, 2 MB, Pico SDK `hardware/flash.h`) needed for Class A/B log persistence — planned Phase 3 | High | OBC-DES-001 OI-4, DL-DES-001 | Open |
+| OI-2 | Flash backend implemented in `src/core/flash_backend.c` (SRR-OBC-001 ACT-16, 2026-03-10): Pico SDK `hardware_flash`, 4-sector round-robin at `0x1FC000`, CRC-32 header, `flash_backend_recover()` for boot replay. SYS-F-304 → `[IMPL]`. | High | OBC-DES-001 OI-4, DL-DES-001 | **CLOSED** |
 | OI-3 | `AttitudeCtrl` WCET not yet measured via DWT cycle counter; required for timing budget sign-off | High | OBC-DES-001 OI-3 | Open |
 | OI-4 | SMP (Core 1) disabled pending HIL boot stability test; **CDR baseline = single-core operation on Core 0**; dual-core enable planned for v1.0.0 | Medium | OBC-DES-001 OI-1, RMP-OBC-001 RISK-SW-001 | Open |
 | OI-5 | Momentum dump trigger threshold not formally verified against RW saturation spec | Medium | ADCS-DES-001 | Open |

@@ -59,11 +59,14 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **IMU Driver** (MPU6050): 6-DOF accelerometer + gyroscope via I2C
 - **Temperature Sensor**: TMP102 or onboard sensor readout
 - **Power Monitor**: Battery voltage via ADC
-- **Magnetometer Driver** (LIS3MDL): 3-axis magnetometer via I2C; replaces discontinued HMC5883L
-  (QMC5883L clone risk in GY-271 modules); continuous mode, ODR = 80 Hz, addr `0x1C`;
-  used by EKF for yaw estimation via tilt-compensated update (`ekf_update_mag()`)
+- **Magnetometer Driver** — **EM baseline: HMC5883L (GY-271)**, I2C0 addr `0x1E`, ODR 75 Hz;
+  ⚠️ QMC5883L clone risk in GY-271 modules — verify IC markings before procurement;
+  used by EKF for yaw estimation via tilt-compensated update (`ekf_update_mag()`).
+  **CDR/FM candidate: LIS3MDL** (STMicroelectronics, I2C0 addr `0x1C` SA0=GND, ODR 80 Hz) —
+  actively produced, new driver `lis3mdl.c` required (no backward compatibility with HMC5883L register map).
+  Part selection locked per ACT-11 (SRR-OBC-001).
 - **Design Rationale**: Hardware abstraction layer (HAL) pattern—easy to swap sensors
-- **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` (CDR: migrate to LIS3MDL)
+- **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]
 
 ### 3. **Control System** (`src/control/`)
 - **PID Controller**: Decoupled per axis (roll, pitch, yaw)

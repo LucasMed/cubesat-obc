@@ -3,10 +3,10 @@
 | Field           | Value                                |
 |-----------------|--------------------------------------|
 | Document ID     | FMEA-OBC-001                         |
-| Version         | 0.1                                  |
-| Date            | 2026-03-09                           |
+| Version         | 0.2                                  |
+| Date            | 2026-03-10                           |
 | Author          | OBC Systems Team                     |
-| Status          | CDR Baseline                         |
+| Status          | CDR Baseline — SRR-resolved           |
 | Classification  | Internal                             |
 
 ## Change History
@@ -14,6 +14,7 @@
 | Version | Date       | Author           | Description                              |
 |---------|------------|------------------|------------------------------------------|
 | 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline FMEA — all 25 fault IDs from `fault_ids.h`; MRD hazards H-1..H-5; severity/RPN analysis; FDIR response mapping |
+| 0.2     | 2026-03-10 | OBC Systems Team | SRR-OBC-001 ACT-15: assign open-item owners and target dates; update SRS reference to v2.1; payload OI-2 partially resolved by SyRS §7.5 (SYS-F-500..504) |
 
 ## Table of Contents
 
@@ -319,12 +320,12 @@ Items with RPN ≥ 8 or S = 5 requiring CDR action:
 
 ## 11. Open Items
 
-| OI  | Description | Priority | Status |
-|-----|-------------|----------|--------|
-| OI-1 | `FAULT_COMM_*` IDs not defined — communication subsystem has no fault IDs in `fault_ids.h`; tracked FSW-SDD-001 OI-2 / COMMS-DES-001 OI-5 | Medium | Open |
-| OI-2 | Payload fault IDs undefined — payload mission objective undefined (MRD OI-1) | Medium | Blocked on MRD payload definition |
-| OI-3 | FMECA criticality number (C = β × λ × t) not computed — requires component failure rate data from parts manufacturer | Low | Phase 2 |
-| OI-4 | SPF for over-temperature in Phase 1 — no autonomous thermal control; mitigated by operational procedure only | High | Phase 2 thermal control loop required |
+| OI  | Description | Priority | Owner | Target Date | Status |
+|-----|-------------|----------|-------|-------------|--------|
+| OI-1 | `FAULT_COMM_*` IDs not defined — communication subsystem has no fault IDs in `fault_ids.h`; tracked FSW-SDD-001 OI-2 / COMMS-DES-001 OI-5 | Medium | Communications Lead | CDR (2026-06-30) | Open |
+| OI-2 | Payload fault IDs undefined — payload concept now defined in SyRS §7.5 (SYS-F-500..504, ACT-04); `FAULT_PAYLOAD_OVERCURRENT` stub added (SYS-F-502). Full fault catalogue at CDR when hardware confirmed. | Medium | Systems Eng. Lead | CDR (2026-06-30) | Partially Resolved |
+| OI-3 | FMECA criticality number (C = β × λ × t) not computed — requires component failure rate data from parts manufacturer | Low | Hardware Lead | QR (2026-09-30) | Open |
+| OI-4 | SPF for over-temperature in Phase 1 — no autonomous thermal control; mitigated by operational procedure only | High | Software Lead | CDR (2026-06-30): add thermal watchdog to FMM; QR: validate with thermal model |  Open |
 
 ---
 
@@ -336,7 +337,7 @@ Items with RPN ≥ 8 or S = 5 requiring CDR action:
 | [2] | FSW-SDD-001 v0.2 — Flight Software Design Description |
 | [3] | EPS-DES-001 v0.1 — Electrical Power System Design Document |
 | [4] | MRD-OBC-001 v1.1 — Mission Requirements Document §6.2.1 (Hazards) |
-| [5] | SRS-OBC-001 v2.0 — Software Requirements Specification |
+| [5] | SRS-OBC-001 v2.1 — Software Requirements Specification |
 | [6] | `include/fault_ids.h` v0.1 — Fault ID Catalogue (25 IDs, 10 subsystems) |
 | [7] | ECSS-Q-ST-30-02C — Failure modes, effects (and criticality) analysis |
 | [8] | ADCS-DES-001 v1.0 — ADCS Design Document |

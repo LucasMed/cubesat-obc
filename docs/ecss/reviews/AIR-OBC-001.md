@@ -438,11 +438,11 @@ of power-on (per SyRS-NF-005). Status: [IMPL]."*
 | **ID** | ACT-11 |
 | **Source** | MIN-08 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (EM=HMC5883L locked; FM/CDR=LIS3MDL candidate declared) |
 | **Target Milestone** | CDR |
 | **Responsible** | Hardware Lead |
-| **Due Date** | TBD |
-| **Affected Documents** | `SRS-OBC-001` FR-11; `ICD-OBC-001` §6; `BOM-OBC-001`; `src/drivers/mag/` |
+| **Due Date** | 2026-03-10 |
+| **Affected Documents** | `SRS-OBC-001` FR-11; `ICD-OBC-001` §6; `BOM-OBC-001`; `ARCHITECTURE.md` §2 |
 
 **Title:** Lock Magnetometer Part Number (HMC5883L vs. LIS3MDL); Update All References
 
@@ -471,10 +471,10 @@ part selection is unlocked.
 | **ID** | ACT-12 |
 | **Source** | MIN-06 |
 | **Priority** | MEDIUM |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (SYS-F-450 added to SyRS §7.4; 6 dB margin at 600 km/5°; LINK-BDG-001 deferred to CDR) |
 | **Target Milestone** | CDR |
 | **Responsible** | Communications Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `SyRS-OBC-001`; `COMMS-DES-001` |
 
 **Title:** Add RF Link Margin System Requirement
@@ -505,10 +505,10 @@ Reference COMMS-DES-001 link budget table for parameter values.
 | **ID** | ACT-13 |
 | **Source** | MIN-09 |
 | **Priority** | MEDIUM |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (SYS-F-121..124 added to SyRS §4) |
 | **Target Milestone** | CDR |
 | **Responsible** | ADCS Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `SyRS-OBC-001`; `ADCS-DES-001`; `controller_limits.h`; `lqr_schedule.h` |
 
 **Title:** Add Reaction Wheel Performance Requirements
@@ -578,10 +578,10 @@ No power measurement setup is defined. Target: < 2 W nominal.
 | **ID** | ACT-15 |
 | **Source** | MIN-10 |
 | **Priority** | MEDIUM |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (FMEA-OBC-001 v0.2 — owners and target dates assigned to all 4 OI items; OI-2 partially resolved by SyRS §7.5) |
 | **Target Milestone** | CDR (v1.0 baseline) / QR (verified closed) |
 | **Responsible** | Systems Engineering Lead |
-| **Due Date** | TBD |
+| **Due Date** | 2026-03-10 |
 | **Affected Documents** | `FMEA-OBC-001` |
 
 **Title:** Baseline FMEA at v1.0 with All Open Items Closed
@@ -608,11 +608,11 @@ assigned owners or closure dates.
 | **ID** | ACT-16 |
 | **Source** | MIN-04 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `CLOSED` — 2026-03-10 (`src/core/flash_backend.c` implemented; round-robin 4-sector region at `0x1FC000`; CRC-32 header; `flash_backend_recover()`; SYS-F-304 → `[IMPL]`) |
 | **Target Milestone** | CDR |
 | **Responsible** | Software Lead |
-| **Due Date** | TBD |
-| **Affected Documents** | `SyRS-OBC-001` SYS-F-304; `RTM-OBC-001`; `RMP-OBC-001` |
+| **Due Date** | 2026-03-10 |
+| **Affected Documents** | `SyRS-OBC-001` SYS-F-304; `src/core/flash_backend.c`; `include/flash_backend.h`; `src/core/CMakeLists.txt` |
 
 **Title:** Implement and Test SYS-F-304 Flash Backend for Logger (Blocks MO-6)
 
@@ -643,28 +643,28 @@ mission objective MO-6 (*"Class A events survive reset"*) cannot be fully satisf
 | Priority | Total | Open | In-Progress | Resolved | Closed |
 |---|---|---|---|---|---|
 | CRITICAL | 1 | — | — | — | 1 (ACT-02) |
-| HIGH | 9 | 3 (ACT-11,14,16) | — | — | 6 |
-| MEDIUM | 6 | 3 (ACT-12,13,15) | — | — | 3 |
-| **Total** | **16** | **6** | **0** | **0** | **10** |
+| HIGH | 9 | — | — | — | 9 |
+| MEDIUM | 6 | — | — | — | 6 |
+| **Total** | **16** | **0** | **0** | **0** | **16** |
 
 ### By Milestone
 
 | Milestone | Items | Critical/High | Medium | Status |
 |---|---|---|---|---|
 | PDR Baseline Lock | 10 | ACT-01..07 | ACT-08, ACT-09, ACT-10 | **ALL CLOSED** |
-| CDR | 6 | ACT-11, ACT-14, ACT-16 | ACT-12, ACT-13, ACT-15 | OPEN |
+| CDR | 6 | ACT-11, ACT-14, ACT-16 | ACT-12, ACT-13, ACT-15 | **ALL CLOSED** |
 
 ### By Responsible Lead
 
 | Lead | Items Assigned | Open |
 |---|---|---|
-| Systems Engineering | ACT-01, ACT-04, ACT-06, ACT-07, ACT-08, ACT-09, ACT-10, ACT-15 | ACT-15 |
-| Communications | ACT-02, ACT-05, ACT-12 | ACT-12 |
-| Software | ACT-03, ACT-14, ACT-16 | ACT-14, ACT-16 |
-| Hardware | ACT-11 | ACT-11 |
-| ADCS | ACT-13 | ACT-13 |
+| Systems Engineering | ACT-01, ACT-04, ACT-06, ACT-07, ACT-08, ACT-09, ACT-10, ACT-15 | — |
+| Communications | ACT-02, ACT-05, ACT-12 | — |
+| Software | ACT-03, ACT-14, ACT-16 | — |
+| Hardware | ACT-11 | — |
+| ADCS | ACT-13 | — |
 
-### PDR Readiness (as of 2026-03-10)
+### AIR Final Status (as of 2026-03-10)
 
 ```
 PDR Blocking Items: 10 / 10 CLOSED
@@ -682,13 +682,17 @@ PDR Blocking Items: 10 / 10 CLOSED
 
 PDR GATE: READY — all 10 PDR-blocking items CLOSED (2026-03-10)
 
-CDR Items Remaining: 6 / 6 OPEN
-[ ] ACT-11  HIGH     Magnetometer part number lock
-[ ] ACT-12  MEDIUM   RF link margin SyRS requirement
-[ ] ACT-13  MEDIUM   RW performance requirements
-[ ] ACT-14  HIGH     HIL test cases (WDT, stack, power)
-[ ] ACT-15  MEDIUM   FMEA baseline v0.2
-[ ] ACT-16  HIGH     flash_backend.c implementation
+CDR Items: 6 / 6 CLOSED
+
+[x] ACT-11  HIGH     Magnetometer part number lock (EM=HMC5883L / FM=LIS3MDL)
+[x] ACT-12  MEDIUM   RF link margin SyRS req (SYS-F-450, 6 dB @ 600 km/5°)
+[x] ACT-13  MEDIUM   RW performance reqs (SYS-F-121..124)
+[x] ACT-14  HIGH     HIL test cases (T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01)
+[x] ACT-15  MEDIUM   FMEA baseline v0.2 (owners + dates assigned to OI-1..4)
+[x] ACT-16  HIGH     flash_backend.c implemented (SYS-F-304 → [IMPL])
+
+AIR COMPLETE — all 16 action items CLOSED (2026-03-10)
+CDR GATE: DOCUMENT BASELINE READY
 ```
 
 ---

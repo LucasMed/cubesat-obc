@@ -148,12 +148,14 @@ bool mpu6050_read(imu_data_t *data);   // returns gyro [rad/s] + accel [m/s²]
 
 | Parameter | Value |
 |-----------|-------|
-| Sensor | HMC5883L (GY-271 module) |
+| **Configuration Status** | **EM LOCKED** — HMC5883L (GY-271), I2C `0x1E`. CDR candidate: LIS3MDL I2C `0x1C` (SA0=GND). Part selection per ACT-11 (SRR-OBC-001 2026-03-10). |
+| Sensor | HMC5883L (GY-271 module) — Engineering Model |
 | Bus | I2C0 |
 | Address | `0x1E` |
 | GPIO | GPIO4 (SDA), GPIO5 (SCL) |
-| Driver | `src/drivers/mag/hmc5883l.c` |
+| Driver | `src/drivers/mag/hmc5883l.c` [EM]; `src/drivers/mag/lis3mdl.c` [CDR — not yet created] |
 | Output rate | 75 Hz (configured in driver) |
+| ⚠️ Clone risk | QMC5883L (I2C `0x0D`, different register map) found in some GY-271 modules. Verify IC markings. |
 
 **Output data:**
 
