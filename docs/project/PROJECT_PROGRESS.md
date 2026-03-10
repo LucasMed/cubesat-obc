@@ -16,6 +16,8 @@
 - CI/CD via GitHub Actions
 - Documentation framework established
 
+---
+
 ### Phase 2: Pico SDK Integration ✅ (2026-02-20)
 - Full integration of Pico SDK with FreeRTOS SMP
 - Thread-safe system state management
@@ -32,6 +34,8 @@
 | 2.4 — System Integration | ✅ | 2026-02-20 | End-to-end control loop stable |
 | 2.5 — HW Validation | ✅ | 2026-02-20 | Jitter confirmed ±22µs, stable USB |
 
+---
+
 ### Phase 3: Communication & Telemetry ✅ (2026-02-22)
 - **Goal**: Integrate `libcsp` for binary telemetry and remote command handling.
 - **Outcomes**:
@@ -41,6 +45,8 @@
   - Created `command_task` listening on Port 20 for Echo and Reboot commands.
   - Defined strict interface specifications in `PHASE3_COMM_SPEC.md`.
   - Achieved comprehensive unit testing (64% project line coverage) for packet packing, command parsing, and topology initialization.
+
+---
 
 ### Spec-Review Alignment ✅ PRs 1–10 (2026-03-01)
 - **Goal**: Close gaps identified during the REVISION_PHASE against SPEC-2 v2.0 / SPEC-3 / SPEC-5.
