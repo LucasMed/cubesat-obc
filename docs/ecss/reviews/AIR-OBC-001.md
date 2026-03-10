@@ -545,7 +545,7 @@ Cross-reference numeric values to `controller_limits.h` and ADCS-DES-001.
 | **ID** | ACT-14 |
 | **Source** | MIN-05, MIN-07 |
 | **Priority** | HIGH |
-| **Status** | `OPEN` |
+| **Status** | `PLANNED CLOSURE` - HIL test pending execution |
 | **Target Milestone** | CDR |
 | **Responsible** | Software Lead |
 | **Due Date** | TBD |
@@ -573,6 +573,7 @@ No power measurement setup is defined. Target: < 2 W nominal.
 - [ ] `T-WDT-02`, `T-STK-01..05`, `T-PWR-01` added to STP-OBC-001.
 - [ ] All new test cases added to RTM with traceability to SYS-F-214, SYS-NF-006, NFR-4.
 - [ ] SVVP §10 HIL plan updated.
+- [ ] HIL tests executed and results reviewed.
 
 ---
 
@@ -692,7 +693,7 @@ CDR Items: 6 / 6 CLOSED
 [x] ACT-11  HIGH     Magnetometer part number lock (EM=HMC5883L / FM=LIS3MDL)
 [x] ACT-12  MEDIUM   RF link margin SyRS req (SYS-F-450, 6 dB @ 600 km/5°)
 [x] ACT-13  MEDIUM   RW performance reqs (SYS-F-121..124)
-[x] ACT-14  HIGH     HIL test cases (T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01)
+[x] ACT-14  HIGH     HIL test cases (T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01) — PLANNED CLOSURE (HIL tests pending)
 [x] ACT-15  MEDIUM   FMEA baseline v0.2 (owners + dates assigned to OI-1..4)
 [x] ACT-16  HIGH     flash_backend.c implemented (SYS-F-304 → [IMPL])
 
