@@ -37,17 +37,18 @@
 /* The diagonal (same→same) is handled separately as FMM_OK (no-op). */
 /* FM_COUNT is used as array size sentinel.                           */
 static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
-    /*               BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC */
-    /* FM_BOOT       */ {0, 1, 1, 0, 0},
-    /* FM_SAFE       */ {0, 0, 1, 0, 0},
-    /* FM_DETUMBLE   */ {0, 1, 0, 1, 0},
-    /* FM_NOMINAL    */ {0, 1, 1, 0, 1},
-    /* FM_DIAGNOSTIC */ {0, 1, 0, 1, 0},
+    /*               BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC  PAYLOAD */
+    /* FM_BOOT       */ {0, 1, 1, 0, 0, 0},
+    /* FM_SAFE       */ {0, 0, 1, 0, 0, 0},
+    /* FM_DETUMBLE   */ {0, 1, 0, 1, 0, 0},
+    /* FM_NOMINAL    */ {0, 1, 1, 0, 1, 1},
+    /* FM_DIAGNOSTIC */ {0, 1, 0, 1, 0, 0},
+    /* FM_PAYLOAD    */ {0, 1, 0, 1, 0, 0},
 };
 
 /* Human-readable mode names for logging */
 static const char *const g_mode_names[FM_COUNT] = {
-    "BOOT", "SAFE", "DETUMBLE", "NOMINAL", "DIAGNOSTIC",
+    "BOOT", "SAFE", "DETUMBLE", "NOMINAL", "DIAGNOSTIC", "PAYLOAD",
 };
 
 /* ------------------------------------------------------------------ */

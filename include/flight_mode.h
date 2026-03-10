@@ -37,6 +37,7 @@ extern "C"
     FM_DETUMBLE = 2,   /**< Angular-rate reduction via B-dot law        */
     FM_NOMINAL = 3,    /**< Normal three-axis attitude control          */
     FM_DIAGNOSTIC = 4, /**< Ground-commanded diagnostic / testing mode  */
+    FM_PAYLOAD = 5,    /**< Scientific payload operations — PLS-001     */
     FM_COUNT           /**< Number of valid modes (sentinel, not a mode) */
   } flight_mode_t;
 

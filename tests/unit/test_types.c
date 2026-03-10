@@ -51,7 +51,8 @@ static void test_flight_mode(void)
   CHECK(FM_DETUMBLE == 2, "FM_DETUMBLE must be 2");
   CHECK(FM_NOMINAL == 3, "FM_NOMINAL must be 3");
   CHECK(FM_DIAGNOSTIC == 4, "FM_DIAGNOSTIC must be 4");
-  CHECK(FM_COUNT == 5, "FM_COUNT must be 5");
+  CHECK(FM_PAYLOAD == 5, "FM_PAYLOAD must be 5");
+  CHECK(FM_COUNT == 6, "FM_COUNT must be 6");
 
   CHECK(FMM_OK == 0, "FMM_OK must be 0");
   CHECK(FMM_ERR_INVALID == 1, "FMM_ERR_INVALID must be 1");
