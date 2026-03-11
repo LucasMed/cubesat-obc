@@ -111,6 +111,10 @@ static void test_from_boot(void)
   r = fmm_request_transition(FM_DIAGNOSTIC);
   CHECK(r == FMM_ERR_NOT_ALLOWED, "BOOT->DIAGNOSTIC must be NOT_ALLOWED");
 
+  force_mode(FM_BOOT);
+  r = fmm_request_transition(FM_PAYLOAD);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "BOOT->PAYLOAD must be NOT_ALLOWED");
+
   printf("test_from_boot: OK\n");
 }
 
@@ -137,6 +141,10 @@ static void test_from_safe(void)
   force_mode(FM_SAFE);
   r = fmm_request_transition(FM_BOOT);
   CHECK(r == FMM_ERR_NOT_ALLOWED, "SAFE->BOOT must be NOT_ALLOWED");
+
+  force_mode(FM_SAFE);
+  r = fmm_request_transition(FM_PAYLOAD);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "SAFE->PAYLOAD must be NOT_ALLOWED");
 
   printf("test_from_safe: OK\n");
 }
@@ -165,6 +173,10 @@ static void test_from_detumble(void)
   r = fmm_request_transition(FM_BOOT);
   CHECK(r == FMM_ERR_NOT_ALLOWED, "DETUMBLE->BOOT must be NOT_ALLOWED");
 
+  force_mode(FM_DETUMBLE);
+  r = fmm_request_transition(FM_PAYLOAD);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "DETUMBLE->PAYLOAD must be NOT_ALLOWED");
+
   printf("test_from_detumble: OK\n");
 }
 
@@ -191,6 +203,10 @@ static void test_from_nominal(void)
   force_mode(FM_NOMINAL);
   r = fmm_request_transition(FM_BOOT);
   CHECK(r == FMM_ERR_NOT_ALLOWED, "NOMINAL->BOOT must be NOT_ALLOWED");
+
+  force_mode(FM_NOMINAL);
+  r = fmm_request_transition(FM_PAYLOAD);
+  CHECK(r == FMM_OK, "NOMINAL->PAYLOAD must be OK");
 
   printf("test_from_nominal: OK\n");
 }
@@ -219,7 +235,42 @@ static void test_from_diagnostic(void)
   r = fmm_request_transition(FM_BOOT);
   CHECK(r == FMM_ERR_NOT_ALLOWED, "DIAGNOSTIC->BOOT must be NOT_ALLOWED");
 
+  force_mode(FM_DIAGNOSTIC);
+  r = fmm_request_transition(FM_PAYLOAD);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "DIAGNOSTIC->PAYLOAD must be NOT_ALLOWED");
+
   printf("test_from_diagnostic: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 6a: transitions from FM_PAYLOAD                                */
+/* ------------------------------------------------------------------ */
+
+static void test_from_payload(void)
+{
+  fmm_result_t r;
+
+  force_mode(FM_PAYLOAD);
+  r = fmm_request_transition(FM_SAFE);
+  CHECK(r == FMM_OK, "PAYLOAD->SAFE must be OK");
+
+  force_mode(FM_PAYLOAD);
+  r = fmm_request_transition(FM_NOMINAL);
+  CHECK(r == FMM_OK, "PAYLOAD->NOMINAL must be OK");
+
+  force_mode(FM_PAYLOAD);
+  r = fmm_request_transition(FM_DETUMBLE);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "PAYLOAD->DETUMBLE must be NOT_ALLOWED");
+
+  force_mode(FM_PAYLOAD);
+  r = fmm_request_transition(FM_DIAGNOSTIC);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "PAYLOAD->DIAGNOSTIC must be NOT_ALLOWED");
+
+  force_mode(FM_PAYLOAD);
+  r = fmm_request_transition(FM_BOOT);
+  CHECK(r == FMM_ERR_NOT_ALLOWED, "PAYLOAD->BOOT must be NOT_ALLOWED");
+
+  printf("test_from_payload: OK\n");
 }
 
 /* ------------------------------------------------------------------ */
@@ -228,7 +279,7 @@ static void test_from_diagnostic(void)
 
 static void test_same_mode(void)
 {
-  flight_mode_t modes[] = {FM_BOOT, FM_SAFE, FM_DETUMBLE, FM_NOMINAL, FM_DIAGNOSTIC};
+  flight_mode_t modes[] = {FM_BOOT, FM_SAFE, FM_DETUMBLE, FM_NOMINAL, FM_DIAGNOSTIC, FM_PAYLOAD};
   for (int i = 0; i < (int)(sizeof(modes) / sizeof(modes[0])); i++)
   {
     force_mode(modes[i]);
@@ -259,7 +310,7 @@ static void test_invalid_target(void)
 
 static void test_force_safe(void)
 {
-  flight_mode_t modes[] = {FM_BOOT, FM_DETUMBLE, FM_NOMINAL, FM_DIAGNOSTIC};
+  flight_mode_t modes[] = {FM_BOOT, FM_DETUMBLE, FM_NOMINAL, FM_DIAGNOSTIC, FM_PAYLOAD};
   for (int i = 0; i < (int)(sizeof(modes) / sizeof(modes[0])); i++)
   {
     force_mode(modes[i]);
@@ -344,6 +395,7 @@ int main(void)
   test_from_detumble();
   test_from_nominal();
   test_from_diagnostic();
+  test_from_payload();
   test_same_mode();
   test_invalid_target();
   test_force_safe();

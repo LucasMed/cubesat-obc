@@ -118,9 +118,9 @@ tests/integration/
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
 | T-7.1.1 | Update `flight_mode.h`: add `FM_PAYLOAD = 5` | SW | 15 min | ✅ Done |
-| T-7.1.2 | Update `flight_mode_manager.c`: expand `g_allowed[][]` to 6×6; add `FM_PAYLOAD` entries (NOMINAL↔PAYLOAD); update `fmm_mode_name()` | SW | 1 h | ⏳ |
-| T-7.1.3 | Update FMM unit tests: add T-FMM-02/03 cases for new row/column | SW | 1 h | ⏳ |
-| T-7.1.4 | Regression: all 29 existing tests pass after matrix change | SW | 15 min | ⏳ |
+| T-7.1.2 | Update `flight_mode_manager.c`: expand `g_allowed[][]` to 6×6; add `FM_PAYLOAD` entries (NOMINAL↔PAYLOAD); update `fmm_mode_name()` | SW | 1 h | ✅ Done |
+| T-7.1.3 | Update FMM unit tests: add T-FMM-02/03 cases for new row/column | SW | 1 h | ✅ Done |
+| T-7.1.4 | Regression: all 29 existing tests pass after matrix change | SW | 15 min | ✅ Done |
 | T-7.1.5 | Update FMM-DES-001 v0.4: transition matrix, subsystem table, HK encoding | DOCS | 1 h | ✅ Done |
 
 **Exit criteria**: `bash scripts/pico_ci.sh host-test` passes 29+N/29+N (N = new FMM tests).
