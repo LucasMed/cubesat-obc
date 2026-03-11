@@ -21,10 +21,12 @@ if(NOT PICO_BUILD)
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_fault_safe PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
+    target_link_libraries(test_fault_safe m)
     add_test(NAME fault_safe_test COMMAND test_fault_safe)
 
     # PR-25 gate: T-SAFE-01 — watchdog reset detected by health monitor →
@@ -40,10 +42,12 @@ if(NOT PICO_BUILD)
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_safe_trigger PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
+    target_link_libraries(test_safe_trigger m)
     add_test(NAME safe_trigger_test COMMAND test_safe_trigger)
 
 else()

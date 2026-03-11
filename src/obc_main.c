@@ -167,6 +167,14 @@ static void vStartupTask(void *pvParameters)
   CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1,
                   HPTR(h_health)),
       "HealthMon");
+
+#ifdef PICO_BUILD
+  /* Link Health Monitor handle to Fault Manager for ISR-safe FDIR signaling */
+  if (h_health != NULL)
+  {
+    fault_manager_set_hm_task_handle(h_health);
+  }
+#endif
 #ifdef PICO_BUILD
   CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, &h_led), "LEDBlink");
   /* Heartbeat at LOW priority — it's just diagnostic, must not preempt Startup. */

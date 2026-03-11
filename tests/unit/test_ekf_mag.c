@@ -15,6 +15,7 @@
  */
 
 #include "ekf.h"
+#include "quaternion.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -74,7 +75,9 @@ static void test_no_crash(void)
 
   ekf_update_mag(&ekf, mag, 0.0f); /* must not crash */
 
-  CHECK(isfinite(ekf.x[2]), "yaw must remain finite after update");
+  float att[3];
+  ekf_get_attitude(&ekf, att);
+  CHECK(isfinite(att[2]), "yaw must remain finite after update");
   printf("  PASS T-EKFM-01 no crash with valid field\n");
 }
 
@@ -85,16 +88,18 @@ static void test_degenerate_field(void)
 {
   ekf_t ekf;
   ekf_init(&ekf);
-  ekf.x[2] = DEG2RAD(30.0f); /* put some yaw in the state */
-  float P22_before = ekf.P[2][2];
-  float x2_before = ekf.x[2];
+  float att_before[3];
+  ekf_get_attitude(&ekf, att_before);
+  float P00_before = ekf.P[0][0];
 
   /* Purely vertical field → Bh_x = By = 0, Bh_y = 0 → degenerate */
   float mag[3] = {0.0f, 0.0f, 50.0f};
   ekf_update_mag(&ekf, mag, 0.0f);
 
-  CHECK(FPEQ(ekf.x[2], x2_before), "yaw state must be unchanged for degenerate field");
-  CHECK(FPEQ(ekf.P[2][2], P22_before), "P[2][2] must be unchanged for degenerate field");
+  float att_after[3];
+  ekf_get_attitude(&ekf, att_after);
+  CHECK(FPEQ(att_after[2], att_before[2]), "yaw state must be unchanged for degenerate field");
+  CHECK(FPEQ(ekf.P[0][0], P00_before), "P[0][0] must be unchanged for degenerate field");
   printf("  PASS T-EKFM-02 degenerate field skips update\n");
 }
 
@@ -107,16 +112,18 @@ static void test_yaw_correction(void)
   ekf_init(&ekf);
 
   float true_yaw = DEG2RAD(90.0f);
-  ekf.x[2] = 0.0f; /* initial estimate: zero yaw */
+  /* Starts at zero yaw (identity quat) */
 
   float mag[3];
   make_mag(true_yaw, mag);
   ekf_update_mag(&ekf, mag, 0.0f);
 
+  float att[3];
+  ekf_get_attitude(&ekf, att);
   /* After one update yaw must move toward true_yaw (i.e., increase from 0) */
-  CHECK(ekf.x[2] > 0.0f, "yaw must move toward measured value after update");
-  /* But must not overshoot (innovation was π/2, gain < 1, so x[2] < π/2) */
-  CHECK(ekf.x[2] < true_yaw, "yaw must not overshoot the measurement");
+  CHECK(att[2] > 0.0f, "yaw must move toward measured value after update");
+  /* But must not overshoot (innovation was π/2, gain < 1, so yaw < π/2) */
+  CHECK(att[2] < true_yaw, "yaw must not overshoot the measurement");
   printf("  PASS T-EKFM-03 yaw correction moves toward measurement\n");
 }
 
@@ -132,17 +139,33 @@ static void test_wrap_pi(void)
   ekf_t ekf;
   ekf_init(&ekf);
 
-  float true_yaw = (float)M_PI - 0.1f; /* ≈ +170° */
-  ekf.x[2] = -((float)M_PI - 0.1f);    /* ≈ -170° */
+  float true_yaw = (float)M_PI - 0.1f;    /* ≈ +170° */
+  float est_yaw = -((float)M_PI - 0.1f);   /* ≈ -170° */
+
+  /* Set initial state as quaternion representing est_yaw */
+  quat_t q_init = q_from_euler(0, 0, est_yaw);
+  ekf.x[0] = q_init.w;
+  ekf.x[1] = q_init.x;
+  ekf.x[2] = q_init.y;
+  ekf.x[3] = q_init.z;
 
   float mag[3];
   make_mag(true_yaw, mag);
   ekf_update_mag(&ekf, mag, 0.0f);
 
-  /* Innovation should have been wrapped to ~-0.2 rad (short CW path from
-   * -170° → +170°); x[2] must therefore DECREASE (move toward -π) */
-  CHECK(ekf.x[2] < -((float)M_PI - 0.1f),
-        "yaw must decrease (wrapped innovation is ~-0.2 rad, short CW path)");
+  float att[3];
+  ekf_get_attitude(&ekf, att);
+
+  float err_after = att[2] - true_yaw;
+  while (err_after > (float)M_PI) err_after -= 2.0f*(float)M_PI;
+  while (err_after < -(float)M_PI) err_after += 2.0f*(float)M_PI;
+
+  float err_before = est_yaw - true_yaw;
+  while (err_before > (float)M_PI) err_before -= 2.0f*(float)M_PI;
+  while (err_before < -(float)M_PI) err_before += 2.0f*(float)M_PI;
+
+  /* Absolute error must have decreased */
+  CHECK(fabsf(err_after) < fabsf(err_before), "absolute yaw error must decrease");
   printf("  PASS T-EKFM-04 innovation wrapping at +-pi\n");
 }
 
@@ -154,13 +177,14 @@ static void test_cov_reduction(void)
   ekf_t ekf;
   ekf_init(&ekf);
 
-  float P22_before = ekf.P[2][2];
+  /* P[0][0] before update */
+  float P00_before = ekf.P[0][0];
 
   float mag[3];
   make_mag(0.0f, mag);
   ekf_update_mag(&ekf, mag, 0.0f);
 
-  CHECK(ekf.P[2][2] < P22_before, "P[2][2] must decrease after valid mag update");
+  CHECK(ekf.P[0][0] < P00_before, "P[0][0] must decrease after valid mag update");
   printf("  PASS T-EKFM-05 yaw covariance decreases after update\n");
 }
 
@@ -188,9 +212,11 @@ static void test_convergence(void)
     ekf_update_mag(&ekf, mag, 0.0f);
   }
 
-  float yaw_err_deg = RAD2DEG(fabsf(ekf.x[2] - true_yaw));
+  float att[3];
+  ekf_get_attitude(&ekf, att);
+  float yaw_err_deg = RAD2DEG(fabsf(att[2] - true_yaw));
   CHECK(yaw_err_deg < 5.0f, "yaw must converge to within ±5° after 10 s");
-  printf("  PASS T-EKFM-06 yaw converges to %.2f deg (err %.2f deg)\n", RAD2DEG(ekf.x[2]),
+  printf("  PASS T-EKFM-06 yaw converges to %.2f deg (err %.2f deg)\n", RAD2DEG(att[2]),
          yaw_err_deg);
 }
 
@@ -216,15 +242,19 @@ static void test_declination_offset(void)
   ekf_update_mag(&ekf_a, mag, 0.0f);
   ekf_update_mag(&ekf_b, mag, decl);
 
+  float att_a[3], att_b[3];
+  ekf_get_attitude(&ekf_a, att_a);
+  ekf_get_attitude(&ekf_b, att_b);
+
   /* EKF-B received a yaw_meas 10° larger → its yaw state must be larger */
-  CHECK(ekf_b.x[2] > ekf_a.x[2],
+  CHECK(att_b[2] > att_a[2],
         "positive declination must increase yaw estimate vs zero-declination");
 
   /* The difference must be strictly less than 10° (Kalman gain < 1) */
-  CHECK((ekf_b.x[2] - ekf_a.x[2]) < decl, "yaw difference must be < declination (Kalman gain < 1)");
+  CHECK((att_b[2] - att_a[2]) < decl, "yaw difference must be < declination (Kalman gain < 1)");
 
   printf("  PASS T-EKFM-07 declination +10 deg shifts yaw by %.2f deg (expected <10 deg)\n",
-         RAD2DEG(ekf_b.x[2] - ekf_a.x[2]));
+         RAD2DEG(att_b[2] - att_a[2]));
 }
 
 /* ========================================================================

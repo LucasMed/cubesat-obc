@@ -26,9 +26,10 @@ if(NOT PICO_BUILD)
         ../../src/tasks/telemetry_task.c
         ../../src/core/system_state.c
         ../../src/core/data_layer.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_telemetry csp)
+    target_link_libraries(test_telemetry csp m)
     add_test(NAME telemetry_test COMMAND test_telemetry)
 
     add_executable(test_command
@@ -87,8 +88,10 @@ if(NOT PICO_BUILD)
         test_data_layer.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_data_layer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_data_layer m)
     add_test(NAME data_layer_test COMMAND test_data_layer)
 
     # PR-3 gate: Flight Mode Manager — state machine + fault-block behaviour.
@@ -99,8 +102,10 @@ if(NOT PICO_BUILD)
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_fmm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_fmm m)
     add_test(NAME fmm_test COMMAND test_fmm)
 
     # PR-4 gate: Fault Manager — table, severity, auto-clear, CRITICAL side-effects.
@@ -111,9 +116,21 @@ if(NOT PICO_BUILD)
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_fault_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_fault_manager m)
     add_test(NAME fault_manager_test COMMAND test_fault_manager)
+    
+    add_executable(test_fdir_isr
+        test_fdir_isr.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/core/data_layer.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_fdir_isr PRIVATE ../../include ../../include/host)
+    target_link_libraries(test_fdir_isr m)
+    add_test(NAME fdir_isr_test COMMAND test_fdir_isr)
 
     # PR-5 gate: EPS Monitor — voltage classification, hysteresis, fault reports,
     # rail control.  The test overrides eps_hal_read() with a strong symbol to
@@ -125,8 +142,10 @@ if(NOT PICO_BUILD)
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_eps_monitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_eps_monitor m)
     add_test(NAME eps_monitor_test COMMAND test_eps_monitor)
 
     # PR-6 gate: Persistent Logger — ring buffer, class protection, payload,
@@ -148,6 +167,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/ekf.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_sensor_read_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -164,6 +184,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/lqr_schedule.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_attitude_control_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -178,15 +199,21 @@ if(NOT PICO_BUILD)
     add_executable(test_health_monitor_task
         test_health_monitor_task.c
         ../../src/tasks/health_monitor_task.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_health_monitor_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
+    target_link_libraries(test_health_monitor_task m)
     add_test(NAME health_monitor_task_test COMMAND test_health_monitor_task)
 
     add_executable(test_ekf
         test_ekf.c
         ../../src/control/ekf.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_ekf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ekf m)
@@ -207,8 +234,13 @@ if(NOT PICO_BUILD)
     add_executable(test_watchdog
         test_watchdog.c
         ../../src/tasks/health_monitor_task.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_watchdog m)
     add_test(NAME watchdog_test COMMAND test_watchdog)
 
     # PR-17 gate: Momentum Dump — init, degenerate B guard, cross-product accuracy,
@@ -232,6 +264,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/ekf.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_hmc5883l m)
@@ -244,6 +277,7 @@ if(NOT PICO_BUILD)
     add_executable(test_ekf_mag
         test_ekf_mag.c
         ../../src/control/ekf.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_ekf_mag PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ekf_mag m)
@@ -285,6 +319,7 @@ if(NOT PICO_BUILD)
         ../../src/control/lqr_schedule.c
         ../../src/control/closed_loop_sim.c
         ../../src/dynamics/attitude_dynamics.c
+        ../../src/control/quaternion.c
     )
     target_include_directories(test_closed_loop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_closed_loop m)

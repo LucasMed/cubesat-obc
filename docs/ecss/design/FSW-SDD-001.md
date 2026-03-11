@@ -537,25 +537,32 @@ Implements a two-threshold Schmidt trigger on battery voltage to derive the
 
 The monitor reads `battery_v` from the DLA (written by `SensorRead` from ADC0).
 `eps_monitor_tick()` is called by `vHealthMonitorTask` at 1 Hz
-(`src/tasks/health_monitor_task.c` line 33), which ensures periodic FSM
-evaluation without requiring a dedicated task. State transitions write back to
-the DLA energy field via `dl_write_energy_state()`.
-
-> **Execution guarantee**: `vHealthMonitorTask` runs at priority 1 (lowest).
-> If it is blocked for any reason, the TPS3431 WDT fires before the next
-> `watchdog_hal_kick()` deadline, resetting the OBC. This provides an implicit
-> liveness guarantee for the EPS monitor evaluation loop.
+(`src/tasks/health_monitor_task.c` line 33), which ensures periodic### 8.5 Extended Kalman Filter (EKF)
+ 
+ **Source**: `src/control/ekf.c`  
+ **Header**: `include/ekf.h`  
+ **Full design**: `ADCS-DES-001`
+ 
+ 7-state EKF (attitude quaternion 4D + gyro bias 3-DOF):
+ 
+ - **Predict step**: integrates gyro rates using quaternion kinematics.
+ - **Update step**: fuses accelerometer and magnetometer vectors to correct attitude drift.
+ - **Output**: attitude Euler angles (roll/pitch/yaw, radians) + uncertainty
+   diagonal `P` written to DLA.
+ 
+ EKF is called by `vAttitudeControlTask` at 10 Hz. Convergence flag
+ `imu_ekf_valid` is set when `max(P[0..3]) < 0.01`.
 
 ### 8.4 Event Logger
 
-**Source**: `src/core/event_logger.c`, `src/services/log/logger.c`  
-**Header**: `include/logger.h`  
+**Source**: `src/core/event_logger.c`, `src/services/log/logger.c`
+**Header**: `include/logger.h`
 **Full design**: `DL-DES-001`
 
 Three-class storage model:
 
 | Class | Enum | Storage | Overwrite Policy |
-|-------|------|---------|------------------|
+|---|---|---|---|
 | A — Critical | `LOG_CLASS_CRITICAL` | Protected flash segment | Never overwritten |
 | B — Operational | `LOG_CLASS_OPERATIONAL` | Operational log segment | Overwritten when segment full |
 | C — Info | `LOG_CLASS_INFO` | RAM ring buffer (capacity 64) → flushed to flash | Circular; oldest overwritten |

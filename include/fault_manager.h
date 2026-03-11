@@ -128,6 +128,13 @@ extern "C"
    */
   bool fault_get_event(uint16_t id, fault_event_t *out);
 
+  /**
+   * @brief Link the Fault Manager to the Health Monitor task.
+   *
+   * @param h_health  Handle to the Health Monitor task.
+   */
+  void fault_manager_set_hm_task_handle(void *h_health);
+
 #ifdef __cplusplus
 }
 #endif

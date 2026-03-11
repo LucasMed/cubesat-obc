@@ -101,15 +101,36 @@ void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
   dl_unlock();
 }
 
-void data_layer_write_ekf(const float att_rad[3], const float bias_rad[3], const float cov_diag[3])
+#include "quaternion.h"
+
+void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float cov_diag[7])
 {
   dl_lock();
+
+  /* Copy quaternion and gyro bias */
+  for (int i = 0; i < 4; i++)
+  {
+    g_snapshot.state.q[i] = q[i];
+  }
   for (int i = 0; i < 3; i++)
   {
-    g_snapshot.state.attitude[i] = att_rad[i];
     g_snapshot.state.gyro_bias[i] = bias_rad[i];
+  }
+
+  /* Copy full diagonal covariance (7 states) */
+  for (int i = 0; i < 4; i++)
+  {
+    /* We reuse att_uncertainty[4] for the quaternion part of the cov diag if we want,
+     * but system_state.h has float att_uncertainty[4].
+     * Actually, let's just copy exactly what's available. */
     g_snapshot.state.att_uncertainty[i] = cov_diag[i];
   }
+
+  /* Auto-convert quaternion to Euler for telemetry/legacy subsystems */
+  quat_t qt = {q[0], q[1], q[2], q[3]};
+  q_to_euler(qt, &g_snapshot.state.attitude[0], &g_snapshot.state.attitude[1],
+             &g_snapshot.state.attitude[2]);
+
   g_snapshot.state.imu_ekf_valid = true;
   g_snapshot.seq++;
   dl_unlock();

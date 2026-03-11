@@ -104,12 +104,11 @@ extern "C"
    * cycle.  Stores EKF attitude estimate, gyro bias, and diagonal covariance
    * back to @ref system_state_t and sets @c imu_ekf_valid = true.
    *
-   * @param att_rad    EKF attitude estimate [roll, pitch, yaw] in radians [3].
+   * @param q          EKF attitude estimate [w, x, y, z] unit quaternion [4].
    * @param bias_rad   EKF gyro-bias estimate [rad/s] [3].
-   * @param cov_diag   EKF diagonal covariance P[0..2][0..2] [rad²] [3].
+   * @param cov_diag   EKF diagonal covariance P [7] (q0..q3, bx..bz).
    */
-  void data_layer_write_ekf(const float att_rad[3], const float bias_rad[3],
-                            const float cov_diag[3]);
+  void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float cov_diag[7]);
 
   /**
    * @brief Update temperature reading.

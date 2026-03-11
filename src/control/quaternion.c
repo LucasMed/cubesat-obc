@@ -134,9 +134,9 @@ void q_to_euler(quat_t q, float *roll_rad, float *pitch_rad, float *yaw_rad)
   float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
   *roll_rad = atan2f(sinr_cosp, cosr_cosp);
 
-  /* Pitch (rotation about Y) — clamp to avoid NaN at poles */
+  /* Pitch (rotation about Y) — clamp to avoid NaN at poles and handle singularities */
   float sinp = 2.0f * (w * y - z * x);
-  if (fabsf(sinp) >= 1.0f)
+  if (fabsf(sinp) >= 0.99999f)
   {
     *pitch_rad = copysignf((float)M_PI / 2.0f, sinp);
   }

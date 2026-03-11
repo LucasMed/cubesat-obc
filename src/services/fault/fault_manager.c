@@ -23,12 +23,12 @@
 
 #include "fault_manager.h"
 
+#include "FreeRTOS.h"
+#include "config.h"
 #include "flight_mode.h"
+#include "task.h"
 
-#ifdef PICO_BUILD
-  #include "FreeRTOS.h"
-  #include "task.h"
-#endif
+#include <stddef.h>
 
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
@@ -58,7 +58,8 @@ typedef struct
 /* ------------------------------------------------------------------ */
 
 static fault_entry_t g_table[FAULT_TABLE_CAPACITY];
-static uint32_t g_tick; /**< Monotonic tick counter, incremented by _tick() */
+static uint32_t g_tick;               /**< Monotonic tick counter, incremented by _tick() */
+static TaskHandle_t g_hm_task = NULL; /**< Health Monitor task handle for FDIR signaling */
 
 /* ------------------------------------------------------------------ */
 /* Platform helpers                                                    */
@@ -172,10 +173,22 @@ void fault_report(uint16_t id, fault_level_t level)
 
   fm_unlock();
 
-  /* CRITICAL: force safe mode immediately (outside the lock) */
+  /* CRITICAL: trigger safe mode transition.
+   * We use task notifications to ensure the mode change happens in the
+   * HealthMonitorTask context (ISR-safe).
+   * If no task handle is set, we fall back to a direct call (legacy/tests). */
   if (level >= FAULT_LEVEL_CRITICAL)
   {
-    fmm_force_safe();
+    if (g_hm_task != NULL)
+    {
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+      xTaskNotifyFromISR(g_hm_task, HM_NOTIFY_FAULT_CRITICAL, eSetBits, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+    else
+    {
+      fmm_force_safe();
+    }
   }
 }
 
@@ -253,4 +266,11 @@ bool fault_get_event(uint16_t id, fault_event_t *out)
   *out = g_table[slot].event;
   fm_unlock();
   return true;
+}
+
+void fault_manager_set_hm_task_handle(void *h_health)
+{
+  fm_lock();
+  g_hm_task = (TaskHandle_t)h_health;
+  fm_unlock();
 }

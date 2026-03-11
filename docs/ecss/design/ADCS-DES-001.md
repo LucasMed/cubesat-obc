@@ -18,7 +18,7 @@ implemented in the CubeSat OBC flight software.
 
 The ADCS provides:
 
-- spacecraft attitude estimation (6-state EKF)
+- spacecraft attitude estimation (7-state quaternion EKF)
 - angular-rate detumbling (B×L cross-product control)
 - three-axis coarse attitude control (LQR / PID)
 - momentum management (magnetorquer B×L law)
@@ -196,35 +196,34 @@ to quaternion representation in Phase 7+ without changes to the actuator or FMM 
 
 ### 6.1 State Vector
 
-$$\mathbf{x} = [\phi,\ \theta,\ \psi,\ b_x,\ b_y,\ b_z]^T \quad [\text{rad},\ \text{rad/s}]$$
+$$\mathbf{x} = [q_0,\ q_1,\ q_2,\ q_3,\ b_x,\ b_y,\ b_z]^T \quad [\text{unit},\ \text{rad/s}]$$
 
 | Index | Symbol | Description |
 |-------|--------|-------------|
-| 0 | φ | roll angle [rad] |
-| 1 | θ | pitch angle [rad] |
-| 2 | ψ | yaw angle [rad] |
-| 3 | b_x | gyro bias x-axis [rad/s] |
-| 4 | b_y | gyro bias y-axis [rad/s] |
-| 5 | b_z | gyro bias z-axis [rad/s] |
+| 0 | q_0 | scalar part of quaternion [unit] |
+| 1 | q_1 | vector part x [unit] |
+| 2 | q_2 | vector part y [unit] |
+| 3 | q_3 | vector part z [unit] |
+| 4 | b_x | gyro bias x-axis [rad/s] |
+| 5 | b_y | gyro bias y-axis [rad/s] |
+| 6 | b_z | gyro bias z-axis [rad/s] |
 
 Defined in `include/ekf.h`:
 
 ```c
-#define EKF_N 6   // state: [roll, pitch, yaw, bx, by, bz]
-#define EKF_M 2   // accelerometer measurement dimension: [roll_accel, pitch_accel]
+#define EKF_N 7   // state: [q0, q1, q2, q3, bx, by, bz]
+#define EKF_M 3   // measurement dimension (accel or mag vector)
 ```
 
-> **Note on measurement dimensions:** The EKF implements two independent update steps
-> with separate measurement vectors. These are NOT applied simultaneously:
-> - `EKF_M_ACC = 2` — accelerometer update (roll + pitch), H ∈ ℝ²ˣ⁶
-> - `EKF_M_MAG = 1` — magnetometer yaw update, H ∈ ℝ¹ˣ⁶
+> **Note on measurement dimensions:** The EKF implements independent update steps
+> with separate measurement vectors:
+> - `EKF_M = 3` — 3D vector updates (accel or mag)
 >
-> The header constant `EKF_M = 2` covers the accelerometer case only.
-> `ekf_update_mag()` uses a scalar (1×1) innovation internally.
+> `ekf_update_mag()` handles 3D magnetometer fusion.
 
 ### 6.2 Process Model (Continuous)
 
-$$\dot{\boldsymbol{\phi}} = \boldsymbol{\omega} - \mathbf{b}$$
+$$\dot{\mathbf{q}} = \frac{1}{2}\mathbf{q} \otimes [0,\ \boldsymbol{\omega} - \mathbf{b}]^T$$
 $$\dot{\mathbf{b}} = \mathbf{0} \quad \text{(random-walk, driven by process noise Q)}$$
 
 where **ω** = measured gyro rate, **b** = estimated gyro bias.
@@ -307,16 +306,7 @@ $$H_{acc} = \begin{bmatrix}
 
 ### 6.6 Magnetometer Update (Yaw)
 
-Corrects yaw using tilt-compensated atan2 of the horizontal field projection.
-Innovation is wrapped to [−π, +π] before the Kalman update.
-
-Measurement function:
-
-$$z_{mag} = \psi_\text{meas} = \text{atan2}(-B_{h,y},\ B_{h,x}) + \delta$$
-
-Measurement matrix H (1×6):
-
-$$H_{mag} = [0\ \ 0\ \ 1\ \ 0\ \ 0\ \ 0]$$
+Corrects yaw using 3D magnetometer vector fusion. The magnetometer measurement Jacobian $H$ is computed based on the current estimated quaternion to project the reference field into the body frame.
 
 **API:**
 
