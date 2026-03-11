@@ -472,8 +472,8 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
   H[1][3] = 2.0f * (-q0 * Bxw - q3 * Byw);
 
   H[2][0] = 2.0f * (q2 * Bxw - q1 * Byw);
-  H[2][1] = 2.0f * (q3 * Bxw + q0 * Byw);
-  H[2][2] = 2.0f * (q0 * Bxw - q3 * Byw);
+  H[2][1] = 2.0f * (q3 * Bxw - q0 * Byw);
+  H[2][2] = 2.0f * (q0 * Bxw + q3 * Byw);
   H[2][3] = 2.0f * (q1 * Bxw + q2 * Byw);
 
   /* ---- EKF Update steps (Reuse the logic from ekf_update) ------------ */

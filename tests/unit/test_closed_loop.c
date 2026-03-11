@@ -111,11 +111,11 @@ static void test_bias_convergence(void)
   cls_init(&sim, DEG2RAD(30.0f), DEG2RAD(20.0f), DEG2RAD(45.0f), TRUE_BIAS, CLS_DT, TAU_NO_SAT);
   cls_run(&sim, FM_NOMINAL, STEPS_20S);
 
-  /* Bias estimate lives in EKF state x[3..5] */
+  /* Bias estimate lives in EKF state x[4..6] */
   float bias_err = 0.0f;
   for (int i = 0; i < 3; i++)
   {
-    float diff = sim.ekf.x[3 + i] - TRUE_BIAS[i];
+    float diff = sim.ekf.x[4 + i] - TRUE_BIAS[i];
     bias_err += diff * diff;
   }
   bias_err = sqrtf(bias_err);

@@ -176,17 +176,19 @@ void cls_step(cls_t *sim, flight_mode_t mode)
   ekf_update(&sim->ekf, accel);
   ekf_update_mag(&sim->ekf, mag, OBC_MAG_DECLINATION_RAD);
 
-  /* 7. Bias-corrected rate estimate from EKF */
+  /* 7. Bias-corrected rate estimate from EKF (bias at x[4..6]) */
   float rate_corr[3];
-  rate_corr[0] = gyro[0] - sim->ekf.x[3];
-  rate_corr[1] = gyro[1] - sim->ekf.x[4];
-  rate_corr[2] = gyro[2] - sim->ekf.x[5];
+  rate_corr[0] = gyro[0] - sim->ekf.x[4];
+  rate_corr[1] = gyro[1] - sim->ekf.x[5];
+  rate_corr[2] = gyro[2] - sim->ekf.x[6];
 
   /* 8. LQR: apply scheduled gains, then compute torque command */
   lqr_schedule_apply(&sim->lqr, mode);
 
   /* att_err = EKF attitude estimate - target (target = [0,0,0]) */
-  float att_err[3] = {sim->ekf.x[0], sim->ekf.x[1], sim->ekf.x[2]};
+  float att_est[3];
+  ekf_get_attitude(&sim->ekf, att_est);
+  float att_err[3] = {att_est[0], att_est[1], att_est[2]};
   float torque_cmd[3];
   lqr_compute(&sim->lqr, att_err, rate_corr, torque_cmd);
 
