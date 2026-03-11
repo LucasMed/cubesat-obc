@@ -48,7 +48,7 @@ static void mat77_zero(float A[7][7])
 /**
  * C = A * B  (7×7 × 7×7)
  */
-static void mat77_mul(const float A[7][7], const float B[7][7], float C[7][7])
+static void mat77_mul(float A[7][7], float B[7][7], float C[7][7])
 {
   float tmp[7][7];
   for (int i = 0; i < 7; i++)
@@ -68,7 +68,7 @@ static void mat77_mul(const float A[7][7], const float B[7][7], float C[7][7])
 /**
  * C = A * B^T  (7×7 × 7×7, B transposed)
  */
-static void mat77_mul_T(const float A[7][7], const float B[7][7], float C[7][7])
+static void mat77_mul_T(float A[7][7], float B[7][7], float C[7][7])
 {
   float tmp[7][7];
   for (int i = 0; i < 7; i++)

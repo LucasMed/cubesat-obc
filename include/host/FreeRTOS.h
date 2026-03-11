@@ -50,7 +50,14 @@ typedef void *TaskHandle_t;
 // considered "used" by clang-tidy (avoids false unused-function warnings).
 // Returns pdPASS so the CHK() macro works on host builds.
 #define xTaskCreate(pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask)     \
-  ((void)(pvTaskCode), (void)printf("[FreeRTOS] Created task: %s (stub)\n", (pcName)), pdPASS)
+  (xTaskCreate_Stub((void *)(pvTaskCode), (pcName)))
+
+static inline BaseType_t xTaskCreate_Stub(void *pvTaskCode, const char *pcName)
+{
+  (void)pvTaskCode;
+  printf("[FreeRTOS] Created task: %s (stub)\n", pcName);
+  return pdPASS;
+}
 
 // Task deletion stub
 #define vTaskDelete(xTaskToDelete)                                                                 \
