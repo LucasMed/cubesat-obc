@@ -13,9 +13,9 @@
 
 Phase 7 integrates the scientific payload suite **PLS-001** into the existing
 CubeSat OBC flight software. The payload consists of three instruments:
-`CAM-001` (Earth observation camera, IMX219 via SPI), `MAG-001` (scientific
-magnetometer, RM3100 via I2C), and `RAD-001` (radiation detector, PIN diode
-via ADC). Full instrument specifications are in **PAYLOAD-SPEC-001**.
+`CAM-001` (Earth observation camera, OV2640 via SPI), `MAG-001` (scientific
+magnetometer, RM3100 via SPI), and `RAD-001` (radiation detector, PIN diode
+via ADC). Full instrument specifications are defined in **ICD-PAYLOAD-001**.
 
 This phase has three parallel tracks:
 
@@ -65,10 +65,10 @@ SRS-OBC-001 v2.3.
 src/
   drivers/
     payload/
-      camera_driver.c        ← SPI1 frame trigger + readout (IMX219 SPI bridge)
-      rm3100.c               ← I2C RM3100 driver: init, CMM config, 3-axis read
-      radiation_driver.c     ← ADC1 read + TIA reset + dose accumulator
-      spi_payload.c          ← SPI1 bus init helper (10 MHz, CPOL/CPHA TBD)
+      camera_driver.c        ← SPI0 shared bus trigger + readout (OV2640 SPI bridge)
+      rm3100.c               ← SPI RM3100 driver: init, CMM config, 3-axis read
+      radiation_driver.c     ← ADC0 read + comparator + dose accumulator
+      spi_payload.c          ← SPI0 shared bus init helper (20 MHz)
   tasks/
     payload_task.c           ← FreeRTOS task: 10 Hz MAG, 1 Hz RAD, CAM on notification
   services/
@@ -129,13 +129,13 @@ tests/integration/
 
 ### WP-7.2 — RM3100 Magnetometer Driver (Track B)
 
-**Objective**: Implement and unit-test the PNI RM3100 I2C driver.
+**Objective**: Implement and unit-test the PNI RM3100 SPI driver.
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
 | T-7.2.1 | Create `include/rm3100.h`: API `rm3100_init()`, `rm3100_read()`, `rm3100_configCMM()` | SW | 1 h | ⏳ |
-| T-7.2.2 | Implement `src/drivers/payload/rm3100.c`: CMM config (CMXYZ register), DRDY poll, 3-axis read, nT conversion (×13 nT/count) | SW | 3 h | ⏳ |
-| T-7.2.3 | Unit tests `test_rm3100.c` (T-PLD-MAG-01..04): mock I2C; init correctness; read scaling; NACK handling | SW | 2 h | ⏳ |
+| T-7.2.2 | Implement `src/drivers/payload/rm3100.c`: CMM config (CMXYZ register), DRDY poll, 3-axis read, nT conversion (×13 nT/count) via SPI0 | SW | 3 h | ⏳ |
+| T-7.2.3 | Unit tests `test_rm3100.c` (T-PLD-MAG-01..04): mock SPI; init correctness; read scaling; timeout handling | SW | 2 h | ⏳ |
 | T-7.2.4 | Hardware validation: read RM3100 on real Pico 2W; mag vector |measured| ≈ 40–60 µT at Bs.As. | HW | 2 h | ⏳ |
 
 **Exit criteria**: T-PLD-MAG-01..04 pass on host build; hardware read within expected Earth-field range.
@@ -159,13 +159,13 @@ tests/integration/
 
 ### WP-7.4 — Camera Driver (Track B)
 
-**Objective**: Implement SPI camera interface for IMX219 via SPI bridge board.
+**Objective**: Implement SPI camera interface for OV2640 via SPI bridge board.
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
-| T-7.4.1 | Select and receive Arducam IMX219 SPI module; confirm SPI protocol and register map | HW | 1 week lead | ⏳ |
+| T-7.4.1 | Select and receive Arducam OV2640 2MP SPI module; confirm SPI protocol and register map | HW | 1 week lead | ⏳ |
 | T-7.4.2 | Create `include/camera_driver.h`: API `camera_init()`, `camera_trigger_capture()`, `camera_readout_spi()` | SW | 1 h | ⏳ |
-| T-7.4.3 | Implement `src/drivers/payload/camera_driver.c`: SPI1 init (GPIO10/11/12/13); trigger pulse GPIO22; SPI frame read into RAM buffer | SW | 4 h | ⏳ |
+| T-7.4.3 | Implement `src/drivers/payload/camera_driver.c`: shared SPI0 (GPIO16/18/19); CS GPIO14; trigger pulse GPIO9; interrupt GPIO10 | SW | 4 h | ⏳ |
 | T-7.4.4 | Unit tests (host mock SPI): trigger sequence; frame length bounds check | SW | 2 h | ⏳ |
 | T-7.4.5 | Hardware validation: capture JPEG on Pico 2W; verify size 50–500 KB; no SPI errors | HW | 3 h | ⏳ |
 
@@ -175,17 +175,17 @@ tests/integration/
 
 ### WP-7.5 — GPIO10 / RW3 Conflict Resolution (Track C)
 
-**Objective**: Free GPIO10 for SPI1 SCK by moving RW3 PWM to GPIO3.
+**Objective**: Free GPIO10 for `CAM_FIFO_RDY` interrupt by moving RW3 PWM to GPIO3.
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
-| T-7.5.1 | Update `config/pico_pins.h`: `RW_MOTOR3_PIN` GPIO10 → GPIO3; `SPI1_SCK_PIN = 10` | SW | 30 min | ⏳ |
+| T-7.5.1 | Update `config/pico_pins.h`: `RW_MOTOR3_PIN` GPIO10 → GPIO3; `CAM_FIFO_RDY` = 10 | SW | 30 min | ⏳ |
 | T-7.5.2 | Update `src/actuators/reaction_wheel.c` / CMakeLists if hardcoded GPIO | SW | 30 min | ⏳ |
 | T-7.5.3 | Verify PWM slice: GPIO3 → PWM1B (RP2350 datasheet confirmation) | HW | 30 min | ⏳ |
 | T-7.5.4 | PCB trace change on proto board or flying-wire on breadboard | HW | 1 h | ⏳ |
 | T-7.5.5 | Regression: RW3 PWM waveform correct on oscilloscope after move | HW | 30 min | ⏳ |
 
-**Exit criteria**: SPI1 on GPIO10/11/12/13 usable; RW3 PWM verified on new GPIO3.
+**Exit criteria**: GPIO10 available for payload interrupt; RW3 PWM verified on new GPIO3.
 
 ---
 
@@ -195,7 +195,7 @@ tests/integration/
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
-| T-7.6.1 | Select storage: microSD over SPI0 (FATFS) vs W25Q128 SPI flash | HW/SW | 2 h | ⏳ |
+| T-7.6.1 | Select storage: microSD over shared SPI0 (FATFS) | HW/SW | 2 h | ⏳ |
 | T-7.6.2 | Implement or port FATFS / SPIFFS driver for selected storage | SW | 8 h | ⏳ |
 | T-7.6.3 | Unit tests: file write/read round-trip; storage-full handling | SW | 3 h | ⏳ |
 | T-7.6.4 | Hardware validation: write 1 MB of mock data; read back without error | HW | 2 h | ⏳ |
