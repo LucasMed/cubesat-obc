@@ -232,19 +232,19 @@ Rules:
 
 ## 6. EKF / Control Architecture
 
-### 6.1 Extended Kalman Filter (6-state)
+### 6.1 Extended Kalman Filter (7-state)
 
 ```
-State vector:   x  = [roll, pitch, yaw, bx, by, bz]ᵀ
-Measurement:    z₁ = accelerometer  → ekf_update_accel()
-                z₂ = magnetometer   → ekf_update_mag()   (yaw observable)
+State vector:   x  = [q₀, q₁, q₂, q₃, bₓ, bᵧ, b_z]ᵀ
+Measurement:    z₁ = accelerometer  → ekf_update()
+                z₂ = magnetometer   → ekf_update_mag()   (3D fusion)
 
 Propagation:    xₖ₊₁ = f(xₖ, ωₖ)   via RK2 midpoint integrator
                 (replaces Euler — reduces attitude error at 10 Hz)
 
 Gyro bias:      bₓ,ᵧ,z  estimated online; subtracted from ω before integration
 
-Yaw update:     Tilt-compensated: H = [0, 0, 1, 0, 0, 0]
+Yaw update:     3D vector fusion; Jacobian dh/dq computed online
                 Convergence verified: < 5° error in 10 s simulation
 ```
 

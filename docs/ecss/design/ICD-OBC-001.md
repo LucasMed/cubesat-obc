@@ -60,6 +60,12 @@ Interfaces covered:
                     │     RP2350       │
                     └────────┬─────────┘
                              │
+                             │ [EKF ekf_predict()]
+                             │ [EKF ekf_update()]
+                             │ [EKF ekf_update_mag()]
+                             │
+                             │ x = [q₀, q₁, q₂, q₃,
+                             │      bx,  by,   bz]
        ┌─────────────────────┼──────────────────────┐
        │                     │                      │
      I2C0                  UART0                 UART1
@@ -163,7 +169,7 @@ bool mpu6050_read(imu_data_t *data);   // returns gyro [rad/s] + accel [m/s²]
 
 | Signal | Units | Consumer |
 |--------|-------|---------|
-| `mag_x/y/z` | µT | `SensorReadTask` → `ekf_update_mag()` → yaw estimate |
+| `mag_x/y/z` | µT | `SensorReadTask` → `ekf_update_mag()` → 3D attitude fusion |
 | `mag_x/y/z` | µT | `momentum_dump()` → B×L desaturation |
 
 **API:**
