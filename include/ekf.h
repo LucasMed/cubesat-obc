@@ -3,23 +3,21 @@
  * @brief Extended Kalman Filter — attitude estimation with gyro-bias correction
  *        and yaw update via magnetometer (PR-19).
  *
- * State vector (6 × 1):
- *   x = [roll, pitch, yaw, bias_x, bias_y, bias_z]^T   (rad, rad/s)
+ * State vector (7 × 1):
+ *   x = [q0, q1, q2, q3, bias_x, bias_y, bias_z]^T   (unit, rad/s)
  *
  * Process model (continuous):
- *   attitude_dot[i] = gyro_measured[i] - bias[i]
- *   bias_dot[i]     = 0   (random-walk, driven by Q)
+ *   q_dot = 0.5 * q ⊗ [0, gyro - bias]
+ *   bias_dot[i] = 0
  *
  * Measurement models:
- *   Accel  (M=2): z = [roll_accel, pitch_accel]
- *     H = [1 0 0 0 0 0]
- *         [0 1 0 0 0 0]
+ *   Accel (M=3): z = [ax, ay, az] (m/s²)
+ *     h(x) = R(q)^T * [0, 0, -g]^T
  *
- *   Mag (M=1, yaw): z = yaw_tilt_compensated
- *     H = [0 0 1 0 0 0]
- *     Tilt compensation uses current roll/pitch from x[0], x[1].
+ *   Mag (M=3): z = [Bx, By, Bz] (µT)
+ *     h(x) = R(q)^T * [Bx_world, 0, Bz_world]^T
  *
- * Spec ref: PHASE4_PLAN.md PR-12, PHASE5_PLAN.md PR-19
+ * Spec ref: PHASE7_PLAN.md (Quaternion Migration)
  */
 
 #ifndef EKF_H
@@ -31,8 +29,8 @@ extern "C"
 #endif
 
 /** State and measurement dimensions. */
-#define EKF_N 6 /**< state:       [roll, pitch, yaw, bx, by, bz] */
-#define EKF_M 2 /**< measurement: [roll_accel, pitch_accel]       */
+#define EKF_N 7 /**< state: [q0, q1, q2, q3, bx, by, bz] */
+#define EKF_M 3 /**< measurement: 3D vector (accel or mag) */
 
   /**
    * @brief EKF instance.  All memory is on the stack — no heap allocation.
@@ -81,7 +79,13 @@ extern "C"
   void ekf_update(ekf_t *ekf, const float accel[3]);
 
   /**
-   * @brief Read back the estimated attitude [rad].
+   * @brief Read back the estimated attitude quaternion.
+   * @param q  Output: [q0, q1, q2, q3].
+   */
+  void ekf_get_quaternion(const ekf_t *ekf, float q[4]);
+
+  /**
+   * @brief Read back the estimated attitude euler angles [rad].
    * @param att  Output: [roll, pitch, yaw].
    */
   void ekf_get_attitude(const ekf_t *ekf, float att[3]);

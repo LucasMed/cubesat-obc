@@ -48,12 +48,16 @@ static int test_init(void)
   ekf_t ekf;
   ekf_init(&ekf);
 
-  /* State must be zero */
-  for (int i = 0; i < EKF_N; i++)
+  /* Initial state: [1, 0, 0, 0, 0, 0, 0] (identity quat) */
+  if (fabsf(ekf.x[0] - 1.0f) > 1e-9f)
+  {
+    FAIL("T-EKF-01: initial q0 not 1.0");
+  }
+  for (int i = 1; i < EKF_N; i++)
   {
     if (fabsf(ekf.x[i]) > 1e-9f)
     {
-      FAIL("T-EKF-01: initial state not zero");
+      FAIL("T-EKF-01: internal state elements not zero");
     }
   }
 
@@ -66,7 +70,7 @@ static int test_init(void)
     }
   }
 
-  /* Q and R diagonals must be positive */
+  /* Q diagonals must be positive (7 elements) */
   for (int i = 0; i < EKF_N; i++)
   {
     if (ekf.Q[i][i] <= 0.0f)
@@ -100,22 +104,26 @@ static int test_predict_propagation(void)
 
   ekf_predict(&ekf, gyro, dt);
 
-  /* roll should advance by gyro*dt = 0.01 rad */
-  float expected_roll = gyro[0] * dt;
-  if (fabsf(ekf.x[0] - expected_roll) > 1e-6f)
+  /* roll should advance. q0 = cos(theta/2), q1 = sin(theta/2) */
+  /* For small theta=0.01: q0 ~ 0.99998, q1 ~ 0.005 */
+  float theta = gyro[0] * dt;
+  float expected_q0 = cosf(theta / 2.0f);
+  float expected_q1 = sinf(theta / 2.0f);
+  if (fabsf(ekf.x[0] - expected_q0) > 1e-4f || fabsf(ekf.x[1] - expected_q1) > 1e-4f)
   {
-    printf("  roll = %f  expected = %f\n", ekf.x[0], expected_roll);
-    FAIL("T-EKF-02: roll state not propagated correctly");
+    printf("  q0 = %f  expected = %f\n", ekf.x[0], expected_q0);
+    printf("  q1 = %f  expected = %f\n", ekf.x[1], expected_q1);
+    FAIL("T-EKF-02: quaternion state not propagated correctly");
   }
 
-  /* pitch and yaw must stay zero */
-  if (fabsf(ekf.x[1]) > 1e-9f || fabsf(ekf.x[2]) > 1e-9f)
+  /* q2 and q3 must stay zero */
+  if (fabsf(ekf.x[2]) > 1e-9f || fabsf(ekf.x[3]) > 1e-9f)
   {
-    FAIL("T-EKF-02: spurious pitch/yaw from roll-only gyro");
+    FAIL("T-EKF-02: spurious q2/q3 from roll-only gyro");
   }
 
-  /* Bias must stay zero */
-  for (int i = 3; i < EKF_N; i++)
+  /* Bias must stay zero [4..6] */
+  for (int i = 4; i < EKF_N; i++)
   {
     if (fabsf(ekf.x[i]) > 1e-9f)
     {
@@ -242,19 +250,19 @@ static int test_degenerate_accel(void)
   ekf_t ekf;
   ekf_init(&ekf);
 
-  /* Give non-zero initial state */
-  ekf.x[0] = 0.1f;
-  ekf.x[1] = 0.2f;
+  /* Give non-zero initial state (near identity) */
+  ekf.x[0] = 0.99f;
+  ekf.x[1] = 0.1f;
 
   float P_before[EKF_N][EKF_N];
   memcpy(P_before, ekf.P, sizeof(P_before));
 
-  /* Degenerate: ay=az=0 → ay²+az² < 1e-10 */
-  float accel[3] = {1.0f, 0.0f, 0.0f};
+  /* Degenerate: |accel| ≈ 0 */
+  float accel[3] = {0.0f, 0.0f, 0.0f};
   ekf_update(&ekf, accel);
 
   /* State and P must be unchanged */
-  if (fabsf(ekf.x[0] - 0.1f) > 1e-9f || fabsf(ekf.x[1] - 0.2f) > 1e-9f)
+  if (fabsf(ekf.x[0] - 0.99f) > 1e-9f || fabsf(ekf.x[1] - 0.1f) > 1e-9f)
   {
     FAIL("T-EKF-05: state modified by degenerate accel update");
   }

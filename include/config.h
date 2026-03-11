@@ -10,6 +10,9 @@
 
 #define CONTROL_LOOP_HZ 10
 
+/** Task notification bits for HealthMonitorTask */
+#define HM_NOTIFY_FAULT_CRITICAL (1u << 0)
+
 // Reaction wheel params
 #define RW_MAX_OMEGA_RPM 4000.0f
 #define RW_INERTIA 0.001f

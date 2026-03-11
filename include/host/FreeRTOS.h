@@ -66,4 +66,23 @@ typedef void *TaskHandle_t;
 #define xPortGetFreeHeapSize() ((size_t)0u)
 #define xPortGetMinimumEverFreeHeapSize() ((size_t)0u)
 
+/* ---- Task Notifications (Stub) ---- */
+
+typedef enum
+{
+  eNoAction = 0,
+  eSetBits,
+  eIncrement,
+  eSetValueWithOverwrite,
+  eSetValueWithoutOverwrite
+} eNotifyAction;
+
+#define xTaskNotifyFromISR(xTaskToNotify, ulValue, eAction, pxHigherPriorityTaskWoken)              \
+  (*(uint32_t *)(xTaskToNotify) |= (ulValue), *(pxHigherPriorityTaskWoken) = pdFALSE, pdPASS)
+
+#define xTaskNotifyWait(ulBitsToClearOnEntry, ulBitsToClearOnExit, pulNotificationValue, xTicksToWait) \
+  (*(pulNotificationValue) = *(uint32_t *)(NULL /* Need a real handle mock */), pdPASS)
+
+#define portYIELD_FROM_ISR(xHigherPriorityTaskWoken) (void)(xHigherPriorityTaskWoken)
+
 #endif  // FREERTOS_H

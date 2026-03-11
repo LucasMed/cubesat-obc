@@ -8,6 +8,7 @@
 #include "task.h"
 #include "watchdog_hal.h"
 
+#include "flight_mode.h"
 #include <stdio.h>
 
 // Core logic for health monitoring (independent of FreeRTOS task loop)
@@ -17,10 +18,8 @@ void vHealthMonitorTask_Step(void)
   watchdog_hal_feed();
 
   /* 2. Check if the previous reset was watchdog-induced.
-   * If so raise a CRITICAL fault which immediately forces FM_SAFE via
-   * fmm_force_safe() inside fault_report().
-   * The check is intentionally done before fault_manager_tick() so the
-   * CRITICAL entry is visible in the fault table on the same tick. */
+   * If so raise a CRITICAL fault which immediately triggers the notification
+   * mechanism to transition to FM_SAFE. */
   if (watchdog_hal_triggered())
   {
     fault_report(FAULT_WDT_KICK_MISSED, FAULT_LEVEL_CRITICAL);
@@ -35,21 +34,48 @@ void vHealthMonitorTask_Step(void)
   printf("[health_monitor_task] Health check\n");
 }
 
-// Health monitor task: monitors system every 5 seconds
+// Health monitor task: monitors system every 5 seconds, but wakes for FDIR signals
 void vHealthMonitorTask(void *pvParameters)
 {
   (void)pvParameters;
-  /* cppcheck-suppress unreadVariable -- updated each cycle by vTaskDelayUntil */
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(5000);  // 5 Hz (0.2 Hz logical)
+  const TickType_t xFrequency = pdMS_TO_TICKS(5000);
 
   printf("[health_monitor_task] Started\n");
   fflush(stdout);
 
   while (1)
   {
-    vHealthMonitorTask_Step();
-    /* cppcheck-suppress unreadVariable -- macro writes back updated wake time */
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
+    uint32_t ulNotifiedValue = 0;
+    TickType_t xNow = xTaskGetTickCount();
+    TickType_t xTimeToWait;
+
+    /* Calculate how much time remains until the next periodic health check */
+    if (xNow < xLastWakeTime + xFrequency)
+    {
+      xTimeToWait = (xLastWakeTime + xFrequency) - xNow;
+    }
+    else
+    {
+      xTimeToWait = 0;
+    }
+
+    /* Wait for notifications (CRITICAL faults) or periodic timeout */
+    if (xTaskNotifyWait(0, HM_NOTIFY_FAULT_CRITICAL, &ulNotifiedValue, xTimeToWait) == pdPASS)
+    {
+      if (ulNotifiedValue & HM_NOTIFY_FAULT_CRITICAL)
+      {
+        printf("[health_monitor_task] CRITICAL FAULT NOTIFICATION received\n");
+        fmm_force_safe();
+      }
+    }
+
+    /* Periodic step execution */
+    xNow = xTaskGetTickCount();
+    if (xNow >= xLastWakeTime + xFrequency)
+    {
+      vHealthMonitorTask_Step();
+      xLastWakeTime = xNow;
+    }
   }
 }

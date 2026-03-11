@@ -77,16 +77,19 @@ void vSensorReadTask_Step(void)
       ekf_update(&s_ekf, accel);
 
       /* Extract EKF outputs and publish to DLA. */
-      float ekf_att[3] = {0.0f, 0.0f, 0.0f};
+      float ekf_q[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       float ekf_bias[3] = {0.0f, 0.0f, 0.0f};
-      float ekf_cov[3] = {0.0f, 0.0f, 0.0f};
-      ekf_get_attitude(&s_ekf, ekf_att);
+      float ekf_cov[7] = {0.0f};
+
+      ekf_get_quaternion(&s_ekf, ekf_q);
       ekf_get_bias(&s_ekf, ekf_bias);
-      /* Diagonal covariance elements for roll + pitch + yaw. */
-      ekf_cov[0] = s_ekf.P[0][0];
-      ekf_cov[1] = s_ekf.P[1][1];
-      ekf_cov[2] = s_ekf.P[2][2];
-      data_layer_write_ekf(ekf_att, ekf_bias, ekf_cov);
+
+      /* Diagonal covariance elements (q0..q3, bx..bz). */
+      for (int i = 0; i < 7; i++)
+      {
+        ekf_cov[i] = s_ekf.P[i][i];
+      }
+      data_layer_write_ekf(ekf_q, ekf_bias, ekf_cov);
     }
   }
 
