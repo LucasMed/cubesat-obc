@@ -47,7 +47,7 @@ static void mat77_zero(float A[7][7])
 /**
  * C = A * B  (7×7 × 7×7)
  */
-static void mat77_mul(float A[7][7], float B[7][7], float C[7][7])
+static void mat77_mul(const float A[7][7], const float B[7][7], float C[7][7])
 {
   float tmp[7][7];
   for (int i = 0; i < 7; i++)
@@ -67,7 +67,7 @@ static void mat77_mul(float A[7][7], float B[7][7], float C[7][7])
 /**
  * C = A * B^T  (7×7 × 7×7, B transposed)
  */
-static void mat77_mul_T(float A[7][7], float B[7][7], float C[7][7])
+static void mat77_mul_T(const float A[7][7], const float B[7][7], float C[7][7])
 {
   float tmp[7][7];
   for (int i = 0; i < 7; i++)
@@ -358,25 +358,6 @@ void ekf_update(ekf_t *ekf, const float accel[3])
 
   /* ---- Covariance update: P = (I - K*H) * P --------------------------- */
   float P_new[7][7];
-  for (int i = 0; i < 7; i++)
-  {
-    for (int j = 0; j < 7; j++)
-    {
-      float KH_ij = 0.0f;
-      for (int k = 0; k < 3; k++)
-      {
-        KH_ij += K[i][k] * H[k][j];
-      }
-      P_new[i][j] = ekf->P[i][j];
-      for (int k = 0; k < 7; k++)
-      {
-        /* This is actually P_new = P - K*H*P, which is more stable in this form:
-         * P_new[i][j] = P[i][j] - sum_k( (sum_l K[i][l]*H[l][k]) * P[k][j] )
-         */
-      }
-      /* Simple (I-KH)P implementation: */
-    }
-  }
 
   /* Re-implementing P = (I-KH)P safely: */
   for (int i = 0; i < 7; i++)
@@ -543,7 +524,7 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
   }
 
   /* Update state */
-  float dy[3] = {y0, y1, y2};
+  const float dy[3] = {y0, y1, y2};
   for (int i = 0; i < 7; i++) {
     for (int j = 0; j < 3; j++) ekf->x[i] += K[i][j] * dy[j];
   }
