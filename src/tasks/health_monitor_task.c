@@ -5,10 +5,10 @@
 #include "eps.h"
 #include "fault_ids.h"
 #include "fault_manager.h"
+#include "flight_mode.h"
 #include "task.h"
 #include "watchdog_hal.h"
 
-#include "flight_mode.h"
 #include <stdio.h>
 
 // Core logic for health monitoring (independent of FreeRTOS task loop)

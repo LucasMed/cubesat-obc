@@ -23,11 +23,11 @@
 
 #include "fault_manager.h"
 
-#include "flight_mode.h"
-
 #include "FreeRTOS.h"
-#include "task.h"
 #include "config.h"
+#include "flight_mode.h"
+#include "task.h"
+
 #include <stddef.h>
 
 /* ------------------------------------------------------------------ */
@@ -58,7 +58,7 @@ typedef struct
 /* ------------------------------------------------------------------ */
 
 static fault_entry_t g_table[FAULT_TABLE_CAPACITY];
-static uint32_t g_tick;           /**< Monotonic tick counter, incremented by _tick() */
+static uint32_t g_tick;               /**< Monotonic tick counter, incremented by _tick() */
 static TaskHandle_t g_hm_task = NULL; /**< Health Monitor task handle for FDIR signaling */
 
 /* ------------------------------------------------------------------ */
@@ -174,7 +174,7 @@ void fault_report(uint16_t id, fault_level_t level)
   fm_unlock();
 
   /* CRITICAL: trigger safe mode transition.
-   * We use task notifications to ensure the mode change happens in the 
+   * We use task notifications to ensure the mode change happens in the
    * HealthMonitorTask context (ISR-safe).
    * If no task handle is set, we fall back to a direct call (legacy/tests). */
   if (level >= FAULT_LEVEL_CRITICAL)

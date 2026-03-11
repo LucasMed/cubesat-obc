@@ -9,6 +9,7 @@
  */
 
 #include "ekf.h"
+
 #include "quaternion.h"
 
 #include <math.h>
@@ -155,8 +156,8 @@ void ekf_predict(ekf_t *ekf, const float gyro[3], float dt)
   ekf->x[3] += dq3 * dt;
 
   /* Re-normalise quaternion to maintain unit length constraint */
-  float n = sqrtf(ekf->x[0] * ekf->x[0] + ekf->x[1] * ekf->x[1] +
-                  ekf->x[2] * ekf->x[2] + ekf->x[3] * ekf->x[3]);
+  float n = sqrtf(ekf->x[0] * ekf->x[0] + ekf->x[1] * ekf->x[1] + ekf->x[2] * ekf->x[2] +
+                  ekf->x[3] * ekf->x[3]);
   if (n > 1e-6f)
   {
     ekf->x[0] /= n;
@@ -346,8 +347,8 @@ void ekf_update(ekf_t *ekf, const float accel[3])
   ekf->x[6] += K[6][0] * y0 + K[6][1] * y1 + K[6][2] * y2;
 
   /* Re-normalise quaternion */
-  float n = sqrtf(ekf->x[0] * ekf->x[0] + ekf->x[1] * ekf->x[1] +
-                  ekf->x[2] * ekf->x[2] + ekf->x[3] * ekf->x[3]);
+  float n = sqrtf(ekf->x[0] * ekf->x[0] + ekf->x[1] * ekf->x[1] + ekf->x[2] * ekf->x[2] +
+                  ekf->x[3] * ekf->x[3]);
   if (n > 1e-6f)
   {
     ekf->x[0] /= n;
@@ -477,47 +478,57 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
 
   /* ---- EKF Update steps (Reuse the logic from ekf_update) ------------ */
   /* (For efficiency in a real project this would be a shared helper function) */
-  
+
   /* Innovation covariance S = HPH' + R */
   float S[3][3];
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
+  for (int i = 0; i < 3; i++)
+  {
+    for (int j = 0; j < 3; j++)
+    {
       S[i][j] = 0.0f;
-      for (int k = 0; k < 7; k++) {
-        for (int l = 0; l < 7; l++) {
+      for (int k = 0; k < 7; k++)
+      {
+        for (int l = 0; l < 7; l++)
+        {
           S[i][j] += H[i][k] * ekf->P[k][l] * H[j][l];
         }
       }
-      if (i == j) S[i][j] += ekf->r_mag; /* use scalar r_mag for all components */
+      if (i == j)
+        S[i][j] += ekf->r_mag; /* use scalar r_mag for all components */
     }
   }
 
-  /* Inversion and Gain calculation omitted for brevity in this block, 
+  /* Inversion and Gain calculation omitted for brevity in this block,
    * but follows same 3x3 pattern as accel update. */
   /* Actually I MUST implement it to have valid code. */
-  float det = S[0][0]*(S[1][1]*S[2][2] - S[1][2]*S[2][1]) -
-              S[0][1]*(S[1][0]*S[2][2] - S[1][2]*S[2][0]) +
-              S[0][2]*(S[1][0]*S[2][1] - S[1][1]*S[2][0]);
-  if (fabsf(det) < 1e-12f) return;
+  float det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) -
+              S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
+              S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
+  if (fabsf(det) < 1e-12f)
+    return;
   float inv_det = 1.0f / det;
   float Si[3][3];
-  Si[0][0] = (S[1][1]*S[2][2] - S[1][2]*S[2][1]) * inv_det;
-  Si[0][1] = (S[0][2]*S[2][1] - S[0][1]*S[2][2]) * inv_det;
-  Si[0][2] = (S[0][1]*S[1][2] - S[0][2]*S[1][1]) * inv_det;
-  Si[1][0] = (S[1][2]*S[2][0] - S[1][0]*S[2][2]) * inv_det;
-  Si[1][1] = (S[0][0]*S[2][2] - S[0][2]*S[2][0]) * inv_det;
-  Si[1][2] = (S[1][0]*S[0][2] - S[0][0]*S[1][2]) * inv_det;
-  Si[2][0] = (S[1][0]*S[2][1] - S[1][1]*S[2][0]) * inv_det;
-  Si[2][1] = (S[2][0]*S[0][1] - S[0][0]*S[2][1]) * inv_det;
-  Si[2][2] = (S[0][0]*S[1][1] - S[1][0]*S[0][1]) * inv_det;
+  Si[0][0] = (S[1][1] * S[2][2] - S[1][2] * S[2][1]) * inv_det;
+  Si[0][1] = (S[0][2] * S[2][1] - S[0][1] * S[2][2]) * inv_det;
+  Si[0][2] = (S[0][1] * S[1][2] - S[0][2] * S[1][1]) * inv_det;
+  Si[1][0] = (S[1][2] * S[2][0] - S[1][0] * S[2][2]) * inv_det;
+  Si[1][1] = (S[0][0] * S[2][2] - S[0][2] * S[2][0]) * inv_det;
+  Si[1][2] = (S[1][0] * S[0][2] - S[0][0] * S[1][2]) * inv_det;
+  Si[2][0] = (S[1][0] * S[2][1] - S[1][1] * S[2][0]) * inv_det;
+  Si[2][1] = (S[2][0] * S[0][1] - S[0][0] * S[2][1]) * inv_det;
+  Si[2][2] = (S[0][0] * S[1][1] - S[1][0] * S[0][1]) * inv_det;
 
   float K[7][3];
-  for (int i = 0; i < 7; i++) {
-    for (int j = 0; j < 3; j++) {
+  for (int i = 0; i < 7; i++)
+  {
+    for (int j = 0; j < 3; j++)
+    {
       K[i][j] = 0.0f;
-      for (int k = 0; k < 3; k++) {
+      for (int k = 0; k < 3; k++)
+      {
         float PHt_ik = 0.0f;
-        for (int l = 0; l < 7; l++) PHt_ik += ekf->P[i][l] * H[k][l];
+        for (int l = 0; l < 7; l++)
+          PHt_ik += ekf->P[i][l] * H[k][l];
         K[i][j] += PHt_ik * Si[k][j];
       }
     }
@@ -525,21 +536,34 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
 
   /* Update state */
   const float dy[3] = {y0, y1, y2};
-  for (int i = 0; i < 7; i++) {
-    for (int j = 0; j < 3; j++) ekf->x[i] += K[i][j] * dy[j];
+  for (int i = 0; i < 7; i++)
+  {
+    for (int j = 0; j < 3; j++)
+      ekf->x[i] += K[i][j] * dy[j];
   }
 
   /* Re-normalise */
-  float n = sqrtf(ekf->x[0]*ekf->x[0] + ekf->x[1]*ekf->x[1] + ekf->x[2]*ekf->x[2] + ekf->x[3]*ekf->x[3]);
-  if (n > 1e-6f) { ekf->x[0]/=n; ekf->x[1]/=n; ekf->x[2]/=n; ekf->x[3]/=n; }
+  float n = sqrtf(ekf->x[0] * ekf->x[0] + ekf->x[1] * ekf->x[1] + ekf->x[2] * ekf->x[2] +
+                  ekf->x[3] * ekf->x[3]);
+  if (n > 1e-6f)
+  {
+    ekf->x[0] /= n;
+    ekf->x[1] /= n;
+    ekf->x[2] /= n;
+    ekf->x[3] /= n;
+  }
 
   /* Update covariance P = (I-KH)P */
   float P_new[7][7];
-  for (int i = 0; i < 7; i++) {
-    for (int j = 0; j < 7; j++) {
+  for (int i = 0; i < 7; i++)
+  {
+    for (int j = 0; j < 7; j++)
+    {
       float KH_row_i_col_j = 0.0f;
-      for (int k = 0; k < 3; k++) {
-        for (int l = 0; l < 7; l++) KH_row_i_col_j += K[i][k] * H[k][l] * ekf->P[l][j];
+      for (int k = 0; k < 3; k++)
+      {
+        for (int l = 0; l < 7; l++)
+          KH_row_i_col_j += K[i][k] * H[k][l] * ekf->P[l][j];
       }
       P_new[i][j] = ekf->P[i][j] - KH_row_i_col_j;
     }

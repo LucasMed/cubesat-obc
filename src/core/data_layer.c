@@ -106,7 +106,7 @@ void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
 void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float cov_diag[7])
 {
   dl_lock();
-  
+
   /* Copy quaternion and gyro bias */
   for (int i = 0; i < 4; i++)
   {
@@ -120,8 +120,8 @@ void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float
   /* Copy full diagonal covariance (7 states) */
   for (int i = 0; i < 4; i++)
   {
-    /* We reuse att_uncertainty[4] for the quaternion part of the cov diag if we want, 
-     * but system_state.h has float att_uncertainty[4]. 
+    /* We reuse att_uncertainty[4] for the quaternion part of the cov diag if we want,
+     * but system_state.h has float att_uncertainty[4].
      * Actually, let's just copy exactly what's available. */
     g_snapshot.state.att_uncertainty[i] = cov_diag[i];
   }

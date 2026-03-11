@@ -108,8 +108,7 @@ extern "C"
    * @param bias_rad   EKF gyro-bias estimate [rad/s] [3].
    * @param cov_diag   EKF diagonal covariance P [7] (q0..q3, bx..bz).
    */
-  void data_layer_write_ekf(const float q[4], const float bias_rad[3],
-                            const float cov_diag[7]);
+  void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float cov_diag[7]);
 
   /**
    * @brief Update temperature reading.

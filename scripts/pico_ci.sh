@@ -74,7 +74,11 @@ mkdir -p "$ARTIFACTS"
 run_host_test() {
   stage "1 / host-test — CTest (29/29)"
 
-  mkdir -p "$BUILD_HOST"
+  if [[ -d "$BUILD_HOST" && -f "$BUILD_HOST/CMakeCache.txt" ]]; then
+    info "Removing stale host CMake cache..."
+    rm -f "$BUILD_HOST/CMakeCache.txt"
+  fi
+
   cmake -S "$REPO_ROOT" -B "$BUILD_HOST" \
         -G Ninja \
         -DCMAKE_BUILD_TYPE=Debug \
