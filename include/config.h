@@ -2,8 +2,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define I2C_SDA_PIN 16
-#define I2C_SCL_PIN 17
+#define I2C_SDA_PIN 4
+#define I2C_SCL_PIN 5
 
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1

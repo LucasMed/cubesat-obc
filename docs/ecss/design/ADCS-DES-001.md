@@ -39,7 +39,7 @@ Sensors
 SensorReadTask  (10 Hz)
   │  validated snap.state via data_layer
   ▼
-State Estimator — EKF (6-state)
+State Estimator — EKF (7-state)
   │  snap.state.attitude[3], snap.state.rates[3], snap.state.imu_ekf_valid
   ▼
 AttitudeControlTask  (10 Hz) — controller dispatch
@@ -167,28 +167,19 @@ The update is skipped if the horizontal field magnitude is below a small epsilon
 
 ## 5. Attitude Representation
 
-The flight software represents attitude using ZYX intrinsic Euler angles:
+The flight software represents attitude using quaternions as the primary state:
 
-$$\mathbf{x}_{att} = [\phi,\ \theta,\ \psi]^T \quad [\text{rad}]$$
-
-| Symbol | Name |
-|--------|------|
-| φ | roll |
-| θ | pitch |
-| ψ | yaw |
+$$\mathbf{q} = [q_0,\ q_1,\ q_2,\ q_3]^T$$
 
 This representation was selected because:
 
-- computationally lightweight for the RP2350 at 10 Hz rates
-- sufficient accuracy for coarse pointing in Phase 1
-- direct compatibility with accelerometer-derived roll/pitch and magnetometer yaw
+- avoids gimbal lock and kinematic singularities
+- computationally efficient for the RP2350
+- integrated into the 7-state EKF implementation
 
-**Known limitation:** Euler angles exhibit a kinematic singularity at pitch = ±90°
-(gimbal lock). This is acceptable for the Phase 1 CubeSat attitude envelope.
+Euler angles (Z-Y-X roll/pitch/yaw) are derived from the quaternion for telemetry and ground monitoring.
 
-**Future migration:** A quaternion library (`src/control/quaternion.c`) is already
-implemented and unit-tested (T-QAT-01..05). The EKF state vector can be migrated
-to quaternion representation in Phase 7+ without changes to the actuator or FMM layers.
+**Implementation:** A quaternion library (`src/control/quaternion.c`) is used and fully unit-tested (T-QAT-01..05).
 
 ---
 
@@ -799,8 +790,6 @@ where the Z axis (along the stacking axis) has lower mass distribution.
 | Item | Description | Target Phase |
 |------|-------------|-------------|
 | PR-18 | Wire magnetometer mag_field into Data Layer for B×L detumble | Phase 5 |
-| Quaternion EKF | Migrate state to q = [w, x, y, z] using existing `quaternion.c` | Phase 7 |
-| Reaction wheel support | Activate `reaction_wheel.c`; update momentum dump L_rw | Phase 2 |
 | Sun sensor | Add coarse sun-vector measurement as EKF update | Phase 3+ |
 | IGRF model | On-board magnetic field model for declination correction in orbit | Phase 5+ |
 | MEKF | Multiplicative EKF for quaternion-safe covariance propagation | Phase 7+ |
