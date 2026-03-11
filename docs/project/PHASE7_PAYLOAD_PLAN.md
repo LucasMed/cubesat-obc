@@ -260,7 +260,7 @@ service delivers file in chunks over UART1.
 ### WP-7.10 — GPS NEO-7M Integration (Track D)
 
 **Objective**: Formally integrate the GPS module (GY-NEO6Mv2 / NEO-7M) on UART0 (GPIO0/1),
-implementing the NMEA driver, FreeRTOS task, UTC time synchronisation, and telemetry fields.
+implementing the NMEA driver, FreeRTOS task, UTC time synchronization, and telemetry fields.
 Resolves AIR-OBC-001 ACT-06 (Option A).
 
 | Task | Description | Owner | Estimate | Status |
