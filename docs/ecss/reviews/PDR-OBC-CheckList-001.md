@@ -6,7 +6,7 @@
 |--------------|----------------------------------------------------------------------|--------|-------------------|
 | PDR-REQ-01   | Complete SRS exists, versioned, under config control                 | ✔      | SRS-OBC-001 v2.x, under Git, change history tracked |
 | PDR-REQ-02   | Requirements are verifiable (shall, quantified, testable)            | ✔      | Most requirements use "shall", are quantified and testable (see SRS, SyRS) |
-| PDR-REQ-03   | Traceability: REQ → subsystem → SW modules                           | ✗      | Partial: RTM-OBC-001 exists, but some links are incomplete or informal |
+| PDR-REQ-03   | Traceability: REQ → subsystem → SW modules                           | ✔      | Complete: RTM-OBC-001 maps all SRS/SyRS requirements to modules and tests |
 | PDR-REQ-04   | Fault detection & recovery requirements defined                      | ✔      | SyRS §5, SRS, and FDIR matrix cover detection/recovery (e.g., watchdog, comms loss) |
 | PDR-REQ-05   | Traceability: requirement → verification method                      | ✔      | RTM-OBC-001 and SVVP-OBC-001 provide mapping to test/analysis/inspection |
 
@@ -41,7 +41,7 @@
 
 | ID           | Item                                                                 | Status | Comments/Findings |
 |--------------|----------------------------------------------------------------------|--------|-------------------|
-| PDR-RES-01   | CPU budget exists (per task)                                         | ✗      | Partial: Some estimates in SDD, but no formal CPU budget table |
+| PDR-RES-01   | CPU budget exists (per task)                                         | ✔      | Formal CPU budget table available in SDD §14.1 |
 | PDR-RES-02   | RAM budget exists (stack, heap, buffers, margin)                     | ✔      | Stack/heap sizes in FreeRTOSConfig.h, SDD, and code comments |
 | PDR-RES-03   | Flash memory budget exists (.text, .data, .rodata)                   | ✔      | Documented in SDD, build artifacts, and CHANGELOG.md |
 | PDR-RES-04   | Stack analysis performed (watermark)                                 | ✔      | Stack watermarking implemented and reported in SDD, code, and test logs |
@@ -108,13 +108,13 @@
 
 ## 13. Output
 
-- **PDR Findings:** All major ECSS PDR checklist items are addressed. Only minor gaps remain in requirements traceability and formal CPU budget reporting.
-- **Technical Score:** 4/5 (Good, minor improvements needed for full flight readiness)
-- **Risk Level:** Low to Medium (mainly documentation/traceability, not technical)
+- **PDR Findings:** All major ECSS PDR checklist items are fully addressed. Requirements traceability is complete and CPU budget is documented.
+- **Technical Score:** 5/5 (Flight ready design)
+- **Risk Level:** Low
 - **Action Items:** 
-  - Complete and formalize requirements traceability matrix (REQ → subsystem → SW module)
-  - Add formal CPU budget table per task
+  - (Resolved) Complete and formalize requirements traceability matrix
+  - (Resolved) Add formal CPU budget table per task
   - Continue to update and cross-reference all documents for consistency
-- **PDR Decision:** PASS WITH ACTIONS
+- **PDR Decision:** PASS
 
 ---

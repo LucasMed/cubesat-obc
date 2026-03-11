@@ -7,7 +7,7 @@
 | **Title**        | Preliminary Design Review Report                   |
 | **Project**      | CubeSat OBC — RP2350 / Pico 2W                    |
 | **Version**      | 1.0                                               |
-| **Status**       | Issued — Pending Actions Resolution                |
+| **Status**       | **CLOSED** — All Actions Resolved                 |
 | **Review Date**  | 2026-03-10                                        |
 | **Reviewer**     | OBC Systems Review Board                          |
 | **Review Level** | PDR                                               |
@@ -128,9 +128,6 @@ The preliminary design is acceptable for continuation towards CDR, subject to re
 
 
 ## PDR Closure Conditions
-
-The PDR is considered closed when:
-
-1. RTM-OBC-001 fully links requirements to SW modules.
-2. CPU budget table is added to SDD §7.
-3. Updated documents are baselined in Git tag PDR_BASELINE.
+1. RTM-OBC-001 fully links requirements to SW modules. [**RESOLVED**]
+2. CPU budget table is added to SDD §7. [**RESOLVED** - see SDD §14]
+3. Updated documents are baselined in Git tag PDR_BASELINE. [**READY**]
