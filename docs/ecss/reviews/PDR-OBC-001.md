@@ -126,4 +126,11 @@ The preliminary design is acceptable for continuation towards CDR, subject to re
 5. Review and improve requirements traceability.
 6. Update documentation in the review branch and record changes in the PDR report.
 
----
+
+## PDR Closure Conditions
+
+The PDR is considered closed when:
+
+1. RTM-OBC-001 fully links requirements to SW modules.
+2. CPU budget table is added to SDD §7.
+3. Updated documents are baselined in Git tag PDR_BASELINE.
