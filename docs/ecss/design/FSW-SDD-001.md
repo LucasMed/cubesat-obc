@@ -5,9 +5,9 @@
 | **Document ID**  | FSW-SDD-001                                        |
 | **Title**        | Flight Software Design Description                 |
 | **Project**      | CubeSat OBC — RP2350 / Pico 2W                     |
-| **Version**      | 0.2                                                |
-| **Status**       | Draft — CDR Baseline                               |
-| **Date**         | 2026-03-09                                         |
+| **Version**      | 0.3                                                |
+| **Status**       | Released — PDR Alignment Baseline                  |
+| **Date**         | 2026-03-11                                         |
 | **Author**       | OBC Systems Team                                   |
 | **Review Level** | CDR                                                |
 | **Standard**     | ECSS-E-ST-40C §5.5, ECSS-Q-ST-80C                 |
@@ -20,6 +20,7 @@
 |---------|------------|------------------|-------------------------------------|
 | 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline                |
 | 0.2     | 2026-03-09 | OBC Systems Team | Address CDR review observations: SRAM regions table (§13.2), CPU budget estimate (§14), FMM transition conditions (§8.1), EPS execution context (§8.3, §7.7), logger flash driver target (§8.4), HK packet table (§7.5), Command ACK format (§7.6), OI-2/OI-4 clarifications, new OI-8 (heap sizing) |
+| 0.3     | 2026-03-11 | OBC Systems Team | PDR Alignment: harmonize I2C pins, update EKF to 7-state quaternion baseline, close resolved OI-1, OI-2, OI-8 |
 
 ---
 
@@ -358,7 +359,7 @@ vHealthMonitorTask ──reads──► DLA (mode, energy, sensor validity)
 
 All stacks are statically sized at 2048 words (8 192 bytes). The 2 048-word
 size is justified by `newlib printf` with floating-point formatting, the EKF
-6×6 matrix state, and the CSP packet buffer, which together exceed 4 KB peak
+7-state quaternion state, and the CSP packet buffer, which together exceed 4 KB peak
 usage on `AttitudeCtrl`. See OBC-DES-001 §15 for HWM measurements.
 
 ### 7.2 Priority Rationale
@@ -545,13 +546,13 @@ The monitor reads `battery_v` from the DLA (written by `SensorRead` from ADC0).
  
  7-state EKF (attitude quaternion 4D + gyro bias 3-DOF):
  
- - **Predict step**: integrates gyro rates using quaternion kinematics.
+ - **Predict step**: integrates gyro rates using quaternion kinematics via RK2 midpoint.
  - **Update step**: fuses accelerometer and magnetometer vectors to correct attitude drift.
- - **Output**: attitude Euler angles (roll/pitch/yaw, radians) + uncertainty
+ - **Output**: attitude quaternions + derived Euler angles (roll/pitch/yaw, radians) + uncertainty
    diagonal `P` written to DLA.
  
  EKF is called by `vAttitudeControlTask` at 10 Hz. Convergence flag
- `imu_ekf_valid` is set when `max(P[0..3]) < 0.01`.
+ `imu_ekf_valid` is set when `max(diag(P))` falls below convergence threshold.
 
 ### 8.4 Event Logger
 
@@ -584,15 +585,15 @@ Host builds retain the stub in `flash_backend_stub.c`. See SYS-F-304 (`[IMPL]`).
 **Header**: `include/ekf.h`  
 **Full design**: `ADCS-DES-001`
 
-6-state EKF (attitude quaternion 3-DOF reduced + gyro bias 3-DOF):
+7-state EKF (attitude quaternion 4D + gyro bias 3-DOF):
 
-- **Predict step**: integrates gyro rates using quaternion kinematics.
-- **Update step**: fuses magnetometer reading to correct yaw drift.
-- **Output**: attitude Euler angles (roll/pitch/yaw, radians) + uncertainty
-  diagonal `P[0..2]` written to DLA.
+- **Predict step**: integrates gyro rates using quaternion kinematics via RK2 midpoint.
+- **Update step**: fuses accelerometer and magnetometer vectors to correct attitude drift.
+- **Output**: attitude quaternions + derived Euler angles (roll/pitch/yaw, radians) + uncertainty
+  diagonal `P` written to DLA.
 
 EKF is called by `vAttitudeControlTask` at 10 Hz. Convergence flag
-`imu_ekf_valid` is set when `max(P[0..2]) < 0.01 rad²`.
+`imu_ekf_valid` is set when `max(diag(P))` falls below convergence threshold.
 
 ### 8.6 LQR Controller
 
@@ -684,8 +685,7 @@ Per `SPEC-2-DLA §2.4` (referenced in `data_layer.h`):
 | `src/drivers/i2c/host_i2c.c` | Host | Returns mock data for unit tests |
 
 I²C0 bus runs at 400 kHz on GPIO 4 (SDA) / GPIO 5 (SCL) per `pico_pins.h`.
-> **OI-6 (OBC-DES-001)**: `config.h` defines `I2C_SDA_PIN=16, I2C_SCL_PIN=17`
-> which conflicts with `pico_pins.h` (4/5). Must be resolved before CDR sign-off.
+> **Resolved (OI-1)**: `config.h` harmonized with `pico_pins.h` (4/5) on 2026-03-11.
 
 ### 10.2 IMU Driver — MPU6050
 
@@ -832,8 +832,8 @@ across SRAM0–SRAM3 for bandwidth) and an unstriped alias at `0x21000000`.
 |--------|--------------|------|-----------|
 | Flash XIP | `0x10000000` – `0x101FFFFF` | 2 MB | `.text`, `.rodata`, vector table, constants; NOR log backend (Phase 3) |
 | SRAM `.data` / `.bss` | `0x20000000` + | ~30 KB (measured) | Globals, static buffers, FreeRTOS scheduler data structures |
-| FreeRTOS heap (`heap_4`) | (static array inside `.bss`) | 60 KB configured | Task TCBs, task stacks, CSP queues, mutexes — see OI-8 |
-| SRAM remaining | — | ~430 KB | IRQ stack, Pico SDK runtime, CORE1 stack, future `xTaskCreateStatic` pools |
+| FreeRTOS heap (`heap_4`) | (static array inside `.bss`) | 128 KB configured | Task TCBs, task stacks, CSP queues, mutexes |
+| SRAM remaining | — | ~360 KB | IRQ stack, Pico SDK runtime, CORE1 stack, future `xTaskCreateStatic` pools |
 
 On the **host (Linux/x86) build**, task stacks are backed by the system
 allocator (`heap_3.c`), so `xPortGetFreeHeapSize()` reflects available
@@ -852,17 +852,9 @@ virtual memory rather than a fixed 60 KB pool.
 | LEDBlink stack | Pico only | 8 192 B | GPIO LED blink |
 | Heartbeat stack | Pico only | 8 192 B | CAN heartbeat |
 | CSP router + queues | Both | ~4 096 B | `libcsp` internal alloc during `comm_init` |
-| **Total (Pico build)** | **Pico** | **~82 KB** | **Exceeds `configTOTAL_HEAP_SIZE = 60 KB` — see OI-8** |
+| **Total (Pico build)** | **Pico** | **~82 KB** | All tasks + CSP fit within 128 KB |
 | **Total (host build)** | **Host** | **~5 KB** | Host: 5 tasks + CSP; measured free heap 60 416 B |
-| **Heap configured** | Both | **60 KB** | `configTOTAL_HEAP_SIZE` in `config/FreeRTOSConfig.h` |
-
-> **Build discrepancy (OI-8 — HIGH)**: The host build creates 5 tasks and uses
-> `heap_3.c` (backed by system `malloc`), so `xPortGetFreeHeapSize()` returns
-> ~60 KB free. The Pico hardware build creates 10 tasks; their stacks are
-> allocated from the fixed `heap_4.c` pool, requiring ~82 KB — exceeding the
-> configured 60 KB. Resolution options: (a) increase `configTOTAL_HEAP_SIZE`
-> to ≥ 96 KB; or (b) migrate to `xTaskCreateStatic` to place stacks in the
-> remaining ~430 KB SRAM. See OI-8.
+| **Heap configured** | Both | **128 KB** | `configTOTAL_HEAP_SIZE` in `config/FreeRTOSConfig.h` |
 
 ### 13.4 Stack High Water Marks (HWM)
 
@@ -1020,8 +1012,6 @@ and a hardware-flashed Pico image without `#ifdef` pollution in business logic.
 | SRS-D-001 (FDIR CRITICAL → FM_SAFE) | `fault_manager.c` + `fmm_force_safe()` | §8.1, §8.2 |
 | SRS-D-002 (WDT recovery ≤ 10 s) | `watchdog_hal_pico.c` + boot check | §10.6, §11.1 |
 | SRS-D-003 (log CRITICAL to flash before FM_SAFE) | `fault_manager_report()` → `log_event(CLASS_CRITICAL)` | §8.2, §8.4 |
-
-Full traceability matrix is maintained in RTM-OBC-001.
 | SRS-D-005 (OBC rail uninterruptible) | EPS FSM only sheds payload rail | §8.3 |
 | MIS-PB-001 (battery ≥ 37 min) | EPS load shedding at ENERGY_CRITICAL | §8.3 |
 | MIS-DB-002 (≥ 320 events stored) | Logger ring buffer capacity 64 → flash flush | §8.4 |

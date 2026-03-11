@@ -117,10 +117,10 @@ both P3 and P4 are above the FreeRTOS timer task (P3 = `configMAX_PRIORITIES - 2
                                                     │  imu_raw, mag_raw
                                                     ▼
                                             [EKF ekf_predict()]
-                                            [EKF ekf_update_accel()]
+                                            [EKF ekf_update()]
                                             [EKF ekf_update_mag()]
                                                     │
-                                              x = [roll, pitch, yaw,
+                                              x = [q0, q1, q2, q3,
                                                    bx,  by,   bz]
                                                     │ DLA write:
                                                     │  attitude, gyro_bias
@@ -235,18 +235,17 @@ Rules:
 ### 6.1 Extended Kalman Filter (7-state)
 
 ```
-State vector:   x  = [q₀, q₁, q₂, q₃, bₓ, bᵧ, b_z]ᵀ
-Measurement:    z₁ = accelerometer  → ekf_update()
-                z₂ = magnetometer   → ekf_update_mag()   (3D fusion)
+State vector:   x  = [q0, q1, q2, q3, bx, by, bz]ᵀ
+Measurement:    z1 = accelerometer  → ekf_update()
+                z2 = magnetometer   → ekf_update_mag()   (3D fusion)
 
 Propagation:    xₖ₊₁ = f(xₖ, ωₖ)   via RK2 midpoint integrator
-                (replaces Euler — reduces attitude error at 10 Hz)
+```
 
 Gyro bias:      bₓ,ᵧ,z  estimated online; subtracted from ω before integration
 
 Yaw update:     3D vector fusion; Jacobian dh/dq computed online
                 Convergence verified: < 5° error in 10 s simulation
-```
 
 ### 6.2 Control Dispatch (AttitudeControlTask)
 

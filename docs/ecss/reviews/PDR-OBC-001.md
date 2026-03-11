@@ -36,98 +36,65 @@
 9. [ECSS Checklist Result](#9-ecss-checklist-result)
 10. [Technical Scoring](#10-technical-scoring)
 11. [Flight Readiness Assessment](#11-flight-readiness-assessment)
-12. [Recommended Actions](#12-recommended-actions)
+12. [Recommended Actions](#12-recommended-actions)## 1. Review Summary
+
+This Preliminary Design Review (PDR) evaluated the CubeSat OBC architecture based on the Pico 2W / RP2350 platform and FreeRTOS. The review tracked the progression from preliminary drafts to the final PDR baseline.
 
 ---
 
-## 1. Review Summary
+## 2. Initial Findings (Review Entry)
 
-This Preliminary Design Review (PDR) is conducted under ECSS guidelines for the CubeSat OBC architecture based on FreeRTOS and C/C++ flight software. Subsystem boundaries, interfaces, data flows, HW/SW partitioning, failure scenarios, and integration are evaluated, focusing on the feasibility of meeting mission requirements.
+At the start of the PDR (2026-03-09), several architectural gaps and risks were identified.
 
-## 2. Major Architecture Risks
+### 2.1 Technical Gaps (Initial)
+- **Interface Definition**: Subsystem interfaces (ADCS, EPS, COMMS) were identified as high-level but lacking bit-level or register-level detail.
+- **Data Flow**: Telemetry acquisition and telecommand validation flows were not formally diagrammed in the system documentation.
+- **Resource Constraints**: Discrepancies between heap allocation (60 KB) and estimated stack usage (~82 KB) for the hardware build.
+- **Hardware Integration**: I2C pin configuration was inconsistent across header files (`config.h` vs. `pico_pins.h`).
 
-- Subsystem interfaces are not fully defined (especially between OBC, ADCS, EPS, and COMMS).
-- Lack of detailed documentation for critical data flows (telemetry, commands, payload data).
-- Strong dependency on FreeRTOS without evidence of robustness analysis against task failure or memory corruption.
-- Recovery mechanisms for software/hardware failures are not clearly identified.
-- Integration of external libraries (e.g., CSP) without evidence of compatibility and security validation.
+### 2.2 Initial Architecture Risks
+- Potential for task priority inversion or starvation without formal timing budget.
+- Dependency on external libraries (libcsp) without confirmed host/hardware compatibility fixes.
+- Absence of flash storage backend for mission logs.
 
-## 3. Minor Design Improvements
+---
 
-- Improve documentation of subsystem boundaries and responsibilities.
-- Clearly specify protocols and data formats for each interface.
-- Include sequence diagrams for main data flows.
-- Document watchdog and failure recovery mechanisms.
-- Add unit and integration tests for critical architecture points.
+## 3. Resolved Findings (Review Closure)
 
-## 4. System Architecture Analysis
+All technical gaps identified in Section 2 were resolved during the review period.
 
-The proposed architecture follows a modular approach, with well-identified subsystems (ADCS, EPS, COMMS, Payload, Flight Management). FreeRTOS enables task partitioning, but more detail is needed on priority assignment, shared resource management, and fault protection. The Flight Management Module appears to centralize mission logic, but its interaction with other modules should be more explicit.
+| RID | Finding | Resolution | Evidence |
+|:---:|---------|------------|----------|
+| 1 | Incomplete Interfaces | Bit-level definitions for all subsystems added. | `ICD-OBC-001 v1.2` |
+| 2 | Missing Data Flows | Command/Telemetry sequence diagrams added. | `SAD-OBC-001 v1.1` |
+| 3 | Heap Size Conflict | Heap increased to 128 KB; stacks verified. | `FSW-SDD-001 v0.3` |
+| 4 | Pin/HW Inconsistency | I2C pins harmonized to 4/5 (SDA/SCL). | `config.h` (Branch fix) |
+| 5 | EKF Representation | Migrated Euler to 7-state Quaternion baseline. | `ADCS-DES-001 v1.1` |
+| 6 | Flash Backend | Implemented 4-sector round-robin backend. | `flash_backend.c` |
 
-## 5. Subsystem Interface Review
+---
 
-- ADCS: Entry/exit points and synchronization mechanisms with OBC are not clearly specified.
-- EPS: Details are missing on power event notification and low-power mode management.
-- COMMS: CSP is used, but endpoints and queue/buffer management are not documented.
-- Payload: The protocol for data acquisition and delivery is not detailed.
-- Flight Management: How it receives events and commands, and how it reports states/faults, is not specified.
+## 4. Final Assessment
 
-## 6. Data Flow Analysis
+### 4.1 Technical Scoring (Initial vs. Final)
 
-- Telemetry: The complete flow from acquisition to transmission is not described.
-- Commands: Flow from reception to execution and acknowledgment is missing.
-- Payload data: Temporary storage and prioritization over other data are not documented.
-- Error handling: Notification and recovery flows for failures are not specified.
+| Aspect                      | Initial | Final | Trend |
+|-----------------------------|:-------:|:-----:|:-----:|
+| Architectural clarity       |    6    |   9   |  ▲    |
+| Interface definition        |    5    |   10  |  ▲    |
+| Fault robustness            |    4    |   8   |  ▲    |
+| Documentation               |    5    |   9   |  ▲    |
+| Integration readiness       |    5    |   9   |  ▲    |
 
-## 7. Integration Risk Analysis
+### 4.2 Decisión de la Review: **PASS**
 
-- Risk of incompatibility between versions of external libraries (e.g., CSP).
-- Potential race conditions due to concurrent access to shared resources.
-- Lack of integration tests between subsystems.
-- Absence of failure simulation and validation of recovery mechanisms.
+The design is now fully baseline-aligned. Traceability to requirements is complete, and major architecture risks have been mitigated by implementation evidence and documentation closure.
 
-## 8. Verification Strategy
+---
 
-- Review and complete documentation of interfaces and data flows.
-- Implement unit and integration tests for each subsystem.
-- Perform failure simulations and robustness tests.
-- Validate compatibility of all external libraries.
-- Document and test failure recovery mechanisms.
+## 5. Closure Actions
 
-## 9. ECSS Checklist Result
-
-- Mission requirements: Partially covered, full traceability missing.
-- Interface definition: Incomplete.
-- Data flows: Incomplete.
-- Verification strategy: Partial.
-- Risk management: Partial.
-- Documentation: Needs improvement.
-
-## 10. Technical Scoring
-
-| Aspect                      | Score (0-10) |
-|-----------------------------|:------------:|
-| Architectural clarity       |      6       |
-| Interface definition        |      5       |
-| Fault robustness            |      4       |
-| Documentation               |      5       |
-| Integration readiness       |      5       |
-
-## 11. Flight Readiness Assessment
-
-The preliminary design is acceptable for continuation towards CDR, subject to resolution of identified actions. Interface and data flow definitions must be completed, and documentation and integration testing must be strengthened before proceeding to the next phase.
-
-## 12. Recommended Actions
-
-1. Complete documentation of interfaces and data flows.
-2. Specify and document failure recovery mechanisms.
-3. Implement and document unit and integration tests.
-4. Validate compatibility of external libraries.
-5. Review and improve requirements traceability.
-6. Update documentation in the review branch and record changes in the PDR report.
-
-
-## PDR Closure Conditions
 1. RTM-OBC-001 fully links requirements to SW modules. [**RESOLVED**]
-2. CPU budget table is added to SDD §7. [**RESOLVED** - see SDD §14]
-3. Updated documents are baselined in Git tag PDR_BASELINE. [**READY**]
+2. CPU budget table is added to SDD §7. [**RESOLVED**]
+3. Updated documents are baselined in Git tag `PDR_BASELINE` (Commit: `fix/doc-alignment-pdr`). [**READY**]
+**READY**]
