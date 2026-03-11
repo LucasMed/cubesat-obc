@@ -494,7 +494,9 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
         }
       }
       if (i == j)
+      {
         S[i][j] += ekf->r_mag; /* use scalar r_mag for all components */
+      }
     }
   }
 
@@ -505,7 +507,9 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
               S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
               S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
   if (fabsf(det) < 1e-12f)
+  {
     return;
+  }
   float inv_det = 1.0f / det;
   float Si[3][3];
   Si[0][0] = (S[1][1] * S[2][2] - S[1][2] * S[2][1]) * inv_det;
@@ -528,7 +532,9 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
       {
         float PHt_ik = 0.0f;
         for (int l = 0; l < 7; l++)
+        {
           PHt_ik += ekf->P[i][l] * H[k][l];
+        }
         K[i][j] += PHt_ik * Si[k][j];
       }
     }
@@ -539,7 +545,9 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
   for (int i = 0; i < 7; i++)
   {
     for (int j = 0; j < 3; j++)
+    {
       ekf->x[i] += K[i][j] * dy[j];
+    }
   }
 
   /* Re-normalise */
@@ -563,7 +571,9 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
       for (int k = 0; k < 3; k++)
       {
         for (int l = 0; l < 7; l++)
+        {
           KH_row_i_col_j += K[i][k] * H[k][l] * ekf->P[l][j];
+        }
       }
       P_new[i][j] = ekf->P[i][j] - KH_row_i_col_j;
     }

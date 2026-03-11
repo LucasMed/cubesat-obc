@@ -77,12 +77,32 @@ typedef enum
   eSetValueWithoutOverwrite
 } eNotifyAction;
 
-#define xTaskNotifyFromISR(xTaskToNotify, ulValue, eAction, pxHigherPriorityTaskWoken)             \
-  (*(uint32_t *)(xTaskToNotify) |= (ulValue), *(pxHigherPriorityTaskWoken) = pdFALSE, pdPASS)
+static inline BaseType_t xTaskNotifyFromISR_Mock(TaskHandle_t xTaskToNotify, uint32_t ulValue, eNotifyAction eAction, BaseType_t *pxHigherPriorityTaskWoken) {
+  (void)eAction;
+  if (xTaskToNotify != NULL) {
+    *(uint32_t *)xTaskToNotify |= ulValue;
+  }
+  if (pxHigherPriorityTaskWoken != NULL) {
+    *pxHigherPriorityTaskWoken = pdFALSE;
+  }
+  return pdPASS;
+}
 
-#define xTaskNotifyWait(ulBitsToClearOnEntry, ulBitsToClearOnExit, pulNotificationValue,           \
-                        xTicksToWait)                                                              \
-  (*(pulNotificationValue) = *(uint32_t *)(NULL /* Need a real handle mock */), pdPASS)
+static inline BaseType_t xTaskNotifyWait_Mock(uint32_t ulBitsToClearOnEntry, uint32_t ulBitsToClearOnExit, uint32_t *pulNotificationValue, TickType_t xTicksToWait) {
+  (void)ulBitsToClearOnEntry;
+  (void)ulBitsToClearOnExit;
+  (void)xTicksToWait;
+  if (pulNotificationValue != NULL) {
+    *pulNotificationValue = 0;
+  }
+  return pdPASS;
+}
+
+#define xTaskNotifyFromISR(xTaskToNotify, ulValue, eAction, pxHigherPriorityTaskWoken) \
+  xTaskNotifyFromISR_Mock(xTaskToNotify, ulValue, eAction, pxHigherPriorityTaskWoken)
+
+#define xTaskNotifyWait(ulBitsToClearOnEntry, ulBitsToClearOnExit, pulNotificationValue, xTicksToWait) \
+  xTaskNotifyWait_Mock(ulBitsToClearOnEntry, ulBitsToClearOnExit, pulNotificationValue, xTicksToWait)
 
 #define portYIELD_FROM_ISR(xHigherPriorityTaskWoken) (void)(xHigherPriorityTaskWoken)
 

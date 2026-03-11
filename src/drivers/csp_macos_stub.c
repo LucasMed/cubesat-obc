@@ -16,17 +16,9 @@ void csp_usart_unlock(void *driver_data)
   (void)driver_data;
 }
 
-int csp_usart_write(void *driver_data, const void *data, size_t data_len)
+int csp_usart_write(csp_usart_fd_t fd, const void *data, size_t data_len)
 {
-  (void)driver_data;
+  (void)fd;
   (void)data;
   return (int)data_len;
-}
-
-int csp_usart_read(void *driver_data, void *buf, size_t buf_len, int timeout)
-{
-  (void)driver_data;
-  (void)buf;
-  (void)timeout;
-  return 0;
 }
