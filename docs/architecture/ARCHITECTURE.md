@@ -19,7 +19,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 │  ┌──────────────┐      ┌─────────────┐      ┌──────────────┐    │
 │  │   SENSORS    │      │  CONTROL    │      │  ACTUATORS   │    │
 │  ├──────────────┤      ├─────────────┤      ├──────────────┤    │
-│  │ • IMU(I2C)   │─────▶│ • PID Ctrl  │─────▶│ • RW Motors  │   │
+│  │ • IMU(I2C)   │─────▶│ • PID Ctrl  │─────▶│ • RW Motors  │    │
 │  │ • Temp (I2C) │      │ • Attitude  │      │ • Magnetorq  │    │
 │  │ • Vbatt(ADC) │      │   Dynamics  │      │   (PWM/SPI)  │    │
 │  └──────────────┘      └─────────────┘      └──────────────┘    │
@@ -44,6 +44,40 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 │                        └────────┘           └────────┘          │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Physical Connection Table
+
+| Module                  | Signal        | Pico 2W GPIO | Pico 2W Physical Pin | Notes / Bus         |
+|-------------------------|--------------|----------------|----------------------|---------------------|
+| **MPU-6050 (IMU)**      | SDA          | GPIO2          | 4                    | I2C0 SDA            |
+|                         | SCL          | GPIO3          | 5                    | I2C0 SCL            |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+| **HMC5883L (Magnet.)**  | SDA          | GPIO2          | 4                    | I2C0 SDA            |
+|                         | SCL          | GPIO3          | 5                    | I2C0 SCL            |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+| **GPS (NEO-6M/7M)**     | TX           | GPIO1          | 2                    | UART0 RX (Pico)     |
+|                         | RX           | GPIO0          | 1                    | UART0 TX (Pico)     |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+| **HC-12/Si4463 (Radio)**| TX           | GPIO5          | 7                    | UART1 RX (Pico)     |
+|                         | RX           | GPIO4          | 6                    | UART1 TX (Pico)     |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+| **Battery Monitor**     | +Vbat        | GPIO26         | 31                   | ADC0                |
+| **Temp. Board**         | -            | GPIO27         | 32                   | ADC1 (onboard)      |
+| **External Watchdog**   | Kick         | GPIO20         | 26                   | Digital output      |
+| **Reaction Wheel 1**    | PWM          | GPIO8          | 11                   | PWM4A               |
+| **Reaction Wheel 2**    | PWM          | GPIO9          | 12                   | PWM4B               |
+| **Reaction Wheel 3**    | PWM          | GPIO3          | 5                    | PWM1B               |
+| **Magnetorquer X**      | -            | GPIO17         | 22                   | Digital output      |
+| **Magnetorquer Y**      | -            | GPIO23         | 34                   | Digital output      |
+| **Magnetorquer Z**      | -            | GPIO24         | 35                   | Digital output      |
+
+> **Note:** You can connect all modules to the same 3V3 and GND pin, as long as the total current does not exceed the Pico 2W's power supply capability. For sensors and small modules, this is safe.
 
 ---
 
@@ -131,9 +165,9 @@ SensorRead (10 Hz):
                                                            │
 AttitudeControl (20 Hz):                         ╔═════════╩═════════╗
   system_state.imu_data                          ║ SYSTEM STATE      ║
-  system_state.control_gains ──▶ pid_update() ──║ (shared memory)   ║
-  ──▶ attitude_control()                        ║                   ║
-  ──▶ system_state.control_torque               ║ RW Rate Cmds (Hz) ║
+  system_state.control_gains ──▶ pid_update() ── ║ (shared memory)   ║
+  ──▶ attitude_control()                         ║                   ║
+  ──▶ system_state.control_torque                ║ RW Rate Cmds (Hz) ║
            │                                     ║ Magnetorq Cmds    ║
            ▼                                     ║ Attitude (Euler)  ║
   Actuator Models:                               ║ Angular Rates     ║
