@@ -12,6 +12,7 @@
  */
 
 #include "radiation_driver.h"
+
 #include "pico_pins.h"
 
 #include <string.h>
@@ -32,8 +33,7 @@
 #define RAD_ADC_FULL_SCALE 4095u
 
 /** Detection threshold in raw ADC counts (10% of full scale). */
-#define RAD_THRESHOLD_RAW \
-  ((uint16_t)((float)RAD_ADC_FULL_SCALE * RAD_THRESHOLD_FRACTION))
+#define RAD_THRESHOLD_RAW ((uint16_t)((float)RAD_ADC_FULL_SCALE * RAD_THRESHOLD_FRACTION))
 
 /**
  * Placeholder dose conversion: 1 event = 1 µGy.
@@ -95,7 +95,7 @@ bool radiation_read(rad_sample_t *sample)
 
   uint16_t raw = adc_read_channel();
 
-  sample->raw_adc   = raw;
+  sample->raw_adc = raw;
   sample->voltage_V = ((float)raw / (float)RAD_ADC_FULL_SCALE) * RAD_ADC_VREF_V;
   sample->threshold = (raw >= RAD_THRESHOLD_RAW);
 
@@ -118,7 +118,7 @@ void radiation_get_and_reset(rad_accumulator_t *acc)
   {
     return;
   }
-  *acc   = s_acc;
+  *acc = s_acc;
   s_acc.event_count = 0;
-  s_acc.dose_Gy     = 0.0f;
+  s_acc.dose_Gy = 0.0f;
 }

@@ -19,35 +19,36 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/**
- * @brief Initialise the SPI0 shared payload bus (idempotent).
- *
- * Configures spi0 at SPI0_BAUD_RATE_INIT (1 MHz), sets SPI0_MISO_PIN,
- * SPI0_SCK_PIN, and SPI0_MOSI_PIN to SPI function, and pulls all three
- * Chip-Select GPIOs (SPI_CS_MAG_PIN, SPI_CS_SD_PIN, SPI_CS_CAM_PIN)
- * high (inactive).
- *
- * Safe to call from multiple drivers: only the first call performs
- * hardware initialisation; subsequent calls return immediately.
- *
- * @return true on first (real) init, false if already initialised.
- */
-bool spi_payload_init(void);
+  /**
+   * @brief Initialise the SPI0 shared payload bus (idempotent).
+   *
+   * Configures spi0 at SPI0_BAUD_RATE_INIT (1 MHz), sets SPI0_MISO_PIN,
+   * SPI0_SCK_PIN, and SPI0_MOSI_PIN to SPI function, and pulls all three
+   * Chip-Select GPIOs (SPI_CS_MAG_PIN, SPI_CS_SD_PIN, SPI_CS_CAM_PIN)
+   * high (inactive).
+   *
+   * Safe to call from multiple drivers: only the first call performs
+   * hardware initialisation; subsequent calls return immediately.
+   *
+   * @return true on first (real) init, false if already initialised.
+   */
+  bool spi_payload_init(void);
 
-/**
- * @brief Assert (pull low) a payload chip-select GPIO.
- * @param cs_pin  GPIO number of the target chip select.
- */
-void spi_payload_cs_select(uint32_t cs_pin);
+  /**
+   * @brief Assert (pull low) a payload chip-select GPIO.
+   * @param cs_pin  GPIO number of the target chip select.
+   */
+  void spi_payload_cs_select(uint32_t cs_pin);
 
-/**
- * @brief Deassert (pull high) a payload chip-select GPIO.
- * @param cs_pin  GPIO number of the target chip select.
- */
-void spi_payload_cs_deselect(uint32_t cs_pin);
+  /**
+   * @brief Deassert (pull high) a payload chip-select GPIO.
+   * @param cs_pin  GPIO number of the target chip select.
+   */
+  void spi_payload_cs_deselect(uint32_t cs_pin);
 
 #ifdef __cplusplus
 }

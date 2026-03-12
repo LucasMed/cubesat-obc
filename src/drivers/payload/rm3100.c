@@ -26,11 +26,11 @@
 /* ------------------------------------------------------------------ */
 
 /* RM3100 register addresses */
-#define RM3100_REG_CMM   0x01u  /**< Continuous Measurement Mode control    */
-#define RM3100_REG_CCXY  0x04u  /**< Cycle count X (2 bytes)                */
-#define RM3100_REG_CCYZ  0x06u  /**< Cycle count Y/Z pair (4 bytes)         */
-#define RM3100_REG_MX    0x24u  /**< Measurement result X (3 bytes)         */
-#define RM3100_REG_REVID 0x36u  /**< Revision ID — expected 0x22            */
+#define RM3100_REG_CMM 0x01u   /**< Continuous Measurement Mode control    */
+#define RM3100_REG_CCXY 0x04u  /**< Cycle count X (2 bytes)                */
+#define RM3100_REG_CCYZ 0x06u  /**< Cycle count Y/Z pair (4 bytes)         */
+#define RM3100_REG_MX 0x24u    /**< Measurement result X (3 bytes)         */
+#define RM3100_REG_REVID 0x36u /**< Revision ID — expected 0x22            */
 
 #define RM3100_REVID_EXPECTED 0x22u
 
@@ -41,7 +41,7 @@
 #define RM3100_SCALE_NT_PER_LSB 13.0f
 
 /* SPI read bit: set MSB to request a read transaction */
-#define RM3100_SPI_READ  0x80u
+#define RM3100_SPI_READ 0x80u
 
 /* ------------------------------------------------------------------ */
 /* Module state                                                        */
