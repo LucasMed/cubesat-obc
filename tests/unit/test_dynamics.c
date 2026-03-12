@@ -4,7 +4,12 @@
 #include <stdio.h>
 
 #define PASS(msg) printf("[PASS] %s\n", msg)
-#define FAIL(msg) do { printf("[FAIL] %s\n", msg); return 1; } while (0)
+#define FAIL(msg)                                                                                  \
+  do                                                                                               \
+  {                                                                                                \
+    printf("[FAIL] %s\n", msg);                                                                    \
+    return 1;                                                                                      \
+  } while (0)
 
 /* ------------------------------------------------------------------ */
 /* T-DYN-01: Basic sanity — rates and attitude update under torque     */
@@ -42,11 +47,11 @@ static int test_basic_update(void)
 static int test_analytical_accuracy(void)
 {
   attitude_dyn_t dyn;
-  attitude_dynamics_init(&dyn);  /* inertia[0] = 0.01 kg·m² */
+  attitude_dynamics_init(&dyn); /* inertia[0] = 0.01 kg·m² */
 
-  const float T = 1e-3f;   /* torque [N·m]  */
-  const float I = 0.01f;   /* inertia [kg·m²] */
-  const float dt = 0.02f;  /* 50 Hz */
+  const float T = 1e-3f;  /* torque [N·m]  */
+  const float I = 0.01f;  /* inertia [kg·m²] */
+  const float dt = 0.02f; /* 50 Hz */
   const float t_end = 10.0f;
   const int steps = (int)(t_end / dt);
 
@@ -84,7 +89,7 @@ static int test_energy_conservation(void)
   attitude_dynamics_init(&dyn);
 
   /* Give it initial rates */
-  dyn.rates[0] = 0.05f;  /* rad/s */
+  dyn.rates[0] = 0.05f; /* rad/s */
   dyn.rates[1] = 0.03f;
   dyn.rates[2] = 0.02f;
 

@@ -1,4 +1,25 @@
 if(NOT PICO_BUILD)
+        add_executable(test_rm3100
+            test_rm3100.c
+            ../../src/drivers/payload/rm3100.c
+            ../../src/drivers/payload/spi_payload.c
+        )
+        target_include_directories(test_rm3100 PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+            ${CMAKE_SOURCE_DIR}
+        )
+        add_test(NAME rm3100_test COMMAND test_rm3100)
+
+    add_executable(test_radiation_driver
+        test_radiation_driver.c
+        ../../src/drivers/payload/radiation_driver.c
+    )
+    target_include_directories(test_radiation_driver PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME radiation_driver_test COMMAND test_radiation_driver)
+
     add_executable(test_pid
         test_pid.c
         ../../src/control/pid_controller.c

@@ -4,6 +4,7 @@ if(NOT PICO_BUILD)
     # Host simulation integration tests
     add_executable(test_i2c_mock
         test_i2c_mpu6050.c
+        host_spi_gpio_stubs.c
     )
     target_include_directories(test_i2c_mock PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_i2c_mock drivers_lib core_lib)

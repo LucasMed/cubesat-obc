@@ -8,15 +8,15 @@
  *  3. In host simulation, this correctly sets bits in a mocked handle.
  */
 
-#include "fault_manager.h"
-#include "fault_ids.h"
-#include "flight_mode.h"
 #include "FreeRTOS.h"
-#include "task.h"
 #include "config.h"
+#include "fault_ids.h"
+#include "fault_manager.h"
+#include "flight_mode.h"
+#include "task.h"
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 /* ---- Test Mocks --------------------------------------------------------- */
 
@@ -60,9 +60,10 @@ static void test_notification_flow(void)
 
   /* Verify bit was set by xTaskNotifyFromISR stub */
   CHECK(hm_notify_val & HM_NOTIFY_FAULT_CRITICAL, "Notification bit must be set in HM task handle");
-  
+
   /* Verify direct fmm_force_safe was NOT called (handled by task instead) */
-  CHECK(!g_force_safe_called, "fmm_force_safe must NOT be called directly when HM task is registered");
+  CHECK(!g_force_safe_called,
+        "fmm_force_safe must NOT be called directly when HM task is registered");
 
   printf("  PASS T-FDIR-01 notification flow (ISR-safe)\n");
 }
