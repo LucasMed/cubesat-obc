@@ -19,6 +19,7 @@
 #if defined(PICO_BUILD)
   #include "hardware/gpio.h"
   #include "hardware/spi.h"
+  #include "pico/time.h"
 #endif
 
 /* ------------------------------------------------------------------ */

@@ -3,7 +3,8 @@
  * @brief Bridge between FatFs and sd_spi driver.
  */
 
-#include "/workspace/pico-sdk/lib/tinyusb/lib/fatfs/source/diskio.h"
+#include "ff.h"
+#include "diskio.h"
 
 #include "sd_spi.h"
 
@@ -15,25 +16,31 @@
 DSTATUS disk_status(BYTE pdrv)
 {
   if (pdrv != DEV_SD)
+  {
     return STA_NOINIT;
+  }
   return (sd_spi_get_type() == SD_TYPE_UNKNOWN) ? STA_NOINIT : 0;
 }
 
 DSTATUS disk_initialize(BYTE pdrv)
 {
   if (pdrv != DEV_SD)
+  {
     return STA_NOINIT;
+  }
   return sd_spi_init() ? 0 : STA_NOINIT;
 }
 
 DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sector, UINT count)
 {
   if (pdrv != DEV_SD || !count)
+  {
     return RES_PARERR;
+  }
 
   for (UINT i = 0; i < count; i++)
   {
-    if (!sd_spi_read_sector((uint32_t)sector + i, buff + (i * 512)))
+    if (!sd_spi_read_sector((uint32_t)sector + i, buff + ((size_t)i * 512)))
     {
       return RES_ERROR;
     }
@@ -44,11 +51,13 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sector, UINT count)
 DRESULT disk_write(BYTE pdrv, const BYTE *buff, LBA_t sector, UINT count)
 {
   if (pdrv != DEV_SD || !count)
+  {
     return RES_PARERR;
+  }
 
   for (UINT i = 0; i < count; i++)
   {
-    if (!sd_spi_write_sector((uint32_t)sector + i, buff + (i * 512)))
+    if (!sd_spi_write_sector((uint32_t)sector + i, buff + ((size_t)i * 512)))
     {
       return RES_ERROR;
     }
@@ -59,7 +68,9 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buff, LBA_t sector, UINT count)
 DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buff)
 {
   if (pdrv != DEV_SD)
+  {
     return RES_PARERR;
+  }
 
   switch (cmd)
   {

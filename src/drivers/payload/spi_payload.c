@@ -17,7 +17,7 @@ bool spi_payload_init(void)
     return false; /* already done */
   }
 #if defined(PICO_BUILD)
-  spi_init(SPI0_PORT, SPI0_BAUD_RATE);
+  spi_init(SPI0_PORT, SPI0_BAUD_RATE_INIT);
   gpio_set_function(SPI0_SCK_PIN, GPIO_FUNC_SPI);
   gpio_set_function(SPI0_MOSI_PIN, GPIO_FUNC_SPI);
   gpio_set_function(SPI0_MISO_PIN, GPIO_FUNC_SPI);

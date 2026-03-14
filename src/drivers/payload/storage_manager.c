@@ -9,7 +9,7 @@
 #include "storage_manager.h"
 
 #if defined(PICO_BUILD)
-  #include "/workspace/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.h"
+  #include "ff.h"
 #else
   /* Host Mocks: simulate FatFs with standard C library */
   #include <errno.h>
