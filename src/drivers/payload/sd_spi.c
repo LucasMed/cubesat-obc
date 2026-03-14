@@ -83,7 +83,7 @@ static uint8_t sd_send_cmd(uint8_t cmd, uint32_t arg)
 }
 #else
 /* Host Mocks */
-static uint8_t sd_send_cmd(uint8_t cmd, uint32_t arg)
+static __attribute__((unused)) uint8_t sd_send_cmd(uint8_t cmd, uint32_t arg)
 {
   (void)arg;
   return (cmd == CMD0) ? R1_IDLE_STATE : 0x00;
@@ -144,6 +144,7 @@ bool sd_spi_init(void)
 
 bool sd_spi_read_sector(uint32_t sector, uint8_t *buffer)
 {
+  (void)sector;
   if (!buffer || s_card_type == SD_TYPE_UNKNOWN)
   {
     return false;
