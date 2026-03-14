@@ -10,7 +10,8 @@ typedef enum
 {
   CMD_ECHO = 1,
   CMD_REBOOT = 2,
-  CMD_SET_MODE = 3
+  CMD_SET_MODE = 3,
+  CMD_PAYLOAD_CAPTURE = 4
 } command_id_t;
 
 typedef struct __attribute__((packed))

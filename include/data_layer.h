@@ -143,9 +143,24 @@ extern "C"
    *
    * Called once during boot after magnetometer detection.
    *
-   * @param mag  true if the HMC5883L was detected on the I2C bus.
+   * @param mag  true if the RM3100 was detected on the SPI bus.
    */
   void data_layer_set_mag_avail(bool mag);
+
+  /**
+   * @brief Update radiation dose in the shared snapshot.
+   *
+   * @param dose  Radiation dose (placeholder units).
+   */
+  void data_layer_write_radiation(float dose);
+
+  /**
+   * @brief Update payload status in the shared snapshot.
+   *
+   * @param rail_enabled  Status of the payload power rail.
+   * @param img_count     Number of images stored.
+   */
+  void data_layer_write_payload_status(bool rail_enabled, uint16_t img_count);
 
   /* ------------------------------------------------------------------ */
   /* Write — flight-level state                                          */

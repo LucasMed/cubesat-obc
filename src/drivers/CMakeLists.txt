@@ -4,9 +4,14 @@ set(DRIVER_SOURCES
     payload/rm3100.c
     payload/spi_payload.c
     payload/camera_driver.c
+    payload/radiation_driver.c
     payload/sd_spi.c
-    payload/diskio.c
     payload/storage_manager.c
+    payload/payload_manager.c
+    payload/diskio.c
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c
 )
 
 if(PICO_BUILD)
@@ -52,6 +57,7 @@ if(PICO_BUILD)
         pico_stdlib 
         hardware_i2c 
         hardware_adc
+        hardware_spi
         hardware_uart
         FreeRTOS-Kernel
         csp

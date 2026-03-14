@@ -3,6 +3,7 @@ add_library(tasks_lib
     attitude_control_task.c
     telemetry_task.c
     health_monitor_task.c
+    payload_task.c
     command_task.c
 )
 

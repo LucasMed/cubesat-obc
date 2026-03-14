@@ -119,6 +119,7 @@
 #define INCLUDE_eTaskGetState 1
 #define INCLUDE_xEventGroupSetBitsFromISR 1
 #define INCLUDE_xTimerPendFunctionCall 1
+#define INCLUDE_xTaskGetHandle 1
 
 // =========================================================================
 // Missing Definitions for Pico SDK SMP Port

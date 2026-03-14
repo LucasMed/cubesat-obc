@@ -122,3 +122,13 @@ void radiation_get_and_reset(rad_accumulator_t *acc)
   s_acc.event_count = 0;
   s_acc.dose_Gy = 0.0f;
 }
+
+bool radiation_driver_init(void)
+{
+  return radiation_init();
+}
+
+float radiation_driver_read_dose(void)
+{
+  return s_acc.dose_Gy;
+}

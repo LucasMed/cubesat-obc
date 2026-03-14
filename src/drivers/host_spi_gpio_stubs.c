@@ -19,6 +19,16 @@ int __attribute__((weak)) spi_read_blocking(void *spi, uint8_t filler, uint8_t *
   }
   return (int)len;
 }
+void __attribute__((weak)) gpio_put(unsigned int pin, int value)
+{
+  (void)pin;
+  (void)value;
+}
+
+uint16_t __attribute__((weak)) adc_read(void)
+{
+  return 0;
+}
 // Stub for gpio_get: always return 1 (high)
 int __attribute__((weak)) gpio_get(unsigned int pin)
 {

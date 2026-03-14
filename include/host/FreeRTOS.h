@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 typedef int32_t BaseType_t;
@@ -124,5 +125,17 @@ static inline BaseType_t xTaskNotifyWait_Mock(uint32_t ulBitsToClearOnEntry,
                        xTicksToWait)
 
 #define portYIELD_FROM_ISR(xHigherPriorityTaskWoken) (void)(xHigherPriorityTaskWoken)
+
+// Additional stubs for OBC
+#define xTaskGetHandle(pcName) ((TaskHandle_t)((void)(pcName), NULL))
+#define xTaskNotify(xTaskToNotify, ulValue, eAction)                                               \
+  ((BaseType_t)((void)(xTaskToNotify), (void)(ulValue), (void)(eAction), pdPASS))
+#define vTaskPrioritySet(xTask, uxNewPriority)                                                     \
+  do                                                                                               \
+  {                                                                                                \
+    (void)(xTask);                                                                                 \
+    (void)(uxNewPriority);                                                                         \
+  } while (0)
+#define xTaskNotifyGive(xTaskToNotify) ((BaseType_t)((void)(xTaskToNotify), pdPASS))
 
 #endif  // FREERTOS_H

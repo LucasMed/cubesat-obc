@@ -103,6 +103,16 @@ extern "C"
    */
   void radiation_get_and_reset(rad_accumulator_t *acc);
 
+  /**
+   * @brief Alias for radiation_init.
+   */
+  bool radiation_driver_init(void);
+
+  /**
+   * @brief Return the current estimated dose.
+   */
+  float radiation_driver_read_dose(void);
+
 #ifdef __cplusplus
 }
 #endif

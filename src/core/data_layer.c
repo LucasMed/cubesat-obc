@@ -172,6 +172,23 @@ void data_layer_set_mag_avail(bool mag)
   dl_unlock();
 }
 
+void data_layer_write_radiation(float dose)
+{
+  dl_lock();
+  g_snapshot.state.radiation_dose = dose;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_write_payload_status(bool rail_enabled, uint16_t img_count)
+{
+  dl_lock();
+  g_snapshot.state.payload_rail_enabled = rail_enabled;
+  g_snapshot.state.image_count = img_count;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
 /* ------------------------------------------------------------------ */
 /* Write — flight-level state                                          */
 /* ------------------------------------------------------------------ */

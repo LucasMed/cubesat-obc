@@ -21,6 +21,7 @@
 #include "eps.h"
 #include "fault_manager.h"
 #include "health_monitor_task.h"
+#include "payload_task.h"
 #include "sensor_read_task.h"
 #include "system_state.h"
 #include "telemetry_task.h"
@@ -130,7 +131,7 @@ static void vStartupTask(void *pvParameters)
 #ifdef PICO_BUILD
   /* Task handles — Pico only; HWM printed in ALIVE loop. */
   static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
-  static TaskHandle_t h_cmd = NULL, h_health = NULL;
+  static TaskHandle_t h_cmd = NULL, h_health = NULL, h_payload = NULL;
   static TaskHandle_t h_led = NULL, h_hb = NULL;
   #define HPTR(h) (&(h))
 #else
@@ -167,6 +168,10 @@ static void vStartupTask(void *pvParameters)
   CHK(xTaskCreate(vHealthMonitorTask, "HealthMon", 2048, NULL, tskIDLE_PRIORITY + 1,
                   HPTR(h_health)),
       "HealthMon");
+
+  printf("  payload_task_init...\r\n");
+  fflush(stdout);
+  payload_task_init();
 
 #ifdef PICO_BUILD
   /* Link Health Monitor handle to Fault Manager for ISR-safe FDIR signaling */
@@ -209,6 +214,8 @@ static void vStartupTask(void *pvParameters)
            (unsigned long)uxTaskGetStackHighWaterMark(h_health),
            (unsigned long)uxTaskGetStackHighWaterMark(h_led),
            (unsigned long)uxTaskGetStackHighWaterMark(h_hb));
+    printf("  HWM Payload     =%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(xTaskGetHandle("PayloadTask")));
 #endif
     fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(5000));

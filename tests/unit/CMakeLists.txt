@@ -41,6 +41,17 @@ if(NOT PICO_BUILD)
     )
     add_test(NAME storage_manager_test COMMAND test_storage_manager)
 
+    add_executable(test_payload_manager
+        test_payload_manager.c
+        ../../src/drivers/payload/payload_manager.c
+    )
+    target_include_directories(test_payload_manager PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+        ${CMAKE_SOURCE_DIR}/config
+    )
+    add_test(NAME payload_manager_test COMMAND test_payload_manager)
+
     add_executable(test_pid
         test_pid.c
         ../../src/control/pid_controller.c

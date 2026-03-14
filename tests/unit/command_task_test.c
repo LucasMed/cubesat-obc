@@ -27,4 +27,14 @@ int mock_csp_conn_src(const csp_conn_t *conn);
 extern void vTaskDelay(uint32_t ticks);
 
 #define CSP_MOCK
+
+#include "payload_task.h"
+#undef xTaskGetHandle
+extern TaskHandle_t xTaskGetHandle(const char *pcName);
+
+#undef xTaskNotify
+#include "FreeRTOS.h"
+extern BaseType_t xTaskNotify_Stub(TaskHandle_t xTask, uint32_t ulValue, eNotifyAction eAction);
+#define xTaskNotify xTaskNotify_Stub
+
 #include "../../src/tasks/command_task.c"
