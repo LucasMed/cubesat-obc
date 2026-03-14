@@ -27,8 +27,8 @@ extern void tearDown(void);
     exit(1);                                                                                       \
   }
 #define TEST_ASSERT_FLOAT_WITHIN(d, e, a)
-#define TEST_ASSERT_GREATER_THAN(a, b)                                                             \
-  if (!((a) > (b)))                                                                                \
+#define TEST_ASSERT_GREATER_THAN(threshold, actual)                                                \
+  if (!((actual) > (threshold)))                                                                   \
   {                                                                                                \
     fprintf(stderr, "ASSERT GREATER FAIL at %s:%d\n", __FILE__, __LINE__);                         \
     exit(1);                                                                                       \
