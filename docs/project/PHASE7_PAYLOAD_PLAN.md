@@ -133,10 +133,10 @@ tests/integration/
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
-| T-7.2.1 | Create `include/rm3100.h`: API `rm3100_init()`, `rm3100_read()`, `rm3100_configCMM()` | SW | 1 h | ⏳ |
-| T-7.2.2 | Implement `src/drivers/payload/rm3100.c`: CMM config (CMXYZ register), DRDY poll, 3-axis read, nT conversion (×13 nT/count) via SPI0 | SW | 3 h | ⏳ |
-| T-7.2.3 | Unit tests `test_rm3100.c` (T-PLD-MAG-01..04): mock SPI; init correctness; read scaling; timeout handling | SW | 2 h | ⏳ |
-| T-7.2.4 | Hardware validation: read RM3100 on real Pico 2W; mag vector |measured| ≈ 40–60 µT at Bs.As. | HW | 2 h | ⏳ |
+| T-7.2.1 | Create `include/rm3100.h`: API `rm3100_init()`, `rm3100_read()`, `rm3100_configCMM()` | SW | 1 h | ✅ Done |
+| T-7.2.2 | Implement `src/drivers/payload/rm3100.c`: CMM config (CMXYZ register), DRDY poll, 3-axis read, nT conversion (×13 nT/count) via SPI0 | SW | 3 h | ✅ Done |
+| T-7.2.3 | Unit tests `test_rm3100.c` (T-PLD-MAG-01..04): mock SPI; init correctness; read scaling; timeout handling | SW | 2 h | ✅ Done |
+| T-7.2.4 | Hardware validation: read RM3100 on real Pico 2W; mag vector measurement | HW | 2 h | ⏳ |
 
 **Exit criteria**: T-PLD-MAG-01..04 pass on host build; hardware read within expected Earth-field range.
 
@@ -148,10 +148,10 @@ tests/integration/
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
-| T-7.3.1 | Create `include/radiation_driver.h`: API `radiation_init()`, `radiation_read()`, `radiation_reset()` | SW | 30 min | ⏳ |
-| T-7.3.2 | Implement `src/drivers/payload/radiation_driver.c`: ADC1 single channel read; dose accumulator struct; GPIO2 reset; basic calibration constant in `config.h` | SW | 2 h | ⏳ |
-| T-7.3.3 | Unit tests `test_radiation_driver.c` (T-PLD-RAD-01..02): mock ADC; dose conversion; saturation handling | SW | 1.5 h | ⏳ |
-| T-7.3.4 | Hardware validation: inject known voltage reference at GPIO27; verify reading within ±1% | HW | 1 h | ⏳ |
+| T-7.3.1 | Create `include/radiation_driver.h`: API `radiation_init()`, `radiation_read()`, `radiation_accumulate()` | SW | 30 min | ✅ Done |
+| T-7.3.2 | Implement `src/drivers/payload/radiation_driver.c`: ADC2 single channel read; dose accumulator struct; basic calibration constant | SW | 2 h | ✅ Done |
+| T-7.3.3 | Unit tests `test_radiation_driver.c` (T-PLD-RAD-01..02): mock ADC; dose conversion; saturation handling | SW | 1.5 h | ✅ Done |
+| T-7.3.4 | Hardware validation: inject known voltage reference at GPIO28; verify reading within ±1% | HW | 1 h | ⏳ |
 
 **Exit criteria**: T-PLD-RAD-01..02 pass on host build.
 
@@ -164,9 +164,9 @@ tests/integration/
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
 | T-7.4.1 | Select and receive Arducam OV2640 2MP SPI module; confirm SPI protocol and register map | HW | 1 week lead | ⏳ |
-| T-7.4.2 | Create `include/camera_driver.h`: API `camera_init()`, `camera_trigger_capture()`, `camera_readout_spi()` | SW | 1 h | ⏳ |
-| T-7.4.3 | Implement `src/drivers/payload/camera_driver.c`: shared SPI0 (GPIO16/18/19); CS GPIO14; trigger pulse GPIO9; interrupt GPIO10 | SW | 4 h | ⏳ |
-| T-7.4.4 | Unit tests (host mock SPI): trigger sequence; frame length bounds check | SW | 2 h | ⏳ |
+| T-7.4.2 | Create `include/camera_driver.h`: API `camera_init()`, `camera_trigger_capture()`, `camera_readout_spi()` | SW | 1 h | ✅ Done |
+| T-7.4.3 | Implement `src/drivers/payload/camera_driver.c`: shared SPI0 (GPIO16/18/19); CS GPIO14; trigger pulse GPIO9; interrupt GPIO10 | SW | 4 h | ✅ Done |
+| T-7.4.4 | Unit tests (host mock SPI): trigger sequence; frame length bounds check | SW | 2 h | ✅ Done |
 | T-7.4.5 | Hardware validation: capture JPEG on Pico 2W; verify size 50–500 KB; no SPI errors | HW | 3 h | ⏳ |
 
 **Exit criteria**: JPEG image captured, stored, size within spec, no SPI errors on hardware.
