@@ -3,6 +3,10 @@ set(DRIVER_SOURCES
     mag/hmc5883l.c
     payload/rm3100.c
     payload/spi_payload.c
+    payload/camera_driver.c
+    payload/sd_spi.c
+    payload/diskio.c
+    payload/storage_manager.c
 )
 
 if(PICO_BUILD)

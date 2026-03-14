@@ -179,8 +179,8 @@ tests/integration/
 
 | Task | Description | Owner | Estimate | Status |
 |------|-------------|-------|----------|--------|
-| T-7.5.1 | Update `config/pico_pins.h`: `RW_MOTOR3_PIN` GPIO10 → GPIO3; `CAM_FIFO_RDY` = 10 | SW | 30 min | ⏳ |
-| T-7.5.2 | Update `src/actuators/reaction_wheel.c` / CMakeLists if hardcoded GPIO | SW | 30 min | ⏳ |
+| T-7.5.1 | Update `config/pico_pins.h`: `RW_MOTOR3_PIN` GPIO10 → GPIO29; `CAM_FIFO_RDY` = 10 | SW | 30 min | ✅ Done |
+| T-7.5.2 | Update `src/actuators/reaction_wheel.c` / CMakeLists if hardcoded GPIO | SW | 30 min | ✅ Done |
 | T-7.5.3 | Verify PWM slice: GPIO3 → PWM1B (RP2350 datasheet confirmation) | HW | 30 min | ⏳ |
 | T-7.5.4 | PCB trace change on proto board or flying-wire on breadboard | HW | 1 h | ⏳ |
 | T-7.5.5 | Regression: RW3 PWM waveform correct on oscilloscope after move | HW | 30 min | ⏳ |

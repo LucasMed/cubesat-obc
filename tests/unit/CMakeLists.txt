@@ -31,6 +31,16 @@ if(NOT PICO_BUILD)
     )
     add_test(NAME camera_driver_test COMMAND test_camera_driver)
 
+    add_executable(test_storage_manager
+        test_storage_manager.c
+        ../../src/drivers/payload/storage_manager.c
+    )
+    target_include_directories(test_storage_manager PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME storage_manager_test COMMAND test_storage_manager)
+
     add_executable(test_pid
         test_pid.c
         ../../src/control/pid_controller.c
