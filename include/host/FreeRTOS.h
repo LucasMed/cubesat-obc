@@ -101,20 +101,8 @@ static inline BaseType_t xTaskNotifyFromISR_Mock(TaskHandle_t xTaskToNotify, uin
   return pdPASS;
 }
 
-static inline BaseType_t xTaskNotifyWait_Mock(uint32_t ulBitsToClearOnEntry,
-                                              uint32_t ulBitsToClearOnExit,
-                                              uint32_t *pulNotificationValue,
-                                              TickType_t xTicksToWait)
-{
-  (void)ulBitsToClearOnEntry;
-  (void)ulBitsToClearOnExit;
-  (void)xTicksToWait;
-  if (pulNotificationValue != NULL)
-  {
-    *pulNotificationValue = 0;
-  }
-  return pdPASS;
-}
+BaseType_t xTaskNotifyWait_Mock(uint32_t ulBitsToClearOnEntry, uint32_t ulBitsToClearOnExit,
+                                uint32_t *pulNotificationValue, TickType_t xTicksToWait);
 
 #define xTaskNotifyFromISR(xTaskToNotify, ulValue, eAction, pxHigherPriorityTaskWoken)             \
   xTaskNotifyFromISR_Mock(xTaskToNotify, ulValue, eAction, pxHigherPriorityTaskWoken)

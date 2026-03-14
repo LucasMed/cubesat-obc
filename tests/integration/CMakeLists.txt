@@ -23,6 +23,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_fault_safe PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -44,12 +45,30 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_safe_trigger PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
     target_link_libraries(test_safe_trigger m)
     add_test(NAME safe_trigger_test COMMAND test_safe_trigger)
+    
+    # WP-7.8: Payload Integration Test
+    add_executable(test_payload_integration
+        test_payload_integration.c
+        ../../src/tasks/payload_task.c
+        ../../src/drivers/payload/payload_manager.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_payload_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    target_link_libraries(test_payload_integration m)
+    add_test(NAME payload_integration_test COMMAND test_payload_integration)
 
 else()
     # Pico hardware integration tests

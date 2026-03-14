@@ -256,6 +256,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_health_monitor_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -291,6 +292,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_watchdog m)
