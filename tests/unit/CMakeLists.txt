@@ -20,6 +20,17 @@ if(NOT PICO_BUILD)
     )
     add_test(NAME radiation_driver_test COMMAND test_radiation_driver)
 
+    add_executable(test_camera_driver
+        test_camera_driver.c
+        ../../src/drivers/payload/camera_driver.c
+        ../../src/drivers/payload/spi_payload.c
+    )
+    target_include_directories(test_camera_driver PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME camera_driver_test COMMAND test_camera_driver)
+
     add_executable(test_pid
         test_pid.c
         ../../src/control/pid_controller.c

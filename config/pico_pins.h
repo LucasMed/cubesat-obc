@@ -47,14 +47,17 @@
 #define PICO_PINS_H
 
 /* ======================================================================
- * I2C Pin Definitions
+ * I2C Pin Definitions — Shared Register Bus (I2C1)
  * ====================================================================== */
 
-/** I2C0 Bus (reserved — currently unused, kept for sensor expansion) */
-#define I2C0_PORT    i2c0
-#define I2C0_SDA_PIN 2
-#define I2C0_SCL_PIN 3
-#define I2C0_SPEED_HZ 400000
+/** 
+ * I2C1 Bus is shared by MPU6050 IMU and OV2640 Camera registers.
+ * RP2350 I2C1: GPIO2 (SDA), GPIO3 (SCL)
+ */
+#define I2C1_PORT    i2c1
+#define I2C1_SDA_PIN 2
+#define I2C1_SCL_PIN 3
+#define I2C1_SPEED_HZ 400000
 
 /* ======================================================================
  * SPI Pin Definitions — Shared Payload Bus (SPI0)
@@ -120,12 +123,12 @@
  * ====================================================================== */
 
 /**
- * RP2350 PWM.  RW3 was moved from GPIO10 to GPIO3 to free GPIO10
- * for the CAM_FIFO_RDY interrupt (ICD Phase 7, WP-7.5).
+ * RP2350 PWM.  RW3 was moved to GPIO29 to free GPIO3
+ * for the I2C SCL bus (ICD Phase 7, WP-7.4).
  */
 #define RW_MOTOR1_PIN 8   /**< PWM4A */
 #define RW_MOTOR2_PIN 9   /**< PWM4B */
-#define RW_MOTOR3_PIN 3   /**< PWM1B — moved from GPIO10 */
+#define RW_MOTOR3_PIN 29  /**< PWM6B — moved from GPIO3 */
 
 /* ======================================================================
  * Magnetorquer PWM/GPIO Outputs
@@ -148,7 +151,7 @@
 
 /** MPU6050 — standard address (AD0 = GND) */
 #define MPU6050_I2C_ADDR 0x68
-#define MPU6050_I2C_PORT I2C0_PORT
+#define MPU6050_I2C_PORT I2C1_PORT
 
 /* ======================================================================
  * ADC Channel Pins
