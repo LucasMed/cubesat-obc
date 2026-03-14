@@ -4,7 +4,9 @@
  */
 
 #include "ff.h"
+// clang-format off
 #include "diskio.h"
+// clang-format on
 
 #include "sd_spi.h"
 
