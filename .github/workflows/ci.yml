@@ -47,14 +47,14 @@ jobs:
           echo "FATFS_INCLUDE=$FATFS_INCLUDE"
           ls -l $FATFS_INCLUDE/ff.h || echo "ERROR: ff.h not found"
 
-      - name: Static analysis
-        run: bash scripts/static_analysis.sh
-      
       - name: Debug submodules
         run: |
           git submodule status --recursive | head -40
-          ls third_party/ || echo "third_party/ vacío"
-          ls third_party/pico-sdk/ 2>/dev/null || echo "pico-sdk no clonado"
-          ls third_party/pico-sdk/lib/ 2>/dev/null || echo "pico-sdk/lib vacío"
-          ls third_party/pico-sdk/lib/tinyusb/ 2>/dev/null || echo "tinyusb no clonado"
+          ls third_party/ || echo "third_party/ empty"
+          ls third_party/pico-sdk/ 2>/dev/null || echo "pico-sdk not cloned"
+          ls third_party/pico-sdk/lib/ 2>/dev/null || echo "pico-sdk/lib empty"
+          ls third_party/pico-sdk/lib/tinyusb/ 2>/dev/null || echo "tinyusb not cloned"
+
+      - name: Static analysis
+        run: bash scripts/static_analysis.sh
 
