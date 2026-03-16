@@ -1,3 +1,7 @@
+# Forzar include global de FatFs si la variable de entorno está definida (útil para clang-tidy/CI)
+if(DEFINED ENV{FATFS_INCLUDE})
+    include_directories($ENV{FATFS_INCLUDE})
+endif()
 set(DRIVER_SOURCES
     imu/mpu6050.c
     mag/hmc5883l.c
