@@ -95,7 +95,12 @@ if [[ -n "$CLANG_TIDY" ]]; then
   TIDY_FAIL=0
   C_FILES=$(find src -name '*.c' | grep -v third_party | grep -v '/pico_' | sort)
   for f in $C_FILES; do
-    RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)
+    # Add FatFs include path for diskio.c
+    if [[ "$f" == *"payload/diskio.c"* ]]; then
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$REPO_ROOT/pico-sdk/lib/tinyusb/lib/fatfs/source 2>&1 || true)
+    else
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)
+    fi
     if echo "$RESULT" | grep -q "warning:\|error:"; then
       echo "$RESULT"
       TIDY_FAIL=1

@@ -8,7 +8,6 @@ set(DRIVER_SOURCES
     payload/sd_spi.c
     payload/storage_manager.c
     payload/payload_manager.c
-    payload/diskio.c
 )
 
 if(PICO_BUILD)
@@ -16,6 +15,7 @@ if(PICO_BUILD)
         i2c/pico_i2c.c
         temperature/pico_temp.c
         uart/pico_usart.c
+        payload/diskio.c
         ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c
         ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c
         ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c
