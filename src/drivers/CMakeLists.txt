@@ -21,7 +21,7 @@ if(PICO_BUILD)
     list(APPEND DRIVER_SOURCES 
         i2c/pico_i2c.c
         temperature/pico_temp.c
-        uart/pico_usart.c        # payload/pico_spi.c  # Comentado: no existe el archivo
+        uart/pico_usart.c
         payload/sd_spi.c
     )
 else()
