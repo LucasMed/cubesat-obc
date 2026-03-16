@@ -13,7 +13,7 @@ jobs:
       FATFS_INCLUDE: ${{ github.workspace }}/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
@@ -49,4 +49,12 @@ jobs:
 
       - name: Static analysis
         run: bash scripts/static_analysis.sh
+      
+      - name: Debug submodules
+        run: |
+          git submodule status --recursive | head -40
+          ls third_party/ || echo "third_party/ vacío"
+          ls third_party/pico-sdk/ 2>/dev/null || echo "pico-sdk no clonado"
+          ls third_party/pico-sdk/lib/ 2>/dev/null || echo "pico-sdk/lib vacío"
+          ls third_party/pico-sdk/lib/tinyusb/ 2>/dev/null || echo "tinyusb no clonado"
 
