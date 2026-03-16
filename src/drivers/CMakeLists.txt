@@ -33,7 +33,7 @@ else()
         i2c/host_i2c.c
         temperature/host_temp.c
     )
-    # Agregar stubs globales de SPI/GPIO solo en host
+
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)
     list(APPEND DRIVER_SOURCES payload/host_sd_spi_stubs.c)
     # When building on macOS we also need a tiny stub for the CSP USART
@@ -55,11 +55,14 @@ target_include_directories(drivers_lib PRIVATE
     ${CMAKE_BINARY_DIR}/third_party/libcsp/include
 )
 
-# Incluir FatFs en ambos perfiles para facilitar análisis estático y pruebas host
-# SPI hardware sólo para embedded; FatFs siempre
-    target_include_directories(drivers_lib PRIVATE
-        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source
-    )
+target_include_directories(drivers_lib PRIVATE
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source
+)
+
+if(DEFINED ENV{FATFS_INCLUDE})
+    target_include_directories(drivers_lib PRIVATE $ENV{FATFS_INCLUDE})
+endif()
+
 if(PICO_BUILD)
     target_include_directories(drivers_lib PRIVATE
         ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
