@@ -10,15 +10,19 @@ set(DRIVER_SOURCES
     payload/payload_manager.c
 )
 
+# FatFs sources should be present in both embedded and host for static analysis and testability
+list(APPEND DRIVER_SOURCES 
+    payload/diskio.c
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c
+    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c
+)
+
 if(PICO_BUILD)
     list(APPEND DRIVER_SOURCES 
         i2c/pico_i2c.c
         temperature/pico_temp.c
         uart/pico_usart.c
-        payload/diskio.c
-        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c
-        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c
-        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
@@ -27,6 +31,7 @@ else()
     )
     # Agregar stubs globales de SPI/GPIO solo en host
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)
+    list(APPEND DRIVER_SOURCES payload/host_sd_spi_stubs.c)
     # When building on macOS we also need a tiny stub for the CSP USART
     # API.  The real Linux driver is disabled in the third-party library,
     # so without this the host firmware would fail to link.
@@ -34,6 +39,7 @@ else()
         list(APPEND DRIVER_SOURCES csp_macos_stub.c)
     endif()
 endif()
+
 
 add_library(drivers_lib ${DRIVER_SOURCES})
 
@@ -45,18 +51,17 @@ target_include_directories(drivers_lib PRIVATE
     ${CMAKE_BINARY_DIR}/third_party/libcsp/include
 )
 
-if(PICO_BUILD)
+# Incluir FatFs en ambos perfiles para facilitar análisis estático y pruebas host
+# SPI hardware sólo para embedded; FatFs siempre
     target_include_directories(drivers_lib PRIVATE
         ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source
+    )
+if(PICO_BUILD)
+    target_include_directories(drivers_lib PRIVATE
         ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
     )
 endif()
 
-if(PICO_BUILD)
-    target_include_directories(drivers_lib PRIVATE
-        ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
-    )
-endif()
 
 if(PICO_BUILD)
     target_link_libraries(drivers_lib PUBLIC 
