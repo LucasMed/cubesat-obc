@@ -43,8 +43,14 @@ target_include_directories(drivers_lib PRIVATE
     ${CMAKE_SOURCE_DIR}/config
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
     ${CMAKE_BINARY_DIR}/third_party/libcsp/include
-    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source
 )
+
+if(PICO_BUILD)
+    target_include_directories(drivers_lib PRIVATE
+        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source
+        ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
+    )
+endif()
 
 if(PICO_BUILD)
     target_include_directories(drivers_lib PRIVATE
