@@ -8,7 +8,6 @@ build_emu_ci/
 build_pico/
 build_emu/
 build_blink*/
-pico-sdk/
 cmake-build-*/
 out/
 *.o
