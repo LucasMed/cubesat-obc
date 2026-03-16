@@ -45,3 +45,6 @@ jobs:
           export FATFS_INCLUDE=$GITHUB_WORKSPACE/pico-sdk/lib/tinyusb/lib/fatfs/source
           bash scripts/static_analysis.sh
 
+      - name: List FatFs files
+        run: ls -l pico-sdk/lib/tinyusb/lib/fatfs/source || echo "Not found"
+
