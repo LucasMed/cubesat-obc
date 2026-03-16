@@ -10,12 +10,16 @@ set(DRIVER_SOURCES
 )
 
 # FatFs sources should be present in both embedded and host for static analysis and testability
-list(APPEND DRIVER_SOURCES 
-    payload/diskio.c
-    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c
-    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c
-    ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c
-)
+if(EXISTS "${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c" AND
+   EXISTS "${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c" AND
+   EXISTS "${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c")
+    list(APPEND DRIVER_SOURCES 
+        payload/diskio.c
+        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ff.c
+        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffsystem.c
+        ${CMAKE_SOURCE_DIR}/pico-sdk/lib/tinyusb/lib/fatfs/source/ffunicode.c
+    )
+endif()
 
 if(PICO_BUILD)
     list(APPEND DRIVER_SOURCES 
