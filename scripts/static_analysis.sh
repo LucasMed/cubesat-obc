@@ -97,7 +97,8 @@ if [[ -n "$CLANG_TIDY" ]]; then
   for f in $C_FILES; do
     # Add FatFs include path for diskio.c
     if [[ "$f" == *"payload/diskio.c"* ]]; then
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$REPO_ROOT/pico-sdk/lib/tinyusb/lib/fatfs/source 2>&1 || true)
+      FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/pico-sdk/lib/tinyusb/lib/fatfs/source}"
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$FATFS_INCLUDE_PATH 2>&1 || true)
     else
       RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)
     fi

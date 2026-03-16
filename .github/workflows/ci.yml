@@ -41,5 +41,7 @@ jobs:
         run: cd build && ctest --output-on-failure
 
       - name: Static analysis
-        run: bash scripts/static_analysis.sh
+        run: |
+          export FATFS_INCLUDE=$GITHUB_WORKSPACE/pico-sdk/lib/tinyusb/lib/fatfs/source
+          bash scripts/static_analysis.sh
 
