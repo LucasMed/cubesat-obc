@@ -5,7 +5,6 @@ set(DRIVER_SOURCES
     payload/spi_payload.c
     payload/camera_driver.c
     payload/radiation_driver.c
-    payload/sd_spi.c
     payload/storage_manager.c
     payload/payload_manager.c
 )
@@ -22,7 +21,8 @@ if(PICO_BUILD)
     list(APPEND DRIVER_SOURCES 
         i2c/pico_i2c.c
         temperature/pico_temp.c
-        uart/pico_usart.c
+        uart/pico_usart.c        # payload/pico_spi.c  # Comentado: no existe el archivo
+        payload/sd_spi.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
