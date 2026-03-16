@@ -87,6 +87,7 @@ if [[ -n "$CLANG_TIDY" ]]; then
   COMPILE_CMDS="$BUILD_DIR/compile_commands.json"
   if [[ ! -f "$COMPILE_CMDS" ]]; then
     info "  Generating compile_commands.json..."
+    FATFS_INCLUDE="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}" \
     cmake -S "$REPO_ROOT" -B "$BUILD_DIR" \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPICO_ENABLED=OFF \
           -Wno-dev
@@ -97,7 +98,7 @@ if [[ -n "$CLANG_TIDY" ]]; then
   for f in $C_FILES; do
     # Add FatFs include path for diskio.c
     if [[ "$f" == *"payload/diskio.c"* ]]; then
-      FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/pico-sdk/lib/tinyusb/lib/fatfs/source}"
+      FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}"
       RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$FATFS_INCLUDE_PATH 2>&1 || true)
     else
       RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)

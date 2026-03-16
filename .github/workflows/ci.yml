@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      FATFS_INCLUDE: ${{ github.workspace }}/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v6
@@ -40,11 +42,11 @@ jobs:
       - name: Run tests
         run: cd build && ctest --output-on-failure
 
-      - name: Static analysis
-        run: |
-          export FATFS_INCLUDE=$GITHUB_WORKSPACE/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
-          bash scripts/static_analysis.sh
-
       - name: List FatFs files
-        run: ls -l third_party/pico-sdk/lib/tinyusb/lib/fatfs/source || echo "Not found"
+        run: |
+          echo "FATFS_INCLUDE=$FATFS_INCLUDE"
+          ls -l $FATFS_INCLUDE/ff.h || echo "ERROR: ff.h not found"
+
+      - name: Static analysis
+        run: bash scripts/static_analysis.sh
 
