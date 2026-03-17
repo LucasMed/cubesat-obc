@@ -5,8 +5,7 @@
 #ifndef GPS_STUB_H
 #define GPS_STUB_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "gps_driver.h"
 
 typedef enum
 {
@@ -17,35 +16,6 @@ typedef enum
   GPS_MOCK_FAULT_NO_FIX,         // Valid stream, but no GPS fix
   GPS_MOCK_FAULT_STALE_DATA      // Fix present, but timestamp is old
 } GpsMockMode_t;
-
-typedef struct
-{
-  float lat;
-  float lon;
-  float alt_m;
-  uint32_t utc_time;
-  bool valid;
-  uint32_t timestamp_ms;
-  uint8_t satellites_in_view;
-} GpsFix_t;
-
-// Initialize the GPS stub driver (simulate UART initialization)
-bool gps_init(void);
-
-// De-initialize/reset the GPS stub driver
-void gps_deinit(void);
-
-// Return a simulated GPS fix. Will reflect injected or configured state.
-GpsFix_t *gps_read_fix(void);
-
-// Return last stored simulated GPS fix.
-GpsFix_t *gps_get_last_fix(void);
-
-// Return true if fix is valid (not stale/expired)
-bool gps_is_fix_valid(void);
-
-// Return simulated satellite count
-uint8_t gps_get_satellites_in_view(void);
 
 // Inject custom fix data for simulation
 void gps_mock_set_data(const GpsFix_t *fix);

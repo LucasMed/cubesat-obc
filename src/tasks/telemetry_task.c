@@ -59,6 +59,7 @@ void vTelemetryTask_Step(void)
   }
   tlm->flags |= (uint8_t)((snap.energy & 0x03u) << TLM_FLAG_ENERGY_SHIFT);
 
+
   /* Full ADCS telemetry only when not in FM_SAFE.
    * In FM_SAFE send minimal HK: temperature retained, attitude/rates zeroed. */
   if (snap.mode != FM_SAFE)
@@ -81,6 +82,13 @@ void vTelemetryTask_Step(void)
     tlm->rates[2] = 0.0f;
     tlm->temp = snap.state.temp; /* preserve HK temperature */
   }
+
+  /* GPS fields */
+  tlm->gps_lat = snap.gps_fix.lat;
+  tlm->gps_lon = snap.gps_fix.lon;
+  tlm->gps_alt_m = snap.gps_fix.alt_m;
+  tlm->gps_utc_s = snap.gps_fix.utc_time;
+  tlm->gps_valid = snap.gps_fix.valid ? 1 : 0;
 
   packet->length = sizeof(csp_telemetry_packet_t);
 

@@ -393,7 +393,11 @@ if(NOT PICO_BUILD)
     add_executable(test_gps
         test_gps.c
         ../../src/mocks/gps_stub.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
     )
+    target_link_libraries(test_gps m)
     target_include_directories(test_gps PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
         ${CMAKE_SOURCE_DIR}

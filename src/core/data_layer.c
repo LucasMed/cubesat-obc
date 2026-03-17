@@ -11,6 +11,7 @@
 
 #include "data_layer.h"
 
+#include "gps_driver.h"
 #include "system_state.h"
 
 #include <string.h>
@@ -235,4 +236,23 @@ uint32_t data_layer_get_seq(void)
   uint32_t s = g_snapshot.seq;
   dl_unlock();
   return s;
+}
+
+void data_layer_set_gps_fix(const GpsFix_t *fix)
+{
+  if (!fix)
+    return;
+  dl_lock();
+  g_snapshot.gps_fix = *fix;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_get_gps_fix(GpsFix_t *out)
+{
+  if (!out)
+    return;
+  dl_lock();
+  *out = g_snapshot.gps_fix;
+  dl_unlock();
 }

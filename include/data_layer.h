@@ -26,6 +26,7 @@
 
 #include "eps.h"
 #include "flight_mode.h"
+#include "gps_driver.h"
 #include "system_state.h"
 
 #include <stdbool.h>
@@ -53,10 +54,22 @@ extern "C"
                             *   temperature (°C), validity flags             */
     flight_mode_t mode;    /**< Current flight mode (from FMM)               */
     energy_state_t energy; /**< Current energy state (from EPS monitor)      */
+    GpsFix_t gps_fix;      /**< Last GPS fix (lat, lon, alt, utc, valid)    */
     uint32_t seq;          /**< Write sequence counter.  Incremented on every
                             *   successful write call.  Readers can detect
                             *   stale copies by comparing seq values.         */
   } dl_snapshot_t;
+  /**
+   * @brief Update the GPS fix in the shared snapshot.
+   * @param fix Pointer to GpsFix_t struct (must not be NULL)
+   */
+  void data_layer_set_gps_fix(const GpsFix_t *fix);
+
+  /**
+   * @brief Get the last GPS fix from the shared snapshot.
+   * @param out Pointer to GpsFix_t struct to fill (must not be NULL)
+   */
+  void data_layer_get_gps_fix(GpsFix_t *out);
 
   /* ------------------------------------------------------------------ */
   /* Initialisation                                                      */

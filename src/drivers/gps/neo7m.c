@@ -1,3 +1,7 @@
+#ifdef PICO_BUILD
+#include "hardware/rtc.h"
+#include "pico/util/datetime.h"
+#endif
 // neo7m.c -- GPS NEO-7M/6M NMEA driver implementation
 // All comments in English, see WP-7.10
 
@@ -117,6 +121,60 @@ static bool nmea_get_sentence(char *dest, size_t maxlen)
 
 // Validate and parse NMEA checksum
 static bool nmea_verify_checksum(const char *sentence)
+// Helper: parse GPRMC and set RTC if valid
+#ifdef PICO_BUILD
+static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
+{
+  // Example: $GPRMC,235947.00,A,3723.2475,N,12202.3246,W,0.13,309.62,120598,,,A*10
+  char buf[128];
+  strncpy(buf, sentence, sizeof(buf));
+  buf[sizeof(buf) - 1] = 0;
+  char *tok = buf;
+  char *fields[13] = {0};
+  int field = 0;
+  for (field = 0; field < 13; field++)
+  {
+    fields[field] = strsep(&tok, ",");
+    if (!fields[field]) break;
+  }
+  if (field < 10) return;
+  // fields[2] = 'A' (data valid)
+  if (fields[2] && fields[2][0] == 'A') {
+    // fields[1]: UTC time (hhmmss.sss)
+    // fields[9]: date (ddmmyy)
+    int h=0, m=0, s=0, day=0, mon=0, year=0;
+    char *endptr = NULL;
+    if (fields[1]) {
+      char hh[3]={0}, mm[3]={0}, ss[3]={0};
+      strncpy(hh, fields[1], 2);
+      strncpy(mm, fields[1]+2, 2);
+      strncpy(ss, fields[1]+4, 2);
+      h = (int)strtol(hh, &endptr, 10);
+      m = (int)strtol(mm, &endptr, 10);
+      s = (int)strtol(ss, &endptr, 10);
+    }
+    if (fields[9]) {
+      char dd[3]={0}, MM[3]={0}, yy[3]={0};
+      strncpy(dd, fields[9], 2);
+      strncpy(MM, fields[9]+2, 2);
+      strncpy(yy, fields[9]+4, 2);
+      day = (int)strtol(dd, &endptr, 10);
+      mon = (int)strtol(MM, &endptr, 10);
+      year = (int)strtol(yy, &endptr, 10) + 2000;
+    }
+    datetime_t dt = {
+      .year = (int16_t)year,
+      .month = (int8_t)mon,
+      .day = (int8_t)day,
+      .dotw = 0, // Not used
+      .hour = (int8_t)h,
+      .min = (int8_t)m,
+      .sec = (int8_t)s
+    };
+    rtc_set_datetime(&dt);
+  }
+}
+#endif
 {
   if (!sentence || sentence[0] != '$')
   {
@@ -295,7 +353,12 @@ GpsFix_t *gps_read_fix(void)
       nmea_parse_gga(line);
       break;
     }
-    // Future: handle GPRMC, etc.
+#ifdef PICO_BUILD
+    if (strncmp(line + 1, "GPRMC", 5) == 0)
+    {
+      nmea_parse_gprmc_and_sync_rtc(line);
+    }
+#endif
   }
   return &g_last_fix;
 }

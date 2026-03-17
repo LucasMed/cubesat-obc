@@ -1,3 +1,5 @@
+#define FAULT_GPS_TIMEOUT (FAULT_SUBSYS_SENSOR | 0x10u) /**< GPS UART0 silent > 10s */
+#define FAULT_GPS_PARSE_ERR (FAULT_SUBSYS_SENSOR | 0x11u) /**< GPS NMEA parse error */
 /**
  * @file fault_ids.h
  * @brief Fault identifier catalogue.

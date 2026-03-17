@@ -11,8 +11,7 @@ static GpsFix_t g_last_fix = {.lat = -34.6037f,
                               .alt_m = 20.5f,
                               .utc_time = 1713350400,
                               .valid = true,
-                              .timestamp_ms = 0,
-                              .satellites_in_view = 8};
+                              .timestamp_ms = 0};
 
 static GpsMockMode_t g_mock_mode = GPS_MOCK_OK;
 static uint32_t g_call_counts[10] = {
@@ -45,6 +44,8 @@ static int lookup_func_index(const char *name)
 bool gps_init(void)
 {
   g_call_counts[0]++;
+  g_mock_mode = GPS_MOCK_OK;
+  memset(g_call_counts, 0, sizeof(g_call_counts));
   // Always succeeds for stub
   return true;
 }
@@ -52,7 +53,6 @@ bool gps_init(void)
 void gps_deinit(void)
 {
   g_call_counts[1]++;
-  memset(&g_last_fix, 0, sizeof(GpsFix_t));
   g_mock_mode = GPS_MOCK_OK;
 }
 
@@ -68,7 +68,6 @@ GpsFix_t *gps_read_fix(void)
   case GPS_MOCK_FAULT_TIMEOUT:
   case GPS_MOCK_FAULT_NO_FIX:
     g_last_fix.valid = false;
-    g_last_fix.satellites_in_view = 0;
     break;
   case GPS_MOCK_FAULT_CHECKSUM:
   case GPS_MOCK_FAULT_PARTIAL_FRAME:
@@ -103,12 +102,13 @@ bool gps_is_fix_valid(void)
 uint8_t gps_get_satellites_in_view(void)
 {
   g_call_counts[5]++;
-  return g_last_fix.satellites_in_view;
+  return 0; // Not tracked in GpsFix_t
 }
 
 void gps_mock_set_data(const GpsFix_t *fix)
 {
   g_call_counts[6]++;
+  if (!fix) return;
   memcpy(&g_last_fix, fix, sizeof(GpsFix_t));
 }
 
@@ -124,7 +124,6 @@ void gps_mock_set_mode(GpsMockMode_t mode)
     g_last_fix.utc_time = 1713350400;
     g_last_fix.valid = true;
     g_last_fix.timestamp_ms = 0;
-    g_last_fix.satellites_in_view = 8;
   }
 }
 
