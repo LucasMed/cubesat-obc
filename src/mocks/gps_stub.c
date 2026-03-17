@@ -1,9 +1,9 @@
 // gps_stub.c -- Implementation of GPS stub driver for tests
-// All comments in English
 #include "gps_stub.h"
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 static GpsFix_t g_last_fix = {.lat = -34.6037f,
@@ -59,15 +59,13 @@ void gps_deinit(void)
 GpsFix_t *gps_read_fix(void)
 {
   g_call_counts[2]++;
-  // Return fix depending on mock mode
+  // Only update fields if not in OK mode (so test can manipulate struct directly)
   switch (g_mock_mode)
   {
   case GPS_MOCK_OK:
-    g_last_fix.valid = true;
+    // Do not overwrite fields, allow test to set them directly
     break;
   case GPS_MOCK_FAULT_TIMEOUT:
-    g_last_fix.valid = false;
-    break;
   case GPS_MOCK_FAULT_NO_FIX:
     g_last_fix.valid = false;
     g_last_fix.satellites_in_view = 0;
@@ -78,6 +76,8 @@ GpsFix_t *gps_read_fix(void)
     g_last_fix.valid = false;
     break;
   }
+  printf("[gps_read_fix] mode=%d, valid=%d, timestamp_ms=%u\n", g_mock_mode, g_last_fix.valid,
+         g_last_fix.timestamp_ms);
   return &g_last_fix;
 }
 
@@ -90,8 +90,10 @@ GpsFix_t *gps_get_last_fix(void)
 bool gps_is_fix_valid(void)
 {
   g_call_counts[4]++;
-  // Simple stale logic for example: timestamp_ms < 5000 is valid
-  if (g_mock_mode == GPS_MOCK_FAULT_STALE_DATA || g_last_fix.timestamp_ms >= 5000)
+  printf("[gps_is_fix_valid] valid=%d, timestamp_ms=%u\n", g_last_fix.valid,
+         g_last_fix.timestamp_ms);
+  // Only stale if timestamp_ms >= 5000
+  if (g_last_fix.timestamp_ms >= 5000)
   {
     return false;
   }
@@ -114,6 +116,16 @@ void gps_mock_set_mode(GpsMockMode_t mode)
 {
   g_call_counts[7]++;
   g_mock_mode = mode;
+  if (mode == GPS_MOCK_OK)
+  {
+    g_last_fix.lat = -34.6037f;
+    g_last_fix.lon = -58.3816f;
+    g_last_fix.alt_m = 20.5f;
+    g_last_fix.utc_time = 1713350400;
+    g_last_fix.valid = true;
+    g_last_fix.timestamp_ms = 0;
+    g_last_fix.satellites_in_view = 8;
+  }
 }
 
 uint32_t gps_mock_get_call_count(const char *func_name)
