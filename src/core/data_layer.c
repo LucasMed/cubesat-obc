@@ -241,7 +241,9 @@ uint32_t data_layer_get_seq(void)
 void data_layer_set_gps_fix(const GpsFix_t *fix)
 {
   if (!fix)
+  {
     return;
+  }
   dl_lock();
   g_snapshot.gps_fix = *fix;
   g_snapshot.seq++;
@@ -251,7 +253,9 @@ void data_layer_set_gps_fix(const GpsFix_t *fix)
 void data_layer_get_gps_fix(GpsFix_t *out)
 {
   if (!out)
+  {
     return;
+  }
   dl_lock();
   *out = g_snapshot.gps_fix;
   dl_unlock();

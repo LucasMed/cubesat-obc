@@ -59,7 +59,6 @@ void vTelemetryTask_Step(void)
   }
   tlm->flags |= (uint8_t)((snap.energy & 0x03u) << TLM_FLAG_ENERGY_SHIFT);
 
-
   /* Full ADCS telemetry only when not in FM_SAFE.
    * In FM_SAFE send minimal HK: temperature retained, attitude/rates zeroed. */
   if (snap.mode != FM_SAFE)

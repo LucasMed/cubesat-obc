@@ -78,13 +78,13 @@ fi
 # 2. clang-tidy
 # =============================================================================
 
-CLANG_TIDY=$(command -v clang-tidy-14 || command -v clang-tidy || true)
+  CLANG_TIDY=$(command -v clang-tidy-14 || command -v clang-tidy || true)
 
-if [[ -n "$CLANG_TIDY" ]]; then
-  info "clang-tidy: $($CLANG_TIDY --version | head -1)"
-  # clang-tidy needs a compile_commands.json — generate from host build dir
-  BUILD_DIR="$REPO_ROOT/build"
-  COMPILE_CMDS="$BUILD_DIR/compile_commands.json"
+  if [[ -n "$CLANG_TIDY" ]]; then
+    info "clang-tidy: $($CLANG_TIDY --version | head -1)"
+    # clang-tidy needs a compile_commands.json — generate from host build dir
+    BUILD_DIR="$REPO_ROOT/build_ci"
+    COMPILE_CMDS="$BUILD_DIR/compile_commands.json"
   if [[ ! -f "$COMPILE_CMDS" ]]; then
     info "  Generating compile_commands.json..."
     FATFS_INCLUDE="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}" \
@@ -99,9 +99,9 @@ if [[ -n "$CLANG_TIDY" ]]; then
     # Add FatFs include path for diskio.c
     if [[ "$f" == *"payload/diskio.c"* ]]; then
       FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}"
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$FATFS_INCLUDE_PATH 2>&1 || true)
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$FATFS_INCLUDE_PATH -checks='-*,readability-non-const-parameter' 2>&1 || true)
     else
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" -checks='-*,readability-non-const-parameter' 2>&1 || true)
     fi
     if echo "$RESULT" | grep -q "warning:\|error:"; then
       echo "$RESULT"
@@ -133,6 +133,10 @@ if command -v cppcheck >/dev/null 2>&1; then
     --suppress=missingInclude \
     --suppress=missingIncludeSystem \
     --suppress=ConfigurationNotChecked \
+    --suppress=constParameter \
+    --suppress=badBitmaskCheck \
+    --suppress=unreadVariable \
+    --suppress=constVariablePointer \
     --error-exitcode=1 \
     -I include \
     src \

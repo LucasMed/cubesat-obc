@@ -43,9 +43,9 @@ static int lookup_func_index(const char *name)
 
 bool gps_init(void)
 {
-  g_call_counts[0]++;
   g_mock_mode = GPS_MOCK_OK;
   memset(g_call_counts, 0, sizeof(g_call_counts));
+  g_call_counts[0]++;
   // Always succeeds for stub
   return true;
 }
@@ -67,8 +67,6 @@ GpsFix_t *gps_read_fix(void)
     break;
   case GPS_MOCK_FAULT_TIMEOUT:
   case GPS_MOCK_FAULT_NO_FIX:
-    g_last_fix.valid = false;
-    break;
   case GPS_MOCK_FAULT_CHECKSUM:
   case GPS_MOCK_FAULT_PARTIAL_FRAME:
   case GPS_MOCK_FAULT_STALE_DATA:
@@ -102,13 +100,16 @@ bool gps_is_fix_valid(void)
 uint8_t gps_get_satellites_in_view(void)
 {
   g_call_counts[5]++;
-  return 0; // Not tracked in GpsFix_t
+  return 0;  // Not tracked in GpsFix_t
 }
 
 void gps_mock_set_data(const GpsFix_t *fix)
 {
   g_call_counts[6]++;
-  if (!fix) return;
+  if (!fix)
+  {
+    return;
+  }
   memcpy(&g_last_fix, fix, sizeof(GpsFix_t));
 }
 

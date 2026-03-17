@@ -1,10 +1,11 @@
 // test_gps_neo7m.c -- Unit test for real NEO-7M GPS NMEA parser
 // All comments in English
 
-#define GPS_TEST // enable test helper for buffer injection
+// GPS_TEST is defined via CMake (target_compile_definitions)
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "gps_driver.h"
 
 #ifdef __cplusplus
@@ -23,7 +24,7 @@ void inject_sentence(const char *sentence) {
     }
 }
 
-void test_parse_valid_gpgga() {
+void test_parse_valid_gpgga(void) {
     gps_init();
     // Example from NMEA standard: $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n
     const char *gpgga = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n";
@@ -32,14 +33,13 @@ void test_parse_valid_gpgga() {
     assert(fix->valid);
     // Check values (allow small numerical tolerance due to float conversion)
     assert(fabsf(fix->lat - 48.1173f) < 0.0002f);
-    printf("DEBUG: fix->lon = %.8f\n", fix->lon);
     assert(fabsf(fix->lon - 11.5167f) < 0.0002f);
     assert(fabsf(fix->alt_m - 545.4f) < 0.01f);
     assert(fix->utc_time == 12*3600 + 35*60 + 19);
     assert(gps_get_satellites_in_view() == 8);
 }
 
-void test_bad_checksum() {
+void test_bad_checksum(void) {
     gps_init();
     const char *bad = "$GPGGA,123519,4807.038,N,01131.000,E,1,06,0.9,545.4,M,46.9,M,,*00\r\n";
     inject_sentence(bad);
@@ -47,7 +47,7 @@ void test_bad_checksum() {
     assert(!fix->valid);
 }
 
-int main() {
+int main(void) {
     printf("Testing real NEO-7M GPS NMEA parser...\n");
     test_parse_valid_gpgga();
     test_bad_checksum();

@@ -56,7 +56,8 @@ void test_gps_call_count_and_reset()
   gps_get_last_fix();
   gps_is_fix_valid();
   gps_get_satellites_in_view();
-  gps_mock_set_data(&(GpsFix_t){});
+  GpsFix_t dummy = {0};
+  gps_mock_set_data(&dummy);
   gps_mock_set_mode(GPS_MOCK_OK);
   assert(gps_mock_get_call_count("gps_init") == 1);
   assert(gps_mock_get_call_count("gps_deinit") == 1);
@@ -79,41 +80,36 @@ void test_data_injection(void)
                      .valid = true,
                      .timestamp_ms = 2000U};
   gps_mock_set_data(&custom);
-  GpsFix_t *got = gps_read_fix();
-  assert(got->lat == custom.lat);
-  assert(got->lon == custom.lon);
-  assert(got->alt_m == custom.alt_m);
-  assert(got->utc_time == custom.utc_time);
-  assert(got->valid == custom.valid);
+  assert(gps_read_fix()->lat == custom.lat);
+  assert(gps_read_fix()->lon == custom.lon);
+  assert(gps_read_fix()->alt_m == custom.alt_m);
+  assert(gps_read_fix()->utc_time == custom.utc_time);
+  assert(gps_read_fix()->valid == custom.valid);
 }
 
 void test_fault_timeout(void)
 {
   gps_mock_set_mode(GPS_MOCK_FAULT_TIMEOUT);
-  GpsFix_t *fix = gps_read_fix();
-  assert(!fix->valid);
+  assert(!gps_read_fix()->valid);
   assert(gps_get_satellites_in_view() == 0);
 }
 
 void test_fault_checksum(void)
 {
   gps_mock_set_mode(GPS_MOCK_FAULT_CHECKSUM);
-  GpsFix_t *fix = gps_read_fix();
-  assert(!fix->valid);
+  assert(!gps_read_fix()->valid);
 }
 
 void test_fault_partial_frame(void)
 {
   gps_mock_set_mode(GPS_MOCK_FAULT_PARTIAL_FRAME);
-  GpsFix_t *fix = gps_read_fix();
-  assert(!fix->valid);
+  assert(!gps_read_fix()->valid);
 }
 
 void test_fault_no_fix(void)
 {
   gps_mock_set_mode(GPS_MOCK_FAULT_NO_FIX);
-  GpsFix_t *fix = gps_read_fix();
-  assert(!fix->valid);
+  assert(!gps_read_fix()->valid);
   // satellites_in_view is not present in GpsFix_t; cannot check
 }
 
@@ -137,35 +133,29 @@ void test_stale_fix(void)
 void test_stale_mode(void)
 {
   gps_mock_set_mode(GPS_MOCK_FAULT_STALE_DATA);
-  GpsFix_t *fix = gps_read_fix();
-  assert(!fix->valid);
+  assert(!gps_read_fix()->valid);
   // The returned timestamp must make the fix appear older than threshold
-  assert(fix->timestamp_ms >= 5000U);
+  assert(gps_read_fix()->timestamp_ms >= 5000U);
 }
 
 void test_get_last_fix(void)
 {
   // Before any read
-  GpsFix_t *last = gps_get_last_fix();
-  assert(!last->valid);
+  assert(!gps_get_last_fix()->valid);
   // After a valid read
   gps_mock_set_mode(GPS_MOCK_OK);
-  GpsFix_t *fix = gps_read_fix();
-  last = gps_get_last_fix();
-  assert(last->valid);
-  assert(last->lat == fix->lat);
+  assert(gps_get_last_fix()->valid);
+  assert(gps_get_last_fix()->lat == gps_read_fix()->lat);
 }
 
 void test_fault_recovery(void)
 {
   // 1. Inject timeout fault
   gps_mock_set_mode(GPS_MOCK_FAULT_TIMEOUT);
-  GpsFix_t *fix = gps_read_fix();
-  assert(!fix->valid);
+  assert(!gps_read_fix()->valid);
   // 2. Recover
   gps_mock_set_mode(GPS_MOCK_OK);
-  fix = gps_read_fix();
-  assert(fix->valid);
+  assert(gps_read_fix()->valid);
   assert(gps_is_fix_valid());
 }
 
@@ -174,8 +164,7 @@ void test_null_safety(void)
   // gps_read_fix(NULL) and gps_get_last_fix(NULL) are not supported in this stub API
   // so we just check that the stub does not crash if passed NULL to gps_mock_set_data
   gps_mock_set_data(NULL);
-  GpsFix_t *fix = gps_read_fix();
-  assert(fix != NULL);
+  assert(gps_read_fix() != NULL);
 }
 
 void test_data_layer_gps_fix(void)

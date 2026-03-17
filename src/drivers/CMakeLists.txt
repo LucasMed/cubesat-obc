@@ -37,12 +37,10 @@ else()
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)
     list(APPEND DRIVER_SOURCES payload/host_sd_spi_stubs.c)
-    # When building on macOS we also need a tiny stub for the CSP USART
-    # API.  The real Linux driver is disabled in the third-party library,
+    # When building on Linux we need a tiny stub for the CSP USART API.
+    # The real Linux driver is disabled in the third-party library,
     # so without this the host firmware would fail to link.
-    if(APPLE)
-        list(APPEND DRIVER_SOURCES csp_macos_stub.c)
-    endif()
+    list(APPEND DRIVER_SOURCES csp_linux_stub.c)
 endif()
 
 
@@ -64,9 +62,13 @@ if(DEFINED ENV{FATFS_INCLUDE})
     target_include_directories(drivers_lib PRIVATE $ENV{FATFS_INCLUDE})
 endif()
 
+
 if(PICO_BUILD)
     target_include_directories(drivers_lib PRIVATE
         ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
+        ${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include
+        ${PICO_SDK_PATH}/src/rp2040/hardware_structs/include
+        ${PICO_SDK_PATH}/src/rp2040/hardware_regs/include
     )
 endif()
 
