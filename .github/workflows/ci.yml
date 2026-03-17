@@ -10,12 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FATFS_INCLUDE: ${{ github.workspace }}/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
-
 jobs:
-  build:
+  build-test-analyze:
     runs-on: ubuntu-22.04
+    env:
+      FATFS_INCLUDE: ${{ github.workspace }}/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
+
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-build-essential-cmake-cppcheck-clang14
+          key: ${{ runner.os }}-apt-clang14-cmake
 
       - name: Install dependencies
         run: |
@@ -57,71 +57,14 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
-  test:
-    needs: build
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Restore CMake build cache
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', 'scripts/apply_patches.sh') }}
-
       - name: Run tests
         run: ctest --test-dir build --output-on-failure
-
-  static-analysis:
-    needs: build
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Restore CMake build cache
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', 'scripts/apply_patches.sh') }}
-
-      - name: Cache apt packages
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-build-essential-cmake-cppcheck-clang14
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake cppcheck
-          sudo apt-get install -y clang-format-14 clang-tidy-14 || {
-            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
-            chmod +x /tmp/llvm.sh
-            sudo /tmp/llvm.sh 14
-            sudo apt-get install -y clang-format-14 clang-tidy-14
-          }
 
       - name: Static analysis
         run: bash scripts/static_analysis.sh
 
-  upload:
-    needs: [ test, static-analysis ]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Restore CMake build cache
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', 'scripts/apply_patches.sh') }}
-
       - name: Upload firmware
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: firmware
