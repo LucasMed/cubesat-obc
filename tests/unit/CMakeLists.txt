@@ -399,4 +399,14 @@ if(NOT PICO_BUILD)
         ${CMAKE_SOURCE_DIR}
     )
     add_test(NAME gps_stub_test COMMAND test_gps)
+    add_executable(test_gps_neo7m
+        test_gps_neo7m.c
+        ../../src/drivers/gps/neo7m.c
+    )
+    target_include_directories(test_gps_neo7m PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    target_compile_definitions(test_gps_neo7m PRIVATE GPS_TEST)
+    add_test(NAME gps_neo7m_test COMMAND test_gps_neo7m)
 endif()

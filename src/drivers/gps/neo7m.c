@@ -6,28 +6,297 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-// Static variables for last fix, satellite count, status, etc.
+// --- Static variables and buffer for NMEA data ---
+#define NMEA_RX_BUFFER_SIZE 2048
+static uint8_t nmea_rx_buffer[NMEA_RX_BUFFER_SIZE];
+static volatile uint16_t nmea_rx_head = 0;
+static volatile uint16_t nmea_rx_tail = 0;
+
 static GpsFix_t g_last_fix = {0};
 static uint8_t g_satellites_in_view = 0;
 
-// --- API stubs (to implement) ---
+// --- UART and buffer helpers ---
+// These should be connected to real UART driver/ISR for the target
 
+static void nmea_buffer_clear(void)
+{
+  nmea_rx_head = nmea_rx_tail = 0;
+  memset(nmea_rx_buffer, 0, NMEA_RX_BUFFER_SIZE);
+}
+
+// Expose for unit test injection only
+#ifdef GPS_TEST
+bool nmea_buffer_push(uint8_t byte)
+{
+  uint16_t next = (nmea_rx_head + 1) % NMEA_RX_BUFFER_SIZE;
+  if (next == nmea_rx_tail)
+  {
+    // Buffer full, drop byte
+    return false;
+  }
+  nmea_rx_buffer[nmea_rx_head] = byte;
+  nmea_rx_head = next;
+  return true;
+}
+#endif
+
+static bool nmea_buffer_pop(uint8_t *byte)
+{
+  if (nmea_rx_head == nmea_rx_tail)
+  {
+    return false;  // empty
+  }
+  *byte = nmea_rx_buffer[nmea_rx_tail];
+  nmea_rx_tail = (nmea_rx_tail + 1) % NMEA_RX_BUFFER_SIZE;
+  return true;
+}
+
+// --- Driver API implementation ---
 bool gps_init(void)
 {
-  // TODO: Initialize UART0 for GPS, clear buffers, etc.
+  // TODO: Initialize UART0 for GPS; set to 9600 baud, 8N1 (platform-specific)
+  // For now, just clear buffer/state
+  nmea_buffer_clear();
+  memset(&g_last_fix, 0, sizeof(g_last_fix));
+  g_satellites_in_view = 0;
   return true;
 }
 
 void gps_deinit(void)
 {
-  // TODO: Release UART resources, buffers, etc.
+  // TODO: Release UART, stop interrupts, etc.
+  nmea_buffer_clear();
+}
+
+// Helper: extract a full NMEA sentence from buffer (returns sentence in tmp, or false if none)
+static bool nmea_get_sentence(char *dest, size_t maxlen)
+{
+  uint16_t start = nmea_rx_tail;
+  bool found_dollar = false;
+  size_t i = 0;
+  uint8_t byte;
+  // Find '$'
+  while (nmea_buffer_pop(&byte))
+  {
+    if (!found_dollar)
+    {
+      if (byte == '$')
+      {
+        found_dollar = true;
+        if (i < maxlen - 1)
+        {
+          dest[i++] = '$';
+        }
+      }
+    }
+    else
+    {
+      if (i < maxlen - 1)
+      {
+        dest[i++] = byte;
+      }
+      if (byte == '\n')
+      {
+        dest[i] = '\0';
+        return true;
+      }
+      // Framing error: sentence too long
+      if (i >= maxlen - 1)
+      {
+        break;
+      }
+    }
+  }
+  // Not enough for complete sentence, restore buffer pointer
+  nmea_rx_tail = start;
+  return false;
+}
+
+// Validate and parse NMEA checksum
+static bool nmea_verify_checksum(const char *sentence)
+{
+  if (!sentence || sentence[0] != '$')
+  {
+    return false;
+  }
+  const char *star = strchr(sentence, '*');
+  if (!star)
+  {
+    return false;
+  }
+  uint8_t sum = 0;
+  for (const char *p = sentence + 1; *p && *p != '*'; ++p)
+  {
+    sum ^= (uint8_t)*p;
+  }
+  char *endptr = NULL;
+  unsigned long chk = strtoul(star + 1, &endptr, 16);
+  if (endptr == star + 1 || (*endptr != '\0' && *endptr != '\r' && *endptr != '\n'))
+  {
+    return false;
+  }
+  return (sum == (chk & 0xFF));
+}
+
+// Convert NMEA lat/lon floats to decimal degrees
+double nmea_deg_min_to_dec(const char *str, char hemisphere)
+{
+  if (!str || !*str)
+  {
+    return 0.0;
+  }
+  double deg = 0.0;
+  double min = 0.0;
+  char *endptr = NULL;
+  if (hemisphere == 'N' || hemisphere == 'S')
+  {
+    // Latitude: 2 digits degrees
+    char deg_str[3] = {0};
+    strncpy(deg_str, str, 2);
+    long d = strtol(deg_str, &endptr, 10);
+    if (endptr == deg_str || *endptr != '\0')
+    {
+      return 0.0;
+    }
+    deg = (double)d;
+    min = strtod(str + 2, &endptr);
+    if (endptr == str + 2)
+    {
+      return 0.0;
+    }
+  }
+  else if (hemisphere == 'E' || hemisphere == 'W')
+  {
+    // Longitude: 3 digits degrees
+    char deg_str[4] = {0};
+    strncpy(deg_str, str, 3);
+    long d = strtol(deg_str, &endptr, 10);
+    if (endptr == deg_str || *endptr != '\0')
+    {
+      return 0.0;
+    }
+    deg = (double)d;
+    min = strtod(str + 3, &endptr);
+    if (endptr == str + 3)
+    {
+      return 0.0;
+    }
+  }
+  double val = deg + (min / 60.0);
+  if (hemisphere == 'S' || hemisphere == 'W')
+  {
+    val = -val;
+  }
+  return val;
+}
+
+// $GPGGA parser: update g_last_fix
+static void nmea_parse_gga(const char *sentence)
+{
+  // Example:
+  // $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n
+  char buf[128];
+  strncpy(buf, sentence, sizeof(buf));
+  buf[sizeof(buf) - 1] = 0;
+  char *tok = buf;
+  char *fields[15] = {0};
+  int field = 0;
+  for (field = 0; field < 15; field++)
+  {
+    fields[field] = strsep(&tok, ",");
+    if (!fields[field])
+    {
+      break;
+    }
+  }
+
+  if (field < 9)
+  {
+    return;
+  }
+  // UTC time: fields[1]
+  // Latitude: fields[2] + [3]
+  // Longitude: fields[4] + [5]
+  // Fix quality: fields[6] (1=valid)
+  // Num satellites: fields[7]
+  // Altitude (meters): fields[9]
+
+  GpsFix_t fix = {0};
+  if (fields[2] && fields[3] && fields[4] && fields[5] && fields[6] && fields[7] && fields[9])
+  {
+    fix.lat = (float)nmea_deg_min_to_dec(fields[2], fields[3][0]);
+    fix.lon = (float)nmea_deg_min_to_dec(fields[4], fields[5][0]);
+    char *endptr = NULL;
+    fix.alt_m = (float)strtod(fields[9], &endptr);
+    if (endptr == fields[9])
+    {
+      fix.alt_m = 0.0f;
+    }
+    fix.valid = (fields[6][0] == '1');
+    fix.timestamp_ms = 0;  // TODO: get system time in ms
+    // UTC time: convert HHMMSS.00 to seconds since midnight
+    if (fields[1])
+    {
+      int h = 0;
+      int m = 0;
+      int s = 0;
+      char hh[3] = {0};
+      char mm[3] = {0};
+      char ss[3] = {0};
+      strncpy(hh, fields[1], 2);
+      strncpy(mm, fields[1] + 2, 2);
+      strncpy(ss, fields[1] + 4, 2);
+      h = (int)strtol(hh, &endptr, 10);
+      if (endptr == hh || *endptr != '\0')
+      {
+        h = 0;
+      }
+      m = (int)strtol(mm, &endptr, 10);
+      if (endptr == mm || *endptr != '\0')
+      {
+        m = 0;
+      }
+      s = (int)strtol(ss, &endptr, 10);
+      if (endptr == ss || *endptr != '\0')
+      {
+        s = 0;
+      }
+      fix.utc_time = h * 3600 + m * 60 + s;
+    }
+    g_satellites_in_view = 0;
+    if (fields[7])
+    {
+      g_satellites_in_view = (uint8_t)strtoul(fields[7], &endptr, 10);
+      if (endptr == fields[7])
+      {
+        g_satellites_in_view = 0;
+      }
+    }
+  }
+  // Critical section if FreeRTOS: should lock!
+  g_last_fix = fix;
 }
 
 GpsFix_t *gps_read_fix(void)
 {
-  // TODO: Read and parse next NMEA frame, update g_last_fix
+  char line[128];
+  // Blocking: poll until next NMEA sentence found
+  while (nmea_get_sentence(line, sizeof(line)))
+  {
+    if (!nmea_verify_checksum(line))
+    {
+      continue;
+    }
+    if (strncmp(line + 1, "GPGGA", 5) == 0)
+    {
+      nmea_parse_gga(line);
+      break;
+    }
+    // Future: handle GPRMC, etc.
+  }
   return &g_last_fix;
 }
 
