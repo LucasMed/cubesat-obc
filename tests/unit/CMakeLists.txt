@@ -390,4 +390,13 @@ if(NOT PICO_BUILD)
     target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME event_logger_test COMMAND test_event_logger)
 
+    add_executable(test_gps
+        test_gps.c
+        ../../src/mocks/gps_stub.c
+    )
+    target_include_directories(test_gps PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME gps_stub_test COMMAND test_gps)
 endif()
