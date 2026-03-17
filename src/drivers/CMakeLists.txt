@@ -7,6 +7,7 @@ set(DRIVER_SOURCES
     payload/radiation_driver.c
     payload/storage_manager.c
     payload/payload_manager.c
+    gps/neo7m.c
 )
 
 # FatFs sources should be present in both embedded and host for static analysis and testability
