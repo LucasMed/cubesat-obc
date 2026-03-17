@@ -413,4 +413,65 @@ if(NOT PICO_BUILD)
     )
     target_compile_definitions(test_gps_neo7m PRIVATE GPS_TEST)
     add_test(NAME gps_neo7m_test COMMAND test_gps_neo7m)
+
+    add_executable(test_gps_integration
+        test_gps_integration.c
+        ../../src/drivers/gps/neo7m.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_gps_integration csp m)
+    target_include_directories(test_gps_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_SOURCE_DIR}
+    )
+    target_compile_definitions(test_gps_integration PRIVATE GPS_TEST)
+    add_test(NAME gps_integration_test COMMAND test_gps_integration)
+
+    add_executable(test_imu_integration
+        test_imu_integration.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_imu_integration m)
+    target_include_directories(test_imu_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME imu_integration_test COMMAND test_imu_integration)
+
+    # PR-18 gate: HMC5883L magnetometer stub + DLA integration.
+    add_executable(test_mag_integration
+        test_mag_integration.c
+        ../../src/drivers/mag/hmc5883l.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_mag_integration m)
+    target_include_directories(test_mag_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include/drivers/mag
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/control
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME mag_integration_test COMMAND test_mag_integration)
+
+    # add_executable(test_radiation_integration
+    #     test_radiation_integration.c
+    #     ../../src/drivers/payload/radiation_driver.c
+    #     ../../src/drivers/payload/payload_manager.c
+    # )
+    # target_link_libraries(test_radiation_integration m)
+    # target_include_directories(test_radiation_integration PRIVATE
+    #     ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    #     ${CMAKE_SOURCE_DIR}
+    # )
+    # add_test(NAME radiation_integration_test COMMAND test_radiation_integration)
 endif()
