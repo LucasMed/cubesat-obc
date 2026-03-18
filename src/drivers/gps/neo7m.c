@@ -325,7 +325,7 @@ static void nmea_parse_gga(const char *sentence)
 }
 
 #if defined(PICO_BUILD) && defined(PICO_RP2040)
-#include "pico/util/datetime.h"
+  #include "pico/util/datetime.h"
 // $GPRMC parser: sync RTC with GPS time (RP2040 only - datetime_t not available on RP2350)
 static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
 {

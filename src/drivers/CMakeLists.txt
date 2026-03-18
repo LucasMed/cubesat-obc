@@ -67,8 +67,6 @@ if(PICO_BUILD)
     target_include_directories(drivers_lib PRIVATE
         ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
         ${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include
-        ${PICO_SDK_PATH}/src/rp2040/hardware_structs/include
-        ${PICO_SDK_PATH}/src/rp2040/hardware_regs/include
     )
 endif()
 
