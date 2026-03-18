@@ -82,6 +82,13 @@ void vTelemetryTask_Step(void)
     tlm->temp = snap.state.temp; /* preserve HK temperature */
   }
 
+  /* GPS fields */
+  tlm->gps_lat = snap.gps_fix.lat;
+  tlm->gps_lon = snap.gps_fix.lon;
+  tlm->gps_alt_m = snap.gps_fix.alt_m;
+  tlm->gps_utc_s = snap.gps_fix.utc_time;
+  tlm->gps_valid = snap.gps_fix.valid ? 1 : 0;
+
   packet->length = sizeof(csp_telemetry_packet_t);
 
   // 3. Send over CSP port connection-less

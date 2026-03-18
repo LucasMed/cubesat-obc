@@ -1,6 +1,8 @@
 #include "command_task.h"
 
 #include "FreeRTOS.h"
+#include "flight_mode.h"
+#include "payload_task.h"
 #include "task.h"
 
 #include <csp/csp.h>
@@ -57,9 +59,23 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
     break;
 
   case CMD_SET_MODE:
-    printf("[command_task] Executing SET_MODE (mode=%d). Not fully implemented yet.\n",
-           cmd->payload[0]);
+  {
+    flight_mode_t new_mode = (flight_mode_t)cmd->payload[0];
+    printf("[command_task] Executing SET_MODE (mode=%d)\n", new_mode);
+    fmm_request_transition(new_mode);
     break;
+  }
+
+  case CMD_PAYLOAD_CAPTURE:
+  {
+    printf("[command_task] Executing PAYLOAD_CAPTURE\n");
+    TaskHandle_t h_payload = xTaskGetHandle("PayloadTask");
+    if (h_payload != NULL)
+    {
+      xTaskNotify(h_payload, PAYLOAD_NOTIFY_CAPTURE_IMAGE, eSetBits);
+    }
+    break;
+  }
 
   default:
     printf("[command_task] Unknown command id %d. Dropping packet.\n", cmd->cmd_id);

@@ -21,7 +21,7 @@
 FROM ubuntu:22.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PICO_SDK_VERSION=2.1.1
+ENV PICO_SDK_VERSION=2.2.0
 
 # ---------------------------------------------------------------------------
 # System packages

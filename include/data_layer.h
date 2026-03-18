@@ -26,6 +26,7 @@
 
 #include "eps.h"
 #include "flight_mode.h"
+#include "gps_driver.h"
 #include "system_state.h"
 
 #include <stdbool.h>
@@ -53,10 +54,22 @@ extern "C"
                             *   temperature (°C), validity flags             */
     flight_mode_t mode;    /**< Current flight mode (from FMM)               */
     energy_state_t energy; /**< Current energy state (from EPS monitor)      */
+    GpsFix_t gps_fix;      /**< Last GPS fix (lat, lon, alt, utc, valid)    */
     uint32_t seq;          /**< Write sequence counter.  Incremented on every
                             *   successful write call.  Readers can detect
                             *   stale copies by comparing seq values.         */
   } dl_snapshot_t;
+  /**
+   * @brief Update the GPS fix in the shared snapshot.
+   * @param fix Pointer to GpsFix_t struct (must not be NULL)
+   */
+  void data_layer_set_gps_fix(const GpsFix_t *fix);
+
+  /**
+   * @brief Get the last GPS fix from the shared snapshot.
+   * @param out Pointer to GpsFix_t struct to fill (must not be NULL)
+   */
+  void data_layer_get_gps_fix(GpsFix_t *out);
 
   /* ------------------------------------------------------------------ */
   /* Initialisation                                                      */
@@ -143,9 +156,24 @@ extern "C"
    *
    * Called once during boot after magnetometer detection.
    *
-   * @param mag  true if the HMC5883L was detected on the I2C bus.
+   * @param mag  true if the RM3100 was detected on the SPI bus.
    */
   void data_layer_set_mag_avail(bool mag);
+
+  /**
+   * @brief Update radiation dose in the shared snapshot.
+   *
+   * @param dose  Radiation dose (placeholder units).
+   */
+  void data_layer_write_radiation(float dose);
+
+  /**
+   * @brief Update payload status in the shared snapshot.
+   *
+   * @param rail_enabled  Status of the payload power rail.
+   * @param img_count     Number of images stored.
+   */
+  void data_layer_write_payload_status(bool rail_enabled, uint16_t img_count);
 
   /* ------------------------------------------------------------------ */
   /* Write — flight-level state                                          */

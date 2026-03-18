@@ -11,6 +11,7 @@
 
 #include "data_layer.h"
 
+#include "gps_driver.h"
 #include "system_state.h"
 
 #include <string.h>
@@ -90,6 +91,10 @@ void data_layer_read(dl_snapshot_t *out)
 
 void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
 {
+  if (att_rad == NULL || rates_rad == NULL)
+  {
+    return;
+  }
   dl_lock();
   for (int i = 0; i < 3; i++)
   {
@@ -105,6 +110,10 @@ void data_layer_write_imu(const float att_rad[3], const float rates_rad[3])
 
 void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float cov_diag[7])
 {
+  if (q == NULL || bias_rad == NULL || cov_diag == NULL)
+  {
+    return;
+  }
   dl_lock();
 
   /* Copy quaternion and gyro bias */
@@ -117,12 +126,10 @@ void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float
     g_snapshot.state.gyro_bias[i] = bias_rad[i];
   }
 
-  /* Copy full diagonal covariance (7 states) */
+  /* Copy quaternion uncertainty (indices 0-3 of 7-state cov diagonal).
+   * Note: bias covariance (indices 4-6) is not persisted in att_uncertainty[4]. */
   for (int i = 0; i < 4; i++)
   {
-    /* We reuse att_uncertainty[4] for the quaternion part of the cov diag if we want,
-     * but system_state.h has float att_uncertainty[4].
-     * Actually, let's just copy exactly what's available. */
     g_snapshot.state.att_uncertainty[i] = cov_diag[i];
   }
 
@@ -155,6 +162,10 @@ void data_layer_set_sensor_avail(bool imu, bool temp)
 
 void data_layer_write_mag(const float field_uT[3])
 {
+  if (field_uT == NULL)
+  {
+    return;
+  }
   dl_lock();
   for (int i = 0; i < 3; i++)
   {
@@ -169,6 +180,23 @@ void data_layer_set_mag_avail(bool mag)
 {
   dl_lock();
   g_snapshot.state.mag_available = mag;
+  dl_unlock();
+}
+
+void data_layer_write_radiation(float dose)
+{
+  dl_lock();
+  g_snapshot.state.radiation_dose = dose;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_write_payload_status(bool rail_enabled, uint16_t img_count)
+{
+  dl_lock();
+  g_snapshot.state.payload_rail_enabled = rail_enabled;
+  g_snapshot.state.image_count = img_count;
+  g_snapshot.seq++;
   dl_unlock();
 }
 
@@ -218,4 +246,27 @@ uint32_t data_layer_get_seq(void)
   uint32_t s = g_snapshot.seq;
   dl_unlock();
   return s;
+}
+
+void data_layer_set_gps_fix(const GpsFix_t *fix)
+{
+  if (!fix)
+  {
+    return;
+  }
+  dl_lock();
+  g_snapshot.gps_fix = *fix;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_get_gps_fix(GpsFix_t *out)
+{
+  if (!out)
+  {
+    return;
+  }
+  dl_lock();
+  *out = g_snapshot.gps_fix;
+  dl_unlock();
 }

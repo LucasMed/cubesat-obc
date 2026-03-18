@@ -53,7 +53,8 @@ void lqr_schedule_apply(lqr_t *lqr, flight_mode_t mode)
     break;
 
   case FM_NOMINAL:
-  /* Fall through — all other modes use the nominal (safe) gains. */
+    /* Fall through — all other modes use the nominal (safe) gains. */
+    __attribute__((fallthrough));
   case FM_BOOT:
   case FM_SAFE:
   case FM_DIAGNOSTIC:

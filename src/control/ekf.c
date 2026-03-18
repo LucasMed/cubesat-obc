@@ -500,9 +500,7 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
     }
   }
 
-  /* Inversion and Gain calculation omitted for brevity in this block,
-   * but follows same 3x3 pattern as accel update. */
-  /* Actually I MUST implement it to have valid code. */
+  /* Inversion and Gain calculation follow the same 3x3 pattern as accel update. */
   float det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) -
               S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
               S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);

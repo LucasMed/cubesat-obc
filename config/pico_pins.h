@@ -3,111 +3,162 @@
  * @brief Pico 2W GPIO Pin Definitions
  *
  * Pin mappings for Raspberry Pi Pico 2W OBC hardware.
- * RP2040 has 30 GPIO pins (GPIO0-GPIO29).
+ * RP2350 has 30 GPIO pins (GPIO0-GPIO29).
+ *
+ * Payload Bus Architecture (Phase 7):
+ *   SPI0 (GPIO16/18/19) shared by RM3100 Magnetometer, Camera, microSD.
+ *   UART0 (GPIO0/1) used by GPS NEO-6M/7M.
+ *   UART1 (GPIO4/5) used by TT&C radio (CSP/KISS).
+ *   ADC2  (GPIO28) used by Radiation Detector analog signal.
+ *
+ * GPIO allocation summary:
+ *   GPIO0   UART0 TX  → GPS RX
+ *   GPIO1   UART0 RX  ← GPS TX
+ *   GPIO2   I2C1 SDA  (optional / future)
+ *   GPIO3   PWM RW3   (moved from GPIO10 to free CAM_FIFO_RDY)
+ *   GPIO4   UART1 TX  → TT&C TX
+ *   GPIO5   UART1 RX  ← TT&C RX
+ *   GPIO6   SPI CS    → RM3100 CS (active low)
+ *   GPIO7   SPI CS    → microSD CS (active low)
+ *   GPIO8   PWM RW1   (PWM4A)
+ *   GPIO9   PWM RW2   (PWM4B)
+ *   GPIO10  INT       ← Camera FIFO Ready
+ *   GPIO11  INT       ← Magnetometer DRDY
+ *   GPIO12  INT/PPS   ← GPS 1PPS
+ *   GPIO13  INT       ← Radiation comparator
+ *   GPIO14  SPI CS    → Camera CS (active low)
+ *   GPIO15  OUT       → Camera RESET
+ *   GPIO16  SPI0 MISO ← Payload bus
+ *   GPIO17  OUT       → Magnetorquer X
+ *   GPIO18  SPI0 SCK  → Payload bus
+ *   GPIO19  SPI0 MOSI → Payload bus
+ *   GPIO20  OUT       → Watchdog kick
+ *   GPIO21  OUT       → Payload rail enable
+ *   GPIO22  OUT       → Camera TRIGGER
+ *   GPIO23  (internal Pico 2W)
+ *   GPIO24  (internal Pico 2W)
+ *   GPIO25  LED       Onboard status LED
+ *   GPIO26  ADC0      Battery voltage sense
+ *   GPIO27  ADC1      Board temperature
+ *   GPIO28  ADC2      Radiation detector signal
  */
 
 #ifndef PICO_PINS_H
 #define PICO_PINS_H
 
-/* ========== I2C Pin Definitions ========== */
+/* ======================================================================
+ * I2C Pin Definitions — Shared Register Bus (I2C1)
+ * ====================================================================== */
 
-/**
- * I2C0 Bus Configuration
- * RP2040 I2C0: GPIO4 (SDA), GPIO5 (SCL)
- * Standard speed: 100 kHz
- * Fast speed: 400 kHz
+/** 
+ * I2C1 Bus is shared by MPU6050 IMU and OV2640 Camera registers.
+ * RP2350 I2C1: GPIO2 (SDA), GPIO3 (SCL)
  */
-#define I2C0_PORT i2c0
-#define I2C0_SDA_PIN 4
-#define I2C0_SCL_PIN 5
-#define I2C0_SPEED_HZ 400000  // 400 kHz for sensor polling
-
-/**
- * I2C1 Bus Configuration (optional, future expansion)
- * RP2040 I2C1: GPIO2 (SDA), GPIO3 (SCL)
- */
-#define I2C1_PORT i2c1
+#define I2C1_PORT    i2c1
 #define I2C1_SDA_PIN 2
 #define I2C1_SCL_PIN 3
 #define I2C1_SPEED_HZ 400000
 
-/* ========== UART Pin Definitions ========== */
+/* ======================================================================
+ * SPI Pin Definitions — Shared Payload Bus (SPI0)
+ * ====================================================================== */
 
 /**
- * UART0 Debug/Logging Console
- * RP2040 UART0: GPIO0 (TX), GPIO1 (RX)
- * Baud rate: 115200
+ * SPI0 is shared by RM3100 Magnetometer, OV2640 Camera, and microSD.
+ * Each device is activated by its individual Chip Select (active low).
+ * Baud rate: 1 MHz at init; may be raised to 20 MHz for data transfers.
  */
-#define UART0_PORT uart0
-#define UART0_TX_PIN 0
-#define UART0_RX_PIN 1
-#define UART0_BAUD_RATE 115200
+#define SPI0_PORT     spi0
+#define SPI0_MISO_PIN 16
+#define SPI0_SCK_PIN  18
+#define SPI0_MOSI_PIN 19
+#define SPI0_BAUD_RATE_INIT 1000000   /* 1 MHz  — safe for all devices  */
+#define SPI0_BAUD_RATE_FAST 10000000  /* 10 MHz — data transfers         */
+
+/** Chip Select pins (active low, GPIO-controlled) */
+#define SPI_CS_MAG_PIN 6   /**< RM3100 Magnetometer chip select */
+#define SPI_CS_SD_PIN  7   /**< microSD chip select              */
+#define SPI_CS_CAM_PIN 14  /**< OV2640 Camera chip select        */
+
+/* ======================================================================
+ * UART Pin Definitions
+ * ====================================================================== */
 
 /**
- * UART1 Telemetry / TT&C (CSP/KISS to radio)
- * RP2350 UART1: GPIO8 (TX), GPIO9 (RX)
- * Dedicated pins — no conflict with I2C0 (GPIO4/5)
+ * UART0 — GPS NEO-6M / NEO-7M receiver
+ * Default baud rate: 9600 bps (NMEA); may be raised to 115200 via UBX.
  */
-#define UART1_PORT uart1
-#define UART1_TX_PIN 8
-#define UART1_RX_PIN 9
+#define UART0_PORT      uart0
+#define UART0_TX_PIN    0     /**< OBC TX → GPS RX */
+#define UART0_RX_PIN    1     /**< GPS TX → OBC RX */
+#define UART0_BAUD_RATE 9600
+
+/**
+ * UART1 — TT&C radio (CSP / KISS framing)
+ */
+#define UART1_PORT      uart1
+#define UART1_TX_PIN    4     /**< OBC TX → Radio RX */
+#define UART1_RX_PIN    5     /**< Radio TX → OBC RX */
 #define UART1_BAUD_RATE 115200
 
-/* ========== Sensor Addresses (I2C) ========== */
+/* ======================================================================
+ * Payload Interrupt & Timing Signals
+ * ====================================================================== */
+
+#define CAM_FIFO_RDY_PIN 10  /**< Camera FIFO ready interrupt (active high) */
+#define MAG_DRDY_PIN     11  /**< RM3100 data-ready interrupt (active high)  */
+#define GPS_PPS_PIN      12  /**< GPS 1 Hz PPS timing reference              */
+#define RAD_IRQ_PIN      13  /**< Radiation comparator threshold interrupt    */
+
+/* ======================================================================
+ * Payload Control Signals
+ * ====================================================================== */
+
+#define CAM_RESET_PIN      15  /**< OV2640 hardware reset (active low)        */
+#define CAM_TRIGGER_PIN    22  /**< OV2640 capture trigger (active high pulse) */
+#define PAYLOAD_ENABLE_PIN 21  /**< Payload power rail enable (active high)   */
+
+/* ======================================================================
+ * Reaction Wheel PWM Outputs
+ * ====================================================================== */
 
 /**
- * MPU6050 6-DOF IMU
- * Standard I2C address (AD0 pin pulled to GND)
+ * RP2350 PWM.  RW3 was moved to GPIO29 to free GPIO3
+ * for the I2C SCL bus (ICD Phase 7, WP-7.4).
  */
+#define RW_MOTOR1_PIN 8   /**< PWM4A */
+#define RW_MOTOR2_PIN 9   /**< PWM4B */
+#define RW_MOTOR3_PIN 29  /**< PWM6B — moved from GPIO3 */
+
+/* ======================================================================
+ * Magnetorquer PWM/GPIO Outputs
+ * ====================================================================== */
+
+#define MAG_X_PIN 17  /**< Magnetorquer X-axis */
+#define MAG_Y_PIN 23  /**< Magnetorquer Y-axis (GPIO23 on RP2350 is available) */
+#define MAG_Z_PIN 24  /**< Magnetorquer Z-axis (GPIO24 on RP2350 is available) */
+
+/* ======================================================================
+ * Miscellaneous
+ * ====================================================================== */
+
+#define STATUS_LED_PIN PICO_DEFAULT_LED_PIN  /**< GPIO25 onboard LED */
+#define WATCHDOG_PIN   20                    /**< External watchdog kick output */
+
+/* ======================================================================
+ * Sensor Addresses (I2C)
+ * ====================================================================== */
+
+/** MPU6050 — standard address (AD0 = GND) */
 #define MPU6050_I2C_ADDR 0x68
-#define MPU6050_I2C_PORT I2C0_PORT
+#define MPU6050_I2C_PORT I2C1_PORT
 
-/**
- * Temperature Sensor
- * Option A: Onboard RP2040 ADC4 (no I2C)
- * Option B: TMP102 external (I2C address 0x48 default)
- */
-#define TEMP_SENSOR_MODE TEMP_SENSOR_ADC4  // Use onboard ADC
-#define TEMP_I2C_ADDR 0x48                 // If using TMP102
+/* ======================================================================
+ * ADC Channel Pins
+ * ====================================================================== */
 
-/* ========== Power & Test Pins ========== */
+#define ADC_VBATT_PIN  26  /**< ADC0 — Battery voltage sense                */
+#define ADC_TEMP_PIN   27  /**< ADC1 — Board / sensor temperature monitor    */
+#define RAD_SIGNAL_PIN 28  /**< ADC2 — Radiation detector analog signal      */
 
-/**
- * LED outputs (for debug/status)
- * PICO_DEFAULT_LED_PIN typically GPIO25 (onboard LED on Pico/Pico 2W)
- */
-#define STATUS_LED_PIN PICO_DEFAULT_LED_PIN
-
-/**
- * Watchdog pin (optional GPIO for external watchdog circuit)
- * Not used in Phase 2
- */
-#define WATCHDOG_PIN 20  // Placeholder
-
-/**
- * PWM outputs for Reaction Wheel motors (future Phase 3)
- * RP2040 supports PWM on GPIO0-29 via 8 PWM slices
- * Each slice has 2 channels (A and B)
- */
-#define RW_MOTOR1_PIN 6   // PWM3A
-#define RW_MOTOR2_PIN 7   // PWM3B
-#define RW_MOTOR3_PIN 10  // PWM5A — GPIO8 reassigned to UART1 TX
-
-/**
- * Magnetorquer control (PWM or digital GPIO)
- * Phase 2: Simulated (PWM pins reserved for future)
- */
-#define MAG_X_PIN 14  // PWM7A
-#define MAG_Y_PIN 15  // PWM7B
-#define MAG_Z_PIN 16  // PWM0A
-
-/* ========== ADC Channels ========== */
-
-/**
- * Analog-to-Digital Converter pins for power monitoring
- */
-#define ADC_VBATT_PIN 26  // ADC0 - Battery voltage sense
-#define ADC_TEMP_PIN 27   // ADC1 - Onboard temperature sensor
-// ADC4 (GPIO29) reserved for onboard RP2040 temperature
-
-#endif  // PICO_PINS_H
+#endif /* PICO_PINS_H */

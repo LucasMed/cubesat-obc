@@ -1,4 +1,57 @@
 if(NOT PICO_BUILD)
+        add_executable(test_rm3100
+            test_rm3100.c
+            ../../src/drivers/payload/rm3100.c
+            ../../src/drivers/payload/spi_payload.c
+        )
+        target_include_directories(test_rm3100 PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+            ${CMAKE_SOURCE_DIR}
+        )
+        add_test(NAME rm3100_test COMMAND test_rm3100)
+
+    add_executable(test_radiation_driver
+        test_radiation_driver.c
+        ../../src/drivers/payload/radiation_driver.c
+    )
+    target_include_directories(test_radiation_driver PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME radiation_driver_test COMMAND test_radiation_driver)
+
+    add_executable(test_camera_driver
+        test_camera_driver.c
+        ../../src/drivers/payload/camera_driver.c
+        ../../src/drivers/payload/spi_payload.c
+    )
+    target_include_directories(test_camera_driver PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME camera_driver_test COMMAND test_camera_driver)
+
+    add_executable(test_storage_manager
+        test_storage_manager.c
+        ../../src/drivers/payload/storage_manager.c
+    )
+    target_include_directories(test_storage_manager PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME storage_manager_test COMMAND test_storage_manager)
+
+    add_executable(test_payload_manager
+        test_payload_manager.c
+        ../../src/drivers/payload/payload_manager.c
+    )
+    target_include_directories(test_payload_manager PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+        ${CMAKE_SOURCE_DIR}/config
+    )
+    add_test(NAME payload_manager_test COMMAND test_payload_manager)
+
     add_executable(test_pid
         test_pid.c
         ../../src/control/pid_controller.c
@@ -203,6 +256,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_health_monitor_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -238,6 +292,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_watchdog m)
@@ -335,4 +390,98 @@ if(NOT PICO_BUILD)
     target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME event_logger_test COMMAND test_event_logger)
 
+    add_executable(test_gps
+        test_gps.c
+        ../../src/mocks/gps_stub.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_gps m)
+    target_include_directories(test_gps PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME gps_stub_test COMMAND test_gps)
+    add_executable(test_gps_neo7m
+        test_gps_neo7m.c
+        ../../src/drivers/gps/neo7m.c
+    )
+    target_include_directories(test_gps_neo7m PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    target_compile_definitions(test_gps_neo7m PRIVATE GPS_TEST)
+    add_test(NAME gps_neo7m_test COMMAND test_gps_neo7m)
+
+    add_executable(test_gps_integration
+        test_gps_integration.c
+        ../../src/drivers/gps/neo7m.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_gps_integration csp m)
+    target_include_directories(test_gps_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_SOURCE_DIR}
+    )
+    target_compile_definitions(test_gps_integration PRIVATE GPS_TEST)
+    add_test(NAME gps_integration_test COMMAND test_gps_integration)
+
+    add_executable(test_imu_integration
+        test_imu_integration.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+        ../../src/drivers/imu/mpu6050.c
+    )
+    target_link_libraries(test_imu_integration m)
+    target_include_directories(test_imu_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME imu_integration_test COMMAND test_imu_integration)
+
+    # PR-18 gate: HMC5883L magnetometer stub + DLA integration.
+    add_executable(test_mag_integration
+        test_mag_integration.c
+        ../../src/drivers/mag/hmc5883l.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_mag_integration m)
+    target_include_directories(test_mag_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include/drivers/mag
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src/control
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME mag_integration_test COMMAND test_mag_integration)
+
+    add_executable(test_radiation_integration
+        test_radiation_integration.c
+        ../../src/drivers/payload/radiation_driver.c
+        ../../src/drivers/payload/payload_manager.c
+        ../../src/drivers/payload/storage_manager.c
+        ../../src/drivers/payload/rm3100.c
+        ../../src/drivers/payload/camera_driver.c
+        ../../src/drivers/payload/spi_payload.c
+        ../../src/drivers/host_spi_gpio_stubs.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_radiation_integration m)
+    target_include_directories(test_radiation_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME radiation_integration_test COMMAND test_radiation_integration)
 endif()

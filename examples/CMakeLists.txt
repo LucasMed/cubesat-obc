@@ -36,19 +36,27 @@ if(PICO_BUILD)
     )
 
     target_link_libraries(obc_firmware_pico
-        pico_stdlib
-        pico_cyw43_arch_none
-        FreeRTOS-Kernel
-        FreeRTOS-Kernel-Heap4
-        tasks_lib
         core_lib
-        "-Wl,--start-group"
-        drivers_lib
-        csp
-        "-Wl,--end-group"
         actuators_lib
         control_lib
         dynamics_lib
+        tasks_lib
+        fault_lib
+        eps_lib
+        adcs_lib
+        watchdog_hal_lib
+        FreeRTOS-Kernel
+        FreeRTOS-Kernel-Heap4
+        pico_stdlib
+        pico_cyw43_arch_none
+        hardware_i2c
+        hardware_adc
+        hardware_uart
+        hardware_watchdog
+        "-Wl,--start-group"
+        csp
+        drivers_lib
+        "-Wl,--end-group"
     )
 
     target_compile_definitions(obc_firmware_pico PRIVATE

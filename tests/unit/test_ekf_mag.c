@@ -139,8 +139,8 @@ static void test_wrap_pi(void)
   ekf_t ekf;
   ekf_init(&ekf);
 
-  float true_yaw = (float)M_PI - 0.1f;    /* ≈ +170° */
-  float est_yaw = -((float)M_PI - 0.1f);   /* ≈ -170° */
+  float true_yaw = (float)M_PI - 0.1f;   /* ≈ +170° */
+  float est_yaw = -((float)M_PI - 0.1f); /* ≈ -170° */
 
   /* Set initial state as quaternion representing est_yaw */
   quat_t q_init = q_from_euler(0, 0, est_yaw);
@@ -157,12 +157,16 @@ static void test_wrap_pi(void)
   ekf_get_attitude(&ekf, att);
 
   float err_after = att[2] - true_yaw;
-  while (err_after > (float)M_PI) err_after -= 2.0f*(float)M_PI;
-  while (err_after < -(float)M_PI) err_after += 2.0f*(float)M_PI;
+  while (err_after > (float)M_PI)
+    err_after -= 2.0f * (float)M_PI;
+  while (err_after < -(float)M_PI)
+    err_after += 2.0f * (float)M_PI;
 
   float err_before = est_yaw - true_yaw;
-  while (err_before > (float)M_PI) err_before -= 2.0f*(float)M_PI;
-  while (err_before < -(float)M_PI) err_before += 2.0f*(float)M_PI;
+  while (err_before > (float)M_PI)
+    err_before -= 2.0f * (float)M_PI;
+  while (err_before < -(float)M_PI)
+    err_before += 2.0f * (float)M_PI;
 
   /* Absolute error must have decreased */
   CHECK(fabsf(err_after) < fabsf(err_before), "absolute yaw error must decrease");
@@ -247,8 +251,7 @@ static void test_declination_offset(void)
   ekf_get_attitude(&ekf_b, att_b);
 
   /* EKF-B received a yaw_meas 10° larger → its yaw state must be larger */
-  CHECK(att_b[2] > att_a[2],
-        "positive declination must increase yaw estimate vs zero-declination");
+  CHECK(att_b[2] > att_a[2], "positive declination must increase yaw estimate vs zero-declination");
 
   /* The difference must be strictly less than 10° (Kalman gain < 1) */
   CHECK((att_b[2] - att_a[2]) < decl, "yaw difference must be < declination (Kalman gain < 1)");

@@ -20,7 +20,9 @@
 #include "drivers/temperature.h"
 #include "eps.h"
 #include "fault_manager.h"
+#include "gps_driver.h"
 #include "health_monitor_task.h"
+#include "payload_task.h"
 #include "sensor_read_task.h"
 #include "system_state.h"
 #include "telemetry_task.h"
@@ -124,13 +126,19 @@ static void vStartupTask(void *pvParameters)
          temp_res == 0 ? "OK" : "not found");
   fflush(stdout);
 
+  printf("  gps_init...\r\n");
+  fflush(stdout);
+  bool gps_ok = gps_init();
+  printf("  GPS: %s\r\n", gps_ok ? "OK" : "not found");
+  fflush(stdout);
+
   printf("  creating tasks...\r\n");
   fflush(stdout);
 
 #ifdef PICO_BUILD
   /* Task handles — Pico only; HWM printed in ALIVE loop. */
   static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
-  static TaskHandle_t h_cmd = NULL, h_health = NULL;
+  static TaskHandle_t h_cmd = NULL, h_health = NULL, h_payload = NULL, h_gps = NULL;
   static TaskHandle_t h_led = NULL, h_hb = NULL;
   #define HPTR(h) (&(h))
 #else
@@ -168,6 +176,16 @@ static void vStartupTask(void *pvParameters)
                   HPTR(h_health)),
       "HealthMon");
 
+  if (gps_ok)
+  {
+    extern void gps_task(void *pvParameters);
+    CHK(xTaskCreate(gps_task, "GpsTask", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_gps)), "GpsTask");
+  }
+
+  printf("  payload_task_init...\r\n");
+  fflush(stdout);
+  payload_task_init();
+
 #ifdef PICO_BUILD
   /* Link Health Monitor handle to Fault Manager for ISR-safe FDIR signaling */
   if (h_health != NULL)
@@ -176,7 +194,7 @@ static void vStartupTask(void *pvParameters)
   }
 #endif
 #ifdef PICO_BUILD
-  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, &h_led), "LEDBlink");
+  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 2, &h_led), "LEDBlink");
   /* Heartbeat at LOW priority — it's just diagnostic, must not preempt Startup. */
   CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, &h_hb),
       "Heartbeat");
@@ -209,6 +227,9 @@ static void vStartupTask(void *pvParameters)
            (unsigned long)uxTaskGetStackHighWaterMark(h_health),
            (unsigned long)uxTaskGetStackHighWaterMark(h_led),
            (unsigned long)uxTaskGetStackHighWaterMark(h_hb));
+    printf("  HWM Payload     =%4lu  GpsTask     =%4lu\r\n",
+           (unsigned long)uxTaskGetStackHighWaterMark(xTaskGetHandle("PayloadTask")),
+           (unsigned long)uxTaskGetStackHighWaterMark(h_gps));
 #endif
     fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(5000));

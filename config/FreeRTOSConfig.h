@@ -119,6 +119,7 @@
 #define INCLUDE_eTaskGetState 1
 #define INCLUDE_xEventGroupSetBitsFromISR 1
 #define INCLUDE_xTimerPendFunctionCall 1
+#define INCLUDE_xTaskGetHandle 1
 
 // =========================================================================
 // Missing Definitions for Pico SDK SMP Port
@@ -152,12 +153,11 @@
   #endif
 #endif
 
+
+#if !defined(PICO_RP2350) && !defined(__ARM_ARCH_8M_MAIN__) && !defined(__riscv)
 #ifndef SIO_IRQ_PROC0
-  #if defined(__ARM_ARCH_8M_MAIN__) || defined(__riscv) || defined(PICO_RP2350)
-    // RP2350 both cores use SIO_IRQ_FIFO (25)
-    // This hack ensures (SIO_IRQ_PROC0 + core_num) always equals 25
-    #define SIO_IRQ_PROC0 (25 - (int)(*(volatile uint32_t *)0xd0000000))
-  #endif
+    #define SIO_IRQ_PROC0 15
+#endif
 #endif
 
 #endif  // FREERTOS_CONFIG_H

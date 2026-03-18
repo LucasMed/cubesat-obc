@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-20
-**Current Phase**: Phase 6 — Closed-Loop Stability & Architectural Consolidation (branch `feature/phase6-closed-loop`)
-**Current Branch**: `feature/phase6-closed-loop`
+**Last Updated**: 2026-03-17
+**Current Phase**: Phase 7 — Scientific Payload Integration (branch `feature/phase7-payload`)
+**Current Branch**: `feature/phase7-payload`
 
 ---
 
@@ -136,6 +136,23 @@
 
 ---
 
+### Phase 7: Scientific Payload Integration ✅ PRs 28–30 (2026-03-17)
+- **Goal**: Integrate GPS, IMU, and Magnetometer drivers with integration tests; maximize coverage.
+- **Branch**: `feature/phase7-payload`
+- **Outcomes (PRs 28–30 committed, tests passing)**:
+
+| PR | Commit | Description | Tests |
+|----|--------|-------------|-------|
+| PR-28 | `xxxxxx` | GPS Integration (NEO-7M NMEA parser, GpsTask, telemetry fields) | test_gps_integration: ✅ |
+| PR-29 | `xxxxxx` | IMU Integration (data flow validation, temp_available fix) | test_imu_integration: ✅ |
+| PR-30 | `xxxxxx` | Magnetometer Integration (EKF operations, function call fixes) | test_mag_integration: ✅ |
+
+- **CI Pipeline**: 6/6 stages passing (host-test, pico-build, static analysis, coverage)
+- **Coverage**: Line 93.0%, Function 92.4%
+- **Deferred**: Camera driver, external storage, FM_PAYLOAD, radiation test (to Phase 8)
+
+---
+
 ## Overall Roadmap
 
 | Phase | Target | Description | Status |
@@ -147,7 +164,9 @@
 | 4 — Advanced Control | Q2 2026 | EKF estimator, LQR controller, RK2 dynamics | ✅ Complete (5/5 PRs) |
 | 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | ✅ Complete (4/4 feature PRs + docs) |
 | 6 — Closed-Loop Stability | Q1 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ✅ Complete (7/7 PRs) |
+| 7 — Scientific Payload | Mar 2026 | GPS, IMU, Magnetometer integration, integration tests, coverage 93% | ✅ Complete |
 | HW BOM / PDR | Mar 2026 | Full hardware BOM; PDR review; LIS3MDL, TPS3431 watchdog, SAW filter, MTQ-first ADCS strategy, GS design | ✅ Complete (BOM v1.0, PDR PASS) |
+| 8 — Full Testing | Q2 2026 | Coverage expansion (>95%), pending tasks, camera, storage, FM_PAYLOAD, hardware validation | 🔄 In Progress |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
@@ -172,9 +191,14 @@ git checkout -b feature/<short-name>
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
 | Unit Tests | 27/27 | 0 | 27 |
-| Integration Tests | 2/2 | 0 | 2 |
+| Integration Tests | 3/3 | 0 | 3 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **29** | **0** | **29** |
+| **Total** | **30** | **0** | **30** |
+
+**New test targets (Phase 7 — PRs 28–30)**:
+- `test_gps_integration` — validates GPS driver and telemetry integration
+- `test_imu_integration` — validates IMU data flow
+- `test_mag_integration` — validates magnetometer EKF operations
 
 **New test targets (Phase 6 — PRs 21–27)**:
 - `quaternion_test` — 5 cases (T-QAT-01..05, unit-quaternion math)
@@ -209,7 +233,7 @@ cd build && cmake .. && cmake --build . && ctest --output-on-failure
 | MISRA C | ✅ 0 required/mandatory violations; advisory deviations in `docs/standards/MISRA_DEVIATIONS.md` |
 | IEC 61508 | ✅ Task priorities, determinism |
 | NASA SWE-130 | ✅ Modular design, test automation |
-| gcovr Line Coverage | ✅ 91.8% on `src/control/` + `src/core/` + `src/services/` (target ≥90%) |
+| gcovr Line Coverage | ✅ 93.0% line, 92.4% function (target ≥90%) |
 
 ---
 

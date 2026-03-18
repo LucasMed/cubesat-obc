@@ -365,12 +365,14 @@ static void test_lqr_used_in_fm_nominal_with_ekf(void)
 {
   float att[3] = {0.1f, 0.2f, 0.3f};
   float rates[3] = {0.01f, 0.02f, 0.03f};
-  float zero3[3] = {0.0f, 0.0f, 0.0f};
+  float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+  float bias[3] = {0.0f, 0.0f, 0.0f};
+  float cov[7] = {0.0f};
   reset_stubs();
   data_layer_init();
   data_layer_set_flight_mode(FM_NOMINAL);
   data_layer_write_imu(att, rates);
-  data_layer_write_ekf(att, zero3, zero3); /* sets imu_ekf_valid = true */
+  data_layer_write_ekf(q, bias, cov); /* sets imu_ekf_valid = true */
   vAttitudeControlTask_Step();
 
   CHECK(s_lqr_calls == 1, "lqr_compute must be called once in FM_NOMINAL with EKF valid");
@@ -407,12 +409,14 @@ static void test_pid_in_fm_diagnostic_even_with_ekf(void)
 {
   float att[3] = {0};
   float rates[3] = {0};
-  float zero3[3] = {0.0f, 0.0f, 0.0f};
+  float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+  float bias[3] = {0.0f, 0.0f, 0.0f};
+  float cov[7] = {0.0f};
   reset_stubs();
   data_layer_init();
   data_layer_set_flight_mode(FM_DIAGNOSTIC);
   data_layer_write_imu(att, rates);
-  data_layer_write_ekf(att, zero3, zero3); /* sets imu_ekf_valid = true */
+  data_layer_write_ekf(q, bias, cov); /* sets imu_ekf_valid = true */
   vAttitudeControlTask_Step();
 
   CHECK(s_ctrl_calls == 1, "ctrl_update must be called in FM_DIAGNOSTIC (PID mode)");

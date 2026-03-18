@@ -55,6 +55,11 @@ int mpu6050_init(void)
 
 int mpu6050_read_raw(float accel[3], float gyro[3])
 {
+  if (accel == NULL && gyro == NULL)
+  {
+    return 0;
+  }
+
   uint8_t buffer[14];
   uint8_t reg = MPU6050_ACCEL_XOUT_H;
 
@@ -74,13 +79,19 @@ int mpu6050_read_raw(float accel[3], float gyro[3])
 
   // Convert to physical units (scales based on ±2g and ±250 deg/s by default)
   // For now using ±2g (16384 LSB/g) and ±250 deg/s (131 LSB/deg/s)
-  accel[0] = (float)ax / 16384.0f;
-  accel[1] = (float)ay / 16384.0f;
-  accel[2] = (float)az / 16384.0f;
+  if (accel != NULL)
+  {
+    accel[0] = (float)ax / 16384.0f;
+    accel[1] = (float)ay / 16384.0f;
+    accel[2] = (float)az / 16384.0f;
+  }
 
-  gyro[0] = (float)gx / 131.0f;
-  gyro[1] = (float)gy / 131.0f;
-  gyro[2] = (float)gz / 131.0f;
+  if (gyro != NULL)
+  {
+    gyro[0] = (float)gx / 131.0f;
+    gyro[1] = (float)gy / 131.0f;
+    gyro[2] = (float)gz / 131.0f;
+  }
 
   return 0;
 }
