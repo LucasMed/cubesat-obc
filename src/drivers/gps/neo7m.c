@@ -15,6 +15,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef PICO_BUILD
+  #include "hardware/irq.h"
+  #include "hardware/uart.h"
+  #include "pico/stdlib.h"
+
+static void gps_uart_isr(void);
+#endif
+
 // --- Static variables and buffer for NMEA data ---
 #define NMEA_RX_BUFFER_SIZE 2048
 static uint8_t nmea_rx_buffer[NMEA_RX_BUFFER_SIZE];
@@ -88,6 +96,17 @@ void nmea_buffer_push_isr(uint8_t byte)
   nmea_rx_head = next;
 }
 
+#ifdef PICO_BUILD
+static void gps_uart_isr(void)
+{
+  while (uart_is_readable(uart1))
+  {
+    uint8_t byte = uart_getc(uart1);
+    nmea_buffer_push_isr(byte);
+  }
+}
+#endif
+
 static bool nmea_buffer_pop(uint8_t *byte)
 {
   if (nmea_rx_head == nmea_rx_tail)
@@ -104,7 +123,18 @@ bool gps_init(void)
 {
 #ifdef PICO_BUILD
   g_gps_mutex = xSemaphoreCreateMutex();
+
+  uart_init(uart1, 9600);
+  gpio_set_function(4, GPIO_FUNC_UART);
+  gpio_set_function(5, GPIO_FUNC_UART);
+  uart_set_hw_flow(uart1, false, false);
+  uart_set_fifo_enabled(uart1, true);
+
+  irq_set_exclusive_handler(UART1_IRQ, gps_uart_isr);
+  irq_set_enabled(UART1_IRQ, true);
+  uart_set_irq_enables(uart1, true, false);
 #endif
+
   nmea_buffer_clear();
   memset(&g_last_fix, 0, sizeof(g_last_fix));
   g_satellites_in_view = 0;

@@ -18,9 +18,9 @@
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/temperature.h"
-#include "gps_driver.h"
 #include "eps.h"
 #include "fault_manager.h"
+#include "gps_driver.h"
 #include "health_monitor_task.h"
 #include "payload_task.h"
 #include "sensor_read_task.h"
@@ -179,8 +179,7 @@ static void vStartupTask(void *pvParameters)
   if (gps_ok)
   {
     extern void gps_task(void *pvParameters);
-    CHK(xTaskCreate(gps_task, "GpsTask", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_gps)),
-        "GpsTask");
+    CHK(xTaskCreate(gps_task, "GpsTask", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_gps)), "GpsTask");
   }
 
   printf("  payload_task_init...\r\n");
@@ -195,7 +194,7 @@ static void vStartupTask(void *pvParameters)
   }
 #endif
 #ifdef PICO_BUILD
-  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 1, &h_led), "LEDBlink");
+  CHK(xTaskCreate(vLedBlinkTask, "LEDBlink", 2048, NULL, tskIDLE_PRIORITY + 2, &h_led), "LEDBlink");
   /* Heartbeat at LOW priority — it's just diagnostic, must not preempt Startup. */
   CHK(xTaskCreate(vHeartbeatTask, "Heartbeat", 2048, NULL, tskIDLE_PRIORITY + 1, &h_hb),
       "Heartbeat");
