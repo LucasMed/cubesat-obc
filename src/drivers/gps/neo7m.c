@@ -1,6 +1,8 @@
 #ifdef PICO_BUILD
-  #include "hardware/rtc.h"
-  #include "pico/util/datetime.h"
+  #if defined(PICO_RP2040)
+    #include "hardware/rtc.h"
+    #include "pico/util/datetime.h"
+  #endif
 #endif
 // neo7m.c -- GPS NEO-7M/6M NMEA driver implementation
 // All comments in English, see WP-7.10
@@ -322,8 +324,9 @@ static void nmea_parse_gga(const char *sentence)
   }
 }
 
-#ifdef PICO_BUILD
-// $GPRMC parser: sync RTC with GPS time
+#if defined(PICO_BUILD) && defined(PICO_RP2040)
+#include "pico/util/datetime.h"
+// $GPRMC parser: sync RTC with GPS time (RP2040 only - datetime_t not available on RP2350)
 static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
 {
   // Example: $GPRMC,235947.00,A,3723.2475,N,12202.3246,W,0.13,309.62,120598,,,A*10
@@ -409,6 +412,13 @@ static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
                      .sec = (int8_t)s};
     rtc_set_datetime(&dt);
   }
+}
+#endif
+
+#if defined(PICO_BUILD) && !defined(PICO_RP2040)
+static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
+{
+  (void)sentence;
 }
 #endif
 
