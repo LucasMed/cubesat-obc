@@ -14,8 +14,8 @@ void gps_task(void *pvParameters)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while (1)
   {
-    const GpsFix_t *fix = gps_read_fix();
-    if (fix)
+    GpsFix_t *fix = gps_read_fix();
+    if (fix != NULL && fix->valid)
     {
       data_layer_set_gps_fix(fix);
     }

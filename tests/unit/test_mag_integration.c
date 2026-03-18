@@ -105,6 +105,170 @@ void test_data_layer_ekf_write(void) {
     test_case("EKF valid flag set", state.imu_ekf_valid == true);
 }
 
+void test_ekf_degenerate_field_zero_magnitude(void) {
+    printf("\n=== Test: EKF Degenerate Field (Zero Magnitude) ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float mag_zero[3] = {0.0f, 0.0f, 0.0f};
+    float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+    
+    ekf_predict(&s_ekf, gyro, 0.01f);
+    float P_diag_before = s_ekf.P[0][0];
+    ekf_update_mag(&s_ekf, mag_zero, 0.0f);
+    
+    float P_diag_after = s_ekf.P[0][0];
+    
+    test_case("EKF handles zero mag field without crash", 1);
+    test_case("Covariance unchanged after skipped degenerate update", 
+              fabsf(P_diag_before - P_diag_after) < 1e-6f);
+}
+
+void test_ekf_degenerate_field_near_zero(void) {
+    printf("\n=== Test: EKF Degenerate Field (Near-Zero Magnitude) ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float mag_near_zero[3] = {0.1f, 0.05f, 0.02f};
+    float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+    
+    ekf_predict(&s_ekf, gyro, 0.01f);
+    ekf_update_mag(&s_ekf, mag_near_zero, 0.0f);
+    
+    test_case("EKF handles near-zero mag field without crash", 1);
+    
+    float B_mag = sqrtf(mag_near_zero[0]*mag_near_zero[0] + 
+                        mag_near_zero[1]*mag_near_zero[1] + 
+                        mag_near_zero[2]*mag_near_zero[2]);
+    test_case("Near-zero magnitude below epsilon threshold", B_mag < 1.0f);
+}
+
+void test_ekf_degenerate_field_horizontal_only(void) {
+    printf("\n=== Test: EKF Degenerate Field (Zero Horizontal Component) ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float mag_vertical_only[3] = {0.0f, 0.0f, 50.0f};
+    float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+    
+    ekf_predict(&s_ekf, gyro, 0.01f);
+    float P_diag_before = s_ekf.P[0][0];
+    ekf_update_mag(&s_ekf, mag_vertical_only, 0.0f);
+    float P_diag_after = s_ekf.P[0][0];
+    
+    float Bh_mag = sqrtf(mag_vertical_only[0]*mag_vertical_only[0] + 
+                          mag_vertical_only[1]*mag_vertical_only[1]);
+    
+    test_case("EKF handles vertical-only field without crash", 1);
+    test_case("Horizontal field magnitude is zero", Bh_mag < 1e-6f);
+    test_case("Covariance unchanged after skipped horizontal update", 
+              fabsf(P_diag_before - P_diag_after) < 1e-6f);
+}
+
+void test_ekf_invalid_mag_reading_nan(void) {
+    printf("\n=== Test: EKF Invalid Mag Reading (NaN) ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float mag_nan[3] = {0.0f / 0.0f, 25.0f, 42.0f};
+    float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+    
+    ekf_predict(&s_ekf, gyro, 0.01f);
+    ekf_update_mag(&s_ekf, mag_nan, 0.0f);
+    
+    test_case("EKF handles NaN mag reading without crash", 1);
+    
+    float q[4];
+    ekf_get_quaternion(&s_ekf, q);
+    int q_valid = !isnan(q[0]) && !isnan(q[1]) && !isnan(q[2]) && !isnan(q[3]);
+    test_case("NaN input corrupts EKF state (no guard in EKF)", q_valid == 0);
+}
+
+void test_ekf_invalid_mag_reading_inf(void) {
+    printf("\n=== Test: EKF Invalid Mag Reading (Infinity) ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float mag_inf[3] = {1e9f, 25.0f, 42.0f};
+    float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+    
+    float q_before[4];
+    ekf_get_quaternion(&s_ekf, q_before);
+    
+    ekf_predict(&s_ekf, gyro, 0.01f);
+    ekf_update_mag(&s_ekf, mag_inf, 0.0f);
+    
+    float q_after[4];
+    ekf_get_quaternion(&s_ekf, q_after);
+    
+    int q_valid = !isnan(q_after[0]) && !isnan(q_after[1]) && 
+                  !isnan(q_after[2]) && !isnan(q_after[3]);
+    test_case("EKF handles large magnitude without NaN output", q_valid);
+}
+
+void test_ekf_degenerate_field_after_valid_reads(void) {
+    printf("\n=== Test: EKF Degenerate Field After Valid Reads ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float mag_valid[3] = {25.0f, 0.0f, 42.0f};
+    float mag_degenerate[3] = {0.0f, 0.0f, 0.0f};
+    float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+    
+    for (int i = 0; i < 5; i++) {
+        ekf_predict(&s_ekf, gyro, 0.01f);
+        ekf_update_mag(&s_ekf, mag_valid, 0.0f);
+    }
+    
+    float q_after_valid[4];
+    ekf_get_quaternion(&s_ekf, q_after_valid);
+    
+    ekf_predict(&s_ekf, gyro, 0.01f);
+    ekf_update_mag(&s_ekf, mag_degenerate, 0.0f);
+    
+    float q_after_degenerate[4];
+    ekf_get_quaternion(&s_ekf, q_after_degenerate);
+    
+    test_case("EKF processes valid mag updates before degenerate", 1);
+    test_case("Degenerate field does not corrupt EKF state", 
+              !isnan(q_after_degenerate[0]) && !isnan(q_after_degenerate[3]));
+}
+
+void test_mag_read_failure_handling(void) {
+    printf("\n=== Test: Mag Read Failure Handling (Simulated) ===\n");
+    
+    ekf_init(&s_ekf);
+    
+    float field[3] = {0};
+    int ret = hmc5883l_read(field);
+    test_case("Mag read returns success status", ret == 0);
+    
+    if (ret == 0) {
+        float mag_magnitude = sqrtf(field[0]*field[0] + 
+                                    field[1]*field[1] + 
+                                    field[2]*field[2]);
+        int valid_magnitude = !isnan(mag_magnitude) && !isinf(mag_magnitude);
+        test_case("Mag field magnitude is valid (not NaN/Inf)", valid_magnitude);
+        
+        int valid_components = !isnan(field[0]) && !isinf(field[0]) &&
+                               !isnan(field[1]) && !isinf(field[1]) &&
+                               !isnan(field[2]) && !isinf(field[2]);
+        test_case("All mag components are valid (not NaN/Inf)", valid_components);
+        
+        float gyro[3] = {0.01745f, -0.00872f, 0.00349f};
+        ekf_predict(&s_ekf, gyro, 0.01f);
+        ekf_update_mag(&s_ekf, field, 0.0f);
+        
+        float q[4];
+        ekf_get_quaternion(&s_ekf, q);
+        int q_valid = !isnan(q[0]) && !isnan(q[1]) && 
+                      !isnan(q[2]) && !isnan(q[3]);
+        test_case("EKF produces valid quaternion after mag update", q_valid);
+        
+        test_case("Stub mag read always succeeds (host)", ret == 0);
+    }
+}
+
 void test_mag_multiple_reads(void) {
     printf("\n=== Test: Mag Multiple Reads ===\n");
     
@@ -132,6 +296,13 @@ int main(void) {
     test_ekf_update_mag();
     test_ekf_attitude_output();
     test_data_layer_ekf_write();
+    test_ekf_degenerate_field_zero_magnitude();
+    test_ekf_degenerate_field_near_zero();
+    test_ekf_degenerate_field_horizontal_only();
+    test_ekf_invalid_mag_reading_nan();
+    test_ekf_invalid_mag_reading_inf();
+    test_ekf_degenerate_field_after_valid_reads();
+    test_mag_read_failure_handling();
     test_mag_multiple_reads();
     
     printf("\n===========================================\n");

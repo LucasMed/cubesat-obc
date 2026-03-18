@@ -11,7 +11,7 @@
 /**
  * @brief Initialize the MPU6050 sensor.
  *
- * Wakes up the device and sets default ranges (±8g, ±500°/s).
+ * Wakes up the device and sets default ranges (±2g, ±250°/s).
  *
  * @return 0 on success, negative error code otherwise.
  */

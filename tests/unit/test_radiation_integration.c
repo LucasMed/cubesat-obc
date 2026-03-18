@@ -12,6 +12,13 @@
 static int s_passed = 0;
 static int s_failed = 0;
 
+static uint16_t g_mock_adc_value = 0;
+
+uint16_t adc_read(void)
+{
+  return g_mock_adc_value;
+}
+
 void test_case(const char *name, int condition) {
     if (condition) {
         printf("  [PASS] %s\n", name);
@@ -30,6 +37,7 @@ void test_radiation_init(void) {
 
 void test_radiation_read(void) {
     printf("\n=== Test: Radiation Read ===\n");
+    g_mock_adc_value = 2048;
     rad_sample_t sample = {0};
     bool ret = radiation_read(&sample);
     test_case("Radiation read returns true", ret == true);
@@ -62,16 +70,20 @@ void test_radiation_threshold(void) {
     printf("\n=== Test: Radiation Threshold ===\n");
     
     // Test above threshold
-    rad_sample_t high = {3500, 2.8f, false};  // Will be set by driver
+    g_mock_adc_value = 3500;
+    rad_sample_t high = {0};
     radiation_read(&high);
     
     // Test below threshold
-    rad_sample_t low = {100, 0.08f, false};
+    g_mock_adc_value = 100;
+    rad_sample_t low = {0};
     radiation_read(&low);
     
     // Just verify reading works
     test_case("High sample valid", high.raw_adc > 0);
+    test_case("High above threshold", high.threshold == true);
     test_case("Low sample valid", low.raw_adc < 4095);
+    test_case("Low below threshold", low.threshold == false);
 }
 
 void test_payload_manager_dose(void) {
@@ -131,6 +143,7 @@ int main(void) {
     printf("Radiation Integration Test Suite\n");
     printf("===========================================\n");
     
+    data_layer_init();
     test_radiation_init();
     test_radiation_read();
     test_radiation_accumulate();

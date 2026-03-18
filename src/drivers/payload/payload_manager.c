@@ -83,3 +83,9 @@ payload_status_t payload_manager_get_status(void)
 
   return s_payload_status;
 }
+
+float payload_manager_get_cumulative_dose(void)
+{
+  s_payload_status.cumulative_dose = radiation_driver_read_dose();
+  return s_payload_status.cumulative_dose;
+}

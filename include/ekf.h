@@ -99,14 +99,16 @@ extern "C"
   /**
    * @brief Yaw update step: correct yaw using tilt-compensated magnetometer.
    *
-   * Uses the current roll/pitch estimates (x[0], x[1]) to project the
+   * Uses the current roll/pitch estimates to project the
    * raw magnetic field onto the horizontal plane, then computes:
    *
    *   Bh_x = Bx*cos(p) + By*sin(r)*sin(p) + Bz*cos(r)*sin(p)
    *   Bh_y = By*cos(r) - Bz*sin(r)
    *   yaw_meas = atan2(-Bh_y, Bh_x) + declination
    *
-   * H = [0 0 1 0 0 0] — scalar measurement.
+   * The full 3D magnetic field vector is used in the measurement update.
+   * Jacobian H is a 3x7 matrix of partial derivatives of the rotated field
+   * w.r.t. the quaternion components. Innovation covariance S is 3x3.
    * Innovation is wrapped to [-π, +π] before the update.
    * Skipped if the horizontal field magnitude is below a small epsilon
    * (degenerate field or sensor not available).

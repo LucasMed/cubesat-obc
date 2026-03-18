@@ -22,6 +22,33 @@ static volatile uint16_t nmea_rx_tail = 0;
 static GpsFix_t g_last_fix = {0};
 static uint8_t g_satellites_in_view = 0;
 
+#ifdef PICO_BUILD
+  #include "FreeRTOS.h"
+  #include "semphr.h"
+static SemaphoreHandle_t g_gps_mutex = NULL;
+#endif
+
+// --- Mutex helpers ---
+static void gps_lock(void)
+{
+#ifdef PICO_BUILD
+  if (g_gps_mutex)
+  {
+    xSemaphoreTake(g_gps_mutex, portMAX_DELAY);
+  }
+#endif
+}
+
+static void gps_unlock(void)
+{
+#ifdef PICO_BUILD
+  if (g_gps_mutex)
+  {
+    xSemaphoreGive(g_gps_mutex);
+  }
+#endif
+}
+
 // --- UART and buffer helpers ---
 // These should be connected to real UART driver/ISR for the target
 
@@ -47,6 +74,18 @@ bool nmea_buffer_push(uint8_t byte)
 }
 #endif
 
+// Thread-safe buffer push (used by UART ISR on Pico)
+void nmea_buffer_push_isr(uint8_t byte)
+{
+  uint16_t next = (nmea_rx_head + 1) % NMEA_RX_BUFFER_SIZE;
+  if (next == nmea_rx_tail)
+  {
+    return;  // Buffer full, drop byte
+  }
+  nmea_rx_buffer[nmea_rx_head] = byte;
+  nmea_rx_head = next;
+}
+
 static bool nmea_buffer_pop(uint8_t *byte)
 {
   if (nmea_rx_head == nmea_rx_tail)
@@ -61,8 +100,9 @@ static bool nmea_buffer_pop(uint8_t *byte)
 // --- Driver API implementation ---
 bool gps_init(void)
 {
-  // TODO: Initialize UART0 for GPS; set to 9600 baud, 8N1 (platform-specific)
-  // For now, just clear buffer/state
+#ifdef PICO_BUILD
+  g_gps_mutex = xSemaphoreCreateMutex();
+#endif
   nmea_buffer_clear();
   memset(&g_last_fix, 0, sizeof(g_last_fix));
   g_satellites_in_view = 0;
@@ -275,9 +315,11 @@ static void nmea_parse_gga(const char *sentence)
     {
       g_satellites_in_view = 0;
     }
+
+    gps_lock();
+    g_last_fix = fix;
+    gps_unlock();
   }
-  // Critical section if FreeRTOS: should lock!
-  g_last_fix = fix;
 }
 
 #ifdef PICO_BUILD
@@ -373,26 +415,37 @@ static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
 GpsFix_t *gps_read_fix(void)
 {
   char line[128];
-  // Blocking: poll until next NMEA sentence found
-  while (nmea_get_sentence(line, sizeof(line)))
+
+  if (!nmea_get_sentence(line, sizeof(line)))
   {
-    if (!nmea_verify_checksum(line))
-    {
-      continue;
-    }
-    if (strncmp(line + 1, "GPGGA", 5) == 0)
-    {
-      nmea_parse_gga(line);
-      break;
-    }
-#ifdef PICO_BUILD
-    if (strncmp(line + 1, "GPRMC", 5) == 0)
-    {
-      nmea_parse_gprmc_and_sync_rtc(line);
-    }
-#endif
+    return NULL;
   }
-  return &g_last_fix;
+
+  if (!nmea_verify_checksum(line))
+  {
+    return NULL;
+  }
+  if (strncmp(line + 1, "GPGGA", 5) == 0)
+  {
+    nmea_parse_gga(line);
+  }
+#ifdef PICO_BUILD
+  else if (strncmp(line + 1, "GPRMC", 5) == 0)
+  {
+    nmea_parse_gprmc_and_sync_rtc(line);
+  }
+#endif
+
+  gps_lock();
+#ifdef PICO_BUILD
+  g_last_fix.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+#else
+  g_last_fix.timestamp_ms = 0;
+#endif
+  GpsFix_t *result = &g_last_fix;
+  gps_unlock();
+
+  return result;
 }
 
 GpsFix_t *gps_get_last_fix(void)

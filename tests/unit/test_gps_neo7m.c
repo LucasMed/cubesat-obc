@@ -30,6 +30,7 @@ void test_parse_valid_gpgga(void) {
     const char *gpgga = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n";
     inject_sentence(gpgga);
     GpsFix_t* fix = gps_read_fix();
+    assert(fix != NULL);
     assert(fix->valid);
     // Check values (allow small numerical tolerance due to float conversion)
     assert(fabsf(fix->lat - 48.1173f) < 0.0002f);
@@ -44,7 +45,8 @@ void test_bad_checksum(void) {
     const char *bad = "$GPGGA,123519,4807.038,N,01131.000,E,1,06,0.9,545.4,M,46.9,M,,*00\r\n";
     inject_sentence(bad);
     GpsFix_t* fix = gps_read_fix();
-    assert(!fix->valid);
+    // gps_read_fix returns NULL for invalid checksum
+    assert(fix == NULL);
 }
 
 int main(void) {

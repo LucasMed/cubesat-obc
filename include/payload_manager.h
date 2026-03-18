@@ -49,4 +49,11 @@ bool payload_manager_health_check(void);
  */
 payload_status_t payload_manager_get_status(void);
 
+/**
+ * @brief Get the cumulative radiation dose estimate.
+ *
+ * @return Estimated total dose in Gy (placeholder units until calibration).
+ */
+float payload_manager_get_cumulative_dose(void);
+
 #endif /* PAYLOAD_MANAGER_H */

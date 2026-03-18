@@ -435,6 +435,7 @@ if(NOT PICO_BUILD)
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
+        ../../src/drivers/imu/mpu6050.c
     )
     target_link_libraries(test_imu_integration m)
     target_include_directories(test_imu_integration PRIVATE
@@ -463,15 +464,24 @@ if(NOT PICO_BUILD)
     )
     add_test(NAME mag_integration_test COMMAND test_mag_integration)
 
-    # add_executable(test_radiation_integration
-    #     test_radiation_integration.c
-    #     ../../src/drivers/payload/radiation_driver.c
-    #     ../../src/drivers/payload/payload_manager.c
-    # )
-    # target_link_libraries(test_radiation_integration m)
-    # target_include_directories(test_radiation_integration PRIVATE
-    #     ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    #     ${CMAKE_SOURCE_DIR}
-    # )
-    # add_test(NAME radiation_integration_test COMMAND test_radiation_integration)
+    add_executable(test_radiation_integration
+        test_radiation_integration.c
+        ../../src/drivers/payload/radiation_driver.c
+        ../../src/drivers/payload/payload_manager.c
+        ../../src/drivers/payload/storage_manager.c
+        ../../src/drivers/payload/rm3100.c
+        ../../src/drivers/payload/camera_driver.c
+        ../../src/drivers/payload/spi_payload.c
+        ../../src/drivers/host_spi_gpio_stubs.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_link_libraries(test_radiation_integration m)
+    target_include_directories(test_radiation_integration PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME radiation_integration_test COMMAND test_radiation_integration)
 endif()
