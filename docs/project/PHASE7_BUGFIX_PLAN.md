@@ -194,12 +194,15 @@ Code review of Phase 7 (GPS, IMU, Magnetometer integration) revealed **7 critica
 
 - [x] All CRITICAL bugs fixed (GPS-BUG-1..3, IMU-BUG-1, DL-BUG-1..2)
 - [x] All HIGH priority GPS issues addressed
-- [x] All tests pass on Docker CI (41/41 passing)
+- [x] All tests pass on Docker CI (42/42 passing)
 - [x] New test cases added for NULL parameter handling
 - [x] New test cases added for GPS non-blocking behavior
-- [ ] Radiation integration test re-enabled and passing
-- [ ] Remaining IMU documentation fixes
-- [ ] Remaining medium priority issues
+- [x] Radiation integration test re-enabled and passing
+- [x] Documentation fixes (ekf.h, mpu6050.h, config.h)
+- [ ] IMU function semantics documented (mpu6050_read returns rates, not angles)
+- [ ] Remaining medium priority issues (deferred to Phase 8)
+
+> **Note**: IMU documentation (mpu6050_read semantics) and medium priority issues deferred to Phase 8 per workload prioritization.
 
 ---
 
