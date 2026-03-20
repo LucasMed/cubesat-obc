@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -41,21 +41,21 @@
 |------|------|-------------|----------|--------|--------|
 | src/core/flash_backend_stub.c | 58 | Implement using flash_range_program() | High | 4h | ✅ Done (comment fixed) |
 
-### 1.4 Magnetometer Driver (HMC5883L)
+### 1.4 Magnetometer Driver (HMC5883L) ✅ COMPLETED
 
-| File | Line | Description | Priority | Effort |
-|------|------|-------------|----------|--------|
-| src/drivers/mag/hmc5883l.c | 22 | Real I2C init implementation | High | 3h |
-| src/drivers/mag/hmc5883l.c | 29 | Real I2C read implementation | High | 3h |
-| src/drivers/mag/hmc5883l.c | 40 | Real I2C init/read implementation | High | 3h |
+| File | Line | Description | Priority | Effort | Status |
+|------|------|-------------|----------|--------|--------|
+| src/drivers/mag/hmc5883l.c | 22 | Real I2C init implementation | High | 3h | ✅ Done |
+| src/drivers/mag/hmc5883l.c | 29 | Real I2C read implementation | High | 3h | ✅ Done |
+| src/drivers/mag/hmc5883l.c | 40 | Real I2C init/read implementation | High | 3h | ✅ Done |
 
 ### TODO Summary by Priority
 
 | Priority | Count | Total Effort |
 |----------|-------|--------------|
-| High | 6 | ~20h |
+| High | 3 | ~9h |
 | Medium | 5 | ~8h |
-| **Total** | **11** | **~28h** |
+| **Total** | **8** | **~17h** |
 
 ---
 
@@ -282,6 +282,7 @@ OI-8 (Heap Sizing)
 | 1.0 | 2026-03-20 | System | Initial document creation |
 | 1.2 | 2026-03-20 | System | PR-18 (DLA mag_field) completed - 1.2 marked as done |
 | 1.3 | 2026-03-20 | System | 1.3 (Flash Backend) completed - TODO at line 58 was outdated, real implementation exists in flash_backend.c |
+| 1.4 | 2026-03-20 | System | HMC5883L I2C implementation completed - 1.4 marked as done |
 
 ---
 
