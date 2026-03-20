@@ -1,0 +1,286 @@
+# CubeSat OBC - Pending Tasks Document
+
+**Document ID:** PENDING_TASKS.md  
+**Version:** 1.0  
+**Last Updated:** 2026-03-20  
+**Status:** Active
+
+---
+
+## Table of Contents
+
+1. [TODO Comments in Source Code](#1-todo-comments-in-source-code)
+2. [Pull Requests Pending](#2-prs-pending)
+3. [Phase 8 Tasks](#3-phase-8-tasks)
+4. [ECSS Documents to Create](#4-ecss-documents-to-create)
+5. [Open Issues](#5-open-issues-from-docs)
+6. [Known Issues](#6-known-issues)
+
+---
+
+## 1. TODO Comments in Source Code
+
+### 1.1 GPS Driver (neo7m.c)
+
+| File | Line | Description | Priority | Effort |
+|------|------|-------------|----------|--------|
+| src/drivers/gps/neo7m.c | 146 | Release UART, stop interrupts | Medium | 1h |
+| src/drivers/gps/neo7m.c | 315 | Get system time in ms | Medium | 2h |
+| src/drivers/gps/neo7m.c | 499 | Stale detection, timestamp check | High | 3h |
+| src/drivers/gps/neo7m.c | 505 | Parse from GPGGA sentence | Medium | 2h |
+
+### 1.2 Attitude Control Task
+
+| File | Line | Description | Priority | Effort |
+|------|------|-------------|----------|--------|
+| src/tasks/attitude_control_task.c | 60 | Read DLA mag_field (PR-18) | High | 4h |
+
+### 1.3 Flash Backend
+
+| File | Line | Description | Priority | Effort |
+|------|------|-------------|----------|--------|
+| src/core/flash_backend_stub.c | 58 | Implement using flash_range_program() | High | 4h |
+
+### 1.4 Magnetometer Driver (HMC5883L)
+
+| File | Line | Description | Priority | Effort |
+|------|------|-------------|----------|--------|
+| src/drivers/mag/hmc5883l.c | 22 | Real I2C init implementation | High | 3h |
+| src/drivers/mag/hmc5883l.c | 29 | Real I2C read implementation | High | 3h |
+| src/drivers/mag/hmc5883l.c | 40 | Real I2C init/read implementation | High | 3h |
+
+### TODO Summary by Priority
+
+| Priority | Count | Total Effort |
+|----------|-------|--------------|
+| High | 6 | ~20h |
+| Medium | 5 | ~8h |
+| **Total** | **11** | **~28h** |
+
+---
+
+## 2. Pull Requests Pending
+
+| PR | Title | Status | Blocking | Notes |
+|----|-------|--------|----------|-------|
+| PR-18 | HMC5883L driver stub + DLA integration | In Progress | ADCS modes | Magnetometer integration for attitude determination |
+| PR-23 | LQR mode-scheduled gains | Verify | ADCS control | Verify completion status |
+
+### 2.1 PR-18 Details
+
+**Title:** HMC5883L Driver Stub + DLA Integration  
+**Component:** Magnetometer Driver  
+**Description:** Implement HMC5883L driver for magnetometer readings and integrate with Detumbling & Pointing Algorithm (DLA).  
+**Dependencies:**
+- I2C HAL implementation
+- PR-23 (LQR gains)
+
+**Tasks:**
+- [ ] Complete HMC5883L I2C read/write functions
+- [ ] Integrate mag_field read in attitude_control_task.c:60
+- [ ] Add unit tests
+- [ ] Update DLA documentation
+
+### 2.2 PR-23 Details
+
+**Title:** LQR Mode-Scheduled Gains  
+**Component:** Attitude Control  
+**Description:** Verify mode-scheduled LQR gain implementation is complete.  
+**Status:** Needs verification  
+**Blocking:** None
+
+---
+
+## 3. Phase 8 Tasks
+
+### 3.1 Feature Tasks
+
+| Task | Description | Priority | Effort | Dependencies |
+|------|-------------|----------|--------|--------------|
+| Camera Driver | Implement camera driver for payload capture | High | 16h | Camera hardware selection |
+| LIS3MDL Migration | Migrate from HMC5883L (discontinued) to LIS3MDL | High | 12h | PR-18 |
+| FM_PAYLOAD Mode | Payload mode state implementation | High | 8h | Camera driver |
+| W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | Hardware availability |
+| PWM HAL (Wheels) | PWM HAL for reaction wheels (GPIO6/7/8) | Medium | 6h | GPIO HAL |
+| PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | GPIO HAL |
+| RP2350 Flash Backend | Full RP2350 flash backend implementation | High | 8h | flash_backend_stub.c |
+| MC/DC Coverage | MC/DC coverage analysis for certification | High | 20h | Test completion |
+
+### 3.2 Phase 8 Effort Summary
+
+| Category | Tasks | Total Effort |
+|----------|-------|--------------|
+| Payload | 2 | 28h |
+| Storage | 1 | 8h |
+| PWM HAL | 2 | 12h |
+| Flash Backend | 1 | 8h |
+| Verification | 1 | 20h |
+| **Total** | **7** | **~76h** |
+
+---
+
+## 4. ECSS Documents to Create
+
+### 4.1 Software Design Documents
+
+| Document ID | Title | Purpose | Priority | Effort |
+|-------------|-------|---------|----------|--------|
+| ADCS-SIM-001 | ADCS Simulation Design | ADCS algorithm simulation and validation | Medium | 8h |
+
+### 4.2 Safety & Reliability Documents
+
+| Document ID | Title | Purpose | Priority | Effort |
+|-------------|-------|---------|----------|--------|
+| FMEA-OBC-001 | OBC Failure Mode Effects Analysis | Hardware FMEA for OBC | High | 16h |
+| FMEA-OBC-002 | Software FMEA | Software failure mode analysis | High | 12h |
+
+### 4.3 Test Documents
+
+| Document ID | Title | Purpose | Priority | Effort |
+|-------------|-------|---------|----------|--------|
+| STP-OBC-001 | Software Test Procedure | Detailed test procedures | High | 12h |
+| ITP-OBC-001 | Integration Test Plan | Subsystem integration testing | High | 8h |
+| ATP-OBC-001 | Acceptance Test Procedure | Acceptance criteria and procedures | Medium | 8h |
+| STR-OBC-001 | Software Test Report | Test results documentation | High | 8h |
+
+### 4.4 Operational Documents
+
+| Document ID | Title | Purpose | Priority | Effort |
+|-------------|-------|---------|----------|--------|
+| OPS-OBC-001 | Operations Manual | Flight operations procedures | Low | 12h |
+| FRR-OBC-001 | Flight Readiness Review | Flight readiness documentation | Medium | 8h |
+
+### 4.5 ECSS Document Summary
+
+| Priority | Count | Total Effort |
+|----------|-------|--------------|
+| High | 5 | 56h |
+| Medium | 3 | 24h |
+| Low | 1 | 12h |
+| **Total** | **9** | **~92h** |
+
+---
+
+## 5. Open Issues (from docs)
+
+| Issue ID | Title | Severity | Status | Blocking |
+|----------|-------|----------|--------|----------|
+| OI-1 | Antenna mechanical design | Medium | Open | Deployment |
+| OI-3 | GPS UART0 conflict | High | Open | GPS subsystem |
+| OI-4 | Flash backend stub | High | Open | Data logging |
+| OI-5 | External watchdog GPIO20 | Medium | Open | Hardware |
+| OI-7 | TX PA efficiency concern | Medium | Open | Power budget |
+| OI-8 | Heap sizing (~82KB needed vs 60KB) | Critical | Open | Memory subsystem |
+
+### 5.1 Critical Issues Detail
+
+#### OI-8: Heap Sizing
+**Issue:** Heap allocation insufficient for RP2350  
+**Current:** 60KB heap  
+**Required:** ~82KB heap  
+**Impact:** Memory allocation failures, potential crashes  
+**Resolution Path:**
+1. Review heap allocation in FreeRTOS config
+2. Adjust linker script for RP2350
+3. Verify with stress testing
+
+### 5.2 High Priority Issues
+
+#### OI-3: GPS UART0 Conflict
+**Issue:** UART0 shared between GPS and debug console  
+**Impact:** GPS data corruption or loss  
+**Resolution Path:**
+1. Move debug console to UART1
+2. Implement UART arbitration
+
+#### OI-4: Flash Backend Stub
+**Issue:** Stub implementation in production code  
+**Impact:** Data persistence failure  
+**Resolution Path:**
+1. Implement flash_range_program()
+2. Add wear leveling
+3. Implement error recovery
+
+---
+
+## 6. Known Issues
+
+### 6.1 Memory Issues
+
+| Issue | Description | Impact | Resolution |
+|-------|-------------|--------|------------|
+| Heap Configuration | 60KB vs 82KB required | Critical | Update FreeRTOS/ linker config for RP2350 |
+
+### 6.2 Driver Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Camera Driver | Deferred | Awaiting camera hardware selection |
+| External Storage | Pending | W25Qxx integration pending |
+| HMC5883L Driver | Partial | Stub implementation, I2C not implemented |
+
+### 6.3 Hardware Dependencies
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Magnetometer | Discontinued | HMC5883L discontinued, migrate to LIS3MDL |
+| GPS Module | Working | UART0 conflict needs resolution |
+| External Flash | Pending | W25Qxx integration pending |
+| External Watchdog | Pending | GPIO20 connection pending |
+
+---
+
+## Appendix A: Priority Definitions
+
+| Priority | Description | Response Time |
+|----------|-------------|---------------|
+| Critical | System non-functional, data loss risk | Immediate |
+| High | Major feature broken, workaround exists | 1 week |
+| Medium | Minor feature broken, no workaround | 2 weeks |
+| Low | Cosmetic issue, enhancement | 1 month |
+
+---
+
+## Appendix B: Effort Estimates
+
+| Effort | Hours | Description |
+|--------|-------|-------------|
+| XS | 1-2h | Quick fix |
+| S | 2-4h | Small task |
+| M | 4-8h | Medium task |
+| L | 8-16h | Large task |
+| XL | 16-32h | Major feature |
+| XXL | 32h+ | Epic |
+
+---
+
+## Appendix C: Dependency Graph
+
+```
+PR-18 (HMC5883L)
+    └── Phase 8: LIS3MDL Migration
+            └── DLA Integration
+
+OI-4 (Flash Backend Stub)
+    └── Phase 8: RP2350 Flash Backend
+            └── W25Qxx Integration
+                    └── FM_PAYLOAD Mode
+
+Camera Driver
+    └── FM_PAYLOAD Mode
+
+OI-8 (Heap Sizing)
+    └── Phase 8: MC/DC Coverage (need stable build)
+```
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-03-20 | System | Initial document creation |
+
+---
+
+*End of Document*

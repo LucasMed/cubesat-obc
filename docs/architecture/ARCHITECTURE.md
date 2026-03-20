@@ -7,6 +7,9 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 **Target Hardware**: Raspberry Pi Pico 2W (RP2350 dual-core Cortex-M33 MCU, 520 KB SRAM, WiFi via CYW43)
 **OS**: FreeRTOS with `ARM_CM33_NTZ` port to securely handle ARMv8-M memory & FPU dynamic exception frames.
 
+> **Note**: FreeRTOS currently runs in **single-core mode** (`configNUMBER_OF_CORES = 1`).
+> Dual-core SMP is disabled until boot sequence is stabilized (see `config/FreeRTOSConfig.h:23`).
+
 ---
 
 ## System Architecture Diagram
@@ -51,16 +54,16 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 
 | Module                  | Signal        | Pico 2W GPIO | Pico 2W Physical Pin | Notes / Bus         |
 |-------------------------|--------------|----------------|----------------------|---------------------|
-| **MPU-6050 (IMU)**      | SDA          | GPIO2          | 4                    | I2C0 SDA            |
-|                         | SCL          | GPIO3          | 5                    | I2C0 SCL            |
+| **MPU-6050 (IMU)**      | SDA          | GPIO4          | 6                    | I2C0 SDA (see config.h) |
+|                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
-| **HMC5883L (Magnet.)**  | SDA          | GPIO2          | 4                    | I2C0 SDA            |
-|                         | SCL          | GPIO3          | 5                    | I2C0 SCL            |
+| **HMC5883L (Magnet.)**  | SDA          | GPIO4          | 6                    | I2C0 SDA            |
+|                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
-| **GPS (NEO-6M/7M)**     | TX           | GPIO1          | 2                    | UART0 RX (Pico)     |
-|                         | RX           | GPIO0          | 1                    | UART0 TX (Pico)     |
+| **GPS (NEO-7M)**       | TX           | GPIO4          | 6                    | UART1 RX (Pico)     |
+|                         | RX           | GPIO5          | 7                    | UART1 TX (Pico)     |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
 | **HC-12/Si4463 (Radio)**| TX           | GPIO5          | 7                    | UART1 RX (Pico)     |
@@ -103,15 +106,16 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]
 
 ### 3. **Control System** (`src/control/`)
-- **PID Controller**: Decoupled per axis (roll, pitch, yaw)
-  - Proportional, Integral, Derivative gains tunable per axis
-  - Anti-windup on integral term
-  - Output saturation to protect actuators
-- **Attitude Controller**: Higher-level control law
-  - Converts attitude error to rate commands
-  - Feeds to PID for rate stabilization
-  - Supports null-space momentum management
-- **Files**: `pid_controller.c`, `attitude_control.c`
+- **EKF (7-State Quaternion)**: `x = [q0, q1, q2, q3, bx, by, bz]` — quaternion attitude + 3 gyro biases
+  - Accelerometer roll/pitch update (3-axis)
+  - Magnetometer yaw correction via tilt-compensation
+  - Analytic 3×3 S⁻¹ inversion (no matrix decomposition)
+- **LQR Controller** with gain scheduling (3 modes: FM_NOMINAL, FM_DETUMBLE, fallback):
+  - FM_NOMINAL: ωn=10 rad/s, ζ=1 (critically damped nadir tracking)
+  - FM_DETUMBLE: ωn=30 rad/s, ζ=1 (fast rate damping)
+  - PID fallback when EKF not converged or in FM_DIAGNOSTIC
+- **RK2 Dynamics**: Midpoint integration in `attitude_dynamics_step()`
+- **Files**: `ekf.c`, `lqr.c`, `lqr_schedule.c`, `pid_controller.c`, `attitude_control.c`, `attitude_dynamics.c`
 
 ### 4. **Actuators** (`src/actuators/`)
 - **Reaction Wheels** (3-axis): Angular momentum storage for ADCS
@@ -135,13 +139,20 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **Files**: `attitude_dynamics.c`
 
 ### 6. **FreeRTOS Task Layer** (`src/tasks/`)
-- **SensorRead Task** (10 Hz): Poll IMU, temperature, voltage
-- **AttitudeControl Task** (20 Hz): Compute control commands
-- **Telemetry Task** (1 Hz): Transmit state to ground station
-- **HealthMonitor Task** (0.2 Hz): Bus voltage, thermal monitoring, internal MCU watchdog kick +
-  external TPS3431 watchdog feed (`watchdog_hal_feed()` on GPIO20, 3 s timeout)
-- **Design**: Priority levels (HIGH/MEDIUM/LOW) prevent starvation
-- **Files**: 4 task implementations + task headers
+| Task | Rate | Priority | Stack | Notes |
+|------|------|----------|-------|-------|
+| SensorRead | 10 Hz | IDLE+4 (4) | 2048 words | IMU + EKF fusion + temp |
+| AttitudeControl | 10 Hz | IDLE+3 (3) | 2048 words | LQR/PID dispatch + RK2 dynamics |
+| Telemetry | 1 Hz | IDLE+2 (2) | 2048 words | CSP packet TX |
+| Command | Event | IDLE+2 (2) | 2048 words | CSP port 20, uplink cmds |
+| HealthMonitor | 0.2 Hz | IDLE+1 (1) | 2048 words | Watchdog kick + FDIR + EPS |
+| GpsTask | 1 Hz | IDLE+2 (2) | 2048 words | NMEA parse → DLA |
+| PayloadTask | 10 Hz | 2 | 1024 words | RM3100 mag + camera + SD |
+| LEDBlink/Heartbeat | 5 Hz/0.5 Hz | IDLE+1-2 | 2048 | Pico-only diagnostics |
+
+> **Note**: AttitudeControl runs at **10 Hz** (not 20 Hz). The control loop period is defined by `CONTROL_LOOP_HZ` / `pdMS_TO_TICKS(100)`.
+
+- **Files**: 8 task implementations + task headers
 
 ### 7. **Communication** (`third_party/libcsp/`, `src/core/comm_init.c` - Phase 3)
 - **Protocol**: CubeSat Space Protocol (CSP) v2
@@ -159,39 +170,27 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 TIME → 
 
 SensorRead (10 Hz):
-  IMU ──(I2C)──▶ mpu6050_read() ──▶ system_state.imu_data ┐
-  Temp ─(I2C)─▶ temp_read()     ──▶ system_state.temp     │
-  Vbatt(ADC)───▶ adc_read()     ──▶ system_state.vbatt    │
-                                                           │
-AttitudeControl (20 Hz):                         ╔═════════╩═════════╗
-  system_state.imu_data                          ║ SYSTEM STATE      ║
-  system_state.control_gains ──▶ pid_update() ── ║ (shared memory)   ║
-  ──▶ attitude_control()                         ║                   ║
-  ──▶ system_state.control_torque                ║ RW Rate Cmds (Hz) ║
-           │                                     ║ Magnetorq Cmds    ║
-           ▼                                     ║ Attitude (Euler)  ║
-  Actuator Models:                               ║ Angular Rates     ║
-  rw_apply_torque()       (momentum change)      ║ Sensor Readings   ║
-  magnetorquer_dipole()                          ╚═══════════════════╝
-           │
-           ▼
-  Dynamics Update (Euler):
-  attitude_dynamics_step()
-           │
-           ▼
-  system_state.attitude (updated)
-  system_state.angular_rates (updated)
-
+  IMU ──(I2C)──▶ mpu6050_read_raw() ──▶ EKF predict/update ──▶ DLA ┐
+  Temp ──(I2C)─▶ temperature_read()   ──▶ DLA                       │
+  Mag ───(I2C)─▶ hmc5883l_read()      ──▶ EKF yaw corr ──▶ DLA     │
+                                                                   │
+AttitudeControl (10 Hz):                              ╔═══════════╩═══════════╗
+  FM_DETUMBLE → momentum_dump_step() → magnetorquer                 ║ DLA (Data Layer) ║
+  FM_NOMINAL + EKF valid → LQR → torque                ║  (mutex-protected)  ║
+  FM_DIAGNOSTIC / pre-EKF → PID → torque               ║                   ║
+           │                                                       ║ Quaternion (EKF) ║
+           ▼                                                       ║ Euler angles     ║
+  RK2 Dynamics: attitude_dynamics_step()               ║ Gyro biases      ║
+           │                                                       ║ Rates, att_err  ║
+           ▼                                                       ║ GPS fix          ║
+  Actuators: RW torque / Magnetorquer dipole             ╚═════════════════════╝
 
 Telemetry (1 Hz):
-  system_state.{attitude, rates, sensor_data}
-           │
-           ▼
-  format_telemetry_packet()
-           │
-           ▼
-  WiFi TX (CYW43) ──▶ Ground Station
-  UART TX (fallback)
+  DLA snapshot ──▶ CSP packet ──▶ WiFi TX (CYW43) ──▶ Ground Station
+                               UART fallback
+
+Health Monitor (0.2 Hz):
+  watchdog_hal_feed() ──▶ EPS monitor tick ──▶ Fault manager tick
 ```
 
 ---
@@ -314,12 +313,12 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 ## Phase 4 Achievements (Advanced Control — Complete)
 
-1. **EKF Attitude Estimator** ✅: 6-state EKF with gyro-bias estimation; analytic
-   2×2 S⁻¹ inversion; integrated into 10 Hz sensor_read_task loop.
-2. **LQR Controller** ✅: 3×6 full-state gain matrix (ωn=10 rad/s, ζ=1);
-   dispatched in FM_NOMINAL when EKF is converged.
-3. **RK2 Dynamics** ✅: Midpoint integration replacing forward-Euler in
-   attitude_dynamics_step.
+1. **EKF Attitude Estimator** ✅: 7-state EKF `[q0,q1,q2,q3,bx,by,bz]` with gyro-bias
+   estimation; quaternion state with analytic 3×3 S⁻¹ inversion; integrated into
+   10 Hz sensor_read_task loop.
+2. **LQR Controller with Gain Scheduling** ✅: 3×6 full-state gain matrix (ωn=10/30 rad/s, ζ=1);
+   dispatched by `lqr_schedule_apply()` for FM_NOMINAL/FM_DETUMBLE modes.
+3. **RK2 Dynamics** ✅: Midpoint integration in `attitude_dynamics_step()`.
 
 ## Future Enhancements (Phase 5+)
 
@@ -330,6 +329,16 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 ---
 
-**Last Updated**: 2026-03-08
+**Last Updated**: 2026-03-20
 **Author**: OBC Development Team
-**Status**: Phase 3 (Communication & Telemetry) Complete
+**Status**: Phase 5 (Fault Management & Safety) Complete
+
+### Documentation Discrepancies Fixed (2026-03-20)
+1. FreeRTOS SMP: **Single-core mode** (`configNUMBER_OF_CORES=1`), dual-core disabled pending boot stabilization
+2. AttitudeControl rate: **10 Hz** (not 20 Hz)
+3. Task count: **8 tasks** (not 4)
+4. GPS pins: **UART1 GPIO4/5** (not UART0 GPIO0/1)
+5. I2C pins: **GPIO4/5** (not GPIO2/3)
+6. EKF state: **7-state quaternion** (q0-q3 + 3 gyro biases)
+7. LQR: **Gain scheduling** for FM_NOMINAL/FM_DETUMBLE modes
+8. Flight modes: **6 modes** including FM_PAYLOAD

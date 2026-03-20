@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.24.0] — 2026-03-17 — phase7-payload integration
+## [0.24.0] — 2026-03-20 — phase7-payload integration
 
 ### Added
 - **GPS Integration (NEO-7M)**: Full driver implementation (`src/drivers/gps/neo7m.c`) with NMEA
