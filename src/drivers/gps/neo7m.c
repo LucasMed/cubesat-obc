@@ -127,7 +127,10 @@ static bool nmea_buffer_pop(uint8_t *byte)
 bool gps_init(void)
 {
 #ifdef PICO_BUILD
-  g_gps_mutex = xSemaphoreCreateMutex();
+  if (g_gps_mutex == NULL)
+  {
+    g_gps_mutex = xSemaphoreCreateMutex();
+  }
 
   uart_init(uart1, 9600);
   gpio_set_function(4, GPIO_FUNC_UART);
