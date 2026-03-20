@@ -77,9 +77,12 @@ void test_stale_fix_detection(void) {
 int main(void) {
     printf("Testing real NEO-7M GPS NMEA parser...\n");
     test_parse_valid_gpgga();
+    gps_deinit();
     test_bad_checksum();
+    gps_deinit();
     test_gps_deinit_safe();
     test_stale_fix_detection();
+    gps_deinit();
     printf("All NMEA parser tests passed.\n");
     return 0;
 }
