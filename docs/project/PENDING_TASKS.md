@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.4  
+**Version:** 1.5  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -64,7 +64,7 @@
 | PR | Title | Status | Blocking | Notes |
 |----|-------|--------|----------|-------|
 | PR-18 | HMC5883L driver stub + DLA integration | In Progress | ADCS modes | Magnetometer integration for attitude determination |
-| PR-23 | LQR mode-scheduled gains | Verify | ADCS control | Verify completion status |
+| PR-23 | LQR mode-scheduled gains | ✅ VERIFIED COMPLETE | ADCS control | Verify completion status |
 
 ### 2.1 PR-18 Details
 
@@ -86,8 +86,14 @@
 **Title:** LQR Mode-Scheduled Gains  
 **Component:** Attitude Control  
 **Description:** Verify mode-scheduled LQR gain implementation is complete.  
-**Status:** Needs verification  
+**Status:** ✅ VERIFIED COMPLETE  
 **Blocking:** None
+
+**Verification Details:**
+- Implementation: `lqr_schedule_apply()` in `lqr_schedule.c`
+- Test file: `test_lqr_schedule.c` with 3 tests (T-LQRS-01, T-LQRS-02, T-LQRS-03)
+- Integration: `lqr_schedule_apply()` is called in `attitude_control_task.c`
+- Test results: 42/42 tests passing
 
 ---
 
@@ -283,6 +289,7 @@ OI-8 (Heap Sizing)
 | 1.2 | 2026-03-20 | System | PR-18 (DLA mag_field) completed - 1.2 marked as done |
 | 1.3 | 2026-03-20 | System | 1.3 (Flash Backend) completed - TODO at line 58 was outdated, real implementation exists in flash_backend.c |
 | 1.4 | 2026-03-20 | System | HMC5883L I2C implementation completed - 1.4 marked as done |
+| 1.5 | 2026-03-20 | System | PR-23 (LQR mode-scheduled gains) verified complete - lqr_schedule.c, test_lqr_schedule.c (42/42 tests passing) |
 
 ---
 
