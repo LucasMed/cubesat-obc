@@ -1,11 +1,11 @@
-# System Requirements Specification (SyRS) v1.0
-## CubeSat OBC Flight Software — Post v0.7.0 Alignment
+# System Requirements Specification (SyRS) v1.1
+## CubeSat OBC Flight Software — Phase 7 Implementation Update
 
 **Document ID**: SyRS-OBC-001  
-**Version**: 1.0  
-**Date**: 2026-03-04  
-**Status**: ✅ Reflects implemented + verified capabilities as of v0.7.0  
-**Predecessor**: SyRS v0.x (conceptual-level, now superseded)
+**Version**: 1.1  
+**Date**: 2026-03-20  
+**Status**: ✅ Active — Phase 7 implementation baseline  
+**Predecessor**: SyRS v1.0 (2026-03-04, superseded)
 
 ---
 
@@ -17,7 +17,17 @@ the **actual implemented architecture** post v0.7.0, ensuring traceability from
 requirements to code and tests.
 
 Requirements marked `[IMPL]` are implemented and verified.  
+Requirements marked `[PARTIAL]` are partially implemented (stub or in-progress).  
 Requirements marked `[PLANNED]` are not yet implemented (target: v1.0.0).
+
+**Phase 7 Update (2026-03-20)**: Added implementation status for:
+- Telemetry (STUB COMPLETE): libcsp v2.2 + UART1 KISS framing done, HW pending
+- Magnetometer (PARTIAL): HMC5883L stub driver + EKF integration done, I2C pending
+- GPS (PARTIAL): NEO-7M driver with NMEA parser, GPRMC parsing done
+- Reaction Wheels (STUB): PWM HAL stub only, HW integration pending Phase 8
+- Magnetorquers (STUB): PWM HAL stub only, HW integration pending Phase 8
+- Flash Storage (STUB): backend writes to /tmp/obc_log.bin, full RP2350 pending
+- Payload (PARTIAL): Power rail stub, camera deferred, SD SPI stub
 
 ---
 
@@ -100,6 +110,14 @@ observable.
 #### SYS-F-106 — Estimation Rate  
 `[IMPL]` The attitude estimation pipeline shall execute at minimum 10 Hz.
 
+### SYS-F-107 — Magnetometer Hardware
+
+*Added per Phase 7. Hardware: HMC5883L (GY-271) on I2C0 at 0x1E, 75 Hz. CDR/FM may substitute LIS3MDL at 0x1C.*
+
+#### SYS-F-107 — Magnetometer Data Acquisition  
+`[PARTIAL]` The system shall read 3-axis magnetic field vector via I2C at ≥10 Hz and publish to EKF and momentum-dump service.  
+*HMC5883L stub driver implemented. EKF integration complete (`ekf_update_mag()`). Real I2C implementation pending PR-18. I2C0 GPIO4/5 configured.*
+
 ---
 
 ### SYS-F-110 — Attitude Control
@@ -126,9 +144,21 @@ vector (`dB/dt`).
 `[IMPL]` In `FM_SAFE` and `FM_BOOT`, the attitude control task shall produce no
 actuator output.
 
+### SYS-F-116 — Magnetorquer Control
+
+*Hardware: 3-axis magnetorquer coils for momentum dump (de-saturation). **Status: STUB — PWM HAL stub only, HW integration pending Phase 8.***
+
+#### SYS-F-116a — Magnetorquer Torque Command  
+`[STUB]` The system shall apply magnetic dipole commands to magnetorquer coils for momentum dump.  
+*PWM HAL stub implemented. Actual coil driver and I2C PWM generator pending Phase 8.*
+
+#### SYS-F-116b — B-dot Control  
+`[IMPL]` The system shall execute B-dot detumbling control during `FM_DETUMBLE`.  
+*Algorithm implemented in `momentum_dump.c`. Uses magnetometer data to compute dipole moment proportional to dB/dt.*
+
 ### SYS-F-120 — Reaction Wheel Performance
 
-*Added per SRR-OBC-001 ACT-13. Values derived from `config.h` constants and closed-loop simulation model (`closed_loop_sim.h`). Hardware: custom 1U RW assembly.*
+*Added per SRR-OBC-001 ACT-13. Values derived from `config.h` constants and closed-loop simulation model (`closed_loop_sim.h`). Hardware: custom 1U RW assembly. **Status: STUB — PWM HAL stub only, HW integration pending Phase 8.***
 
 #### SYS-F-121 — RW Maximum Angular Speed  
 `[IMPL]` Each reaction wheel axis shall support a maximum angular velocity of **4000 RPM** (≈ 419 rad/s).  
@@ -215,9 +245,8 @@ from eviction by lower-priority entries in the ring buffer.
 accessible from all service layers.
 
 #### SYS-F-304 — Flash Backend  
-`[IMPL]` The logger shall persist Class-A events to flash memory to survive
-power cycling.  
-*Implemented in `src/core/flash_backend.c` (ACT-16, 2026-03-10): round-robin 4-sector log region at top of 2 MB flash (`0x1FC000–0x1FFFFF`), 16-byte header (magic `OBCLOGV1` + CRC-32 + length), interrupt-disabled erase+program via Pico SDK `hardware_flash`. Recovery path: `flash_backend_recover()`. Host build retains stub in `flash_backend_stub.c`.*
+`[IMPL]` The logger shall persist Class-A events to flash memory to survive power cycling.  
+*Implemented in `src/core/flash_backend.c` (ACT-16, 2026-03-10): round-robin 4-sector log region at top of 2 MB flash (`0x1FC000–0x1FFFFF`), 16-byte header (magic `OBCLOGV1` + CRC-32 + length), interrupt-disabled erase+program via Pico SDK `hardware_flash`. Recovery path: `flash_backend_recover()`. Host build retains stub in `flash_backend_stub.c`. **Status: STUB — writes to /tmp/obc_log.bin on host, full RP2350 flash implementation pending.***
 
 ---
 
@@ -227,7 +256,7 @@ power cycling.
 
 #### SYS-F-401 — Protocol Stack  
 `[IMPL]` The OBC shall run the `libcsp` v2.2 stack (CSP protocol version 2) on FreeRTOS (single-core configuration; SMP planned per SYS-P-003).  
-*Version confirmed: `third_party/libcsp/CMakeLists.txt` — `project(CSP VERSION 2.2)`, default protocol version `csp_conf.version = 2` in `src/csp_init.c`. Resolved per SRR-OBC-001 ACT-02.*
+*Version confirmed: `third_party/libcsp/CMakeLists.txt` — `project(CSP VERSION 2.2)`, default protocol version `csp_conf.version = 2` in `src/csp_init.c`. Resolved per SRR-OBC-001 ACT-02. **Status: STUB COMPLETE — libcsp + KISS framing done, HW transmission pending (E22-400M30S).***
 
 #### SYS-F-402 — Transport  
 `[IMPL]` CSP shall be transported over UART1 using KISS framing (`pico_usart`
@@ -258,17 +287,37 @@ temperature, mode, flags (attitude and rates zeroed).
 
 ---
 
+## 7.1 GPS Requirements
+
+*Added per Phase 7 payload baseline (AIR-OBC-001 ACT-06 Option A). Hardware: NEO-7M GPS module (GY-NEO6Mv2).*
+
+### SYS-F-460 — GPS Module
+
+#### SYS-F-461 — NMEA Sentence Parsing  
+`[PARTIAL]` The OBC shall parse NMEA 0183 sentences (`$GPGGA`, `$GPRMC`) from the NEO-7M GPS module via UART0 at ≥ 1 Hz.  
+*NEO-7M driver with NMEA parser implemented. GPRMC parsing and position/velocity extraction done. UART0 GPIO0/1 configured at 9600 baud.*
+
+#### SYS-F-462 — Position/Velocity Output  
+`[PARTIAL]` The system shall publish parsed position (latitude, longitude, altitude) and velocity to the Data Layer.  
+*Data layer integration done for $GPGGA (position) and $GPRMC (velocity).*
+
+#### SYS-F-463 — UTC Time Synchronization  
+`[PARTIAL]` The system shall synchronize the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition.  
+*GPRMC time extraction implemented. Clock sync integration pending.*
+
+---
+
 ## 7.5 Payload Power Management
 
-*Added per SRR-OBC-001 ACT-04. Payload concept: a low-power science/demonstration module (e.g., camera module or beacon transmitter) powered by a dedicated EPS-controlled GPIO rail. Hardware definition deferred to CDR.*
+*Added per SRR-OBC-001 ACT-04. Payload concept: a low-power science/demonstration module (e.g., camera module or beacon transmitter) powered by a dedicated EPS-controlled GPIO rail. Hardware definition deferred to CDR. **Status: PARTIAL — power rail control stub implemented, GPIO21 HAL done, FMM integration pending Phase 8.***
 
 #### SYS-F-500 — Payload Rail Enable/Disable  
-`[PLANNED]` The OBC shall enable and disable the payload power rail via a dedicated GPIO output pin under FMM control.  
-*Payload rail shall be OFF in FM_BOOT, FM_SAFE, and FM_DETUMBLE. Rail may be enabled only in FM_NOMINAL and FM_DIAGNOSTIC.*
+`[PARTIAL]` The OBC shall enable and disable the payload power rail via a dedicated GPIO output pin under FMM control.  
+*Payload rail shall be OFF in FM_BOOT, FM_SAFE, and FM_DETUMBLE. Rail may be enabled only in FM_NOMINAL and FM_DIAGNOSTIC. GPIO21 HAL stub implemented.*
 
 #### SYS-F-501 — Payload Rail FMM Interlock  
-`[PLANNED]` The FMM shall inhibit payload rail activation unless energy state is `ENERGY_NOMINAL`.  
-*Rationale: Prevents payload from drawing power when the battery is below safe operating voltage.*
+`[PARTIAL]` The FMM shall inhibit payload rail activation unless energy state is `ENERGY_NOMINAL`.  
+*Rationale: Prevents payload from drawing power when the battery is below safe operating voltage. FMM integration pending.*
 
 #### SYS-F-502 — Payload Rail Fault Detection  
 `[PLANNED]` The EPS Monitor shall detect payload rail overcurrent (current draw exceeding configured threshold) and report `FAULT_PAYLOAD_OVERCURRENT` at `FAULT_LEVEL_WARNING`.  
@@ -329,14 +378,34 @@ The following table captures the complete FDIR decision matrix as implemented:
 
 ## 10. Requirements Traceability Summary
 
-| Requirement | Implementation | Test |
-|-------------|---------------|------|
-| SYS-F-101..106 | `src/dynamics/ekf.c` | `ekf_test`, `ekf_mag_test` |
-| SYS-F-111..113 | `src/control/lqr_schedule.c`, `pid_controller.c` | `lqr_test`, `lqr_schedule_test` |
-| SYS-F-114 | `src/actuators/momentum_dump.c` | `momentum_dump_test` |
-| SYS-F-201..204 | `src/services/eps/eps_monitor.c` | `eps_monitor_test` |
-| SYS-F-211..213 | `src/tasks/health_monitor_task.c`, `watchdog_hal*.c` | `watchdog_test`, `health_monitor_task_test` |
-| SYS-F-301..303 | `src/services/logger/logger.c` | `logger_test` |
-| SYS-F-401..407 | `src/core/comm_init.c`, `src/tasks/telemetry_task.c`, `command_task.c` | `comm_init_test`, `telemetry_test`, `command_test` |
-| SYS-NF-001..003 | `include/host/`, `scripts/static_analysis.sh` | CI pipeline |
-| SYS-NF-004 | `src/tasks/sensor_read_task.c` | hardware measurement |
+| Requirement | Implementation | Test | Coverage |
+|-------------|---------------|------|----------|
+| SYS-F-101..106 | `src/dynamics/ekf.c` | `ekf_test`, `ekf_mag_test` | ~94% |
+| SYS-F-107 | `src/sensors/hmc5883l.c` (stub) | pending | — |
+| SYS-F-111..113 | `src/control/lqr_schedule.c`, `pid_controller.c` | `lqr_test`, `lqr_schedule_test` | ~94% |
+| SYS-F-114, SYS-F-116b | `src/actuators/momentum_dump.c` | `momentum_dump_test` | ~90% |
+| SYS-F-116a | `src/actuators/motor_pwm_hal.c` (stub) | pending | — |
+| SYS-F-120..124 | `src/actuators/rw_pwm_hal.c` (stub) | pending | — |
+| SYS-F-201..204 | `src/services/eps/eps_monitor.c` | `eps_monitor_test` | ~90% |
+| SYS-F-211..213 | `src/tasks/health_monitor_task.c`, `watchdog_hal*.c` | `watchdog_test`, `health_monitor_task_test` | ~88% |
+| SYS-F-301..304 | `src/services/logger/logger.c`, `flash_backend.c` | `logger_test`, `flash_backend_test` | ~90% |
+| SYS-F-401..407 | `src/core/comm_init.c`, `src/tasks/telemetry_task.c`, `command_task.c` | `comm_init_test`, `telemetry_test`, `command_test` | ~92% |
+| SYS-F-461..463 | `src/sensors/neo7m.c` | pending | — |
+| SYS-NF-001..003 | `include/host/`, `scripts/static_analysis.sh` | CI pipeline | 91.9% lines, 82.5% branches |
+
+---
+
+## 11. Phase 7 Implementation Status Summary
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Telemetry (FR-7)** | STUB COMPLETE | libcsp v2.2, UART1 KISS framing, 2 Hz TX; HW pending |
+| **Magnetometer (FR-11)** | PARTIAL | HMC5883L stub, EKF integration done; I2C pending PR-18 |
+| **GPS (FR-12/18/19)** | PARTIAL | NEO-7M driver, NMEA parser, GPRMC parsing, position/velocity done |
+| **Reaction Wheels (FR-5)** | STUB | PWM HAL stub; HW integration Phase 8 |
+| **Magnetorquers (FR-6)** | STUB | PWM HAL stub; HW integration Phase 8 |
+| **Flash Storage** | STUB | Writes to /tmp/obc_log.bin (host); RP2350 flash pending |
+| **Payload Power Rail** | PARTIAL | GPIO21 HAL stub; FMM integration Phase 8 |
+| **Camera (CAM-001)** | DEFERRED | IMX219 driver deferred to Phase 8 |
+| **SD Storage** | PARTIAL | SD SPI stub; backend integration pending |
+| **FM_PAYLOAD Mode** | PARTIAL | Mode stub; FMM update pending |

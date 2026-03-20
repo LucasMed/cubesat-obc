@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-17
-**Current Phase**: Phase 7 — Scientific Payload Integration (branch `feature/phase7-payload`)
-**Current Branch**: `feature/phase7-payload`
+**Last Updated**: 2026-03-20
+**Current Phase**: Phase 8 — Full Testing (branch `feature/phase8-full-testing`)
+**Current Branch**: `feature/phase8-full-testing`
 
 ---
 
@@ -136,20 +136,43 @@
 
 ---
 
-### Phase 7: Scientific Payload Integration ✅ PRs 28–30 (2026-03-17)
+### Phase 7: Scientific Payload Integration ✅ PRs 27–31 (2026-03-18)
 - **Goal**: Integrate GPS, IMU, and Magnetometer drivers with integration tests; maximize coverage.
 - **Branch**: `feature/phase7-payload`
-- **Outcomes (PRs 28–30 committed, tests passing)**:
+- **Outcomes (PRs 27–31 committed, 27/27 unit tests + 3/3 integration tests passing)**:
 
 | PR | Commit | Description | Tests |
 |----|--------|-------------|-------|
-| PR-28 | `xxxxxx` | GPS Integration (NEO-7M NMEA parser, GpsTask, telemetry fields) | test_gps_integration: ✅ |
-| PR-29 | `xxxxxx` | IMU Integration (data flow validation, temp_available fix) | test_imu_integration: ✅ |
-| PR-30 | `xxxxxx` | Magnetometer Integration (EKF operations, function call fixes) | test_mag_integration: ✅ |
+| PR-27 | `454fcdf` | MISRA C audit (0 required/mandatory violations) + gcovr 91.8% | — |
+| PR-28 | `xxxxxx` | Preliminary Design Review Report for FSW | — |
+| PR-29 | `xxxxxx` | Fix/doc alignment PDR | — |
+| PR-30 | `xxxxxx` | IMU Integration (data flow validation, temp_available fix) | test_imu_integration: ✅ |
+| PR-31 | `xxxxxx` | GPS, IMU, Magnetometer integration (NMEA parser, GPRMC, UTC sync) | test_gps_integration: ✅ test_mag_integration: ✅ |
 
 - **CI Pipeline**: 6/6 stages passing (host-test, pico-build, static analysis, coverage)
 - **Coverage**: Line 93.0%, Function 92.4%
-- **Deferred**: Camera driver, external storage, FM_PAYLOAD, radiation test (to Phase 8)
+- **Deferred (Phase 8)**: Camera driver, LIS3MDL driver migration, FM_PAYLOAD, W25Qxx storage, PWM HAL, flash backend, MC/DC coverage
+
+---
+
+### Phase 8: Full Testing 🔄 PRs 32–xx (In Progress)
+- **Goal**: Expand coverage to >95%, complete deferred Phase 7 items, hardware validation.
+- **Branch**: `feature/phase8-full-testing`
+- **Outcomes (in progress)**:
+
+| PR | Commit | Description | Status |
+|----|--------|-------------|--------|
+| — | — | Camera driver | 🔄 Pending |
+| — | — | LIS3MDL driver migration (HMC5883L discontinued) | 🔄 Pending |
+| — | — | FM_PAYLOAD mode implementation | 🔄 Pending |
+| — | — | W25Qxx external storage | 🔄 Pending |
+| — | — | PWM HAL for reaction wheels/magnetorquers | 🔄 Pending |
+| — | — | Full flash backend implementation | 🔄 Pending |
+| — | — | MC/DC coverage analysis | 🔄 Pending |
+
+- **Current test status**: 27/27 unit tests + 3/3 integration tests passing
+- **Current coverage**: Line 93.0%, Function 92.4% (target: >95%)
+- **CI Pipeline**: 6/6 stages passing
 
 ---
 
@@ -165,8 +188,8 @@
 | 5 — Flight Ready | Q3 2026 | Watchdog, momentum dump, magnetometer, EKF yaw | ✅ Complete (4/4 feature PRs + docs) |
 | 6 — Closed-Loop Stability | Q1 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ✅ Complete (7/7 PRs) |
 | 7 — Scientific Payload | Mar 2026 | GPS, IMU, Magnetometer integration, integration tests, coverage 93% | ✅ Complete |
-| HW BOM / PDR | Mar 2026 | Full hardware BOM; PDR review; LIS3MDL, TPS3431 watchdog, SAW filter, MTQ-first ADCS strategy, GS design | ✅ Complete (BOM v1.0, PDR PASS) |
 | 8 — Full Testing | Q2 2026 | Coverage expansion (>95%), pending tasks, camera, storage, FM_PAYLOAD, hardware validation | 🔄 In Progress |
+| HW BOM / PDR | Mar 2026 | Full hardware BOM; PDR review; LIS3MDL, TPS3431 watchdog, SAW filter, MTQ-first ADCS strategy, GS design | ✅ Complete (BOM v1.0, PDR PASS) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
 
