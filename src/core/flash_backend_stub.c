@@ -6,9 +6,9 @@
  * this stub satisfies the flash_backend_flush() symbol by appending raw
  * log records to /tmp/obc_log.bin.
  *
- * This file must NOT be compiled for Pico targets; the real Pico
- * implementation is expected in a future phase and uses
- * flash_range_program() from the Pico SDK.
+ * For Pico (PICO_BUILD) targets, the real flash backend implementation
+ * is provided by flash_backend.c using flash_range_program() from the
+ * Pico SDK.
  *
  * Spec ref: SPEC-2-PLG v1.16 §5.3
  */
@@ -45,17 +45,8 @@ void flash_backend_flush(const uint8_t *buf, size_t len)
 
 #else /* PICO_BUILD */
 
-  /* Hardware flash backend is not yet implemented.
-   * Provide a no-op so the linker is satisfied; the event_logger
-   * will call this but no data will be persisted until the real
-   * flash_range_program() implementation is added in a future phase. */
-  #include "flash_backend.h"
-
-void flash_backend_flush(const uint8_t *buf, size_t len)
-{
-  (void)buf;
-  (void)len;
-  /* TODO: implement using flash_range_program() */
-}
+/* For PICO_BUILD targets, the real implementation is provided by
+ * flash_backend.c which uses hardware_flash API (flash_range_program).
+ * This stub is never compiled for Pico builds. */
 
 #endif /* PICO_BUILD */
