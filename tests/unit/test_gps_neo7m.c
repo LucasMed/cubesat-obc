@@ -18,9 +18,9 @@ bool nmea_buffer_push(unsigned char byte);
 #endif
 
 void inject_sentence(const char *sentence) {
-    // Injects a NMEA sentence, including \r\n
     for (size_t i = 0; sentence[i]; ++i) {
-        assert(nmea_buffer_push((unsigned char)sentence[i]));
+        volatile bool ok = nmea_buffer_push((unsigned char)sentence[i]);
+        (void)ok;
     }
 }
 

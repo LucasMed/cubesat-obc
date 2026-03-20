@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       FATFS_INCLUDE: ${{ github.workspace }}/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
+      CC: gcc-11
+      CXX: g++-11
 
     steps:
       - name: Checkout repo with submodules
@@ -52,7 +54,7 @@ jobs:
             ${{ runner.os }}-cmake-
 
       - name: Configure
-        run: cmake -S . -B build -DPICO_ENABLED=OFF
+        run: cmake -S . -B build -DPICO_ENABLED=OFF -DCMAKE_C_COMPILER=/usr/bin/gcc-11 -DCMAKE_CXX_COMPILER=/usr/bin/g++-11
 
       - name: Build
         run: cmake --build build --parallel $(nproc)
