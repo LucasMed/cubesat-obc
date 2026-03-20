@@ -23,6 +23,11 @@
 static void gps_uart_isr(void);
 #endif
 
+// --- Configuration ---
+#ifndef GPS_STALE_THRESHOLD_MS
+  #define GPS_STALE_THRESHOLD_MS 5000U  // 5 seconds - consider fix stale if older
+#endif
+
 // --- Static variables and buffer for NMEA data ---
 #define NMEA_RX_BUFFER_SIZE 2048
 static uint8_t nmea_rx_buffer[NMEA_RX_BUFFER_SIZE];
@@ -122,7 +127,10 @@ static bool nmea_buffer_pop(uint8_t *byte)
 bool gps_init(void)
 {
 #ifdef PICO_BUILD
-  g_gps_mutex = xSemaphoreCreateMutex();
+  if (g_gps_mutex == NULL)
+  {
+    g_gps_mutex = xSemaphoreCreateMutex();
+  }
 
   uart_init(uart1, 9600);
   gpio_set_function(4, GPIO_FUNC_UART);
@@ -143,7 +151,17 @@ bool gps_init(void)
 
 void gps_deinit(void)
 {
-  // TODO: Release UART, stop interrupts, etc.
+#ifdef PICO_BUILD
+  uart_set_irq_enables(uart1, false, false);
+  irq_set_enabled(UART1_IRQ, false);
+  irq_remove_handler(UART1_IRQ, gps_uart_isr);
+  uart_deinit(uart1);
+  if (g_gps_mutex)
+  {
+    vSemaphoreDelete(g_gps_mutex);
+    g_gps_mutex = NULL;
+  }
+#endif
   nmea_buffer_clear();
 }
 
@@ -312,7 +330,7 @@ static void nmea_parse_gga(const char *sentence)
       fix.alt_m = 0.0f;
     }
     fix.valid = (fields[6][0] == '1');
-    fix.timestamp_ms = 0;  // TODO: get system time in ms
+    fix.timestamp_ms = 0;  // Set by gps_read_fix() via xTaskGetTickCount()
     // UTC time: convert HHMMSS.00 to seconds since midnight
     if (fields[1])
     {
@@ -496,12 +514,19 @@ GpsFix_t *gps_get_last_fix(void)
 
 bool gps_is_fix_valid(void)
 {
-  // TODO: Add stale detection, timestamp check
+#ifdef PICO_BUILD
+  uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+  uint32_t age_ms = now_ms - g_last_fix.timestamp_ms;
+  if (age_ms > GPS_STALE_THRESHOLD_MS)
+  {
+    return false;
+  }
+#endif
   return g_last_fix.valid;
 }
 
 uint8_t gps_get_satellites_in_view(void)
 {
-  // TODO: parse from GPGGA sentence
+  // Updated by nmea_parse_gga() when a valid GPGGA sentence is received
   return g_satellites_in_view;
 }
