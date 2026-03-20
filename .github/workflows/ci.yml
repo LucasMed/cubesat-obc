@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build
-          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', 'scripts/apply_patches.sh') }}
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', 'scripts/apply_patches.sh', 'src/**/*.c', 'src/**/*.h', 'include/**/*.h', 'tests/**/*.c') }}
           restore-keys: |
             ${{ runner.os }}-cmake-
 
@@ -56,6 +56,9 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel $(nproc)
+
+      - name: Rebuild GPS test to ensure fresh binary
+        run: cmake --build build --target test_gps_neo7m -- -j1
 
       - name: Run tests
         run: ctest --test-dir build --output-on-failure
