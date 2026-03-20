@@ -27,17 +27,17 @@ extern "C"
 
 #define PWM_HZ 25000
 
-int pwm_hal_rw_init(void);
+  int pwm_hal_rw_init(void);
 
-void pwm_hal_rw_set_duty(uint8_t axis, float duty_cycle);
+  void pwm_hal_rw_set_duty(uint8_t axis, float duty_cycle);
 
-void pwm_hal_rw_enable(uint8_t axis, bool enable);
+  void pwm_hal_rw_enable(uint8_t axis, bool enable);
 
-int pwm_hal_mtq_init(void);
+  int pwm_hal_mtq_init(void);
 
-void pwm_hal_mtq_set_duty(uint8_t axis, float duty_cycle);
+  void pwm_hal_mtq_set_duty(uint8_t axis, float duty_cycle);
 
-void pwm_hal_mtq_enable(uint8_t axis, bool enable);
+  void pwm_hal_mtq_enable(uint8_t axis, bool enable);
 
 #ifdef __cplusplus
 }

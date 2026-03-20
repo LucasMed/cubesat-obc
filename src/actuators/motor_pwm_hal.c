@@ -2,17 +2,17 @@
 
 int pwm_hal_mtq_init(void)
 {
-    return 0;
+  return 0;
 }
 
 void pwm_hal_mtq_set_duty(uint8_t axis, float duty_cycle)
 {
-    (void)axis;
-    (void)duty_cycle;
+  (void)axis;
+  (void)duty_cycle;
 }
 
 void pwm_hal_mtq_enable(uint8_t axis, bool enable)
 {
-    (void)axis;
-    (void)enable;
+  (void)axis;
+  (void)enable;
 }
