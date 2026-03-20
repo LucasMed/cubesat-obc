@@ -15,6 +15,7 @@
 #include "comm_init.h"
 #include "command_task.h"
 #include "config.h"
+#include "data_layer.h"
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
@@ -26,7 +27,6 @@
 #include "payload_task.h"
 #include "sensor_read_task.h"
 #include "system_state.h"
-#include "data_layer.h"
 #include "telemetry_task.h"
 
 #ifdef PICO_BUILD

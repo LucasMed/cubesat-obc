@@ -15,24 +15,25 @@
  */
 
 #include "drivers/mag/hmc5883l.h"
+
 #include "drivers/i2c_interface.h"
 
 #ifdef PICO_BUILD
-#include <stdio.h>
+  #include <stdio.h>
 
-#define HMC5883L_ADDR 0x1E
+  #define HMC5883L_ADDR 0x1E
 
-#define HMC5883L_CRA   0x00
-#define HMC5883L_CRB   0x01
-#define HMC5883L_MODE  0x02
-#define HMC5883L_DATA  0x03
-#define HMC5883L_STATUS 0x09
+  #define HMC5883L_CRA 0x00
+  #define HMC5883L_CRB 0x01
+  #define HMC5883L_MODE 0x02
+  #define HMC5883L_DATA 0x03
+  #define HMC5883L_STATUS 0x09
 
-#define HMC5883L_CRA_CONFIG  0x70
-#define HMC5883L_CRB_GAIN    0x20
-#define HMC5883L_MODE_CONT   0x00
+  #define HMC5883L_CRA_CONFIG 0x70
+  #define HMC5883L_CRB_GAIN 0x20
+  #define HMC5883L_MODE_CONT 0x00
 
-#define HMC5883L_GAIN_LSB 1090.0f
+  #define HMC5883L_GAIN_LSB 1090.0f
 
 int hmc5883l_init(void)
 {
