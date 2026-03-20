@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.2  
+**Version:** 1.3  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -35,11 +35,11 @@
 |------|------|-------------|----------|--------|
 | src/tasks/attitude_control_task.c | 60 | Read DLA mag_field (PR-18) | High | 4h | ✅ Done |
 
-### 1.3 Flash Backend
+### 1.3 Flash Backend ✅ COMPLETED
 
-| File | Line | Description | Priority | Effort |
-|------|------|-------------|----------|--------|
-| src/core/flash_backend_stub.c | 58 | Implement using flash_range_program() | High | 4h |
+| File | Line | Description | Priority | Effort | Status |
+|------|------|-------------|----------|--------|--------|
+| src/core/flash_backend_stub.c | 58 | Implement using flash_range_program() | High | 4h | ✅ Done (comment fixed) |
 
 ### 1.4 Magnetometer Driver (HMC5883L)
 
@@ -281,6 +281,7 @@ OI-8 (Heap Sizing)
 |---------|------|--------|---------|
 | 1.0 | 2026-03-20 | System | Initial document creation |
 | 1.2 | 2026-03-20 | System | PR-18 (DLA mag_field) completed - 1.2 marked as done |
+| 1.3 | 2026-03-20 | System | 1.3 (Flash Backend) completed - TODO at line 58 was outdated, real implementation exists in flash_backend.c |
 
 ---
 
