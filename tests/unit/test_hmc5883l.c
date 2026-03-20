@@ -130,6 +130,68 @@ static void test_mag_sensor_task_propagates_to_dla(void)
 }
 
 /* ========================================================================
+ * test_hmc5883l_init_success — T-MAG-05
+ * ======================================================================== */
+static void test_hmc5883l_init_success(void)
+{
+  int ret = hmc5883l_init();
+  CHECK(ret == 0, "hmc5883l_init() must return 0 on host stub");
+  printf("  PASS T-MAG-05 hmc5883l_init_success\n");
+}
+
+/* ========================================================================
+ * test_hmc5883l_read_returns_nonzero — T-MAG-06
+ * ======================================================================== */
+static void test_hmc5883l_read_returns_nonzero(void)
+{
+  float field[3] = {0.0f, 0.0f, 0.0f};
+  int ret = hmc5883l_read(field);
+  CHECK(ret == 0, "hmc5883l_read() must return 0");
+  CHECK(field[0] != 0.0f || field[1] != 0.0f || field[2] != 0.0f,
+        "At least one field component must be non-zero");
+  printf("  PASS T-MAG-06 hmc5883l_read_returns_nonzero\n");
+}
+
+/* ========================================================================
+ * test_hmc5883l_read_field_components — T-MAG-07
+ * LEO magnetic field is typically 20-60 µT per component
+ * ======================================================================== */
+static void test_hmc5883l_read_field_components(void)
+{
+  float field[3] = {0.0f, 0.0f, 0.0f};
+  hmc5883l_read(field);
+
+  float min_leo = 20.0f;
+  float max_leo = 60.0f;
+
+  int any_nonzero = (field[0] != 0.0f) || (field[1] != 0.0f) || (field[2] != 0.0f);
+  CHECK(any_nonzero, "At least one component must be non-zero");
+
+  int bx_ok = (fabsf(field[0]) >= min_leo && fabsf(field[0]) <= max_leo);
+  int by_ok = (fabsf(field[1]) >= min_leo && fabsf(field[1]) <= max_leo);
+  int bz_ok = (fabsf(field[2]) >= min_leo && fabsf(field[2]) <= max_leo);
+
+  int all_ok = bx_ok || by_ok || bz_ok;
+  CHECK(all_ok, "At least one component must be in LEO range [20, 60] µT");
+  printf("  PASS T-MAG-07 hmc5883l_read_field_components\n");
+}
+
+/* ========================================================================
+ * test_hmc5883l_init_called_multiple_times — T-MAG-08
+ * ======================================================================== */
+static void test_hmc5883l_init_called_multiple_times(void)
+{
+  int ret1 = hmc5883l_init();
+  int ret2 = hmc5883l_init();
+  int ret3 = hmc5883l_init();
+
+  CHECK(ret1 == 0, "hmc5883l_init() first call must return 0");
+  CHECK(ret2 == 0, "hmc5883l_init() second call must return 0");
+  CHECK(ret3 == 0, "hmc5883l_init() third call must return 0");
+  printf("  PASS T-MAG-08 hmc5883l_init_called_multiple_times (idempotent)\n");
+}
+
+/* ========================================================================
  * main
  * ======================================================================== */
 int main(void)
@@ -140,6 +202,10 @@ int main(void)
   test_mag_read_fixed_values();
   test_mag_dla_write();
   test_mag_sensor_task_propagates_to_dla();
+  test_hmc5883l_init_success();
+  test_hmc5883l_read_returns_nonzero();
+  test_hmc5883l_read_field_components();
+  test_hmc5883l_init_called_multiple_times();
 
   if (g_failures == 0)
   {

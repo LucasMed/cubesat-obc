@@ -15,8 +15,10 @@
 #include "comm_init.h"
 #include "command_task.h"
 #include "config.h"
+#include "data_layer.h"
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
+#include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
 #include "eps.h"
 #include "fault_manager.h"
@@ -121,9 +123,11 @@ static void vStartupTask(void *pvParameters)
   fflush(stdout);
   int imu_res = mpu6050_init();
   int temp_res = temperature_init();
+  int mag_res = hmc5883l_init();
   system_state_set_available(imu_res == 0, temp_res == 0);
-  printf("  IMU: %s  Temp: %s\r\n", imu_res == 0 ? "OK" : "not found",
-         temp_res == 0 ? "OK" : "not found");
+  data_layer_set_mag_avail(mag_res == 0);
+  printf("  IMU: %s  Temp: %s  Mag: %s\r\n", imu_res == 0 ? "OK" : "not found",
+         temp_res == 0 ? "OK" : "not found", mag_res == 0 ? "OK" : "not found");
   fflush(stdout);
 
   printf("  gps_init...\r\n");
