@@ -484,4 +484,13 @@ if(NOT PICO_BUILD)
         ${CMAKE_SOURCE_DIR}
     )
     add_test(NAME radiation_integration_test COMMAND test_radiation_integration)
+
+    add_executable(test_pwm_hal
+        test_pwm_hal.c
+    )
+    target_include_directories(test_pwm_hal PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    target_link_libraries(test_pwm_hal m)
+    add_test(NAME pwm_hal_test COMMAND test_pwm_hal)
 endif()

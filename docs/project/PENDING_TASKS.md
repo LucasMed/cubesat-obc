@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.5  
+**Version:** 1.6  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -107,8 +107,8 @@
 | LIS3MDL Migration | Migrate from HMC5883L (discontinued) to LIS3MDL | High | 12h | PR-18 |
 | FM_PAYLOAD Mode | Payload mode state implementation | High | 8h | Camera driver |
 | W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | Hardware availability |
-| PWM HAL (Wheels) | PWM HAL for reaction wheels (GPIO6/7/8) | Medium | 6h | GPIO HAL |
-| PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | GPIO HAL |
+| PWM HAL (Wheels) | PWM HAL for reaction wheels (GPIO6/7/8) | Medium | 6h | ✅ Done |
+| PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | ✅ Done |
 | RP2350 Flash Backend | Full RP2350 flash backend implementation | High | 8h | flash_backend_stub.c |
 | MC/DC Coverage | MC/DC coverage analysis for certification | High | 20h | Test completion |
 
@@ -290,6 +290,7 @@ OI-8 (Heap Sizing)
 | 1.3 | 2026-03-20 | System | 1.3 (Flash Backend) completed - TODO at line 58 was outdated, real implementation exists in flash_backend.c |
 | 1.4 | 2026-03-20 | System | HMC5883L I2C implementation completed - 1.4 marked as done |
 | 1.5 | 2026-03-20 | System | PR-23 (LQR mode-scheduled gains) verified complete - lqr_schedule.c, test_lqr_schedule.c (42/42 tests passing) |
+| 1.6 | 2026-03-20 | System | PWM HAL implemented for reaction wheels and magnetorquers - 25kHz PWM using Pico SDK hardware_pwm (43/43 tests passing) |
 
 ---
 

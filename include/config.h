@@ -17,6 +17,8 @@
 #define RW_MAX_OMEGA_RPM 4000.0f
 #define RW_INERTIA 0.001f
 
+#define PWM_HZ 25000
+
 #define DEFAULT_KP 0.5f
 #define DEFAULT_KI 0.01f
 #define DEFAULT_KD 0.1f
