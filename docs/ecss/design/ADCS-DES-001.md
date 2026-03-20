@@ -517,7 +517,7 @@ The magnetic field input **B** is currently zeroed in the control task as a safe
 placeholder pending integration of the magnetometer into the Data Layer (TODO PR-18):
 
 ```c
-float B[3] = {0.0f, 0.0f, 0.0f}; /* TODO PR-18: read DLA mag_field */
+float B[3] = {0.0f, 0.0f, 0.0f}; /* Read B field from DLA snapshot with mag_valid guard */
 momentum_dump_step(&g_mdump, B, snap.state.rates, dipole);
 ```
 
