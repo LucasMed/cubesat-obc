@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -29,11 +29,11 @@
 | src/drivers/gps/neo7m.c | 499 | Stale detection, timestamp check | High | 3h | ✅ Done |
 | src/drivers/gps/neo7m.c | 505 | Parse from GPGGA sentence | Medium | 2h | ✅ Done (comment fixed) |
 
-### 1.2 Attitude Control Task
+### 1.2 Attitude Control Task ✅ COMPLETED
 
 | File | Line | Description | Priority | Effort |
 |------|------|-------------|----------|--------|
-| src/tasks/attitude_control_task.c | 60 | Read DLA mag_field (PR-18) | High | 4h |
+| src/tasks/attitude_control_task.c | 60 | Read DLA mag_field (PR-18) | High | 4h | ✅ Done |
 
 ### 1.3 Flash Backend
 
@@ -280,7 +280,7 @@ OI-8 (Heap Sizing)
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-20 | System | Initial document creation |
-| 1.1 | 2026-03-20 | System | GPS Driver (neo7m.c) TODOs completed - 1.1 marked as done |
+| 1.2 | 2026-03-20 | System | PR-18 (DLA mag_field) completed - 1.2 marked as done |
 
 ---
 

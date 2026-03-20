@@ -4,7 +4,7 @@
  *
  * All shared state is read exclusively through data_layer.h.
  *
- * Controller dispatch (PR-15 / PR-17):
+ * Controller dispatch (PR-15 / PR-17 / PR-18):
  *   FM_DETUMBLE                 → momentum_dump_step() → magnetorquer (B×L law)
  *   FM_NOMINAL + imu_ekf_valid  → LQR (precise nadir tracking)
  *   FM_NOMINAL + !imu_ekf_valid → PID fallback (EKF converging)
@@ -15,8 +15,11 @@
  *   If imu_valid == false the LQR/PID paths are skipped to avoid
  *   computing torques from zeroed attitude/rate data.
  *
+ * PR-18: Magnetometer integrated via DLA - B field read from DLA snapshot
+ *        with mag_valid guard to handle sensor unavailability gracefully.
+ *
  * Spec ref: SPEC-2-CTRL v1.3 §4.1, SPEC-2-DLA v1.6 §2.4,
- *           SPEC-2-ADCS v1.1 §5.2, PHASE5_PLAN PR-17
+ *           SPEC-2-ADCS v1.1 §5.2, PHASE5_PLAN PR-17, PR-18
  */
 
 #include "attitude_control_task.h"
@@ -52,12 +55,23 @@ void vAttitudeControlTask_Step(void)
   data_layer_read(&snap);
 
   /* FM_DETUMBLE: bleed reaction-wheel momentum via magnetorquer B×L law.
-   * B field placeholder is zero until PR-18 wires the magnetometer into
-   * the DLA.  When B == 0 momentum_dump_step() safely outputs a zero
-   * dipole command, so no spurious torque is applied. */
+   * PR-18: Read B field from DLA snapshot with mag_valid guard.
+   * If mag_valid == false, momentum_dump_step() safely outputs zero dipole. */
   if (snap.mode == FM_DETUMBLE)
   {
-    float B[3] = {0.0f, 0.0f, 0.0f}; /* TODO PR-18: read DLA mag_field */
+    float B[3];
+    if (snap.state.mag_valid)
+    {
+      B[0] = snap.state.mag_field[0];
+      B[1] = snap.state.mag_field[1];
+      B[2] = snap.state.mag_field[2];
+    }
+    else
+    {
+      B[0] = 0.0f;
+      B[1] = 0.0f;
+      B[2] = 0.0f;
+    }
     float dipole[3] = {0.0f, 0.0f, 0.0f};
     momentum_dump_step(&g_mdump, B, snap.state.rates, dipole);
     magnetorquer_set_moment(&g_mtq, dipole[0], dipole[1], dipole[2]);
