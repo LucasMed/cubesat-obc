@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -20,14 +20,14 @@
 
 ## 1. TODO Comments in Source Code
 
-### 1.1 GPS Driver (neo7m.c)
+### 1.1 GPS Driver (neo7m.c) ✅ COMPLETED
 
-| File | Line | Description | Priority | Effort |
-|------|------|-------------|----------|--------|
-| src/drivers/gps/neo7m.c | 146 | Release UART, stop interrupts | Medium | 1h |
-| src/drivers/gps/neo7m.c | 315 | Get system time in ms | Medium | 2h |
-| src/drivers/gps/neo7m.c | 499 | Stale detection, timestamp check | High | 3h |
-| src/drivers/gps/neo7m.c | 505 | Parse from GPGGA sentence | Medium | 2h |
+| File | Line | Description | Priority | Effort | Status |
+|------|------|-------------|----------|--------|--------|
+| src/drivers/gps/neo7m.c | 146 | Release UART, stop interrupts | Medium | 1h | ✅ Done |
+| src/drivers/gps/neo7m.c | 315 | Get system time in ms | Medium | 2h | ✅ Done (comment fixed) |
+| src/drivers/gps/neo7m.c | 499 | Stale detection, timestamp check | High | 3h | ✅ Done |
+| src/drivers/gps/neo7m.c | 505 | Parse from GPGGA sentence | Medium | 2h | ✅ Done (comment fixed) |
 
 ### 1.2 Attitude Control Task
 
@@ -280,6 +280,7 @@ OI-8 (Heap Sizing)
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-20 | System | Initial document creation |
+| 1.1 | 2026-03-20 | System | GPS Driver (neo7m.c) TODOs completed - 1.1 marked as done |
 
 ---
 
