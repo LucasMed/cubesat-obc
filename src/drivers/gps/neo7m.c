@@ -25,7 +25,7 @@ static void gps_uart_isr(void);
 
 // --- Configuration ---
 #ifndef GPS_STALE_THRESHOLD_MS
-#define GPS_STALE_THRESHOLD_MS 5000U  // 5 seconds - consider fix stale if older
+  #define GPS_STALE_THRESHOLD_MS 5000U  // 5 seconds - consider fix stale if older
 #endif
 
 // --- Static variables and buffer for NMEA data ---
@@ -514,7 +514,8 @@ bool gps_is_fix_valid(void)
 #ifdef PICO_BUILD
   uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
   uint32_t age_ms = now_ms - g_last_fix.timestamp_ms;
-  if (age_ms > GPS_STALE_THRESHOLD_MS) {
+  if (age_ms > GPS_STALE_THRESHOLD_MS)
+  {
     return false;
   }
 #endif
