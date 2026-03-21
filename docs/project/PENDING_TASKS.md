@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.7  
-**Last Updated:** 2026-03-20  
+**Version:** 2.0  
+**Last Updated:** 2026-03-21  
 **Status:** Active
 
 ---
@@ -137,16 +137,16 @@
 
 | Document ID | Title | Purpose | Priority | Effort |
 |-------------|-------|---------|----------|--------|
-| FMEA-OBC-001 | OBC Failure Mode Effects Analysis | Hardware FMEA for OBC | High | 16h |
-| FMEA-OBC-002 | Software FMEA | Software failure mode analysis | High | 12h |
+| FMEA-OBC-001 | OBC Failure Mode Effects Analysis | Hardware FMEA for OBC | High | 16h | ✅ Done |
+| FMEA-OBC-002 | Software FMEA | Software failure mode analysis | High | 12h | ✅ Done |
 
 ### 4.3 Test Documents
 
 | Document ID | Title | Purpose | Priority | Effort |
 |-------------|-------|---------|----------|--------|
-| STP-OBC-001 | Software Test Procedure | Detailed test procedures | High | 12h |
-| ITP-OBC-001 | Integration Test Plan | Subsystem integration testing | High | 8h |
-| ATP-OBC-001 | Acceptance Test Procedure | Acceptance criteria and procedures | Medium | 8h |
+| STP-OBC-001 | Software Test Procedure | Detailed test procedures | High | 12h | ✅ Done |
+| ITP-OBC-001 | Integration Test Plan | Subsystem integration testing | High | 8h | ✅ Done |
+| ATP-OBC-001 | Acceptance Test Procedure | Acceptance criteria and procedures | Medium | 8h | ✅ Done |
 | STR-OBC-001 | Software Test Report | Test results documentation | High | 8h | ✅ Done |
 
 ### 4.4 Operational Documents
@@ -292,6 +292,9 @@ OI-8 (Heap Sizing)
 | 1.5 | 2026-03-20 | System | PR-23 (LQR mode-scheduled gains) verified complete - lqr_schedule.c, test_lqr_schedule.c (42/42 tests passing) |
 | 1.6 | 2026-03-20 | System | PWM HAL implemented for reaction wheels and magnetorquers - 25kHz PWM using Pico SDK hardware_pwm (43/43 tests passing) |
 | 1.7 | 2026-03-21 | System | STR-OBC-001 (Software Test Report) created - 43/43 tests passing, 93% line coverage |
+| 1.8 | 2026-03-21 | System | STP-OBC-001 (Software Test Procedure) created - detailed test procedures documented |
+| 1.9 | 2026-03-21 | System | ITP-OBC-001 (Integration Test Plan) and ATP-OBC-001 (Acceptance Test Procedure) created |
+| 2.0 | 2026-03-21 | System | FMEA-OBC-001 (Hardware FMEA) and FMEA-OBC-002 (Software FMEA) completed |
 
 ---
 
