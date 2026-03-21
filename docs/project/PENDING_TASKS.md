@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 1.6  
+**Version:** 1.7  
 **Last Updated:** 2026-03-20  
 **Status:** Active
 
@@ -147,7 +147,7 @@
 | STP-OBC-001 | Software Test Procedure | Detailed test procedures | High | 12h |
 | ITP-OBC-001 | Integration Test Plan | Subsystem integration testing | High | 8h |
 | ATP-OBC-001 | Acceptance Test Procedure | Acceptance criteria and procedures | Medium | 8h |
-| STR-OBC-001 | Software Test Report | Test results documentation | High | 8h |
+| STR-OBC-001 | Software Test Report | Test results documentation | High | 8h | ✅ Done |
 
 ### 4.4 Operational Documents
 
@@ -291,6 +291,7 @@ OI-8 (Heap Sizing)
 | 1.4 | 2026-03-20 | System | HMC5883L I2C implementation completed - 1.4 marked as done |
 | 1.5 | 2026-03-20 | System | PR-23 (LQR mode-scheduled gains) verified complete - lqr_schedule.c, test_lqr_schedule.c (42/42 tests passing) |
 | 1.6 | 2026-03-20 | System | PWM HAL implemented for reaction wheels and magnetorquers - 25kHz PWM using Pico SDK hardware_pwm (43/43 tests passing) |
+| 1.7 | 2026-03-21 | System | STR-OBC-001 (Software Test Report) created - 43/43 tests passing, 93% line coverage |
 
 ---
 
