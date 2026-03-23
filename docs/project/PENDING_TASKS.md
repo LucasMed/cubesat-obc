@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.0  
-**Last Updated:** 2026-03-21  
+**Version:** 2.1  
+**Last Updated:** 2026-03-23  
 **Status:** Active
 
 ---
@@ -131,7 +131,7 @@
 
 | Document ID | Title | Purpose | Priority | Effort |
 |-------------|-------|---------|----------|--------|
-| ADCS-SIM-001 | ADCS Simulation Design | ADCS algorithm simulation and validation | Medium | 8h |
+| ADCS-SIM-001 | ADCS Simulation Design | ADCS algorithm simulation and validation | Medium | 8h | ✅ Done |
 
 ### 4.2 Safety & Reliability Documents
 
@@ -153,8 +153,8 @@
 
 | Document ID | Title | Purpose | Priority | Effort |
 |-------------|-------|---------|----------|--------|
-| OPS-OBC-001 | Operations Manual | Flight operations procedures | Low | 12h |
-| FRR-OBC-001 | Flight Readiness Review | Flight readiness documentation | Medium | 8h |
+| OPS-OBC-001 | Operations Manual | Flight operations procedures | Low | 12h | ✅ Done |
+| FRR-OBC-001 | Flight Readiness Review | Flight readiness documentation | Medium | 8h | ✅ Done |
 
 ### 4.5 ECSS Document Summary
 
@@ -295,6 +295,7 @@ OI-8 (Heap Sizing)
 | 1.8 | 2026-03-21 | System | STP-OBC-001 (Software Test Procedure) created - detailed test procedures documented |
 | 1.9 | 2026-03-21 | System | ITP-OBC-001 (Integration Test Plan) and ATP-OBC-001 (Acceptance Test Procedure) created |
 | 2.0 | 2026-03-21 | System | FMEA-OBC-001 (Hardware FMEA) and FMEA-OBC-002 (Software FMEA) completed |
+| 2.1 | 2026-03-23 | System | ADCS-SIM-001, OPS-OBC-001, FRR-OBC-001 marked as done |
 
 ---
 
