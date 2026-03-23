@@ -74,11 +74,11 @@ This FRR covers:
 
 | ID   | Criterion                                                                 | Status | Evidence |
 |------|---------------------------------------------------------------------------|--------|----------|
-| RC-1 | All system requirements from SyRS-OBC-001 are met or formally waived     | `[ ]`  | RTM-OBC-001 |
-| RC-2 | All software requirements from SRS-OBC-001 are met or formally waived   | `[ ]`  | RTM-OBC-001 |
+| RC-1 | All system requirements from SyRS-OBC-001 are met or formally waived      | `[ ]`  | RTM-OBC-001 |
+| RC-2 | All software requirements from SRS-OBC-001 are met or formally waived     | `[ ]`  | RTM-OBC-001 |
 | RC-3 | Requirements traceability from requirements to verification is complete   | `[ ]`  | RTM-OBC-001 |
-| RC-4 | All previous review actions (SRR, PDR, CDR) are closed                   | `[ ]`  | Review Reports |
-| RC-5 | Flight software builds successfully for target hardware                  | `[ ]`  | CI Pipeline |
+| RC-4 | All previous review actions (SRR, PDR, CDR) are closed                    | `[ ]`  | Review Reports |
+| RC-5 | Flight software builds successfully for target hardware                   | `[ ]`  | CI Pipeline |
 | RC-6 | Software version is frozen (no active development changes)                | `[ ]`  | CHANGELOG.md |
 | RC-7 | Documentation baseline is locked                                          | `[ ]`  | Document Registry |
 
@@ -89,7 +89,7 @@ This FRR covers:
 | RC-8 | Unit test pass rate ≥ 95%                                                 | `[ ]`  | Test Reports |
 | RC-9 | Integration tests pass for all subsystem interfaces                       | `[ ]`  | ITP-OBC-001 |
 | RC-10| System-level functional tests pass                                        | `[ ]`  | STP-OBC-001 |
-| RC-11| Acceptance tests (ATP-OBC-001) complete and pass                         | `[ ]`  | ATP-OBC-001 |
+| RC-11| Acceptance tests (ATP-OBC-001) complete and pass                          | `[ ]`  | ATP-OBC-001 |
 | RC-12| Static analysis (MISRA, lint) passes with no critical deviations          | `[ ]`  | CI Pipeline |
 | RC-13| Code coverage ≥ 90% for flight-critical functions                         | `[ ]`  | Coverage Reports |
 
@@ -98,9 +98,9 @@ This FRR covers:
 | ID   | Criterion                                                                 | Status | Evidence |
 |------|---------------------------------------------------------------------------|--------|----------|
 | RC-14| Flight hardware (RP2350) is available and qualified                       | `[ ]`  | Hardware Log |
-| RC-15| All peripheral drivers (I2C, SPI, UART) validated on target hardware    | `[ ]`  | ATP-OBC-001 |
-| RC-16| Power budget verified for all flight modes                               | `[ ]`  | POWER-BDG-001 |
-| RC-17| Thermal analysis confirms operation within component limits              | `[ ]`  | Thermal Analysis |
+| RC-15| All peripheral drivers (I2C, SPI, UART) validated on target hardware      | `[ ]`  | ATP-OBC-001 |
+| RC-16| Power budget verified for all flight modes                                | `[ ]`  | POWER-BDG-001 |
+| RC-17| Thermal analysis confirms operation within component limits               | `[ ]`  | Thermal Analysis |
 
 ### 2.4 Operational Readiness Criteria
 
@@ -108,7 +108,7 @@ This FRR covers:
 |------|---------------------------------------------------------------------------|--------|----------|
 | RC-18| Flight procedures documented and validated                                | `[ ]`  | Operating Procedures |
 | RC-19| Ground station compatibility verified                                     | `[ ]`  | Comm Test Reports |
-| RC-20| On-orbit operation procedures validated                                    | `[ ]`  | Operational Docs |
+| RC-20| On-orbit operation procedures validated                                   | `[ ]`  | Operational Docs |
 | RC-21| Mission timeline and critical events defined                              | `[ ]`  | MRD-OBC-001 |
 
 ---
