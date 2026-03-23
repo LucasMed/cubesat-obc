@@ -1,6 +1,6 @@
 # FMEA-OBC-001 — Hardware Failure Mode and Effects Analysis
 
-| Field           | Value                                   |
+| Field           | Value                                  |
 |-----------------|----------------------------------------|
 | Document ID     | FMEA-OBC-001                           |
 | Version         | 1.0                                    |
@@ -14,8 +14,8 @@
 
 ## Change History
 
-| Version | Date       | Author           | Description                           |
-|---------|------------|------------------|---------------------------------------|
+| Version | Date       | Author           | Description                                  |
+|---------|------------|------------------|----------------------------------------------|
 | 1.0     | 2026-03-21 | OBC Systems Team | Initial release — CDR baseline hardware FMEA |
 
 ---
@@ -78,9 +78,9 @@ lot screening, payload hardware faults.
 | EPS-DES-001     | Electrical Power System Monitor Design Document    | 0.2     |
 | ADCS-DES-001    | ADCS Design Document                               | 1.0     |
 | BOM-OBC-001     | Bill of Materials                                  | 1.0.1   |
-| FMEA-OBC-001    | Software FMEA (docs/ecss/design/FMEA-OBC-001)     | 0.2     |
+| FMEA-OBC-001    | Software FMEA (docs/ecss/design/FMEA-OBC-001)      | 0.2     |
 | FAULT-DES-001   | Fault Manager Design Document                      | 0.2     |
-| MRD-OBC-001     | Mission Requirements Document                       | 1.1     |
+| MRD-OBC-001     | Mission Requirements Document                      | 1.1     |
 | ECSS-Q-ST-30-02C | Failure modes, effects (and criticality) analysis | —       |
 | ECSS-E-ST-10-03C | Space product assurance — Derivation and validation of EEE components | — |
 
@@ -96,7 +96,7 @@ lot screening, payload hardware faults.
 | SEU        | Single-Event Upset — bit flip caused by ionizing radiation    |
 | SEL        | Single-Event Latchup — high-current state in CMOS devices     |
 | TID        | Total Ionizing Dose — cumulative radiation damage             |
-| LEO        | Low Earth Orbit                                              |
+| LEO        | Low Earth Orbit                                               |
 | COTS       | Commercial Off-The-Shelf                                      |
 | I2C        | Inter-Integrated Circuit (bus protocol)                       |
 | UART       | Universal Asynchronous Receiver-Transmitter                   |
@@ -137,28 +137,28 @@ component is analyzed for:
 
 | Score | Level      | Effect on Mission                                      |
 |-------|------------|--------------------------------------------------------|
-| 5     | CRITICAL   | Mission loss or permanent safe-mode; MO cannot be met |
-| 4     | MAJOR      | Significant degradation; primary MO at risk           |
+| 5     | CRITICAL   | Mission loss or permanent safe-mode; MO cannot be met  |
+| 4     | MAJOR      | Significant degradation; primary MO at risk            |
 | 3     | MODERATE   | Partial function lost; secondary MO affected           |
-| 2     | MINOR      | Isolated anomaly; no MO impact                        |
-| 1     | NEGLIGIBLE | Logged only; transparent to operations               |
+| 2     | MINOR      | Isolated anomaly; no MO impact                         |
+| 1     | NEGLIGIBLE | Logged only; transparent to operations                 |
 
 **Occurrence (O):**
 
-| Score | Description | Approximate Rate                        |
+| Score | Description | Approximate Rate                       |
 |-------|-------------|----------------------------------------|
 | 5     | Frequent    | Multiple times per orbit               |
 | 4     | Probable    | Once per day                           |
 | 3     | Occasional  | Once per week                          |
-| 2     | Remote      | Once per mission year                   |
-| 1     | Improbable  | Theoretically possible only             |
+| 2     | Remote      | Once per mission year                  |
+| 1     | Improbable  | Theoretically possible only            |
 
 **Detectability (D):**
 
 | Score | Description                        | Mechanism                                      |
 |-------|------------------------------------|------------------------------------------------|
 | 1     | Certain                            | Fault flag set; logged; HK telemetry reflects  |
-| 2     | High                               | Fault logged; not propagated to HK            |
+| 2     | High                               | Fault logged; not propagated to HK             |
 | 3     | Moderate                           | Detectable by ground via trend analysis        |
 | 4     | Low                                | Detectable only with FM_DIAGNOSTIC telemetry   |
 | 5     | Undetectable                       | No observability                               |
@@ -182,38 +182,38 @@ Where:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     CubeSat OBC Hardware                         │
-│                                                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │ RP2350 MCU   │  │  MPU-6050   │  │  HMC5883L   │             │
-│  │ (Pico 2W)    │──│  IMU        │  │  Magnetom.  │             │
-│  │              │  │ (I2C0)      │  │  (I2C0)     │             │
-│  └──────┬──────┘  └─────────────┘  └─────────────┘             │
-│         │                                                        │
-│  ┌──────┴──────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  Internal    │  │  NEO-7M     │  │  W25Qxx     │             │
-│  │  Flash 2MB   │  │  GPS        │  │  Flash      │             │
-│  │  (RP2350)    │  │  (UART1)    │  │  (SPI)      │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│         │                                                        │
+│                     CubeSat OBC Hardware                        │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ RP2350 MCU  │  │  MPU-6050   │  │  HMC5883L   │              │
+│  │ (Pico 2W)   │──│  IMU        │  │  Magnetom.  │              │
+│  │             │  │ (I2C0)      │  │  (I2C0)     │              │
+│  └──────┬──────┘  └─────────────┘  └─────────────┘              │
+│         │                                                       │
+│  ┌──────┴──────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  Internal   │  │  NEO-7M     │  │  W25Qxx     │              │
+│  │  Flash 2MB  │  │  GPS        │  │  Flash      │              │
+│  │  (RP2350)   │  │  (UART1)    │  │  (SPI)      │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│         │                                                       │
 │  ┌──────┴──────┐                                                │
-│  │     EPS     │                                                 │
-│  │ (ADC/PWM)   │                                                 │
+│  │     EPS     │                                                │
+│  │ (ADC/PWM)   │                                                │
 │  └─────────────┘                                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### 5.1 Hardware Components Analyzed
 
-| Component         | Part Number        | Interface    | Function                          |
-|-------------------|--------------------|--------------|-----------------------------------|
-| Microcontroller   | RP2350             | Internal     | OBC processing, FDIR, CDH         |
-| IMU               | MPU-6050          | I2C0         | Attitude sensing (gyro/accel)     |
-| Magnetometer      | HMC5883L          | I2C0         | Heading reference (3-axis mag)    |
-| GPS               | NEO-7M            | UART1        | Position, time, velocity           |
-| Internal Flash    | RP2350 QSPI       | Internal     | Firmware storage, data logging    |
-| External Flash    | W25Q128           | SPI (future) | Extended storage (Phase 3)        |
-| EPS Monitor       | Analog + GPIO     | ADC0/GPIO    | Battery monitoring, rail control   |
+| Component         | Part Number        | Interface    | Function                           |
+|-------------------|--------------------|--------------|------------------------------------|
+| Microcontroller   | RP2350             | Internal     | OBC processing, FDIR, CDH          |
+| IMU               | MPU-6050           | I2C0         | Attitude sensing (gyro/accel)      |
+| Magnetometer      | HMC5883L           | I2C0         | Heading reference (3-axis mag)     |
+| GPS               | NEO-7M             | UART1        | Position, time, velocity           |
+| Internal Flash    | RP2350 QSPI        | Internal     | Firmware storage, data logging     |
+| External Flash    | W25Q128            | SPI (future) | Extended storage (Phase 3)         |
+| EPS Monitor       | Analog + GPIO      | ADC0/GPIO    | Battery monitoring, rail control   |
 
 ---
 
@@ -247,11 +247,11 @@ Where:
 
 #### Criticality Analysis (RP2350)
 
-| Failure Mode | λ (×10⁻⁶/h) | β | t (h) | C = β × λ × t |
-|--------------|-------------|---|---|----------------|
-| MCU lockup | 0.1 | 0.3 | 8760 | 0.26 |
-| Flash corruption | 0.05 | 0.1 | 8760 | 0.04 |
-| SRAM SEU | 1.0 | 0.2 | 8760 | 1.75 |
+| Failure Mode | λ (×10⁻⁶/h) | β   | t (h) | C = β × λ × t  |
+|--------------|-------------|-----|-------|----------------|
+| MCU lockup   | 0.1         | 0.3 | 8760  | 0.26           |
+| Flash corruption | 0.05    | 0.1 | 8760  | 0.04           |
+| SRAM SEU         | 1.0     | 0.2 | 8760  | 1.75           |
 | I2C failure | 0.2 | 0.4 | 8760 | 0.70 |
 | UART failure | 0.1 | 0.2 | 8760 | 0.18 |
 | ADC failure | 0.05 | 0.1 | 8760 | 0.04 |
@@ -325,7 +325,7 @@ Where:
 | H-23 | Sensor offset drift | Temperature change, magnetic hysteresis | Bias in heading | Slow yaw drift | 2 | 3 | 3 | 18 | Ground calibration pass; HK telemetry | Periodic ground calibration; temperature model |
 | H-24 | ADC saturation | Overrange magnetic field | Readings clamped at max/min | Heading jumps | 3 | 2 | 2 | 12 | Saturation flag in status register | Magnetic cleanliness program; MTQ current limiting |
 | H-25 | Power supply noise | Switching noise coupling | Erratic readings | Attitude estimate noisy | 2 | 3 | 2 | 12 | Statistical filter; outlier rejection | Separate power domain; LC filtering; grounding |
-| H-26 | Degaassing failure | DRDY pin stuck or register error | Magnetometer sensitivity degraded | Calibration ineffective | 3 | 1 | 3 | 9 | Self-test register check; HK status | Ground commanded degauss; replacement calibration |
+| H-26 | Degassing failure | DRDY pin stuck or register error | Magnetometer sensitivity degraded | Calibration ineffective | 3 | 1 | 3 | 9 | Self-test register check; HK status | Ground commanded degauss; replacement calibration |
 
 #### Criticality Analysis (HMC5883L)
 
