@@ -8,6 +8,7 @@
 // All comments in English, see WP-7.10
 
 #include "gps_driver.h"
+#include "pico_pins.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -104,9 +105,9 @@ void nmea_buffer_push_isr(uint8_t byte)
 #ifdef PICO_BUILD
 static void gps_uart_isr(void)
 {
-  while (uart_is_readable(uart1))
+  while (uart_is_readable(uart0))
   {
-    uint8_t byte = uart_getc(uart1);
+    uint8_t byte = uart_getc(uart0);
     nmea_buffer_push_isr(byte);
   }
 }
@@ -132,15 +133,15 @@ bool gps_init(void)
     g_gps_mutex = xSemaphoreCreateMutex();
   }
 
-  uart_init(uart1, 9600);
-  gpio_set_function(4, GPIO_FUNC_UART);
-  gpio_set_function(5, GPIO_FUNC_UART);
-  uart_set_hw_flow(uart1, false, false);
-  uart_set_fifo_enabled(uart1, true);
+  uart_init(uart0, 9600);
+  gpio_set_function(UART0_TX_PIN, GPIO_FUNC_UART);
+  gpio_set_function(UART0_RX_PIN, GPIO_FUNC_UART);
+  uart_set_hw_flow(uart0, false, false);
+  uart_set_fifo_enabled(uart0, true);
 
-  irq_set_exclusive_handler(UART1_IRQ, gps_uart_isr);
-  irq_set_enabled(UART1_IRQ, true);
-  uart_set_irq_enables(uart1, true, false);
+  irq_set_exclusive_handler(UART0_IRQ, gps_uart_isr);
+  irq_set_enabled(UART0_IRQ, true);
+  uart_set_irq_enables(uart0, true, false);
 #endif
 
   nmea_buffer_clear();
@@ -152,10 +153,10 @@ bool gps_init(void)
 void gps_deinit(void)
 {
 #ifdef PICO_BUILD
-  uart_set_irq_enables(uart1, false, false);
-  irq_set_enabled(UART1_IRQ, false);
-  irq_remove_handler(UART1_IRQ, gps_uart_isr);
-  uart_deinit(uart1);
+  uart_set_irq_enables(uart0, false, false);
+  irq_set_enabled(UART0_IRQ, false);
+  irq_remove_handler(UART0_IRQ, gps_uart_isr);
+  uart_deinit(uart0);
   if (g_gps_mutex)
   {
     vSemaphoreDelete(g_gps_mutex);
@@ -483,6 +484,11 @@ GpsFix_t *gps_read_fix(void)
   {
     return NULL;
   }
+
+#ifdef PICO_BUILD
+  (void)printf("GPS: %s\n", line);
+#endif
+
   if (strncmp(line + 1, "GPGGA", 5) == 0)
   {
     nmea_parse_gga(line);

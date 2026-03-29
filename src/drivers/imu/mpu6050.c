@@ -34,11 +34,13 @@ int mpu6050_init(void)
     return -1;
   }
 
-  if (id != (uint8_t)0x68u)
+  if (id != (uint8_t)0x68u && id != (uint8_t)0x70u)
   {
-    (void)printf("mpu6050: Unknown device ID: 0x%02X\n", id);
+    (void)printf("mpu6050: Unknown device ID: 0x%02X (expected 0x68 or 0x70)\n", id);
     return -1;
   }
+
+  (void)printf("mpu6050: detected (ID=0x%02X)\n", id);
 
   // Wake up device (write 0 to PWR_MGMT_1)
   data[0] = MPU6050_PWR_MGMT_1;

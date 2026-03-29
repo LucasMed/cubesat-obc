@@ -14,6 +14,7 @@
 #include "storage_manager.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #define PAYLOAD_PERIOD_MS 100
 void payload_task_init(void)

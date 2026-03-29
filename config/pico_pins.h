@@ -95,10 +95,11 @@
 
 /**
  * UART1 — TT&C radio (CSP / KISS framing)
+ * Note: Using GPIO8/9 to avoid conflict with I2C0 (GPIO4/5) for MPU-6050
  */
 #define UART1_PORT      uart1
-#define UART1_TX_PIN    4     /**< OBC TX → Radio RX */
-#define UART1_RX_PIN    5     /**< Radio TX → OBC RX */
+#define UART1_TX_PIN    8     /**< OBC TX → Radio RX */
+#define UART1_RX_PIN    9     /**< Radio TX → OBC RX */
 #define UART1_BAUD_RATE 115200
 
 /* ======================================================================
