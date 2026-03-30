@@ -7,6 +7,7 @@
 
 #include <csp/csp.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /*
@@ -22,8 +23,93 @@
 #endif
 
 #ifdef PICO_BUILD
+  #include "hardware/uart.h"
   #include "hardware/watchdog.h"
   #include "pico/stdlib.h"
+  #include "pico_pins.h"
+#endif
+
+#ifdef PICO_BUILD
+static void process_text_command(const char *cmd)
+{
+  uart_puts(uart1, "[CMD] ");
+
+  if (strncmp(cmd, "REBOOT", 6) == 0)
+  {
+    uart_puts(uart1, "REBOOT OK\r\n");
+    printf("[command_task] Text command: REBOOT\r\n");
+    vTaskDelay(pdMS_TO_TICKS(100));
+    watchdog_reboot(0, 0, 10);
+  }
+  else if (strncmp(cmd, "STATUS", 6) == 0)
+  {
+    uart_puts(uart1, "STATUS OK\r\n");
+    printf("[command_task] Text command: STATUS\r\n");
+  }
+  else if (strncmp(cmd, "ECHO", 4) == 0)
+  {
+    uart_puts(uart1, "ECHO OK\r\n");
+    printf("[command_task] Text command: ECHO\r\n");
+  }
+  else if (strncmp(cmd, "CAPTURE", 7) == 0)
+  {
+    uart_puts(uart1, "CAPTURE OK\r\n");
+    printf("[command_task] Text command: CAPTURE\r\n");
+    TaskHandle_t h_payload = xTaskGetHandle("PayloadTask");
+    if (h_payload != NULL)
+    {
+      xTaskNotify(h_payload, PAYLOAD_NOTIFY_CAPTURE_IMAGE, eSetBits);
+    }
+  }
+  else if (strncmp(cmd, "MODE=", 5) == 0)
+  {
+    int mode = atoi(cmd + 5);
+    if (mode >= 1 && mode <= 3)
+    {
+      char buf[32];
+      snprintf(buf, sizeof(buf), "MODE=%d OK\r\n", mode);
+      uart_puts(uart1, buf);
+      printf("[command_task] Text command: MODE=%d\r\n", mode);
+      fmm_request_transition((flight_mode_t)mode);
+    }
+    else
+    {
+      uart_puts(uart1, "MODE INVALID\r\n");
+    }
+  }
+  else if (strncmp(cmd, "HELP", 4) == 0)
+  {
+    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|HELP\r\n");
+  }
+  else
+  {
+    uart_puts(uart1, "UNKNOWN CMD\r\n");
+  }
+}
+
+static void uart1_listen(void)
+{
+  static char buffer[64];
+  static int pos = 0;
+
+  while (uart_is_readable(uart1))
+  {
+    char c = uart_getc(uart1);
+    if (c == '\r' || c == '\n')
+    {
+      if (pos > 0)
+      {
+        buffer[pos] = '\0';
+        process_text_command(buffer);
+        pos = 0;
+      }
+    }
+    else if (pos < (int)(sizeof(buffer) - 1))
+    {
+      buffer[pos++] = c;
+    }
+  }
+}
 #endif
 
 void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
@@ -94,7 +180,7 @@ void vCommandTask(void *pvParameters)
 {
   (void)pvParameters;
 
-  printf("[command_task] Started listening on port %d\n", COMMAND_PORT);
+  printf("[command_task] Started listening on port %d (CSP) and UART1 (text)\n", COMMAND_PORT);
   fflush(stdout);
 
   // 1. Create socket and bind
@@ -106,8 +192,13 @@ void vCommandTask(void *pvParameters)
 
   while (1)
   {
+#ifdef PICO_BUILD
+    // Check for text commands on UART1 (HC-12)
+    uart1_listen();
+#endif
+
     // 3. Accept a connection
-    csp_conn_t *conn = csp_accept(&sock, CSP_MAX_TIMEOUT);
+    csp_conn_t *conn = csp_accept(&sock, 100);  // 100ms timeout to allow text commands
     if (conn == NULL)
     {
       continue;

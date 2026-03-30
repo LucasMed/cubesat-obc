@@ -98,10 +98,12 @@ void vTelemetryTask_Step(void)
 
 #ifdef PICO_BUILD
   // Send plain text over UART1 (HC-12) for easy debugging
-  uart_puts(uart1, "[TLM] ");
-  char buf[32];
-  snprintf(buf, sizeof(buf), "mode=%d att=%.1f,%.1f,%.1f flags=0x%02X", snap.mode, tlm->attitude[0],
-           tlm->attitude[1], tlm->attitude[2], tlm->flags);
+  char buf[128];
+  int len = snprintf(
+      buf, sizeof(buf),
+      "[TLM] mode=%d att=%.1f,%.1f,%.1f flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d",
+      snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->flags, tlm->gps_lat,
+      tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid);
   uart_puts(uart1, buf);
   uart_puts(uart1, "\r\n");
 #endif
