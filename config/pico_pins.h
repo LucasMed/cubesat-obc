@@ -5,42 +5,29 @@
  * Pin mappings for Raspberry Pi Pico 2W OBC hardware.
  * RP2350 has 30 GPIO pins (GPIO0-GPIO29).
  *
- * Payload Bus Architecture (Phase 7):
- *   SPI0 (GPIO16/18/19) shared by RM3100 Magnetometer, Camera, microSD.
- *   UART0 (GPIO0/1) used by GPS NEO-6M/7M.
- *   UART1 (GPIO4/5) used by TT&C radio (CSP/KISS).
- *   ADC2  (GPIO28) used by Radiation Detector analog signal.
+ * === HARDWARE VERIFICATION COMPLETED (2026-03-30) ===
+ * 
+ * Verified working sensors:
+ * - MPU-6050/6500 IMU: I2C0 @ GPIO4/5 (0x68 / 0x70)
+ * - GPS NEO-6M/7M: UART0 @ GPIO0/1, 9600 baud
+ * - HC-12 radio: UART1 @ GPIO8/9, 9600 baud
+ * 
+ * NOT YET CONNECTED:
+ * - HMC5883L magnetometer (I2C0)
+ * - OV2640 camera (SPI0)
+ * - Reaction wheels (PWM)
+ * - Magnetorquers (PWM)
  *
- * GPIO allocation summary:
+ * GPIO allocation summary (ACTUAL):
  *   GPIO0   UART0 TX  → GPS RX
  *   GPIO1   UART0 RX  ← GPS TX
- *   GPIO2   I2C1 SDA  (optional / future)
- *   GPIO3   PWM RW3   (moved from GPIO10 to free CAM_FIFO_RDY)
- *   GPIO4   UART1 TX  → TT&C TX
- *   GPIO5   UART1 RX  ← TT&C RX
- *   GPIO6   SPI CS    → RM3100 CS (active low)
- *   GPIO7   SPI CS    → microSD CS (active low)
- *   GPIO8   PWM RW1   (PWM4A)
- *   GPIO9   PWM RW2   (PWM4B)
- *   GPIO10  INT       ← Camera FIFO Ready
- *   GPIO11  INT       ← Magnetometer DRDY
- *   GPIO12  INT/PPS   ← GPS 1PPS
- *   GPIO13  INT       ← Radiation comparator
- *   GPIO14  SPI CS    → Camera CS (active low)
- *   GPIO15  OUT       → Camera RESET
- *   GPIO16  SPI0 MISO ← Payload bus
- *   GPIO17  OUT       → Magnetorquer X
- *   GPIO18  SPI0 SCK  → Payload bus
- *   GPIO19  SPI0 MOSI → Payload bus
- *   GPIO20  OUT       → Watchdog kick
- *   GPIO21  OUT       → Payload rail enable
- *   GPIO22  OUT       → Camera TRIGGER
- *   GPIO23  (internal Pico 2W)
- *   GPIO24  (internal Pico 2W)
+ *   GPIO4   I2C0 SDA  ← MPU-6050 SDA
+ *   GPIO5   I2C0 SCL  ← MPU-6050 SCL
+ *   GPIO8   UART1 TX  → HC-12 RX
+ *   GPIO9   UART1 RX  ← HC-12 TX
+ *   GPIO12  GPS PPS   ← GPS 1PPS (optional)
+ *   GPIO20  Watchdog kick (TPS3431)
  *   GPIO25  LED       Onboard status LED
- *   GPIO26  ADC0      Battery voltage sense
- *   GPIO27  ADC1      Board temperature
- *   GPIO28  ADC2      Radiation detector signal
  */
 
 #ifndef PICO_PINS_H
@@ -55,9 +42,19 @@
  * RP2350 I2C1: GPIO2 (SDA), GPIO3 (SCL)
  */
 #define I2C1_PORT    i2c1
-#define I2C1_SDA_PIN 2
-#define I2C1_SCL_PIN 3
-#define I2C1_SPEED_HZ 400000
+/* ======================================================================
+ * I2C Pin Definitions — MPU-6050 IMU
+ * ====================================================================== */
+
+/**
+ * I2C0 Bus for MPU-6050/6500 IMU.
+ * RP2350 I2C0: GPIO4 (SDA), GPIO5 (SCL)
+ * Note: MPU-6050 (0x68) or MPU-6500 (0x70) supported.
+ */
+#define I2C0_PORT i2c0
+#define I2C0_SDA_PIN 4
+#define I2C0_SCL_PIN 5
+#define I2C0_SPEED_HZ 400000
 
 /* ======================================================================
  * SPI Pin Definitions — Shared Payload Bus (SPI0)

@@ -8,6 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.25.0] — 2026-03-30 — Hardware Validation Complete
+
+### Added
+- **Ground Station Arduino Code**: `examples/arduino_ground_station/ground_station.ino` - 
+  Complete ground station implementation using Arduino Nano as HC-12 bridge with telemetry
+  parsing and command sending.
+- **Text Command Parser**: Implemented in `command_task.c` - Pico now accepts text commands
+  via HC-12 radio: REBOOT, STATUS, ECHO, CAPTURE, MODE=1/2/3, HELP.
+- **Text Telemetry**: Added plain text telemetry output via UART1 (HC-12) for easy debugging:
+  `[TLM] mode=X att=R,P,Y flags=0xXX gps_lat=X gps_lon=X gps_alt=X gps_valid=X`
+
+### Changed
+- **UART1 pins**: Moved from GPIO4/5 to GPIO8/9 to avoid conflict with I2C0 (MPU-6050).
+- **I2C pins**: Changed from I2C1 to I2C0 for MPU-6050 (GPIO4/5).
+- **Baud rates**: HC-12 now operates at 9600 baud (was 115200).
+
+### Hardware Verified
+| Component | Status | Notes |
+|-----------|--------|-------|
+| MPU-6050/6500 IMU | ✅ OK | Detected ID 0x70 (MPU-6500) |
+| Temperature | ✅ OK | Integrated in MPU-6050 |
+| GPS NEO-6M/7M | ✅ OK | 9600 baud, fix obtained |
+| HC-12 Radio | ✅ OK | 9600 baud, bidirectional |
+| Telemetry (RF) | ✅ OK | Text format working |
+| Commands (RF) | ✅ OK | REBOOT, MODE, ECHO, CAPTURE |
+| Magnetometer | ❌ Not connected | HMC5883L pending |
+| Camera | ❌ Not connected | OV2640 pending |
+
+### Testing
+- CI pipeline: **6/6 stages passing** (host-test, pico-build, static analysis, coverage)
+- All commands tested and working via HC-12 radio link
+
+---
+
 ## [0.24.0] — 2026-03-20 — phase7-payload integration
 
 ### Added

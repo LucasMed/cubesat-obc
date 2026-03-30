@@ -1,8 +1,66 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-20
+**Last Updated**: 2026-03-30
 **Current Phase**: Phase 8 — Full Testing (branch `feature/phase8-full-testing`)
 **Current Branch**: `feature/phase8-full-testing`
+
+---
+
+## Hardware Validation Complete ✅ (2026-03-30)
+
+### Verified Working Components
+
+| Component | Interface | Status | Notes |
+|-----------|-----------|--------|-------|
+| **MPU-6050/6500** | I2C0 (GPIO4/5) | ✅ OK | Detected ID 0x70 (MPU-6500 variant) |
+| **Temperature** | Internal ADC | ✅ OK | Integrated in MPU-6050 |
+| **GPS NEO-6M/7M** | UART0 (GPIO0/1) | ✅ OK | 9600 baud, fix obtained |
+| **HC-12 Radio** | UART1 (GPIO8/9) | ✅ OK | 9600 baud, bidirectional |
+| **Telemetry** | HC-12 TX | ✅ OK | Text format working |
+| **Commands** | HC-12 RX | ✅ OK | REBOOT, MODE, ECHO, CAPTURE |
+| **Magnetometer** | I2C0 (GPIO4/5) | ❌ Not connected | HMC5883L pending |
+| **Camera** | SPI0 | ❌ Not connected | OV2640 pending |
+| **Reaction Wheels** | PWM | ❌ Not connected | Pending |
+| **Magnetorquers** | PWM/GPIO | ❌ Not connected | Pending |
+
+### Connection Summary (Verified)
+
+```
+Pico 2W Pinout (Verified 2026-03-30):
+┌─────────────────────────────────────────────────────────────┐
+│ GPIO4  ←→ MPU-6050 SDA                                      │
+│ GPIO5  ←→ MPU-6050 SCL                                      │
+│ GPIO0  →  GPS RX                                            │
+│ GPIO1  ←  GPS TX                                            │
+│ GPIO8  →  HC-12 RX                                         │
+│ GPIO9  ←  HC-12 TX                                         │
+│ 3.3V  →  MPU-6050 VCC, GPS VCC                            │
+│ 5V     →  HC-12 VCC                                         │
+│ GND    →  All grounds                                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Ground Station Validation
+
+- **Arduino Nano** (HC-12 bridge): ✅ Working
+- **Telemetry parsing**: ✅ Working
+- **Commands**: All tested OK
+  - `HELP` → Returns command list
+  - `REBOOT` → System restarts
+  - `MODE=1/2/3` → Changes flight mode
+  - `ECHO` → Test command
+  - `CAPTURE` → Payload trigger (no camera yet)
+
+### Sample Telemetry Output
+```
+[TLM] mode=3 att=-1.4,0.6,-0.9 flags=0x03 gps_lat=-34.780453 gps_lon=-58.288147 gps_alt=12.3 gps_valid=1
+```
+
+Decoded:
+- Mode: 3 (NOMINAL)
+- Attitude: Roll=-1.4°, Pitch=0.6°, Yaw=-0.9°
+- Flags: 0x03 (IMU=OK, Temp=OK)
+- GPS: Lat=-34.78°, Lon=-58.29°, Alt=12.3m, Valid=1
 
 ---
 
@@ -162,14 +220,20 @@
 
 | PR | Commit | Description | Status |
 |----|--------|-------------|--------|
-| — | — | Camera driver | 🔄 Pending |
-| — | — | LIS3MDL driver migration (HMC5883L discontinued) | 🔄 Pending |
-| — | — | FM_PAYLOAD mode implementation | 🔄 Pending |
-| — | — | W25Qxx external storage | 🔄 Pending |
-| — | — | PWM HAL for reaction wheels/magnetorquers | 🔄 Pending |
-| — | — | Full flash backend implementation | 🔄 Pending |
-| — | — | MC/DC coverage analysis | 🔄 Pending |
+| PR-32 | HW validation | MPU-6050/6500 driver fix (ID 0x70) | ✅ Complete |
+| PR-33 | HW validation | GPS NEO-7M driver (UART0, 9600 baud) | ✅ Complete |
+| PR-34 | HW validation | HC-12 radio integration (UART1, 9600 baud) | ✅ Complete |
+| PR-35 | HW validation | Text telemetry + command parser | ✅ Complete |
+| PR-36 | — | Camera driver | 🔄 Pending |
+| PR-37 | — | LIS3MDL driver migration (HMC5883L discontinued) | 🔄 Pending |
+| PR-38 | — | FM_PAYLOAD mode implementation | 🔄 Pending |
+| PR-39 | — | W25Qxx external storage | 🔄 Pending |
+| PR-40 | — | PWM HAL for reaction wheels/magnetorquers | 🔄 Pending |
+| PR-41 | — | Full flash backend implementation | 🔄 Pending |
+| PR-42 | — | MC/DC coverage analysis | 🔄 Pending |
 
+- **Hardware validated**: ✅ IMU, GPS, HC-12 radio, temperature sensor
+- **Software validated**: ✅ Telemetry (text), Commands (REBOOT/MODE/ECHO/CAPTURE)
 - **Current test status**: 27/27 unit tests + 3/3 integration tests passing
 - **Current coverage**: Line 93.0%, Function 92.4% (target: >95%)
 - **CI Pipeline**: 6/6 stages passing

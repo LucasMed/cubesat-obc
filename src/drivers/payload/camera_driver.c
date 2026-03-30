@@ -2,7 +2,8 @@
  * @file camera_driver.c
  * @brief Arducam OV2640 Camera Driver implementation.
  *
- * Implements register control via I2C1 and data readout via shared SPI0.
+ * Implements register control via I2C0 and data readout via shared SPI0.
+ * NOTE: Camera not yet connected/validated - using I2C0 for IMU.
  *
  * Spec ref: ICD-PAYLOAD-001 §11.16
  */
@@ -37,16 +38,16 @@
 static bool cam_i2c_write(uint8_t reg, uint8_t val)
 {
   uint8_t buf[2] = {reg, val};
-  return i2c_write_blocking(I2C1_PORT, OV2640_ADDR, buf, 2, false) == 2;
+  return i2c_write_blocking(I2C0_PORT, OV2640_ADDR, buf, 2, false) == 2;
 }
 
 static bool cam_i2c_read(uint8_t reg, uint8_t *val)
 {
-  if (i2c_write_blocking(I2C1_PORT, OV2640_ADDR, &reg, 1, true) != 1)
+  if (i2c_write_blocking(I2C0_PORT, OV2640_ADDR, &reg, 1, true) != 1)
   {
     return false;
   }
-  return i2c_read_blocking(I2C1_PORT, OV2640_ADDR, val, 1, false) == 1;
+  return i2c_read_blocking(I2C0_PORT, OV2640_ADDR, val, 1, false) == 1;
 }
 
 static uint8_t cam_spi_transfer(uint8_t address, uint8_t value)
@@ -98,12 +99,12 @@ bool camera_init(void)
   spi_payload_init();
 
 #if defined(PICO_BUILD)
-  /* I2C1 Init */
-  i2c_init(I2C1_PORT, I2C1_SPEED_HZ);
-  gpio_set_function(I2C1_SDA_PIN, GPIO_FUNC_I2C);
-  gpio_set_function(I2C1_SCL_PIN, GPIO_FUNC_I2C);
-  gpio_pull_up(I2C1_SDA_PIN);
-  gpio_pull_up(I2C1_SCL_PIN);
+  /* I2C0 Init (shared with MPU-6050) */
+  i2c_init(I2C0_PORT, I2C0_SPEED_HZ);
+  gpio_set_function(I2C0_SDA_PIN, GPIO_FUNC_I2C);
+  gpio_set_function(I2C0_SCL_PIN, GPIO_FUNC_I2C);
+  gpio_pull_up(I2C0_SDA_PIN);
+  gpio_pull_up(I2C0_SCL_PIN);
 
   /* GPIO Pins */
   gpio_init(CAM_RESET_PIN);
