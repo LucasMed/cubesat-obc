@@ -10,7 +10,10 @@
 
 #ifdef PICO_BUILD
   #include "FreeRTOS.h"
+  #include "hardware/gpio.h"
+  #include "hardware/uart.h"
   #include "pico/stdlib.h"
+  #include "pico_pins.h"
   #include "task.h"
 #endif
 
@@ -64,8 +67,33 @@ void comm_init(void)
   (void)printf("CSP: KISS @ addr %d, route GN(%d)\r\n", OBC_ADDRESS, GN_ADDRESS);
   (void)fflush(stdout);
 #else
-  /* ── Pico build: loopback only — csp_init() already registered LOOP ── */
-  (void)printf("CSP: loopback-only mode\r\n");
+  /* ── Pico build: UART1 for HC-12 radio ── */
+  uart_init(uart1, UART1_BAUD_RATE);
+  gpio_set_function(UART1_TX_PIN, GPIO_FUNC_UART);
+  gpio_set_function(UART1_RX_PIN, GPIO_FUNC_UART);
+  uart_set_hw_flow(uart1, false, false);
+  uart_set_fifo_enabled(uart1, true);
+
+  csp_usart_conf_t conf = {.device = "uart1",
+                           .baudrate = UART1_BAUD_RATE,
+                           .databits = 8,
+                           .stopbits = 1,
+                           .paritysetting = 0};
+
+  csp_iface_t *kiss_iface = NULL;
+  int res = csp_usart_open_and_add_kiss_interface(&conf, "KISS", OBC_ADDRESS, &kiss_iface);
+  if (res != CSP_ERR_NONE)
+  {
+    (void)printf("CSP ERROR: KISS interface failed (%d)\r\n", res);
+    (void)fflush(stdout);
+    return;
+  }
+
+  char rtable[64];
+  (void)snprintf(rtable, sizeof(rtable), "%d/255 KISS", GN_ADDRESS);
+  (void)csp_rtable_load(rtable);
+  (void)printf("CSP: KISS @ UART1 (GPIO%d/%d), addr %d, route GN(%d)\r\n", UART1_TX_PIN,
+               UART1_RX_PIN, OBC_ADDRESS, GN_ADDRESS);
   (void)fflush(stdout);
 #endif
 

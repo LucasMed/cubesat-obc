@@ -7,7 +7,9 @@
 #include <stdio.h>
 
 #ifdef PICO_BUILD
+  #include "hardware/uart.h"
   #include "pico/time.h"
+  #include "pico_pins.h"
 #endif
 
 #include "data_layer.h"
@@ -92,12 +94,16 @@ void vTelemetryTask_Step(void)
   packet->length = sizeof(csp_telemetry_packet_t);
 
   // 3. Send over CSP port connection-less
-#ifndef PICO_BUILD
   csp_sendto(CSP_PRIO_NORM, GN_ADDRESS, TELEMETRY_PORT, TELEMETRY_PORT, CSP_O_NONE, packet);
-#else
-  /* Pico loopback-only: no route to GN_ADDRESS=1 exists, free buffer to
-   * avoid leaking CSP packet pool. */
-  csp_buffer_free(packet);
+
+#ifdef PICO_BUILD
+  // Send plain text over UART1 (HC-12) for easy debugging
+  uart_puts(uart1, "[TLM] ");
+  char buf[32];
+  snprintf(buf, sizeof(buf), "mode=%d att=%.1f,%.1f,%.1f flags=0x%02X", snap.mode, tlm->attitude[0],
+           tlm->attitude[1], tlm->attitude[2], tlm->flags);
+  uart_puts(uart1, buf);
+  uart_puts(uart1, "\r\n");
 #endif
 
   printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] flags=0x%02X\n", snap.mode, tlm->attitude[0],

@@ -100,7 +100,7 @@
 #define UART1_PORT      uart1
 #define UART1_TX_PIN    8     /**< OBC TX → Radio RX */
 #define UART1_RX_PIN    9     /**< Radio TX → OBC RX */
-#define UART1_BAUD_RATE 115200
+#define UART1_BAUD_RATE 9600
 
 /* ======================================================================
  * Payload Interrupt & Timing Signals
