@@ -15,7 +15,7 @@ void setup() {
   HC12.begin(9600);
 
   Serial.println("=== Ground Station Ready ===");
-  Serial.println("Comandos: REBOOT|STATUS|ECHO|CAPTURE|MODE=1|2|3|HELP");
+  Serial.println("Comandos: REBOOT|STATUS|ECHO|CAPTURE|MODE=1|2|3|GPS|HELP");
 }
 
 void loop() {
@@ -39,6 +39,12 @@ void loop() {
     }
     else if (recibido.startsWith("[CMD]")) {
       Serial.println(recibido);
+    }
+    else if (recibido.startsWith("GPS:")) {
+      parseGpsStatus(recibido);
+    }
+    else if (recibido.startsWith("GPS STATS:")) {
+      parseGpsStats(recibido);
     }
     else {
       Serial.println(recibido);
@@ -88,6 +94,43 @@ void parseTelemetry(String msg) {
     Serial.print(" Lon="); Serial.print(gps_lon, 6);
     Serial.print(" Alt="); Serial.print(gps_alt, 1);
   }
+  Serial.println();
+}
+
+void parseGpsStatus(String msg) {
+  // Formato: GPS: v=1 lat=-31.43210 lon=-64.18123 alt=431.5 s=6 hdop=1.2
+  int valid = getValue(msg, "v=").toInt();
+  float lat = getValue(msg, "lat=").toFloat();
+  float lon = getValue(msg, "lon=").toFloat();
+  float alt = getValue(msg, "alt=").toFloat();
+  int sats = getValue(msg, "s=").toInt();
+  float hdop = getValue(msg, "hdop=").toFloat();
+
+  Serial.print("GPS FIX: ");
+  Serial.print(valid ? "VALID" : "NO FIX");
+  if (valid) {
+    Serial.print(" Lat="); Serial.print(lat, 5);
+    Serial.print(" Lon="); Serial.print(lon, 5);
+    Serial.print(" Alt="); Serial.print(alt, 1);
+    Serial.print(" Sats="); Serial.print(sats);
+    Serial.print(" HDOP="); Serial.print(hdop, 1);
+  }
+  Serial.println();
+}
+
+void parseGpsStats(String msg) {
+  // Formato: GPS STATS: rx=1234 chk_err=0 inv=2 valid=45 overflow=0
+  unsigned long rx = getValue(msg, "rx=").toInt();
+  unsigned long chk_err = getValue(msg, "chk_err=").toInt();
+  unsigned long inv = getValue(msg, "inv=").toInt();
+  unsigned long valid = getValue(msg, "valid=").toInt();
+  unsigned long overflow = getValue(msg, "overflow=").toInt();
+
+  Serial.print("GPS STATS: rx="); Serial.print(rx);
+  Serial.print(" err="); Serial.print(chk_err);
+  Serial.print(" inv="); Serial.print(inv);
+  Serial.print(" valid="); Serial.print(valid);
+  Serial.print(" overflow="); Serial.print(overflow);
   Serial.println();
 }
 
