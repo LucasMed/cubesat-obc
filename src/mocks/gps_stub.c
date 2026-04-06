@@ -9,15 +9,16 @@
 static GpsFix_t g_last_fix = {.lat = -34.6037f,
                               .lon = -58.3816f,
                               .alt_m = 20.5f,
+                              .hdop = 1.0f,
                               .utc_time = 1713350400,
+                              .satellites = 8,
                               .valid = true,
                               .timestamp_ms = 0};
 
 static GpsMockMode_t g_mock_mode = GPS_MOCK_OK;
-static uint32_t g_call_counts[10] = {
-    0};  // Index: 0-init, 1-deinit, 2-read_fix, 3-get_last_fix, 4-is_fix_valid, 5-get_sats,
-         // 6-set_data, 7-set_mode, 8-get_call_count, 9-reset_counters
-static const char *function_names[10] = {"gps_init",
+static GpsStats_t g_stats = {0};
+static uint32_t g_call_counts[12] = {0};
+static const char *function_names[12] = {"gps_init",
                                          "gps_deinit",
                                          "gps_read_fix",
                                          "gps_get_last_fix",
@@ -26,12 +27,14 @@ static const char *function_names[10] = {"gps_init",
                                          "gps_mock_set_data",
                                          "gps_mock_set_mode",
                                          "gps_mock_get_call_count",
-                                         "gps_mock_reset_counters"};
+                                         "gps_mock_reset_counters",
+                                         "gps_get_stats",
+                                         "gps_reset_stats"};
 
 // Internal function to match name to index
 static int lookup_func_index(const char *name)
 {
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 12; i++)
   {
     if (strcmp(name, function_names[i]) == 0)
     {
@@ -59,11 +62,9 @@ void gps_deinit(void)
 GpsFix_t *gps_read_fix(void)
 {
   g_call_counts[2]++;
-  // Only update fields if not in OK mode (so test can manipulate struct directly)
   switch (g_mock_mode)
   {
   case GPS_MOCK_OK:
-    // Do not overwrite fields, allow test to set them directly
     break;
   case GPS_MOCK_FAULT_TIMEOUT:
   case GPS_MOCK_FAULT_NO_FIX:
@@ -71,6 +72,7 @@ GpsFix_t *gps_read_fix(void)
   case GPS_MOCK_FAULT_PARTIAL_FRAME:
   case GPS_MOCK_FAULT_STALE_DATA:
     g_last_fix.valid = false;
+    g_last_fix.satellites = 0;
     break;
   }
   printf("[gps_read_fix] mode=%d, valid=%d, timestamp_ms=%u\n", g_mock_mode, g_last_fix.valid,
@@ -78,10 +80,15 @@ GpsFix_t *gps_read_fix(void)
   return &g_last_fix;
 }
 
-GpsFix_t *gps_get_last_fix(void)
+bool gps_get_last_fix(GpsFix_t *out)
 {
   g_call_counts[3]++;
-  return &g_last_fix;
+  if (out == NULL)
+  {
+    return false;
+  }
+  memcpy(out, &g_last_fix, sizeof(GpsFix_t));
+  return out->valid;
 }
 
 bool gps_is_fix_valid(void)
@@ -100,7 +107,19 @@ bool gps_is_fix_valid(void)
 uint8_t gps_get_satellites_in_view(void)
 {
   g_call_counts[5]++;
-  return 0;  // Not tracked in GpsFix_t
+  return g_last_fix.satellites;
+}
+
+const GpsStats_t *gps_get_stats(void)
+{
+  g_call_counts[10]++;
+  return &g_stats;
+}
+
+void gps_reset_stats(void)
+{
+  g_call_counts[11]++;
+  memset(&g_stats, 0, sizeof(g_stats));
 }
 
 void gps_mock_set_data(const GpsFix_t *fix)
@@ -122,7 +141,9 @@ void gps_mock_set_mode(GpsMockMode_t mode)
     g_last_fix.lat = -34.6037f;
     g_last_fix.lon = -58.3816f;
     g_last_fix.alt_m = 20.5f;
+    g_last_fix.hdop = 1.0f;
     g_last_fix.utc_time = 1713350400;
+    g_last_fix.satellites = 8;
     g_last_fix.valid = true;
     g_last_fix.timestamp_ms = 0;
   }

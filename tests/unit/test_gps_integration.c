@@ -168,8 +168,11 @@ void test_gps_get_last_fix(void) {
     inject_nmea(gga);
     gps_read_fix();
     
-    GpsFix_t *last = gps_get_last_fix();
-    test_case("gps_get_last_fix returns valid fix", last->valid == true);
+    GpsFix_t last = {0};
+    bool result = gps_get_last_fix(&last);
+    test_case("gps_get_last_fix returns true", result == true);
+    test_case("Last fix is valid", last.valid == true);
+    test_case("HDOP is parsed", last.hdop > 0.0f && last.hdop < 10.0f);
     
     gps_deinit();
 }
@@ -188,6 +191,25 @@ void test_gps_satellites_in_view(void) {
     gps_deinit();
 }
 
+void test_gps_stats(void) {
+    printf("\n=== Test: GPS Stats ===\n");
+    gps_init();
+    gps_reset_stats();
+    
+    const GpsStats_t *stats = gps_get_stats();
+    test_case("Initial sentences = 0", stats->sentences_received == 0);
+    
+    const char *gga = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n";
+    inject_nmea(gga);
+    gps_read_fix();
+    
+    stats = gps_get_stats();
+    test_case("Sentences received > 0", stats->sentences_received > 0);
+    test_case("Fixes valid > 0", stats->fixes_valid > 0);
+    
+    gps_deinit();
+}
+
 int main(void) {
     printf("===========================================\n");
     printf("GPS Integration Test Suite\n");
@@ -201,6 +223,7 @@ int main(void) {
     test_gps_is_fix_valid();
     test_gps_get_last_fix();
     test_gps_satellites_in_view();
+    test_gps_stats();
     
     printf("\n===========================================\n");
     printf("Results: %d passed, %d failed\n", s_test_passed, s_test_failed);

@@ -6,12 +6,12 @@
  * RP2350 has 30 GPIO pins (GPIO0-GPIO29).
  *
  * === HARDWARE VERIFICATION COMPLETED (2026-03-30) ===
- * 
+ *
  * Verified working sensors:
  * - MPU-6050/6500 IMU: I2C0 @ GPIO4/5 (0x68 / 0x70)
  * - GPS NEO-6M/7M: UART0 @ GPIO0/1, 9600 baud
  * - HC-12 radio: UART1 @ GPIO8/9, 9600 baud
- * 
+ *
  * NOT YET CONNECTED:
  * - HMC5883L magnetometer (I2C0)
  * - OV2640 camera (SPI0)
@@ -146,7 +146,7 @@
 
 /** MPU6050 — standard address (AD0 = GND) or MPU-6500 (AD0 = VCC) */
 #define MPU6050_I2C_ADDR 0x68
-#define MPU6050_I2C_ADDR_ALT 0x70  /**< MPU-6500 variant */
+#define MPU6050_I2C_ADDR_ALT 0x70 /**< MPU-6500 variant */
 #define MPU6050_I2C_PORT I2C0_PORT
 
 /* ======================================================================

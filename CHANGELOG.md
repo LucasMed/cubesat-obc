@@ -5,8 +5,19 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **GPS Driver Enhancements**: Status reporting and telemetry statistics integration in `gps_driver.h` and `neo7m.c`
+- **Ground Station Communication**: Enhanced telemetry and GPS status reporting capabilities
+- **Command Task Updates**: Extended command parsing for GPS-related operations
+
+### Changed
+- **GPS Stub and Tests**: Updated mocks and unit tests for enhanced GPS functionality
 
 ---
+
+## [0.25.0] — 2026-03-30 — Hardware Validation Complete
 
 ## [0.25.0] — 2026-03-30 — Hardware Validation Complete
 

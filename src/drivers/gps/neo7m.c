@@ -37,6 +37,7 @@ static volatile uint16_t nmea_rx_tail = 0;
 
 static GpsFix_t g_last_fix = {0};
 static uint8_t g_satellites_in_view = 0;
+static GpsStats_t g_stats = {0};
 
 #ifdef PICO_BUILD
   #include "FreeRTOS.h"
@@ -50,7 +51,10 @@ static void gps_lock(void)
 #ifdef PICO_BUILD
   if (g_gps_mutex)
   {
-    xSemaphoreTake(g_gps_mutex, portMAX_DELAY);
+    if (xSemaphoreTake(g_gps_mutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+      return;
+    }
   }
 #endif
 }
@@ -115,7 +119,15 @@ static void gps_uart_isr(void)
 
 static bool nmea_buffer_pop(uint8_t *byte)
 {
-  if (nmea_rx_head == nmea_rx_tail)
+  uint16_t head;
+#ifdef PICO_BUILD
+  taskENTER_CRITICAL();
+#endif
+  head = nmea_rx_head;
+#ifdef PICO_BUILD
+  taskEXIT_CRITICAL();
+#endif
+  if (head == nmea_rx_tail)
   {
     return false;  // empty
   }
@@ -331,8 +343,27 @@ static void nmea_parse_gga(const char *sentence)
       fix.alt_m = 0.0f;
     }
     fix.valid = (fields[6][0] == '1');
-    fix.timestamp_ms = 0;  // Set by gps_read_fix() via xTaskGetTickCount()
-    // UTC time: convert HHMMSS.00 to seconds since midnight
+    fix.timestamp_ms = 0;
+    if (fields[7])
+    {
+      fix.satellites = (uint8_t)strtoul(fields[7], &endptr, 10);
+      if (endptr == fields[7])
+      {
+        fix.satellites = 0;
+      }
+    }
+    if (fields[8])
+    {
+      fix.hdop = (float)strtod(fields[8], &endptr);
+      if (endptr == fields[8])
+      {
+        fix.hdop = 99.0f;
+      }
+    }
+    else
+    {
+      fix.hdop = 99.0f;
+    }
     if (fields[1])
     {
       int h = 0;
@@ -361,11 +392,7 @@ static void nmea_parse_gga(const char *sentence)
       }
       fix.utc_time = h * 3600 + m * 60 + s;
     }
-    g_satellites_in_view = (uint8_t)strtoul(fields[7], &endptr, 10);
-    if (endptr == fields[7])
-    {
-      g_satellites_in_view = 0;
-    }
+    g_satellites_in_view = fix.satellites;
 
     gps_lock();
     g_last_fix = fix;
@@ -482,8 +509,11 @@ GpsFix_t *gps_read_fix(void)
 
   if (!nmea_verify_checksum(line))
   {
+    g_stats.checksum_errors++;
     return NULL;
   }
+
+  g_stats.sentences_received++;
 
 #ifdef PICO_BUILD
   (void)printf("GPS: %s\n", line);
@@ -492,6 +522,21 @@ GpsFix_t *gps_read_fix(void)
   if (strncmp(line + 1, "GPGGA", 5) == 0)
   {
     nmea_parse_gga(line);
+    if (g_last_fix.valid)
+    {
+      g_stats.fixes_valid++;
+    }
+    else
+    {
+      g_stats.fixes_invalid++;
+    }
+    gps_lock();
+#ifdef PICO_BUILD
+    g_last_fix.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+#else
+    g_last_fix.timestamp_ms = 0;
+#endif
+    gps_unlock();
   }
 #ifdef PICO_BUILD
   else if (strncmp(line + 1, "GPRMC", 5) == 0)
@@ -500,22 +545,21 @@ GpsFix_t *gps_read_fix(void)
   }
 #endif
 
-  gps_lock();
-#ifdef PICO_BUILD
-  g_last_fix.timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-#else
-  g_last_fix.timestamp_ms = 0;
-#endif
   GpsFix_t *result = &g_last_fix;
-  gps_unlock();
 
   return result;
 }
 
-GpsFix_t *gps_get_last_fix(void)
+bool gps_get_last_fix(GpsFix_t *out)
 {
-  // Return pointer to last parsed valid fix
-  return &g_last_fix;
+  if (out == NULL)
+  {
+    return false;
+  }
+  gps_lock();
+  *out = g_last_fix;
+  gps_unlock();
+  return out->valid;
 }
 
 bool gps_is_fix_valid(void)
@@ -535,4 +579,14 @@ uint8_t gps_get_satellites_in_view(void)
 {
   // Updated by nmea_parse_gga() when a valid GPGGA sentence is received
   return g_satellites_in_view;
+}
+
+const GpsStats_t *gps_get_stats(void)
+{
+  return &g_stats;
+}
+
+void gps_reset_stats(void)
+{
+  memset(&g_stats, 0, sizeof(g_stats));
 }
