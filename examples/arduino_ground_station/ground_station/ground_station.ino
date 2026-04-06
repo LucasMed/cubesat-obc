@@ -7,7 +7,8 @@ const byte HC12SetPin = 9;
 
 SoftwareSerial HC12(HC12RxdPin, HC12TxdPin);
 
-void setup() {
+void setup()
+{
   pinMode(HC12SetPin, OUTPUT);
   digitalWrite(HC12SetPin, HIGH);
 
@@ -15,47 +16,65 @@ void setup() {
   HC12.begin(9600);
 
   Serial.println("=== Ground Station Ready ===");
-  Serial.println("Comandos: REBOOT|STATUS|ECHO|CAPTURE|MODE=1|2|3|GPS|HELP");
+  Serial.println("Commands: REBOOT|STATUS|ECHO|CAPTURE|MODE=1|2|3|GPS|FAULTS|HELP");
 }
 
-void loop() {
+void loop()
+{
   // Enviar comandos desde PC a OBC
-  if (Serial.available()) {
+  if (Serial.available())
+  {
     String comando = Serial.readStringUntil('\n');
     comando.trim();
-    if (comando.length() > 0) {
+    if (comando.length() > 0)
+    {
       HC12.println(comando);
       Serial.println("-> Enviado: " + comando);
     }
   }
 
   // Recibir datos desde OBC
-  if (HC12.available()) {
+  if (HC12.available())
+  {
     String recibido = HC12.readStringUntil('\n');
     recibido.trim();
-    
-    if (recibido.startsWith("[TLM]")) {
+
+    if (recibido.startsWith("[TLM]"))
+    {
       parseTelemetry(recibido);
     }
-    else if (recibido.startsWith("[CMD]")) {
+    else if (recibido.startsWith("[CMD]"))
+    {
       Serial.println(recibido);
     }
-    else if (recibido.startsWith("GPS:")) {
+    else if (recibido.startsWith("SYSTEM:"))
+    {
+      parseSystemStatus(recibido);
+    }
+    else if (recibido.startsWith("FAULTS:"))
+    {
+      parseFaults(recibido);
+    }
+    else if (recibido.startsWith("GPS:"))
+    {
       parseGpsStatus(recibido);
     }
-    else if (recibido.startsWith("GPS STATS:")) {
+    else if (recibido.startsWith("GPS STATS:"))
+    {
       parseGpsStats(recibido);
     }
-    else {
+    else
+    {
       Serial.println(recibido);
     }
   }
 }
 
-void parseTelemetry(String msg) {
+void parseTelemetry(String msg)
+{
   // Extraer mode
   int posMode = msg.indexOf("mode=");
-  int posAtt  = msg.indexOf("att=");
+  int posAtt = msg.indexOf("att=");
   int mode = msg.substring(posMode + 5, msg.indexOf(' ', posMode + 5)).toInt();
 
   // Extraer actitud
@@ -81,23 +100,36 @@ void parseTelemetry(String msg) {
   int gps_valid = getValue(msg, "gps_valid=").toInt();
 
   // Mostrar
-  Serial.print("Mode="); Serial.print(mode);
-  Serial.print(" Roll="); Serial.print(roll);
-  Serial.print(" Pitch="); Serial.print(pitch);
-  Serial.print(" Yaw="); Serial.print(yaw);
-  Serial.print(" IMU="); Serial.print(imu_ok ? "OK" : "FAIL");
-  Serial.print(" Temp="); Serial.print(temp_ok ? "OK" : "FAIL");
-  Serial.print(" Energy="); Serial.print(energy_state);
-  Serial.print(" GPS="); Serial.print(gps_valid ? "OK" : "NO FIX");
-  if (gps_valid) {
-    Serial.print(" Lat="); Serial.print(gps_lat, 6);
-    Serial.print(" Lon="); Serial.print(gps_lon, 6);
-    Serial.print(" Alt="); Serial.print(gps_alt, 1);
+  Serial.print("Mode=");
+  Serial.print(mode);
+  Serial.print(" Roll=");
+  Serial.print(roll);
+  Serial.print(" Pitch=");
+  Serial.print(pitch);
+  Serial.print(" Yaw=");
+  Serial.print(yaw);
+  Serial.print(" IMU=");
+  Serial.print(imu_ok ? "OK" : "FAIL");
+  Serial.print(" Temp=");
+  Serial.print(temp_ok ? "OK" : "FAIL");
+  Serial.print(" Energy=");
+  Serial.print(energy_state);
+  Serial.print(" GPS=");
+  Serial.print(gps_valid ? "OK" : "NO FIX");
+  if (gps_valid)
+  {
+    Serial.print(" Lat=");
+    Serial.print(gps_lat, 6);
+    Serial.print(" Lon=");
+    Serial.print(gps_lon, 6);
+    Serial.print(" Alt=");
+    Serial.print(gps_alt, 1);
   }
   Serial.println();
 }
 
-void parseGpsStatus(String msg) {
+void parseGpsStatus(String msg)
+{
   // Formato: GPS: v=1 lat=-31.43210 lon=-64.18123 alt=431.5 s=6 hdop=1.2
   int valid = getValue(msg, "v=").toInt();
   float lat = getValue(msg, "lat=").toFloat();
@@ -108,17 +140,24 @@ void parseGpsStatus(String msg) {
 
   Serial.print("GPS FIX: ");
   Serial.print(valid ? "VALID" : "NO FIX");
-  if (valid) {
-    Serial.print(" Lat="); Serial.print(lat, 5);
-    Serial.print(" Lon="); Serial.print(lon, 5);
-    Serial.print(" Alt="); Serial.print(alt, 1);
-    Serial.print(" Sats="); Serial.print(sats);
-    Serial.print(" HDOP="); Serial.print(hdop, 1);
+  if (valid)
+  {
+    Serial.print(" Lat=");
+    Serial.print(lat, 5);
+    Serial.print(" Lon=");
+    Serial.print(lon, 5);
+    Serial.print(" Alt=");
+    Serial.print(alt, 1);
+    Serial.print(" Sats=");
+    Serial.print(sats);
+    Serial.print(" HDOP=");
+    Serial.print(hdop, 1);
   }
   Serial.println();
 }
 
-void parseGpsStats(String msg) {
+void parseGpsStats(String msg)
+{
   // Formato: GPS STATS: rx=1234 chk_err=0 inv=2 valid=45 overflow=0
   unsigned long rx = getValue(msg, "rx=").toInt();
   unsigned long chk_err = getValue(msg, "chk_err=").toInt();
@@ -126,19 +165,57 @@ void parseGpsStats(String msg) {
   unsigned long valid = getValue(msg, "valid=").toInt();
   unsigned long overflow = getValue(msg, "overflow=").toInt();
 
-  Serial.print("GPS STATS: rx="); Serial.print(rx);
-  Serial.print(" err="); Serial.print(chk_err);
-  Serial.print(" inv="); Serial.print(inv);
-  Serial.print(" valid="); Serial.print(valid);
-  Serial.print(" overflow="); Serial.print(overflow);
+  Serial.print("GPS STATS: rx=");
+  Serial.print(rx);
+  Serial.print(" err=");
+  Serial.print(chk_err);
+  Serial.print(" inv=");
+  Serial.print(inv);
+  Serial.print(" valid=");
+  Serial.print(valid);
+  Serial.print(" overflow=");
+  Serial.print(overflow);
   Serial.println();
 }
 
-String getValue(String msg, String key) {
+void parseSystemStatus(String msg)
+{
+  // Formato: SYSTEM: mode=NOMINAL energy=NOMINAL imu=OK temp=OK mag=FAIL
+  String modeStr = getValue(msg, "mode=");
+  String energyStr = getValue(msg, "energy=");
+  String imuStr = getValue(msg, "imu=");
+  String tempStr = getValue(msg, "temp=");
+  String magStr = getValue(msg, "mag=");
+
+  Serial.print("SYSTEM: mode=");
+  Serial.print(modeStr);
+  Serial.print(" energy=");
+  Serial.print(energyStr);
+  Serial.print(" IMU=");
+  Serial.print(imuStr);
+  Serial.print(" Temp=");
+  Serial.print(tempStr);
+  Serial.print(" Mag=");
+  Serial.print(magStr);
+  Serial.println();
+}
+
+void parseFaults(String msg)
+{
+  // Formato: FAULTS: OK
+  String levelStr = getValue(msg, "FAULTS: ");
+  Serial.print("FAULTS: ");
+  Serial.println(levelStr);
+}
+
+String getValue(String msg, String key)
+{
   int pos = msg.indexOf(key);
-  if (pos == -1) return "0";
+  if (pos == -1)
+    return "0";
   int start = pos + key.length();
   int end = msg.indexOf(' ', start);
-  if (end == -1) end = msg.length();
+  if (end == -1)
+    end = msg.length();
   return msg.substring(start, end);
 }
