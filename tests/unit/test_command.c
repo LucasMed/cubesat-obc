@@ -43,6 +43,39 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
   return FMM_OK;
 }
 
+// Mock GPS
+#include "gps_driver.h"
+static GpsFix_t mock_gps_fix = {
+    .lat = -31.43210f,
+    .lon = -64.18123f,
+    .alt_m = 431.5f,
+    .hdop = 1.2f,
+    .satellites = 6,
+    .valid = true,
+    .timestamp_ms = 45000
+};
+static GpsStats_t mock_gps_stats = {
+    .sentences_received = 1234,
+    .checksum_errors = 0,
+    .parse_errors = 0,
+    .fixes_valid = 45,
+    .fixes_invalid = 2,
+    .buffer_overflows = 0
+};
+
+bool gps_get_last_fix(GpsFix_t *out)
+{
+  if (out) {
+    memcpy(out, &mock_gps_fix, sizeof(GpsFix_t));
+  }
+  return mock_gps_fix.valid;
+}
+
+const GpsStats_t *gps_get_stats(void)
+{
+  return &mock_gps_stats;
+}
+
 // Mock xTaskGetHandle
 #undef xTaskGetHandle
 TaskHandle_t xTaskGetHandle(const char *pcName)

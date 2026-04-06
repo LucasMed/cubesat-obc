@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "flight_mode.h"
+#include "gps_driver.h"
 #include "payload_task.h"
 #include "task.h"
 
@@ -79,7 +80,29 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
-    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|HELP\r\n");
+    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|HELP\r\n");
+  }
+  else if (strncmp(cmd, "GPS", 3) == 0)
+  {
+    GpsFix_t fix = {0};
+    if (gps_get_last_fix(&fix))
+    {
+      char buf[96];
+      snprintf(buf, sizeof(buf), "GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
+               fix.valid, fix.lat, fix.lon, fix.alt_m, fix.satellites, fix.hdop);
+      uart_puts(uart1, buf);
+
+      const GpsStats_t *stats = gps_get_stats();
+      snprintf(buf, sizeof(buf), "GPS STATS: rx=%u chk_err=%u inv=%u valid=%u overflow=%u\r\n",
+               (unsigned)stats->sentences_received, (unsigned)stats->checksum_errors,
+               (unsigned)stats->fixes_invalid, (unsigned)stats->fixes_valid,
+               (unsigned)stats->buffer_overflows);
+      uart_puts(uart1, buf);
+    }
+    else
+    {
+      uart_puts(uart1, "GPS: no fix\r\n");
+    }
   }
   else
   {
@@ -160,6 +183,32 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
     {
       xTaskNotify(h_payload, PAYLOAD_NOTIFY_CAPTURE_IMAGE, eSetBits);
     }
+    break;
+  }
+
+  case CMD_GPS_STATUS:
+  {
+    printf("[command_task] Executing GPS_STATUS\n");
+
+    GpsFix_t fix = {0};
+    gps_get_last_fix(&fix);
+    const GpsStats_t *stats = gps_get_stats();
+
+    gps_status_response_t resp = {.valid = fix.valid ? 1 : 0,
+                                  .lat_scaled = (int32_t)(fix.lat * 1000000),
+                                  .lon_scaled = (int32_t)(fix.lon * 1000000),
+                                  .alt_scaled = (int32_t)(fix.alt_m * 100),
+                                  .satellites = fix.satellites,
+                                  .hdop_scaled = (uint8_t)(fix.hdop * 10),
+                                  .uptime_ms = fix.timestamp_ms,
+                                  .sentences = (uint16_t)stats->sentences_received,
+                                  .checksum_err = (uint8_t)stats->checksum_errors,
+                                  .fixes_invalid = (uint8_t)stats->fixes_invalid};
+
+    memcpy(cmd->payload, &resp, sizeof(resp));
+    packet->length = sizeof(resp) + 1;
+    csp_send(conn, packet);
+    packet = NULL;
     break;
   }
 

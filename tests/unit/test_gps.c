@@ -40,11 +40,9 @@ void test_gps_mode_and_fix()
 void test_gps_satellite_count()
 {
   GpsFix_t inject = {
-      .lat = 0, .lon = 0, .alt_m = 0, .utc_time = 100, .valid = true, .timestamp_ms = 100};
+      .lat = 0, .lon = 0, .alt_m = 0, .hdop = 1.0f, .utc_time = 100, .satellites = 6, .valid = true, .timestamp_ms = 100};
   gps_mock_set_data(&inject);
-  // satellites_in_view is not present in GpsFix_t; test only that function returns a value (could
-  // be 0 in stub)
-  (void)gps_get_satellites_in_view();
+  assert(gps_get_satellites_in_view() == 6);
 }
 
 void test_gps_call_count_and_reset()
@@ -53,7 +51,8 @@ void test_gps_call_count_and_reset()
   gps_init();
   gps_deinit();
   gps_read_fix();
-  gps_get_last_fix();
+  GpsFix_t out = {0};
+  gps_get_last_fix(&out);
   gps_is_fix_valid();
   gps_get_satellites_in_view();
   GpsFix_t dummy = {0};
@@ -76,19 +75,26 @@ void test_data_injection(void)
   GpsFix_t custom = {.lat = -31.4135f,
                      .lon = -64.1812f,
                      .alt_m = 431.0f,
+                     .hdop = 1.2f,
                      .utc_time = 183000U,
+                     .satellites = 6,
                      .valid = true,
                      .timestamp_ms = 2000U};
   gps_mock_set_data(&custom);
-  assert(gps_read_fix()->lat == custom.lat);
-  assert(gps_read_fix()->lon == custom.lon);
-  assert(gps_read_fix()->alt_m == custom.alt_m);
-  assert(gps_read_fix()->utc_time == custom.utc_time);
-  assert(gps_read_fix()->valid == custom.valid);
+  GpsFix_t out = {0};
+  bool result = gps_get_last_fix(&out);
+  assert(result == true);
+  assert(out.lat == custom.lat);
+  assert(out.lon == custom.lon);
+  assert(out.alt_m == custom.alt_m);
+  assert(out.hdop == custom.hdop);
+  assert(out.utc_time == custom.utc_time);
+  assert(out.valid == custom.valid);
 }
 
 void test_fault_timeout(void)
 {
+  gps_init();
   gps_mock_set_mode(GPS_MOCK_FAULT_TIMEOUT);
   assert(!gps_read_fix()->valid);
   assert(gps_get_satellites_in_view() == 0);
@@ -141,11 +147,14 @@ void test_stale_mode(void)
 void test_get_last_fix(void)
 {
   // Before any read
-  assert(!gps_get_last_fix()->valid);
+  GpsFix_t out1 = {0};
+  assert(gps_get_last_fix(&out1) == false);
   // After a valid read
   gps_mock_set_mode(GPS_MOCK_OK);
-  assert(gps_get_last_fix()->valid);
-  assert(gps_get_last_fix()->lat == gps_read_fix()->lat);
+  GpsFix_t out2 = {0};
+  assert(gps_get_last_fix(&out2) == true);
+  assert(out2.valid);
+  assert(out2.lat == -34.6037f);
 }
 
 void test_fault_recovery(void)
