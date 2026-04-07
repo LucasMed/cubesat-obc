@@ -144,6 +144,11 @@ const GpsStats_t *gps_get_stats(void)
   return &mock_gps_stats;
 }
 
+void gps_reset_stats(void)
+{
+  memset(&mock_gps_stats, 0, sizeof(mock_gps_stats));
+}
+
 // Mock xTaskGetHandle
 #undef xTaskGetHandle
 TaskHandle_t xTaskGetHandle(const char *pcName)

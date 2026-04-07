@@ -10,10 +10,16 @@ typedef struct csp_packet_s csp_packet_t;
 // Forward declarations of the mock functions so that the macros applied in
 // command_task.c have proper prototypes and avoid implicit-declaration
 // warnings/errors.
+#include <stddef.h> /* for size_t */
+typedef struct csp_conn_s csp_conn_t;
+typedef struct csp_packet_s csp_packet_t;
+
+// Forward declarations of the mock functions
 int mock_csp_buffer_free(void *packet);
 csp_packet_t *mock_csp_buffer_get(size_t size);
 void mock_csp_send(csp_conn_t *conn, csp_packet_t *packet);
 int mock_csp_conn_src(const csp_conn_t *conn);
+void gps_reset_stats(void);
 
 /* Pull in FreeRTOS types first so the include guard (FREERTOS_H) is set.
  * Then undefine the vTaskDelay no-op macro — when command_task.c later
