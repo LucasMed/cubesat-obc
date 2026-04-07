@@ -349,12 +349,22 @@ are silently dropped.
 
 ### 11.3 Command Dictionary
 
-| cmd_id | Symbol        | Payload      | Action                                     | Response         |
-|--------|---------------|--------------|--------------------------------------------|------------------|
-| 1      | `CMD_ECHO`    | 0–32 bytes   | Echoes packet back to sender via `csp_send()` | Echoed packet |
-| 2      | `CMD_REBOOT`  | none         | 100 ms delay, then `watchdog_reboot(0,0,10)` on Pico; logs simulation on host | None |
-| 3      | `CMD_SET_MODE`| 1 byte (mode)| Logs requested mode; **not yet fully implemented** — tracked as OI-3 | None |
-| —      | unknown       | —            | Packet dropped; warning logged             | None             |
+| cmd_id | Symbol                | Payload           | Action                                        | Response         |
+|--------|----------------------|-------------------|-----------------------------------------------|------------------|
+| 1      | `CMD_ECHO`           | 0–32 bytes        | Echoes packet back to sender via `csp_send()` | Echoed packet    |
+| 2      | `CMD_REBOOT`         | none              | 100 ms delay, then `watchdog_reboot(0,0,10)`   | None             |
+| 3      | `CMD_SET_MODE`       | 1 byte (mode)     | Calls `fmm_request_transition()`              | None             |
+| 4      | `CMD_PAYLOAD_CAPTURE`| none              | Notifies `PayloadTask` to capture image       | None             |
+| 5      | `CMD_GPS_STATUS`    | none              | Returns GPS fix + stats (21 bytes)            | GPS data         |
+| 6      | `CMD_STATUS`         | none              | Returns system status (7 bytes)               | System status    |
+| 7      | `CMD_FAULT_LIST`    | none              | Returns active faults (variable)              | Fault list       |
+| 8      | `CMD_TELEMETRY_REQ`  | none              | Notifies `TelemetryTask` to send immediately  | None             |
+| 9      | `CMD_LOG_DUMP`       | 1 byte (count)    | Returns log events (count bytes)              | Log data         |
+| 10     | `CMD_SENSOR_RESET`   | 1 byte (sensor_id)| Resets specified sensor (0=IMU,1=Mag,2=GPS,3=Temp) | Result         |
+| 11     | `CMD_GPS_RESET_STATS`| none              | Resets GPS statistics counters                | 1 (success)      |
+| —      | unknown              | —                 | Packet dropped; warning logged                | None             |
+
+> **Note**: Commands 3-11 implemented 2026-04-06 (Phase 1 & 2)
 
 ### 11.4 CMD_REBOOT Details
 
@@ -362,16 +372,13 @@ On the Pico build, `CMD_REBOOT` calls `watchdog_reboot(0, 0, 10)` after a
 100 ms flush delay (`vTaskDelay(pdMS_TO_TICKS(100))`). This resets the RP2350
 via the hardware watchdog; no graceful FMM shutdown is performed.
 
-> **OI-4 (High)**: `CMD_REBOOT` bypasses FMM — it does not call
-> `fmm_request_transition(FM_SAFE)` before reboot. This risks corrupting
-> in-flight actuator state. A safe-mode-then-reboot sequence should be
-> implemented.
+> **Note**: For clean shutdown, consider calling `fmm_request_transition(FM_SAFE)` before reboot.
 
-### 11.5 CMD_SET_MODE Details
+### 11.5 CMD_SET_MODE Details (✅ Implemented)
 
-`CMD_SET_MODE` currently only logs the requested mode and takes no action.
-Full implementation requires integration with `fmm_request_transition()`.
-Tracked as OI-3.
+`CMD_SET_MODE` now calls `fmm_request_transition()` to request mode change
+through the Flight Mode Manager. The FMM validates the transition against the
+allowed-transition matrix before accepting.
 
 ### 11.6 Memory Management
 
@@ -526,10 +533,11 @@ Total: **13 / 13 tests passing** (T-COM-01..02, T-TLM-01..06, T-CMD-01..05).
 |------|----------|----------|--------|-----------------------------------------------------------------------------|
 | OI-1 | Low      | Phase 2  | Open   | `pico_usart.c` hard-codes TX/RX pin numbers (GPIO8/9); migrate to `UART1_TX_PIN` / `UART1_RX_PIN` from `pico_pins.h`. |
 | OI-2 | Low      | Phase 3  | Open   | UART RX polling loop burns CPU at high baud; replace with UART RX IRQ + ring buffer. |
-| OI-3 | High     | Phase 2  | Open   | `CMD_SET_MODE` is a stub — implement full `fmm_request_transition()` integration for ground-commanded mode changes. |
+| OI-3 | High     | Phase 2  | ✅ Resolved | `CMD_SET_MODE` implemented with `fmm_request_transition()` (2026-04-06). |
 | OI-4 | High     | Phase 2  | Open   | `CMD_REBOOT` bypasses FMM; add `fmm_request_transition(FM_SAFE)` before reboot to ensure clean actuator shutdown. |
 | OI-5 | Medium   | Phase 3  | Open   | No fault IDs for persistent downlink loss / CSP buffer exhaustion; add `FAULT_COMM_*` entries to `fault_ids.h`. |
 | OI-6 | Low      | Phase 3  | Open   | Telemetry packet does not include a sequence counter; add `uint16_t seq` to `csp_telemetry_packet_t` for gap detection. |
+| OI-7 | Low      | Phase 3  | Open   | UART text command parser needs security audit — currently accepts any string. |
 
 ---
 
