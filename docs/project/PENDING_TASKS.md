@@ -172,8 +172,8 @@
 | Issue ID | Title | Severity | Status | Blocking |
 |----------|-------|----------|--------|----------|
 | OI-1 | Antenna mechanical design | Medium | Open | Deployment |
-| OI-3 | GPS UART0 conflict | High | Open | GPS subsystem |
-| OI-4 | Flash backend stub | High | Open | Data logging |
+| 2.1 | GPS UART0 conflict | High | ✅ Resolved | GPS subsystem - usar UART1 para debug, GPS en UART0 funciona |
+| 2.2 | Flash backend stub | High | Open | Data logging |
 | OI-5 | External watchdog GPIO20 | Medium | Open | Hardware |
 | OI-7 | TX PA efficiency concern | Medium | Open | Power budget |
 | OI-8 | Heap sizing (~82KB needed vs 60KB) | Critical | Open | Memory subsystem |
@@ -224,15 +224,59 @@
 | Camera Driver | Deferred | Awaiting camera hardware selection |
 | External Storage | Pending | W25Qxx integration pending |
 | HMC5883L Driver | Partial | Stub implementation, I2C not implemented |
+| GPS Driver | ✅ Complete | 11 comandos, API por valor, stats, HDOP |
 
 ### 6.3 Hardware Dependencies
 
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Magnetometer | Discontinued | HMC5883L discontinued, migrate to LIS3MDL |
-| GPS Module | Working | UART0 conflict needs resolution |
+| GPS Module | Working ✅ | UART0, comandos CSP/UART implementados |
 | External Flash | Pending | W25Qxx integration pending |
 | External Watchdog | Pending | GPIO20 connection pending |
+
+---
+
+## 7. Command Interface (CSP + UART)
+
+### 7.1 Implemented Commands - Phase 1 & 2
+
+#### UART Text Commands (via HC-12)
+
+| Command | Description | Example Response |
+|---------|-------------|-------------------|
+| `REBOOT` | Reiniciar sistema | `REBOOT OK` |
+| `STATUS` | Estado general del sistema | `SYSTEM: mode=NOMINAL energy=NOMINAL imu=OK temp=OK mag=FAIL` |
+| `GPS` | Estado del GPS + stats | `GPS: v=1 lat=-34.78047 lon=-58.28801 alt=21.6 s=7 hdop=1.1` |
+| `FAULTS` | Estado de faults | `FAULTS: OK` |
+| `RESETGPS` | Resetear contadores GPS | `RESET GPS OK` |
+| `HELP` | Lista de comandos | `COMMANDS: REBOOT|STATUS|...` |
+
+#### CSP Commands (port 20)
+
+| CMD_ID | Command | Payload In | Payload Out | Description |
+|--------|---------|------------|-------------|-------------|
+| 1 | CMD_ECHO | text (max 32) | text echo | Echo test |
+| 2 | CMD_REBOOT | none | none | Reiniciar sistema |
+| 3 | CMD_SET_MODE | mode (1 byte) | result | Cambiar modo de vuelo |
+| 4 | CMD_PAYLOAD_CAPTURE | none | none | Capturar imagen |
+| 5 | CMD_GPS_STATUS | none | 21 bytes | Estado del GPS |
+| 6 | CMD_STATUS | none | 7 bytes | Estado del sistema |
+| 7 | CMD_FAULT_LIST | none | variable | Listar faults activos |
+| 8 | CMD_TELEMETRY_REQ | none | none | Forzar telemetry |
+| 9 | CMD_LOG_DUMP | count (1-16) | count | Dump de eventos |
+| 10 | CMD_SENSOR_RESET | sensor_id | result | Resetear sensor (0-3) |
+| 11 | CMD_GPS_RESET_STATS | none | 1 | Resetear stats GPS |
+
+### 7.2 GPS Driver Features
+
+- Ring buffer con ISR + task (arquitectura correcta)
+- Parser NMEA con checksum verification
+- Soporte para $GPGGA y $GPRMC
+- HDOP parsing
+- GpsStats_t con contadores (sentences, checksum_errors, fixes_valid, etc.)
+- API por valor `gps_get_last_fix(GpsFix_t *out)` (thread-safe)
+- Timeout en mutex (100ms) para evitar deadlocks
 
 ---
 

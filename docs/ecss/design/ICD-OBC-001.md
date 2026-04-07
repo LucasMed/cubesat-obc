@@ -237,10 +237,10 @@ changes to any control or estimation code.
 
 ## 7. GPS Interface (NEO-7M)
 
-> **✅ ACTIVE — Formally re-scoped into Phase 7**  
+> **✅ COMPLETED — Phase 7**  
 > AIR-OBC-001 ACT-06 resolved via **Option A** (2026-03-10).  
 > Requirements **FR-18** (NMEA parse ≥ 1 Hz), **FR-19** (UTC sync ± 500 ms), and **IR-10** (UART0 interface)  
-> added to SRS-OBC-001 v2.3. Driver `src/drivers/gps/neo7m.c` and `GpsTask` planned for Phase 7 **WP-7.10**.
+> implemented in driver `src/drivers/gps/neo7m.c` and `GpsTask`.
 
 | Parameter | Value |
 |-----------|-------|
@@ -250,8 +250,8 @@ changes to any control or estimation code.
 | RX pin | **GPIO1** (`UART0_RX_PIN`) |
 | Baud rate | 9600 bps (reconfigurable to 38400 via UBX `CFG-PRT`) |
 | Protocol | NMEA 0183 — `$GPGGA` (position + altitude + UTC), `$GPRMC` (position + speed + date) |
-| Driver | `src/drivers/gps/neo7m.c` — **Phase 7 (WP-7.10)** |
-| Status | **Active — Phase 7 integration (PLAN-007 WP-7.10)** |
+| Driver | `src/drivers/gps/neo7m.c` — **Phase 7 Complete** |
+| Status | **Active** |
 
 > **Future note**: Increasing to 38400 bps reduces NMEA message latency and enables
 > higher fix update rates. Requires reconfiguring the NEO-7M via UBX protocol command
@@ -261,21 +261,22 @@ changes to any control or estimation code.
 
 | NMEA sentence | Data | Consumer |
 |--------------|------|---------|
-| `$GPGGA` | Position (lat/lon/alt), fix quality, UTC | Navigation task, Telemetry |
+| `$GPGGA` | Position (lat/lon/alt), fix quality, UTC, satellites, HDOP | Navigation task, Telemetry |
 | `$GPRMC` | Position, speed, course, UTC date | Navigation task |
 
 > **Debug note**: UART0 was previously used for ASCII debug output. Debug is now
 > fully routed to **USB CDC** (`pico_enable_stdio_usb = 1` in `src/CMakeLists.txt`).
 > UART0 is exclusively reserved for GPS.
 
-**Phase 7 firmware deliverables (WP-7.10):**
-- [ ] NMEA parser driver `src/drivers/gps/neo7m.c`
-- [ ] FreeRTOS GPS task `src/tasks/gps_task.c` (1 Hz, parse + write to DLA)
-- [ ] Data Layer: `gps_fix_t` struct, `data_layer_set_gps_fix()`, `data_layer_get_gps_fix()`
-- [ ] UTC clock sync: `rtc_set_datetime()` on valid `$GPRMC` fix (within ± 500 ms)
-- [ ] Unit tests: `tests/unit/test_gps.c` (T-GPS-01..04)
-- [ ] Fault IDs: `FAULT_GPS_TIMEOUT`, `FAULT_GPS_PARSE_ERR` in `fault_ids.h`
-- [ ] Telemetry: GPS lat/lon/alt/UTC fields in HK packet
+**Implemented features:**
+- ✅ NMEA parser driver `src/drivers/gps/neo7m.c`
+- ✅ FreeRTOS GPS task `src/tasks/gps_task.c` (1 Hz, parse + write to DLA)
+- ✅ Data Layer: `GpsFix_t` struct, `data_layer_set_gps_fix()`, `data_layer_get_gps_fix()`
+- ✅ UTC clock sync: `rtc_set_datetime()` on valid `$GPRMC` fix (within ± 500 ms)
+- ✅ HDOP parsing added to GpsFix_t
+- ✅ GPS stats (GpsStats_t) with counters
+- ✅ 11 CSP commands implemented (CMD_GPS_STATUS, CMD_STATUS, CMD_FAULT_LIST, etc.)
+- ✅ UART text commands (GPS, STATUS, FAULTS, RESETGPS)
 
 ---
 
@@ -580,3 +581,4 @@ Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 | Version | Date | Description |
 |---------|------|-------------|
 | 1.0 | 2026-03-05 | Initial release — interfaces defined for BOM v1.0 hardware set |
+| 1.1 | 2026-04-06 | GPS Phase 1 & 2 commands implemented (11 CSP + 8 UART text), HDOP, GpsStats_t |

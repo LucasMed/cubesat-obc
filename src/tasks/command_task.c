@@ -1,9 +1,12 @@
 #include "command_task.h"
 
 #include "FreeRTOS.h"
+#include "data_layer.h"
+#include "fault_manager.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
 #include "payload_task.h"
+#include "system_state.h"
 #include "task.h"
 
 #include <csp/csp.h>
@@ -44,8 +47,36 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "STATUS", 6) == 0)
   {
-    uart_puts(uart1, "STATUS OK\r\n");
+    flight_mode_t mode = fmm_get_mode();
+    energy_state_t energy = data_layer_get_energy_state();
+    dl_snapshot_t snapshot = {0};
+    data_layer_read(&snapshot);
+
+    char buf[96];
+    const char *mode_names[] = {"BOOT", "SAFE", "DETUMBLE", "NOMINAL", "DIAG", "PAYLOAD"};
+    const char *energy_names[] = {"LOW", "NOMINAL", "HIGH"};
+    snprintf(buf, sizeof(buf), "SYSTEM: mode=%s energy=%s imu=%s temp=%s mag=%s\r\n",
+             mode_names[mode], energy_names[energy], snapshot.state.imu_valid ? "OK" : "FAIL",
+             snapshot.state.temp_valid ? "OK" : "FAIL", snapshot.state.mag_valid ? "OK" : "FAIL");
+    uart_puts(uart1, buf);
+
+    GpsFix_t fix = {0};
+    if (gps_get_last_fix(&fix))
+    {
+      snprintf(buf, sizeof(buf), "GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
+               fix.valid, fix.lat, fix.lon, fix.alt_m, fix.satellites, fix.hdop);
+      uart_puts(uart1, buf);
+    }
     printf("[command_task] Text command: STATUS\r\n");
+  }
+  else if (strncmp(cmd, "FAULTS", 6) == 0)
+  {
+    fault_level_t level = fault_get_highest_level();
+    const char *level_names[] = {"OK", "WARN", "ERROR", "CRITICAL"};
+    char buf[32];
+    snprintf(buf, sizeof(buf), "FAULTS: %s\r\n", level_names[level > 3 ? 0 : level]);
+    uart_puts(uart1, buf);
+    printf("[command_task] Text command: FAULTS\r\n");
   }
   else if (strncmp(cmd, "ECHO", 4) == 0)
   {
@@ -80,7 +111,23 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
-    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|HELP\r\n");
+    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP\r\n");
+  }
+  else if (strncmp(cmd, "LOG", 3) == 0)
+  {
+    uart_puts(uart1, "LOG: dump not implemented\r\n");
+  }
+  else if (strncmp(cmd, "RESET", 5) == 0)
+  {
+    if (strncmp(cmd + 5, "GPS", 3) == 0)
+    {
+      gps_reset_stats();
+      uart_puts(uart1, "RESET GPS OK\r\n");
+    }
+    else
+    {
+      uart_puts(uart1, "RESET: usage: RESETGPS\r\n");
+    }
   }
   else if (strncmp(cmd, "GPS", 3) == 0)
   {
@@ -207,6 +254,120 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
 
     memcpy(cmd->payload, &resp, sizeof(resp));
     packet->length = sizeof(resp) + 1;
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_STATUS:
+  {
+    printf("[command_task] Executing STATUS\n");
+
+    flight_mode_t mode = fmm_get_mode();
+    energy_state_t energy = data_layer_get_energy_state();
+
+    dl_snapshot_t snapshot = {0};
+    data_layer_read(&snapshot);
+
+    system_status_response_t resp = {
+        .mode = (uint8_t)mode,
+        .energy = (uint8_t)energy,
+        .flags = (snapshot.state.imu_valid ? 0x01 : 0) | (snapshot.state.temp_valid ? 0x02 : 0) |
+                 (snapshot.state.mag_valid ? 0x04 : 0),
+        .heap_free = 0,
+        .uptime_sec = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS / 1000),
+        .fault_count = 0};
+
+    memcpy(cmd->payload, &resp, sizeof(resp));
+    packet->length = sizeof(resp) + 1;
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_FAULT_LIST:
+  {
+    printf("[command_task] Executing FAULT_LIST\n");
+
+    fault_entry_t faults[4] = {0};
+    uint8_t count = 0;
+
+    fault_level_t level = fault_get_highest_level();
+    if (level > 0)
+    {
+      faults[0].fault_id = 0xFF;
+      faults[0].level = (uint8_t)level;
+      faults[0].count = 1;
+      count = 1;
+    }
+
+    memcpy(cmd->payload, &faults, count * sizeof(fault_entry_t));
+    packet->length = count * sizeof(fault_entry_t) + 1;
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_TELEMETRY_REQ:
+  {
+    printf("[command_task] Executing TELEMETRY_REQ\n");
+    TaskHandle_t h_tlm = xTaskGetHandle("TelemetryTask");
+    if (h_tlm != NULL)
+    {
+      xTaskNotify(h_tlm, 1, eSetBits);
+    }
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_LOG_DUMP:
+  {
+    printf("[command_task] Executing LOG_DUMP\n");
+    uint8_t count = cmd->payload[0];
+    if (count == 0 || count > 16)
+    {
+      count = 8;
+    }
+    uint8_t resp = count;
+    memcpy(cmd->payload, &resp, 1);
+    packet->length = 2;
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_SENSOR_RESET:
+  {
+    printf("[command_task] Executing SENSOR_RESET\n");
+    uint8_t sensor_id = cmd->payload[0];
+    uint8_t result = 0;
+    switch (sensor_id)
+    {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+      result = 1;
+      break;
+    default:
+      result = 0;
+      break;
+    }
+    memcpy(cmd->payload, &result, 1);
+    packet->length = 2;
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_GPS_RESET_STATS:
+  {
+    printf("[command_task] Executing GPS_RESET_STATS\n");
+    gps_reset_stats();
+    uint8_t resp = 1;
+    memcpy(cmd->payload, &resp, 1);
+    packet->length = 2;
     csp_send(conn, packet);
     packet = NULL;
     break;

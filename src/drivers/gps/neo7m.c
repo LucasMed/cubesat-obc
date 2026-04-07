@@ -145,6 +145,12 @@ bool gps_init(void)
     g_gps_mutex = xSemaphoreCreateMutex();
   }
 
+  // Reset ring buffer and last fix
+  nmea_rx_head = nmea_rx_tail = 0;
+  memset(&g_last_fix, 0, sizeof(g_last_fix));
+  g_satellites_in_view = 0;
+  memset(&g_stats, 0, sizeof(g_stats));
+
   uart_init(uart0, 9600);
   gpio_set_function(UART0_TX_PIN, GPIO_FUNC_UART);
   gpio_set_function(UART0_RX_PIN, GPIO_FUNC_UART);
@@ -344,18 +350,19 @@ static void nmea_parse_gga(const char *sentence)
     }
     fix.valid = (fields[6][0] == '1');
     fix.timestamp_ms = 0;
-    if (fields[7])
     {
-      fix.satellites = (uint8_t)strtoul(fields[7], &endptr, 10);
-      if (endptr == fields[7])
+      char *endptr_sat = NULL;
+      fix.satellites = (uint8_t)strtoul(fields[7], &endptr_sat, 10);
+      if (endptr_sat == fields[7])
       {
         fix.satellites = 0;
       }
     }
     if (fields[8])
     {
-      fix.hdop = (float)strtod(fields[8], &endptr);
-      if (endptr == fields[8])
+      char *endptr_hdop = NULL;
+      fix.hdop = (float)strtod(fields[8], &endptr_hdop);
+      if (endptr_hdop == fields[8])
       {
         fix.hdop = 99.0f;
       }

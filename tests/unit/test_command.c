@@ -43,6 +43,74 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
   return FMM_OK;
 }
 
+flight_mode_t fmm_get_mode(void)
+{
+  return FM_NOMINAL;
+}
+
+const char *fmm_mode_name(flight_mode_t mode)
+{
+  (void)mode;
+  return "NOMINAL";
+}
+
+void fmm_force_safe(void) {}
+
+// Mock Data Layer
+#include "data_layer.h"
+static dl_snapshot_t mock_snapshot = {
+    .state = {
+        .attitude = {0.0f, 0.0f, 0.0f},
+        .q = {1.0f, 0.0f, 0.0f, 0.0f},
+        .rates = {0.0f, 0.0f, 0.0f},
+        .temp = 25.0f,
+        .battery_v = 3.7f,
+        .gyro_bias = {0.0f, 0.0f, 0.0f},
+        .att_uncertainty = {0.0f, 0.0f, 0.0f, 0.0f},
+        .mag_field = {0.0f, 0.0f, 0.0f},
+        .imu_available = true,
+        .imu_valid = true,
+        .temp_available = true,
+        .temp_valid = true,
+        .imu_ekf_valid = false,
+        .mag_available = false,
+        .mag_valid = false,
+        .radiation_dose = 0.0f,
+        .image_count = 0,
+        .payload_rail_enabled = false
+    },
+    .mode = FM_NOMINAL,
+    .energy = ENERGY_NOMINAL,
+    .gps_fix = {.valid = true, .lat = -31.4321f, .lon = -64.1812f, .alt_m = 431.5f, .hdop = 1.0f, .satellites = 6, .timestamp_ms = 0},
+    .seq = 1
+};
+
+void data_layer_set_gps_fix(const GpsFix_t *fix) { (void)fix; }
+void data_layer_get_gps_fix(GpsFix_t *out) { (void)out; }
+void data_layer_init(void) {}
+void data_layer_read(dl_snapshot_t *out) { memcpy(out, &mock_snapshot, sizeof(dl_snapshot_t)); }
+void data_layer_write_imu(const float att_rad[3], const float rates_rad[3]) { (void)att_rad; (void)rates_rad; }
+void data_layer_write_ekf(const float q[4], const float bias_rad[3], const float cov_diag[7]) { (void)q; (void)bias_rad; (void)cov_diag; }
+void data_layer_write_temp(float temp_c) { (void)temp_c; }
+void data_layer_set_sensor_avail(bool imu, bool temp) { (void)imu; (void)temp; }
+void data_layer_write_mag(const float field_uT[3]) { (void)field_uT; }
+void data_layer_set_mag_avail(bool mag) { (void)mag; }
+void data_layer_write_radiation(float dose) { (void)dose; }
+void data_layer_write_payload_status(bool rail_enabled, uint16_t img_count) { (void)rail_enabled; (void)img_count; }
+void data_layer_set_flight_mode(flight_mode_t mode) { (void)mode; }
+void data_layer_set_energy_state(energy_state_t energy) { (void)energy; }
+flight_mode_t data_layer_get_flight_mode(void) { return mock_snapshot.mode; }
+energy_state_t data_layer_get_energy_state(void) { return mock_snapshot.energy; }
+uint32_t data_layer_get_seq(void) { return mock_snapshot.seq; }
+
+// Mock Fault Manager
+#include "fault_manager.h"
+fault_level_t fault_get_highest_level(void) { return FAULT_LEVEL_NONE; }
+void fault_manager_init(void) {}
+void fault_manager_tick(void) {}
+bool fault_get_event(uint16_t id, fault_event_t *out) { (void)id; (void)out; return false; }
+void fault_manager_set_hm_task_handle(void *h_health) { (void)h_health; }
+
 // Mock GPS
 #include "gps_driver.h"
 static GpsFix_t mock_gps_fix = {
@@ -74,6 +142,11 @@ bool gps_get_last_fix(GpsFix_t *out)
 const GpsStats_t *gps_get_stats(void)
 {
   return &mock_gps_stats;
+}
+
+void gps_reset_stats(void)
+{
+  memset(&mock_gps_stats, 0, sizeof(mock_gps_stats));
 }
 
 // Mock xTaskGetHandle
