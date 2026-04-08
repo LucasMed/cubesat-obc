@@ -28,6 +28,7 @@
 #include "sensor_read_task.h"
 #include "system_state.h"
 #include "telemetry_task.h"
+#include "w25q64.h"
 
 #ifdef PICO_BUILD
   #include "hardware/watchdog.h"
@@ -135,6 +136,14 @@ static void vStartupTask(void *pvParameters)
   bool gps_ok = gps_init();
   printf("  GPS: %s\r\n", gps_ok ? "OK" : "not found");
   fflush(stdout);
+
+#ifdef PICO_BUILD
+  printf("  flash_init...\r\n");
+  fflush(stdout);
+  int flash_res = w25q64_init();
+  printf("  Flash: %s\r\n", flash_res == 0 ? "OK" : "not found");
+  fflush(stdout);
+#endif
 
   printf("  creating tasks...\r\n");
   fflush(stdout);

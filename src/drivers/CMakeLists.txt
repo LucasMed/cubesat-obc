@@ -7,6 +7,7 @@ set(DRIVER_SOURCES
     payload/radiation_driver.c
     payload/storage_manager.c
     payload/payload_manager.c
+    payload/w25q64.c
     gps/neo7m.c
 )
 
