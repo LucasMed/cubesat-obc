@@ -51,4 +51,13 @@ int i2c_bus_read(uint8_t addr, uint8_t *data, size_t len);
  */
 int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *rx, size_t rx_len);
 
+/**
+ * @brief Scan I2C bus for devices (debug function)
+ *
+ * @param start_addr First address to scan (default 0x03)
+ * @param end_addr Last address to scan (default 0x77)
+ * @return Number of devices found
+ */
+int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr);
+
 #endif  // I2C_INTERFACE_H

@@ -1,0 +1,70 @@
+# openspec/config.yaml — SDD Configuration for CubeSat OBC
+schema: spec-driven
+
+context: |
+  Tech stack: C11, CMake 4.x, FreeRTOS (RP2350/Pico 2W), libcsp, Raspberry Pi Pico SDK
+  Architecture: Modular embedded C with HAL pattern, FreeRTOS tasks (8 tasks), ECSS-Q-ST-80C compliance
+  Testing: CTest (43 tests: 40 unit + 3 integration), gcovr coverage (93% line, 92.4% function)
+  Style: MISRA C, Allman braces, clang-format, clang-tidy, cppcheck, conventional commits
+
+strict_tdd: true
+test_command: "ctest --test-dir build --output-on-failure"
+build_command: "cmake --build build --parallel $(nproc)"
+coverage_command: "gcovr --json summary.json"
+coverage_threshold: 90
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+    - Reference existing ECSS documentation if applicable
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Reference SRS-OBC-001.md requirements by ID
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Reference existing design docs in docs/architecture/
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+    - Reference PR numbers from PROJECT_PROGRESS.md
+  apply:
+    - Follow existing code patterns from src/ and include/
+    - No malloc in flight code (static allocation only)
+    - Respect existing HAL abstraction pattern
+    - Update tests before marking task complete
+  verify:
+    - Run tests: ctest --test-dir build --output-on-failure
+    - Run static analysis: bash scripts/static_analysis.sh
+    - Verify coverage maintained: gcovr report
+    - Compare implementation against every spec scenario
+  archive:
+    - Update CHANGELOG.md with completed features
+    - Warn before merging destructive deltas (large removals)
+    - Document lessons learned in LESSON_LEARNED.md
+
+# Testing capabilities (detected 2026-04-08)
+testing:
+  enabled: true
+  runner: ctest
+  test_command: "ctest --test-dir build --output-on-failure"
+  layers:
+    unit: true
+    integration: true
+    e2e: false
+  coverage:
+    available: true
+    command: "gcovr --json summary.json"
+    current: 93.0  # percent
+  quality:
+    linter:
+      - name: clang-format
+        command: "clang-format --dry-run"
+      - name: clang-tidy
+        command: "clang-tidy -p build_ci"
+      - name: cppcheck
+        command: "cppcheck --enable=warning,performance,portability,style"
+    formatter: clang-format

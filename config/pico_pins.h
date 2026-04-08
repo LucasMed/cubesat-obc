@@ -5,15 +5,15 @@
  * Pin mappings for Raspberry Pi Pico 2W OBC hardware.
  * RP2350 has 30 GPIO pins (GPIO0-GPIO29).
  *
- * === HARDWARE VERIFICATION COMPLETED (2026-03-30) ===
+ * === HARDWARE VERIFICATION COMPLETED (2026-04-08) ===
  * 
  * Verified working sensors:
  * - MPU-6050/6500 IMU: I2C0 @ GPIO4/5 (0x68 / 0x70)
+ * - QMC5883L magnetometer: I2C0 @ GPIO4/5 (0x2C) — NOTE: module is QMC5883L clone, not HMC5883L
  * - GPS NEO-6M/7M: UART0 @ GPIO0/1, 9600 baud
  * - HC-12 radio: UART1 @ GPIO8/9, 9600 baud
  * 
  * NOT YET CONNECTED:
- * - HMC5883L magnetometer (I2C0)
  * - OV2640 camera (SPI0)
  * - Reaction wheels (PWM)
  * - Magnetorquers (PWM)
@@ -21,8 +21,8 @@
  * GPIO allocation summary (ACTUAL):
  *   GPIO0   UART0 TX  → GPS RX
  *   GPIO1   UART0 RX  ← GPS TX
- *   GPIO4   I2C0 SDA  ← MPU-6050 SDA
- *   GPIO5   I2C0 SCL  ← MPU-6050 SCL
+ *   GPIO4   I2C0 SDA  ← MPU-6050 SDA / QMC5883L SDA (shared bus)
+ *   GPIO5   I2C0 SCL  ← MPU-6050 SCL / QMC5883L SCL (shared bus)
  *   GPIO8   UART1 TX  → HC-12 RX
  *   GPIO9   UART1 RX  ← HC-12 TX
  *   GPIO12  GPS PPS   ← GPS 1PPS (optional)

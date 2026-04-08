@@ -10,6 +10,8 @@
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
 
+#include <stdio.h>
+
 // Define which I2C instance to use (default I2C0)
 #define I2C_INST i2c0
 
@@ -68,4 +70,31 @@ int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *
   }
 
   return 0;
+}
+
+/**
+ * @brief Scan I2C bus for devices
+ * @param start_addr First address to scan (default 0x03)
+ * @param end_addr Last address to scan (default 0x77)
+ * @return Number of devices found
+ */
+int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
+{
+#include <stdio.h>
+  int found = 0;
+  uint8_t dummy;
+
+  printf("    Scanning I2C0 bus...\r\n");
+  for (uint8_t addr = start_addr; addr <= end_addr; addr++)
+  {
+    // Try to read 1 byte without sending any data first (probe)
+    int ret = i2c_read_timeout_us(I2C_INST, addr, &dummy, 1, false, 1000);
+    if (ret >= 0)
+    {
+      printf("    Found device at 0x%02X\r\n", addr);
+      found++;
+    }
+  }
+
+  return found;
 }

@@ -54,3 +54,12 @@ int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *
   }
   return 0;
 }
+
+/* cppcheck-suppress unusedFunction -- debug scanner for host testing */
+int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
+{
+  (void)start_addr;
+  (void)end_addr;
+  (void)printf("[Host I2C] Scan not available in host mode\n");
+  return 0;
+}
