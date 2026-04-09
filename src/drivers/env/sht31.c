@@ -129,46 +129,33 @@ bool sht31_read(float *temperature, float *humidity)
   const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_MEASURE_HIGH >> 8),
                           (uint8_t)(SHT31_CMD_MEASURE_HIGH & 0xFF)};
 
-  /* Wait for measurement (typ 15ms, max 50ms) - use 100ms for reliability */
+  /* Wait for measurement (typ 15ms, max 50ms) */
 #ifdef PICO_BUILD
-  sleep_ms(100);
+  sleep_ms(20);
 #endif
 
-  /* Retry up to 3 times if data looks corrupt */
   uint8_t data[6];
-  bool read_success = false;
-
-  for (int retry = 0; retry < 3 && !read_success; retry++)
+  if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)
   {
-    if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)
-    {
-      continue;
-    }
-
-    /* Check for obviously corrupt data (all 0xFF) */
-    if (data[0] == 0xFF && data[1] == 0xFF)
-    {
-      continue;
-    }
-
-    /* Verify temperature CRC */
-    uint8_t temp_crc = sht31_crc8(&data[0]);
-    if (temp_crc != data[2])
-    {
-      continue;
-    }
-
-    /* Verify humidity CRC */
-    uint8_t hum_crc = sht31_crc8(&data[3]);
-    if (hum_crc != data[5])
-    {
-      continue;
-    }
-
-    read_success = true;
+    return false;
   }
 
-  if (!read_success)
+  /* Check for obviously corrupt data (all 0xFF) */
+  if (data[0] == 0xFF && data[1] == 0xFF)
+  {
+    return false;
+  }
+
+  /* Verify temperature CRC */
+  uint8_t temp_crc = sht31_crc8(&data[0]);
+  if (temp_crc != data[2])
+  {
+    return false;
+  }
+
+  /* Verify humidity CRC */
+  uint8_t hum_crc = sht31_crc8(&data[3]);
+  if (hum_crc != data[5])
   {
     return false;
   }
