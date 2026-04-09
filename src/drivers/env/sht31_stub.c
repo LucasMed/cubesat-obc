@@ -14,6 +14,7 @@ bool sht31_init(uint8_t addr)
   return true;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter)
 bool sht31_read(float *temperature, float *humidity)
 {
   /* Return false by default - tests can override this stub if needed */
