@@ -4,6 +4,7 @@
  */
 
 #include "telemetry_storage.h"
+
 #include "w25q64.h"
 
 #include <string.h>
@@ -12,15 +13,15 @@
   #include <stdio.h>
 
   /* Storage layout for 8MB W25Q64 */
-  #define TELEMETRY_BASE_ADDR 0x000000     /**< Telemetry log: 0 - 1MB */
+  #define TELEMETRY_BASE_ADDR 0x000000 /**< Telemetry log: 0 - 1MB */
   #define TELEMETRY_MAX_ADDR 0x0FFFFF
-  #define TELEMETRY_RECORD_SIZE 64        /**< 64 bytes per record */
-  #define TELEMETRY_MAX_RECORDS (1024 * 1024 / TELEMETRY_RECORD_SIZE)  /**< ~16384 records */
+  #define TELEMETRY_RECORD_SIZE 64                                    /**< 64 bytes per record */
+  #define TELEMETRY_MAX_RECORDS (1024 * 1024 / TELEMETRY_RECORD_SIZE) /**< ~16384 records */
 
-  static bool s_initialized = false;
-  static uint32_t s_current_addr = TELEMETRY_BASE_ADDR;
-  static uint32_t s_records_written = 0;
-  static uint32_t s_last_sequence = 0;
+static bool s_initialized = false;
+static uint32_t s_current_addr = TELEMETRY_BASE_ADDR;
+static uint32_t s_records_written = 0;
+static uint32_t s_last_sequence = 0;
 #endif
 
 bool telemetry_storage_init(void)
@@ -41,29 +42,29 @@ bool telemetry_storage_init(void)
   /* Find last written address by scanning for non-0xFF bytes */
   uint8_t check_buf[TELEMETRY_RECORD_SIZE];
   s_current_addr = TELEMETRY_BASE_ADDR;
-  
+
   while (s_current_addr < TELEMETRY_MAX_ADDR)
   {
     if (w25q64_read(s_current_addr, check_buf, TELEMETRY_RECORD_SIZE) != W25Q64_OK)
     {
       break;
     }
-    
+
     /* Check if page is empty (first byte = 0xFF means erased) */
     if (check_buf[0] == 0xFF)
     {
       break;
     }
-    
+
     s_current_addr += TELEMETRY_RECORD_SIZE;
   }
-  
+
   s_records_written = (s_current_addr - TELEMETRY_BASE_ADDR) / TELEMETRY_RECORD_SIZE;
   s_initialized = true;
-  
-  printf("telemetry_storage: Initialized at 0x%08X, %lu records stored\n", 
+
+  printf("telemetry_storage: Initialized at 0x%08X, %lu records stored\n",
          (unsigned int)s_current_addr, (unsigned long)s_records_written);
-  
+
   return true;
 #else
   return true;
@@ -96,8 +97,7 @@ bool telemetry_storage_store(const telemetry_record_t *record)
   {
     if (w25q64_erase_sector(sector_start) != W25Q64_OK)
     {
-      printf("telemetry_storage: Failed to erase sector at 0x%08X\n", 
-             (unsigned int)sector_start);
+      printf("telemetry_storage: Failed to erase sector at 0x%08X\n", (unsigned int)sector_start);
       return false;
     }
   }
@@ -105,17 +105,16 @@ bool telemetry_storage_store(const telemetry_record_t *record)
   /* Write record */
   uint8_t buf[TELEMETRY_RECORD_SIZE];
   memcpy(buf, &rec, sizeof(rec));
-  
+
   if (w25q64_write_page(s_current_addr, buf, TELEMETRY_RECORD_SIZE) != W25Q64_OK)
   {
-    printf("telemetry_storage: Failed to write at 0x%08X\n", 
-           (unsigned int)s_current_addr);
+    printf("telemetry_storage: Failed to write at 0x%08X\n", (unsigned int)s_current_addr);
     return false;
   }
 
   s_current_addr += TELEMETRY_RECORD_SIZE;
   s_records_written++;
-  
+
   return true;
 #else
   (void)record;
@@ -130,7 +129,7 @@ bool telemetry_storage_read(uint32_t address, telemetry_record_t *record)
   {
     return false;
   }
-  
+
   if (address >= TELEMETRY_MAX_ADDR)
   {
     return false;
@@ -209,7 +208,7 @@ bool telemetry_storage_clear(void)
   s_current_addr = TELEMETRY_BASE_ADDR;
   s_records_written = 0;
   s_last_sequence = 0;
-  
+
   printf("telemetry_storage: Storage cleared\n");
   return true;
 #else

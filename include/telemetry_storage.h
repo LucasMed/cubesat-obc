@@ -32,108 +32,108 @@
 #ifndef TELEMETRY_STORAGE_H
 #define TELEMETRY_STORAGE_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-/**
- * @brief Telemetry record structure
- */
-typedef struct
-{
-    uint32_t timestamp;       /**< Seconds since boot */
-    uint32_t sequence;        /**< Record sequence number */
-    float roll;               /**< Roll angle in degrees */
-    float pitch;              /**< Pitch angle in degrees */
-    float yaw;                /**< Yaw angle in degrees */
-    float gyro_x;            /**< Gyroscope X in deg/s */
-    float gyro_y;            /**< Gyroscope Y in deg/s */
-    float gyro_z;            /**< Gyroscope Z in deg/s */
-    float acc_x;             /**< Accelerometer X in g */
-    float acc_y;             /**< Accelerometer Y in g */
-    float acc_z;             /**< Accelerometer Z in g */
-    float mag_x;            /**< Magnetometer X in uT */
-    float mag_y;            /**< Magnetometer Y in uT */
-    float mag_z;            /**< Magnetometer Z in uT */
-    float battery_voltage;   /**< Battery voltage in V */
-    uint32_t flags;         /**< Status flags */
-} telemetry_record_t;
+  /**
+   * @brief Telemetry record structure
+   */
+  typedef struct
+  {
+    uint32_t timestamp;    /**< Seconds since boot */
+    uint32_t sequence;     /**< Record sequence number */
+    float roll;            /**< Roll angle in degrees */
+    float pitch;           /**< Pitch angle in degrees */
+    float yaw;             /**< Yaw angle in degrees */
+    float gyro_x;          /**< Gyroscope X in deg/s */
+    float gyro_y;          /**< Gyroscope Y in deg/s */
+    float gyro_z;          /**< Gyroscope Z in deg/s */
+    float acc_x;           /**< Accelerometer X in g */
+    float acc_y;           /**< Accelerometer Y in g */
+    float acc_z;           /**< Accelerometer Z in g */
+    float mag_x;           /**< Magnetometer X in uT */
+    float mag_y;           /**< Magnetometer Y in uT */
+    float mag_z;           /**< Magnetometer Z in uT */
+    float battery_voltage; /**< Battery voltage in V */
+    uint32_t flags;        /**< Status flags */
+  } telemetry_record_t;
 
-_Static_assert(sizeof(telemetry_record_t) == 64, "Telemetry record must be 64 bytes");
+  _Static_assert(sizeof(telemetry_record_t) == 64, "Telemetry record must be 64 bytes");
 
-/**
- * @brief Storage statistics
- */
-typedef struct
-{
-    uint32_t records_written;    /**< Total records stored */
-    uint32_t current_address;     /**< Current write address */
-    uint32_t last_sequence;       /**< Last sequence number */
-    bool initialized;             /**< Storage initialized */
-} telemetry_storage_stats_t;
+  /**
+   * @brief Storage statistics
+   */
+  typedef struct
+  {
+    uint32_t records_written; /**< Total records stored */
+    uint32_t current_address; /**< Current write address */
+    uint32_t last_sequence;   /**< Last sequence number */
+    bool initialized;         /**< Storage initialized */
+  } telemetry_storage_stats_t;
 
-/**
- * @brief Initialize telemetry storage
- *
- * @return true on success
- */
-bool telemetry_storage_init(void);
+  /**
+   * @brief Initialize telemetry storage
+   *
+   * @return true on success
+   */
+  bool telemetry_storage_init(void);
 
-/**
- * @brief Store a telemetry record
- *
- * @param record Pointer to telemetry record
- * @return true on success
- */
-bool telemetry_storage_store(const telemetry_record_t *record);
+  /**
+   * @brief Store a telemetry record
+   *
+   * @param record Pointer to telemetry record
+   * @return true on success
+   */
+  bool telemetry_storage_store(const telemetry_record_t *record);
 
-/**
- * @brief Read a telemetry record
- *
- * @param address Flash address to read from
- * @param record Pointer to store record
- * @return true on success
- */
-bool telemetry_storage_read(uint32_t address, telemetry_record_t *record);
+  /**
+   * @brief Read a telemetry record
+   *
+   * @param address Flash address to read from
+   * @param record Pointer to store record
+   * @return true on success
+   */
+  bool telemetry_storage_read(uint32_t address, telemetry_record_t *record);
 
-/**
- * @brief Get storage statistics
- *
- * @param stats Pointer to store statistics
- */
-void telemetry_storage_get_stats(telemetry_storage_stats_t *stats);
+  /**
+   * @brief Get storage statistics
+   *
+   * @param stats Pointer to store statistics
+   */
+  void telemetry_storage_get_stats(telemetry_storage_stats_t *stats);
 
-/**
- * @brief Get number of records that can be stored
- *
- * @return Number of available record slots
- */
-uint32_t telemetry_storage_available(void);
+  /**
+   * @brief Get number of records that can be stored
+   *
+   * @return Number of available record slots
+   */
+  uint32_t telemetry_storage_available(void);
 
-/**
- * @brief Check if storage is available
- *
- * @return true if storage initialized and ready
- */
-bool telemetry_storage_is_available(void);
+  /**
+   * @brief Check if storage is available
+   *
+   * @return true if storage initialized and ready
+   */
+  bool telemetry_storage_is_available(void);
 
-/**
- * @brief Clear all telemetry data (factory reset)
- *
- * @return true on success
- */
-bool telemetry_storage_clear(void);
+  /**
+   * @brief Clear all telemetry data (factory reset)
+   *
+   * @return true on success
+   */
+  bool telemetry_storage_clear(void);
 
-/**
- * @brief Get the base address for telemetry storage
- *
- * @return Base address of telemetry region
- */
-uint32_t telemetry_storage_get_base_addr(void);
+  /**
+   * @brief Get the base address for telemetry storage
+   *
+   * @return Base address of telemetry region
+   */
+  uint32_t telemetry_storage_get_base_addr(void);
 
 #ifdef __cplusplus
 }

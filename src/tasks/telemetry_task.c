@@ -115,7 +115,7 @@ void vTelemetryTask_Step(void)
   // Store telemetry to W25Q64 flash for later recovery
   telemetry_record_t record;
   record.timestamp = tlm->timestamp_ms / 1000;  // Convert ms to seconds
-  record.sequence = 0;  // Will be auto-incremented by storage
+  record.sequence = 0;                          // Will be auto-incremented by storage
   record.roll = tlm->attitude[0];
   record.pitch = tlm->attitude[1];
   record.yaw = tlm->attitude[2];
@@ -130,7 +130,7 @@ void vTelemetryTask_Step(void)
   record.mag_z = 0.0f;
   record.battery_voltage = 0.0f;  // Not in current telemetry packet
   record.flags = tlm->flags;
-  
+
   if (!telemetry_storage_store(&record))
   {
     printf("[telemetry] Warning: Failed to store to flash\n");
@@ -157,7 +157,8 @@ void vTelemetryTask(void *pvParameters)
   {
     telemetry_storage_stats_t stats;
     telemetry_storage_get_stats(&stats);
-    printf("[telemetry_task] Storage: %lu records available\n", (unsigned long)stats.records_written);
+    printf("[telemetry_task] Storage: %lu records available\n",
+           (unsigned long)stats.records_written);
   }
 
   while (1)
