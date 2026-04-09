@@ -234,6 +234,7 @@ if(NOT PICO_BUILD)
         ../../src/core/system_state.c
         ../../src/control/ekf.c
         ../../src/control/quaternion.c
+        ../../src/drivers/env/sht31_stub.c
     )
     target_include_directories(test_sensor_read_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -333,6 +334,7 @@ if(NOT PICO_BUILD)
         ../../src/core/system_state.c
         ../../src/control/ekf.c
         ../../src/control/quaternion.c
+        ../../src/drivers/env/sht31_stub.c
     )
     target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_hmc5883l m)

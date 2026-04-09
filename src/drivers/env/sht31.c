@@ -16,12 +16,12 @@
 #endif
 
 /* SHT31 Command codes */
-#define SHT31_CMD_MEASURE_HIGH 0x2400  /* Single shot, high repeatability */
-#define SHT31_CMD_HEATER_ON 0x306D     /* Enable heater */
-#define SHT31_CMD_HEATER_OFF 0x3066    /* Disable heater */
-#define SHT31_CMD_SOFT_RESET 0x30A2    /* Soft reset */
-#define SHT31_CMD_READ_STATUS 0xF32D   /* Read status register */
-#define SHT31_CMD_CLEAR_STATUS 0x3041  /* Clear status */
+#define SHT31_CMD_MEASURE_HIGH 0x2400 /* Single shot, high repeatability */
+#define SHT31_CMD_HEATER_ON 0x306D    /* Enable heater */
+#define SHT31_CMD_HEATER_OFF 0x3066   /* Disable heater */
+#define SHT31_CMD_SOFT_RESET 0x30A2   /* Soft reset */
+#define SHT31_CMD_READ_STATUS 0xF32D  /* Read status register */
+#define SHT31_CMD_CLEAR_STATUS 0x3041 /* Clear status */
 
 static uint8_t s_sht31_addr = SHT31_ADDR_DEFAULT;
 
@@ -31,7 +31,7 @@ static uint8_t s_sht31_addr = SHT31_ADDR_DEFAULT;
  * Polynomial: 0x31 (x^8 + x^5 + x^4 + 1)
  * Initial value: 0xFF
  */
-static uint8_t sht31_crc8(uint8_t data[2])
+static uint8_t sht31_crc8(const uint8_t data[2])
 {
   uint8_t crc = 0xFF;
 
@@ -60,7 +60,7 @@ bool sht31_init(uint8_t addr)
 
   /* Soft reset */
   const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_SOFT_RESET >> 8),
-                           (uint8_t)(SHT31_CMD_SOFT_RESET & 0xFF)};
+                          (uint8_t)(SHT31_CMD_SOFT_RESET & 0xFF)};
 
   if (i2c_bus_write(s_sht31_addr, cmd, 2) < 0)
   {
@@ -97,7 +97,7 @@ bool sht31_is_present(uint8_t addr)
 {
   /* Try to read status register */
   const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_READ_STATUS >> 8),
-                           (uint8_t)(SHT31_CMD_READ_STATUS & 0xFF)};
+                          (uint8_t)(SHT31_CMD_READ_STATUS & 0xFF)};
 
   uint8_t status[3];
   if (i2c_bus_write_read(addr, cmd, 2, status, 3) < 0)
@@ -127,7 +127,7 @@ bool sht31_read(float *temperature, float *humidity)
 
   /* Send single shot measurement command */
   const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_MEASURE_HIGH >> 8),
-                           (uint8_t)(SHT31_CMD_MEASURE_HIGH & 0xFF)};
+                          (uint8_t)(SHT31_CMD_MEASURE_HIGH & 0xFF)};
 
   /* Wait for measurement (typ 15ms, max 50ms) */
 #ifdef PICO_BUILD

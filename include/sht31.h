@@ -57,15 +57,15 @@ extern "C"
    */
   bool sht31_set_heater(bool enable);
 
-  /**
-   * @brief Get the default I2C address.
-   */
-  #define SHT31_ADDR_DEFAULT 0x44
+/**
+ * @brief Get the default I2C address.
+ */
+#define SHT31_ADDR_DEFAULT 0x44
 
-  /**
-   * @brief Alternate I2C address (when ADR pin is HIGH).
-   */
-  #define SHT31_ADDR_ALTERNATE 0x45
+/**
+ * @brief Alternate I2C address (when ADR pin is HIGH).
+ */
+#define SHT31_ADDR_ALTERNATE 0x45
 
 #ifdef __cplusplus
 }

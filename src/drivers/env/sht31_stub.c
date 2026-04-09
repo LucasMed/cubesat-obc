@@ -16,15 +16,10 @@ bool sht31_init(uint8_t addr)
 
 bool sht31_read(float *temperature, float *humidity)
 {
-  if (temperature != NULL)
-  {
-    *temperature = 25.0f;
-  }
-  if (humidity != NULL)
-  {
-    *humidity = 50.0f;
-  }
-  return true;
+  /* Return false by default - tests can override this stub if needed */
+  (void)temperature;
+  (void)humidity;
+  return false;
 }
 
 bool sht31_is_present(uint8_t addr)

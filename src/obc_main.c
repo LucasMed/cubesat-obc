@@ -20,6 +20,7 @@
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
+#include "sht31.h"
 #include "eps.h"
 #include "fault_manager.h"
 #include "gps_driver.h"
@@ -125,10 +126,12 @@ static void vStartupTask(void *pvParameters)
   int imu_res = mpu6050_init();
   int temp_res = temperature_init();
   int mag_res = hmc5883l_init();
+  bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
   system_state_set_available(imu_res == 0, temp_res == 0);
   data_layer_set_mag_avail(mag_res == 0);
-  printf("  IMU: %s  Temp: %s  Mag: %s\r\n", imu_res == 0 ? "OK" : "not found",
-         temp_res == 0 ? "OK" : "not found", mag_res == 0 ? "OK" : "not found");
+  printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s\r\n", imu_res == 0 ? "OK" : "not found",
+         temp_res == 0 ? "OK" : "not found", mag_res == 0 ? "OK" : "not found",
+         sht31_res ? "OK" : "not found");
   fflush(stdout);
 
   printf("  gps_init...\r\n");

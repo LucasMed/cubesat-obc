@@ -21,6 +21,7 @@
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
+#include "sht31.h"
 #include "ekf.h"
 #include "task.h"
 
@@ -98,6 +99,15 @@ void vSensorReadTask_Step(void)
   {
     float temp = temperature_read();
     data_layer_write_temp(temp);
+
+    /* Read SHT31 temperature and humidity for higher accuracy */
+    float sht31_temp = 0.0f;
+    float sht31_humidity = 0.0f;
+    if (sht31_read(&sht31_temp, &sht31_humidity))
+    {
+      /* SHT31 is more accurate, use it if available */
+      data_layer_write_temp(sht31_temp);
+    }
   }
 
   /* Read magnetometer only if sensor was detected during boot */
