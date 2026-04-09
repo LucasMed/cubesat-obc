@@ -12,6 +12,7 @@
 
 // Project headers
 #include "attitude_control_task.h"
+#include "bh1750.h"
 #include "comm_init.h"
 #include "command_task.h"
 #include "config.h"
@@ -27,7 +28,6 @@
 #include "payload_task.h"
 #include "sensor_read_task.h"
 #include "sht31.h"
-#include "bh1750.h"
 #include "system_state.h"
 #include "telemetry_task.h"
 #include "w25q64.h"
@@ -132,9 +132,9 @@ static void vStartupTask(void *pvParameters)
   system_state_set_available(imu_res == 0, temp_res == 0);
   data_layer_set_mag_avail(mag_res == 0);
   data_layer_set_lux_avail(bh1750_res);
-  printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s\r\n", imu_res == 0 ? "OK" : "not found",
-         temp_res == 0 ? "OK" : "not found", mag_res == 0 ? "OK" : "not found",
-         sht31_res ? "OK" : "not found",
+  printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s\r\n",
+         imu_res == 0 ? "OK" : "not found", temp_res == 0 ? "OK" : "not found",
+         mag_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",
          bh1750_res ? "OK" : "not found");
   fflush(stdout);
 

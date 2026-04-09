@@ -122,7 +122,8 @@ void vTelemetryTask_Step(void)
       buf, sizeof(buf),
       "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f lux=%.1f flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d",
       snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->humidity,
-      tlm->lux, tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites);
+      tlm->lux, tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
+      tlm->gps_satellites);
   uart_puts(uart1, buf);
   uart_puts(uart1, "\r\n");
 #endif

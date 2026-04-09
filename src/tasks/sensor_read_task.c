@@ -16,12 +16,12 @@
 #include "sensor_read_task.h"
 
 #include "FreeRTOS.h"
+#include "bh1750.h"
 #include "config.h"
 #include "data_layer.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
-#include "bh1750.h"
 #include "ekf.h"
 #include "sht31.h"
 #include "task.h"
@@ -186,7 +186,8 @@ void vSensorReadTask(void *pvParameters)
   {
     dl_snapshot_t snap;
     data_layer_read(&snap);
-    if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available && !snap.state.lux_available)
+    if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available &&
+        !snap.state.lux_available)
     {
       printf("[sensor_read_task] No sensors connected — task suspended\n");
       fflush(stdout);
