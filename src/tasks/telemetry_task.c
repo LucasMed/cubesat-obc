@@ -13,6 +13,7 @@
 #endif
 
 #include "data_layer.h"
+#include "telemetry_storage.h"
 
 #include <csp/csp.h>
 
@@ -110,6 +111,30 @@ void vTelemetryTask_Step(void)
 
   printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] flags=0x%02X\n", snap.mode, tlm->attitude[0],
          tlm->attitude[1], tlm->attitude[2], tlm->flags);
+
+  // Store telemetry to W25Q64 flash for later recovery
+  telemetry_record_t record;
+  record.timestamp = tlm->timestamp_ms / 1000;  // Convert ms to seconds
+  record.sequence = 0;  // Will be auto-incremented by storage
+  record.roll = tlm->attitude[0];
+  record.pitch = tlm->attitude[1];
+  record.yaw = tlm->attitude[2];
+  record.gyro_x = tlm->rates[0];
+  record.gyro_y = tlm->rates[1];
+  record.gyro_z = tlm->rates[2];
+  record.acc_x = 0.0f;  // Not in current telemetry packet
+  record.acc_y = 0.0f;
+  record.acc_z = 0.0f;
+  record.mag_x = 0.0f;  // Not in current telemetry packet
+  record.mag_y = 0.0f;
+  record.mag_z = 0.0f;
+  record.battery_voltage = 0.0f;  // Not in current telemetry packet
+  record.flags = tlm->flags;
+  
+  if (!telemetry_storage_store(&record))
+  {
+    printf("[telemetry] Warning: Failed to store to flash\n");
+  }
 }
 
 // Telemetry task: sends telemetry at 1 Hz
@@ -122,6 +147,18 @@ void vTelemetryTask(void *pvParameters)
 
   printf("[telemetry_task] Started\n");
   fflush(stdout);
+
+  // Initialize telemetry storage
+  if (!telemetry_storage_init())
+  {
+    printf("[telemetry_task] Warning: Telemetry storage init failed\n");
+  }
+  else
+  {
+    telemetry_storage_stats_t stats;
+    telemetry_storage_get_stats(&stats);
+    printf("[telemetry_task] Storage: %lu records available\n", (unsigned long)stats.records_written);
+  }
 
   while (1)
   {

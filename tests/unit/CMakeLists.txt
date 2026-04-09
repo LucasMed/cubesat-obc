@@ -91,6 +91,7 @@ if(NOT PICO_BUILD)
         ../../src/core/system_state.c
         ../../src/core/data_layer.c
         ../../src/control/quaternion.c
+        ../../src/drivers/payload/telemetry_storage_stub.c
     )
     target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_telemetry csp m)
