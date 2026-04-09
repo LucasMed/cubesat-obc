@@ -89,7 +89,7 @@ void vTelemetryTask_Step(void)
     tlm->rates[0] = 0.0f;
     tlm->rates[1] = 0.0f;
     tlm->rates[2] = 0.0f;
-    tlm->temp = snap.state.temp; /* preserve HK temperature */
+    tlm->temp = snap.state.temp;         /* preserve HK temperature */
     tlm->humidity = snap.state.humidity; /* preserve HK humidity */
   }
 

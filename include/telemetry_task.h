@@ -13,7 +13,7 @@ typedef struct __attribute__((packed))
   float attitude[3];      // Roll, Pitch, Yaw [deg]
   float rates[3];         // Gyro rates [deg/s]
   float temp;             // Temperature [C] (SHT31 or ADC)
-  float humidity;          // Relative humidity [%] (SHT31) or -1 if not available
+  float humidity;         // Relative humidity [%] (SHT31) or -1 if not available
   float gps_lat;          // GPS latitude (deg)
   float gps_lon;          // GPS longitude (deg)
   float gps_alt_m;        // GPS altitude (m)

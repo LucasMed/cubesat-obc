@@ -31,12 +31,12 @@ typedef struct
   bool imu_valid;            /**< IMU data is fresh and valid         */
   bool temp_available;       /**< Temp sensor detected during boot    */
   bool temp_valid;           /**< Temperature data is fresh           */
-  bool humidity_valid;        /**< Humidity data is fresh and valid    */
+  bool humidity_valid;       /**< Humidity data is fresh and valid    */
   bool imu_ekf_valid;        /**< EKF estimate is converged and fresh */
   bool mag_available;        /**< Magnetometer detected during boot   */
   bool mag_valid;            /**< Magnetometer data is fresh          */
   float radiation_dose;      /**< Radiation dose (placeholder unit)   */
-  uint16_t image_count;     /**< Number of images stored on SD       */
+  uint16_t image_count;      /**< Number of images stored on SD       */
   bool payload_rail_enabled; /**< Status of 3.3V/5V payload rail     */
 } system_state_t;
 
