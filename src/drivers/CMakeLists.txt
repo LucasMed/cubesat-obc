@@ -30,12 +30,14 @@ if(PICO_BUILD)
         uart/pico_usart.c
         payload/sd_spi.c
         payload/telemetry_storage.c
+        env/sht31.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
         i2c/host_i2c.c
         temperature/host_temp.c
         payload/telemetry_storage_stub.c
+        env/sht31_stub.c
     )
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)

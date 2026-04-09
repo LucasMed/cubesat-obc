@@ -1,0 +1,40 @@
+/**
+ * @file sht31_stub.c
+ * @brief Host stub for SHT31 sensor driver
+ */
+
+#include "sht31.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+
+bool sht31_init(uint8_t addr)
+{
+  (void)addr;
+  return true;
+}
+
+bool sht31_read(float *temperature, float *humidity)
+{
+  if (temperature != NULL)
+  {
+    *temperature = 25.0f;
+  }
+  if (humidity != NULL)
+  {
+    *humidity = 50.0f;
+  }
+  return true;
+}
+
+bool sht31_is_present(uint8_t addr)
+{
+  (void)addr;
+  return true;
+}
+
+bool sht31_set_heater(bool enable)
+{
+  (void)enable;
+  return true;
+}
