@@ -142,22 +142,12 @@ bool sht31_read(float *temperature, float *humidity)
   {
     if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)
     {
-#ifdef PICO_BUILD
-      if (retry == 0)
-        printf("sht31: I2C read failed, retrying...\n");
-#endif
       continue;
     }
-
-
 
     /* Check for obviously corrupt data (all 0xFF) */
     if (data[0] == 0xFF && data[1] == 0xFF)
     {
-#ifdef PICO_BUILD
-      if (retry == 0)
-        printf("sht31: Corrupt data detected, retrying...\n");
-#endif
       continue;
     }
 
@@ -165,10 +155,6 @@ bool sht31_read(float *temperature, float *humidity)
     uint8_t temp_crc = sht31_crc8(&data[0]);
     if (temp_crc != data[2])
     {
-#ifdef PICO_BUILD
-      if (retry == 0)
-        printf("sht31: Temp CRC fail: got 0x%02X, expected 0x%02X\n", data[2], temp_crc);
-#endif
       continue;
     }
 
@@ -176,10 +162,6 @@ bool sht31_read(float *temperature, float *humidity)
     uint8_t hum_crc = sht31_crc8(&data[3]);
     if (hum_crc != data[5])
     {
-#ifdef PICO_BUILD
-      if (retry == 0)
-        printf("sht31: Hum CRC fail: got 0x%02X, expected 0x%02X\n", data[5], hum_crc);
-#endif
       continue;
     }
 
@@ -207,7 +189,7 @@ bool sht31_read(float *temperature, float *humidity)
     /* Check for invalid humidity data (all 0xFF means sensor not functional) */
     if (raw_hum == 0xFFFF)
     {
-      *humidity = -1.0f;  /* Indicate humidity not available */
+      *humidity = -1.0f; /* Indicate humidity not available */
     }
     else
     {
