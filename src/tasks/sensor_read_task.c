@@ -108,6 +108,9 @@ void vSensorReadTask_Step(void)
       /* SHT31 is more accurate, use it if available */
       data_layer_write_temp(sht31_temp);
 
+      /* Write humidity to data layer (valid if >= 0) */
+      data_layer_write_humidity(sht31_humidity);
+
 #ifdef PICO_BUILD
       /* Debug: print SHT31 readings */
       if (sht31_humidity >= 0.0f)

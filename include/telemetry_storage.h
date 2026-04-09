@@ -59,11 +59,12 @@ extern "C"
     float mag_x;           /**< Magnetometer X in uT */
     float mag_y;           /**< Magnetometer Y in uT */
     float mag_z;           /**< Magnetometer Z in uT */
-    float battery_voltage; /**< Battery voltage in V */
+    float temperature;      /**< Temperature in Celsius */
+    float humidity;         /**< Relative humidity in percent (-1 if N/A) */
     uint32_t flags;        /**< Status flags */
   } telemetry_record_t;
 
-  _Static_assert(sizeof(telemetry_record_t) == 64, "Telemetry record must be 64 bytes");
+  _Static_assert(sizeof(telemetry_record_t) == 68, "Telemetry record must be 68 bytes");
 
   /**
    * @brief Storage statistics

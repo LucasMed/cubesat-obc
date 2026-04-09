@@ -152,6 +152,15 @@ void data_layer_write_temp(float temp_c)
   dl_unlock();
 }
 
+void data_layer_write_humidity(float humidity)
+{
+  dl_lock();
+  g_snapshot.state.humidity = humidity;
+  g_snapshot.state.humidity_valid = (humidity >= 0.0f);
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
 void data_layer_set_sensor_avail(bool imu, bool temp)
 {
   dl_lock();

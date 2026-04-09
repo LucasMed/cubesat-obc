@@ -104,6 +104,8 @@ bool telemetry_storage_store(const telemetry_record_t *record)
 
   /* Write record */
   uint8_t buf[TELEMETRY_RECORD_SIZE];
+  // cppcheck-suppress bufferAccessOutOfBounds
+  // Intentional: buf size matches TELEMETRY_RECORD_SIZE = sizeof(telemetry_record_t)
   memcpy(buf, &rec, sizeof(rec));
 
   if (w25q64_write_page(s_current_addr, buf, TELEMETRY_RECORD_SIZE) != W25Q64_OK)
@@ -141,6 +143,8 @@ bool telemetry_storage_read(uint32_t address, telemetry_record_t *record)
     return false;
   }
 
+  // cppcheck-suppress bufferAccessOutOfBounds
+  // Intentional: buf size matches TELEMETRY_RECORD_SIZE = sizeof(telemetry_record_t)
   memcpy(record, buf, sizeof(telemetry_record_t));
   return true;
 #else

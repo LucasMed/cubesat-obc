@@ -133,6 +133,15 @@ extern "C"
   void data_layer_write_temp(float temp_c);
 
   /**
+   * @brief Update humidity reading.
+   *
+   * @param humidity  Relative humidity in percent, or -1 if not available.
+   *
+   * Sets @c humidity_valid = true if humidity >= 0.
+   */
+  void data_layer_write_humidity(float humidity);
+
+  /**
    * @brief Set sensor hardware availability flags.
    *
    * Called once during boot after sensor detection.
