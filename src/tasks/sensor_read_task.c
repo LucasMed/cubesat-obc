@@ -22,6 +22,7 @@
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
 #include "ekf.h"
+#include "sht31.h"
 #include "task.h"
 
 #include <math.h>
@@ -98,6 +99,30 @@ void vSensorReadTask_Step(void)
   {
     float temp = temperature_read();
     data_layer_write_temp(temp);
+
+    /* Read SHT31 temperature and humidity for higher accuracy */
+    float sht31_temp = 0.0f;
+    float sht31_humidity = 0.0f;
+    if (sht31_read(&sht31_temp, &sht31_humidity))
+    {
+      /* SHT31 is more accurate, use it if available */
+      data_layer_write_temp(sht31_temp);
+
+      /* Write humidity to data layer (valid if >= 0) */
+      data_layer_write_humidity(sht31_humidity);
+
+#ifdef PICO_BUILD
+      /* Debug: print SHT31 readings */
+      if (sht31_humidity >= 0.0f)
+      {
+        printf("[sht31] temp=%.1fC  humidity=%.1f%%\n", (double)sht31_temp, (double)sht31_humidity);
+      }
+      else
+      {
+        printf("[sht31] temp=%.1fC  humidity=N/A\n", (double)sht31_temp);
+      }
+#endif
+    }
   }
 
   /* Read magnetometer only if sensor was detected during boot */

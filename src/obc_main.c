@@ -26,6 +26,7 @@
 #include "health_monitor_task.h"
 #include "payload_task.h"
 #include "sensor_read_task.h"
+#include "sht31.h"
 #include "system_state.h"
 #include "telemetry_task.h"
 #include "w25q64.h"
@@ -125,10 +126,12 @@ static void vStartupTask(void *pvParameters)
   int imu_res = mpu6050_init();
   int temp_res = temperature_init();
   int mag_res = hmc5883l_init();
+  bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
   system_state_set_available(imu_res == 0, temp_res == 0);
   data_layer_set_mag_avail(mag_res == 0);
-  printf("  IMU: %s  Temp: %s  Mag: %s\r\n", imu_res == 0 ? "OK" : "not found",
-         temp_res == 0 ? "OK" : "not found", mag_res == 0 ? "OK" : "not found");
+  printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s\r\n", imu_res == 0 ? "OK" : "not found",
+         temp_res == 0 ? "OK" : "not found", mag_res == 0 ? "OK" : "not found",
+         sht31_res ? "OK" : "not found");
   fflush(stdout);
 
   printf("  gps_init...\r\n");

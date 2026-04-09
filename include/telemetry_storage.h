@@ -45,25 +45,26 @@ extern "C"
    */
   typedef struct
   {
-    uint32_t timestamp;    /**< Seconds since boot */
-    uint32_t sequence;     /**< Record sequence number */
-    float roll;            /**< Roll angle in degrees */
-    float pitch;           /**< Pitch angle in degrees */
-    float yaw;             /**< Yaw angle in degrees */
-    float gyro_x;          /**< Gyroscope X in deg/s */
-    float gyro_y;          /**< Gyroscope Y in deg/s */
-    float gyro_z;          /**< Gyroscope Z in deg/s */
-    float acc_x;           /**< Accelerometer X in g */
-    float acc_y;           /**< Accelerometer Y in g */
-    float acc_z;           /**< Accelerometer Z in g */
-    float mag_x;           /**< Magnetometer X in uT */
-    float mag_y;           /**< Magnetometer Y in uT */
-    float mag_z;           /**< Magnetometer Z in uT */
-    float battery_voltage; /**< Battery voltage in V */
-    uint32_t flags;        /**< Status flags */
+    uint32_t timestamp; /**< Seconds since boot */
+    uint32_t sequence;  /**< Record sequence number */
+    float roll;         /**< Roll angle in degrees */
+    float pitch;        /**< Pitch angle in degrees */
+    float yaw;          /**< Yaw angle in degrees */
+    float gyro_x;       /**< Gyroscope X in deg/s */
+    float gyro_y;       /**< Gyroscope Y in deg/s */
+    float gyro_z;       /**< Gyroscope Z in deg/s */
+    float acc_x;        /**< Accelerometer X in g */
+    float acc_y;        /**< Accelerometer Y in g */
+    float acc_z;        /**< Accelerometer Z in g */
+    float mag_x;        /**< Magnetometer X in uT */
+    float mag_y;        /**< Magnetometer Y in uT */
+    float mag_z;        /**< Magnetometer Z in uT */
+    float temperature;  /**< Temperature in Celsius */
+    float humidity;     /**< Relative humidity in percent (-1 if N/A) */
+    uint32_t flags;     /**< Status flags */
   } telemetry_record_t;
 
-  _Static_assert(sizeof(telemetry_record_t) == 64, "Telemetry record must be 64 bytes");
+  _Static_assert(sizeof(telemetry_record_t) == 68, "Telemetry record must be 68 bytes");
 
   /**
    * @brief Storage statistics
