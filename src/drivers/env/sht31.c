@@ -149,11 +149,7 @@ bool sht31_read(float *temperature, float *humidity)
       continue;
     }
 
-    /* Debug: print raw bytes */
-#ifdef PICO_BUILD
-    printf("sht31: raw [%02X %02X %02X] [%02X %02X %02X]\n",
-           data[0], data[1], data[2], data[3], data[4], data[5]);
-#endif
+
 
     /* Check for obviously corrupt data (all 0xFF) */
     if (data[0] == 0xFF && data[1] == 0xFF)
@@ -203,16 +199,26 @@ bool sht31_read(float *temperature, float *humidity)
   }
 
   /* Parse humidity: RH = 100 * (raw / 65535) */
+  /* Note: Some cheap modules may not have functional humidity sensor */
   if (humidity != NULL)
   {
     uint16_t raw_hum = ((uint16_t)data[3] << 8) | data[4];
-    *humidity = 100.0f * ((float)raw_hum / 65535.0f);
 
-    /* Clamp to valid range */
-    if (*humidity < 0.0f)
-      *humidity = 0.0f;
-    if (*humidity > 100.0f)
-      *humidity = 100.0f;
+    /* Check for invalid humidity data (all 0xFF means sensor not functional) */
+    if (raw_hum == 0xFFFF)
+    {
+      *humidity = -1.0f;  /* Indicate humidity not available */
+    }
+    else
+    {
+      *humidity = 100.0f * ((float)raw_hum / 65535.0f);
+
+      /* Clamp to valid range */
+      if (*humidity < 0.0f)
+        *humidity = 0.0f;
+      if (*humidity > 100.0f)
+        *humidity = 100.0f;
+    }
   }
 
   return true;
