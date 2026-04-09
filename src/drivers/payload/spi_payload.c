@@ -2,9 +2,18 @@
 #include "spi_payload.h"
 
 #include "pico_pins.h"
+
 #if defined(PICO_BUILD)
   #include "hardware/gpio.h"
   #include "hardware/spi.h"
+#endif
+
+/* Fallback definitions for pins if not in pico_pins.h */
+#ifndef SPI_CS_FLASH_PIN
+  #define SPI_CS_FLASH_PIN 7
+#endif
+#ifndef SPI_CS_SD_PIN
+  #define SPI_CS_SD_PIN 7
 #endif
 
 #include <stddef.h>
@@ -23,7 +32,7 @@ bool spi_payload_init(void)
   gpio_set_function(SPI0_MISO_PIN, GPIO_FUNC_SPI);
 
   /* All CS lines start deasserted (high) */
-  const uint8_t cs_pins[] = {SPI_CS_MAG_PIN, SPI_CS_SD_PIN, SPI_CS_CAM_PIN};
+  const uint8_t cs_pins[] = {SPI_CS_MAG_PIN, SPI_CS_FLASH_PIN, SPI_CS_CAM_PIN};
   for (size_t i = 0; i < sizeof(cs_pins) / sizeof(cs_pins[0]); i++)
   {
     gpio_init(cs_pins[i]);

@@ -27,8 +27,8 @@ extern "C"
    * @brief Initialise the SPI0 shared payload bus (idempotent).
    *
    * Configures spi0 at SPI0_BAUD_RATE_INIT (1 MHz), sets SPI0_MISO_PIN,
-   * SPI0_SCK_PIN, and SPI0_MOSI_PIN to SPI function, and pulls all three
-   * Chip-Select GPIOs (SPI_CS_MAG_PIN, SPI_CS_SD_PIN, SPI_CS_CAM_PIN)
+   * SPI0_SCK_PIN, and SPI0_MOSI_PIN to SPI function, and pulls all chip
+   * select GPIOs (SPI_CS_MAG_PIN, SPI_CS_FLASH_PIN, SPI_CS_CAM_PIN)
    * high (inactive).
    *
    * Safe to call from multiple drivers: only the first call performs

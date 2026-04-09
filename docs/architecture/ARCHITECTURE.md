@@ -62,8 +62,14 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
-| **GPS (NEO-7M)**       | TX           | GPIO4          | 6                    | UART1 RX (Pico)     |
-|                         | RX           | GPIO5          | 7                    | UART1 TX (Pico)     |
+| **GPS (NEO-7M)**       | TX           | GPIO1          | 7                    | UART0 RX (Pico)     |
+|                         | RX           | GPIO0          | 6                    | UART0 TX (Pico)     |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+| **W25Q64 (Flash)**    | DI (MOSI)    | GPIO19         | 24                   | SPI0 MOSI           |
+|                         | DO (MISO)    | GPIO16         | 21                   | SPI0 MISO           |
+|                         | CLK          | GPIO18         | 24                   | SPI0 Clock          |
+|                         | CS           | GPIO7          | 29                   | Chip Select         |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
 | **HC-12/Si4463 (Radio)**| TX           | GPIO5          | 7                    | UART1 RX (Pico)     |
@@ -96,14 +102,18 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **IMU Driver** (MPU6050): 6-DOF accelerometer + gyroscope via I2C
 - **Temperature Sensor**: TMP102 or onboard sensor readout
 - **Power Monitor**: Battery voltage via ADC
-- **Magnetometer Driver** — **EM baseline: HMC5883L (GY-271)**, I2C0 addr `0x1E`, ODR 75 Hz;
-  ⚠️ QMC5883L clone risk in GY-271 modules — verify IC markings before procurement;
-  used by EKF for yaw estimation via tilt-compensated update (`ekf_update_mag()`).
+- **Magnetometer Driver** — **EM baseline: QMC5883L (clone)** detected at I2C addr `0x2C`;
+  driver auto-detects HMC5883L (0x1E) or QMC5883L (0x0D/0x2C).
   **CDR/FM candidate: LIS3MDL** (STMicroelectronics, I2C0 addr `0x1C` SA0=GND, ODR 80 Hz) —
   actively produced, new driver `lis3mdl.c` required (no backward compatibility with HMC5883L register map).
   Part selection locked per ACT-11 (SRR-OBC-001).
+- **Storage Driver** (W25Q64): SPI flash memory 8MB for persistent data logging
+  - Chip: Winbond W25Q64JV, SPI @ 1-10 MHz
+  - Features: Read, Write, Erase (sector/block/chip)
+  - CS pin: GPIO7
+  - Used for telemetry logs, event storage
 - **Design Rationale**: Hardware abstraction layer (HAL) pattern—easy to swap sensors
-- **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]
+- **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]; `drivers/payload/w25q64.c`
 
 ### 3. **Control System** (`src/control/`)
 - **EKF (7-State Quaternion)**: `x = [q0, q1, q2, q3, bx, by, bz]` — quaternion attitude + 3 gyro biases
@@ -329,9 +339,9 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 ---
 
-**Last Updated**: 2026-03-20
+**Last Updated**: 2026-04-08
 **Author**: OBC Development Team
-**Status**: Phase 5 (Fault Management & Safety) Complete
+**Status**: Phase 8 (Full Testing) — W25Q64 Flash Driver Complete
 
 ### Documentation Discrepancies Fixed (2026-03-20)
 1. FreeRTOS SMP: **Single-core mode** (`configNUMBER_OF_CORES=1`), dual-core disabled pending boot stabilization

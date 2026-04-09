@@ -1,12 +1,12 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-03-30
+**Last Updated**: 2026-04-08
 **Current Phase**: Phase 8 — Full Testing (branch `feature/phase8-full-testing`)
-**Current Branch**: `feature/phase8-full-testing`
+**Current Branch**: `feature/w25q64-flash-driver`
 
 ---
 
-## Hardware Validation Complete ✅ (2026-03-30)
+## Hardware Validation Complete ✅ (2026-04-08)
 
 ### Verified Working Components
 
@@ -14,11 +14,12 @@
 |-----------|-----------|--------|-------|
 | **MPU-6050/6500** | I2C0 (GPIO4/5) | ✅ OK | Detected ID 0x70 (MPU-6500 variant) |
 | **Temperature** | Internal ADC | ✅ OK | Integrated in MPU-6050 |
+| **QMC5883L (Mag)** | I2C0 (GPIO4/5) | ✅ OK | Clone detected at 0x2C (HMC5883L driver updated) |
 | **GPS NEO-6M/7M** | UART0 (GPIO0/1) | ✅ OK | 9600 baud, fix obtained |
 | **HC-12 Radio** | UART1 (GPIO8/9) | ✅ OK | 9600 baud, bidirectional |
+| **W25Q64 (Flash)** | SPI0 (GPIO7 CS) | ✅ OK | 8MB, JEDEC ID: M=EF, T=40, C=17 |
 | **Telemetry** | HC-12 TX | ✅ OK | Text format working |
 | **Commands** | HC-12 RX | ✅ OK | REBOOT, MODE, ECHO, CAPTURE |
-| **Magnetometer** | I2C0 (GPIO4/5) | ❌ Not connected | HMC5883L pending |
 | **Camera** | SPI0 | ❌ Not connected | OV2640 pending |
 | **Reaction Wheels** | PWM | ❌ Not connected | Pending |
 | **Magnetorquers** | PWM/GPIO | ❌ Not connected | Pending |
@@ -227,14 +228,14 @@ Decoded:
 | PR-36 | — | Camera driver | 🔄 Pending |
 | PR-37 | — | LIS3MDL driver migration (HMC5883L discontinued) | 🔄 Pending |
 | PR-38 | — | FM_PAYLOAD mode implementation | 🔄 Pending |
-| PR-39 | — | W25Qxx external storage | 🔄 Pending |
+| PR-39 | `e3f9199` | W25Q64 external SPI flash storage | ✅ Complete |
 | PR-40 | — | PWM HAL for reaction wheels/magnetorquers | 🔄 Pending |
 | PR-41 | — | Full flash backend implementation | 🔄 Pending |
 | PR-42 | — | MC/DC coverage analysis | 🔄 Pending |
 
-- **Hardware validated**: ✅ IMU, GPS, HC-12 radio, temperature sensor
+- **Hardware validated**: ✅ IMU, GPS, HC-12 radio, temperature sensor, W25Q64 flash
 - **Software validated**: ✅ Telemetry (text), Commands (REBOOT/MODE/ECHO/CAPTURE)
-- **Current test status**: 27/27 unit tests + 3/3 integration tests passing
+- **Current test status**: 44/44 tests passing
 - **Current coverage**: Line 93.0%, Function 92.4% (target: >95%)
 - **CI Pipeline**: 6/6 stages passing
 
@@ -277,10 +278,10 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 27/27 | 0 | 27 |
-| Integration Tests | 3/3 | 0 | 3 |
+| Unit Tests | 44/44 | 0 | 44 |
+| Integration Tests | 0 | 0 | 0 |
 | System Tests | 0 | 2 | 2 |
-| **Total** | **30** | **0** | **30** |
+| **Total** | **44** | **0** | **46** |
 
 **New test targets (Phase 7 — PRs 28–30)**:
 - `test_gps_integration` — validates GPS driver and telemetry integration

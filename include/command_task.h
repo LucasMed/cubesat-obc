@@ -2,6 +2,8 @@
 #ifndef COMMAND_TASK_H
 #define COMMAND_TASK_H
 
+#include "telemetry_storage.h"
+
 #include <stdint.h>
 
 #define COMMAND_PORT 20
@@ -18,7 +20,8 @@ typedef enum
   CMD_TELEMETRY_REQ = 8,
   CMD_LOG_DUMP = 9,
   CMD_SENSOR_RESET = 10,
-  CMD_GPS_RESET_STATS = 11
+  CMD_GPS_RESET_STATS = 11,
+  CMD_TELEMETRY_DUMP = 12  // Download telemetry from flash
 } command_id_t;
 
 typedef struct __attribute__((packed))
@@ -57,6 +60,22 @@ typedef struct __attribute__((packed))
   uint8_t level;
   uint8_t count;
 } fault_entry_t;
+
+/**
+ * @brief Telemetry dump response
+ *
+ * Each packet contains up to TELEMETRY_BATCH_SIZE records (4 records × 64 bytes = 256 bytes)
+ * Ground station sends next sequence number to request next batch.
+ */
+#define TELEMETRY_BATCH_SIZE 4
+
+typedef struct __attribute__((packed))
+{
+  uint32_t total_records;     // Total records in storage
+  uint32_t last_seq;          // Last sequence number stored
+  uint32_t current_seq;       // Sequence number of this record
+  telemetry_record_t record;  // Single telemetry record (64 bytes)
+} telemetry_dump_response_t;
 
 void vCommandTask(void *pvParameters);
 

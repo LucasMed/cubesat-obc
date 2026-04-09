@@ -7,6 +7,7 @@ set(DRIVER_SOURCES
     payload/radiation_driver.c
     payload/storage_manager.c
     payload/payload_manager.c
+    payload/w25q64.c
     gps/neo7m.c
 )
 
@@ -28,11 +29,13 @@ if(PICO_BUILD)
         temperature/pico_temp.c
         uart/pico_usart.c
         payload/sd_spi.c
+        payload/telemetry_storage.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
         i2c/host_i2c.c
         temperature/host_temp.c
+        payload/telemetry_storage_stub.c
     )
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)

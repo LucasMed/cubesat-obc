@@ -14,6 +14,7 @@
  * - HC-12 radio: UART1 @ GPIO8/9, 9600 baud
  * 
  * NOT YET CONNECTED:
+ * - W25Q64 SPI Flash (GPIO7 CS)
  * - OV2640 camera (SPI0)
  * - Reaction wheels (PWM)
  * - Magnetorquers (PWM)
@@ -23,9 +24,12 @@
  *   GPIO1   UART0 RX  ← GPS TX
  *   GPIO4   I2C0 SDA  ← MPU-6050 SDA / QMC5883L SDA (shared bus)
  *   GPIO5   I2C0 SCL  ← MPU-6050 SCL / QMC5883L SCL (shared bus)
+ *   GPIO6   SPI0 CS   → RM3100 (magnetometer SPI)
+ *   GPIO7   SPI0 CS   → W25Q64 Flash (pending connection)
  *   GPIO8   UART1 TX  → HC-12 RX
  *   GPIO9   UART1 RX  ← HC-12 TX
  *   GPIO12  GPS PPS   ← GPS 1PPS (optional)
+ *   GPIO14  SPI0 CS   → OV2640 Camera (pending connection)
  *   GPIO20  Watchdog kick (TPS3431)
  *   GPIO25  LED       Onboard status LED
  */
@@ -73,9 +77,9 @@
 #define SPI0_BAUD_RATE_FAST 10000000  /* 10 MHz — data transfers         */
 
 /** Chip Select pins (active low, GPIO-controlled) */
-#define SPI_CS_MAG_PIN 6   /**< RM3100 Magnetometer chip select */
-#define SPI_CS_SD_PIN  7   /**< microSD chip select              */
-#define SPI_CS_CAM_PIN 14  /**< OV2640 Camera chip select        */
+#define SPI_CS_FLASH_PIN 7   /**< W25Q64 Flash chip select (replaces microSD) */
+#define SPI_CS_MAG_PIN 6     /**< RM3100 Magnetometer chip select */
+#define SPI_CS_CAM_PIN 14    /**< OV2640 Camera chip select        */
 
 /* ======================================================================
  * UART Pin Definitions

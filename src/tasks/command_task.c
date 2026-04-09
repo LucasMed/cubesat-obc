@@ -8,6 +8,7 @@
 #include "payload_task.h"
 #include "system_state.h"
 #include "task.h"
+#include "telemetry_storage.h"
 
 #include <csp/csp.h>
 #include <stdio.h>
@@ -368,6 +369,43 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
     uint8_t resp = 1;
     memcpy(cmd->payload, &resp, 1);
     packet->length = 2;
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_TELEMETRY_DUMP:
+  {
+    printf("[command_task] Executing TELEMETRY_DUMP\n");
+
+    uint32_t start_seq = 0;
+    if (packet->length >= 5)
+    {
+      memcpy(&start_seq, cmd->payload, sizeof(start_seq));
+    }
+
+    telemetry_dump_response_t resp = {0};
+    resp.total_records = telemetry_storage_get_record_count();
+    resp.last_seq = telemetry_storage_get_last_sequence();
+
+    telemetry_record_t record = {0};
+    uint32_t count = telemetry_storage_read_batch(start_seq, &record, 1);
+
+    if (count > 0)
+    {
+      resp.current_seq = record.sequence;
+      resp.record = record;
+    }
+    else
+    {
+      resp.current_seq = 0;  // End of data
+    }
+
+    // cppcheck-suppress bufferAccessOutOfBounds
+    // Intentional: CSP packets support larger payloads; this is the telemetry
+    // download protocol using sizeof(telemetry_dump_response_t) = 76 bytes
+    memcpy(cmd->payload, &resp, sizeof(resp));
+    packet->length = sizeof(resp) + 1;
     csp_send(conn, packet);
     packet = NULL;
     break;

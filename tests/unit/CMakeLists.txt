@@ -41,6 +41,17 @@ if(NOT PICO_BUILD)
     )
     add_test(NAME storage_manager_test COMMAND test_storage_manager)
 
+    add_executable(test_w25q64
+        test_w25q64.c
+        ../../src/drivers/payload/w25q64.c
+        ../../src/drivers/payload/spi_payload.c
+    )
+    target_include_directories(test_w25q64 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME w25q64_test COMMAND test_w25q64)
+
     add_executable(test_payload_manager
         test_payload_manager.c
         ../../src/drivers/payload/payload_manager.c
@@ -80,6 +91,7 @@ if(NOT PICO_BUILD)
         ../../src/core/system_state.c
         ../../src/core/data_layer.c
         ../../src/control/quaternion.c
+        ../../src/drivers/payload/telemetry_storage_stub.c
     )
     target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_telemetry csp m)
@@ -88,6 +100,7 @@ if(NOT PICO_BUILD)
     add_executable(test_command
         test_command.c
         command_task_test.c
+        ../../src/drivers/payload/telemetry_storage_stub.c
     )
     target_include_directories(test_command PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
