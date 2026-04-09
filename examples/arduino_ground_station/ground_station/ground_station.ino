@@ -83,6 +83,10 @@ void parseTelemetry(String msg)
   float pitch = attStr.substring(attStr.indexOf(',') + 1, attStr.lastIndexOf(',')).toFloat();
   float yaw = attStr.substring(attStr.lastIndexOf(',') + 1).toFloat();
 
+  // Extraer temperatura y humedad
+  float temp = getValue(msg, "temp=").toFloat();
+  float humidity = getValue(msg, "humidity=").toFloat();
+
   // Extraer flags
   int posFlags = msg.indexOf("flags=");
   int posGps = msg.indexOf("gps_lat=");
@@ -91,7 +95,8 @@ void parseTelemetry(String msg)
 
   bool imu_ok = (flags & 0x01) != 0;
   bool temp_ok = (flags & 0x02) != 0;
-  int energy_state = (flags >> 2) & 0x03;
+  bool humidity_ok = (flags & 0x04) != 0;
+  int energy_state = (flags >> 3) & 0x07;
 
   // Extraer GPS
   float gps_lat = getValue(msg, "gps_lat=").toFloat();
@@ -111,7 +116,11 @@ void parseTelemetry(String msg)
   Serial.print(" IMU=");
   Serial.print(imu_ok ? "OK" : "FAIL");
   Serial.print(" Temp=");
-  Serial.print(temp_ok ? "OK" : "FAIL");
+  Serial.print(temp, 1);
+  Serial.print("C");
+  Serial.print(" Hum=");
+  Serial.print(humidity_ok ? humidity : -1, 1);
+  Serial.print("%");
   Serial.print(" Energy=");
   Serial.print(energy_state);
   Serial.print(" GPS=");
