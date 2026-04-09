@@ -129,43 +129,69 @@ bool sht31_read(float *temperature, float *humidity)
   const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_MEASURE_HIGH >> 8),
                           (uint8_t)(SHT31_CMD_MEASURE_HIGH & 0xFF)};
 
-  /* Wait for measurement (typ 15ms, max 50ms) - use 50ms for reliability */
+  /* Wait for measurement (typ 15ms, max 50ms) - use 100ms for reliability */
 #ifdef PICO_BUILD
-  sleep_ms(50);
+  sleep_ms(100);
 #endif
 
+  /* Retry up to 3 times if data looks corrupt */
   uint8_t data[6];
-  if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)
+  bool read_success = false;
+
+  for (int retry = 0; retry < 3 && !read_success; retry++)
   {
+    if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)
+    {
 #ifdef PICO_BUILD
-    printf("sht31: Failed to read data\n");
+      if (retry == 0)
+        printf("sht31: I2C read failed, retrying...\n");
 #endif
-    return false;
+      continue;
+    }
+
+    /* Debug: print raw bytes */
+#ifdef PICO_BUILD
+    printf("sht31: raw [%02X %02X %02X] [%02X %02X %02X]\n",
+           data[0], data[1], data[2], data[3], data[4], data[5]);
+#endif
+
+    /* Check for obviously corrupt data (all 0xFF) */
+    if (data[0] == 0xFF && data[1] == 0xFF)
+    {
+#ifdef PICO_BUILD
+      if (retry == 0)
+        printf("sht31: Corrupt data detected, retrying...\n");
+#endif
+      continue;
+    }
+
+    /* Verify temperature CRC */
+    uint8_t temp_crc = sht31_crc8(&data[0]);
+    if (temp_crc != data[2])
+    {
+#ifdef PICO_BUILD
+      if (retry == 0)
+        printf("sht31: Temp CRC fail: got 0x%02X, expected 0x%02X\n", data[2], temp_crc);
+#endif
+      continue;
+    }
+
+    /* Verify humidity CRC */
+    uint8_t hum_crc = sht31_crc8(&data[3]);
+    if (hum_crc != data[5])
+    {
+#ifdef PICO_BUILD
+      if (retry == 0)
+        printf("sht31: Hum CRC fail: got 0x%02X, expected 0x%02X\n", data[5], hum_crc);
+#endif
+      continue;
+    }
+
+    read_success = true;
   }
 
-  /* Debug: print raw bytes */
-#ifdef PICO_BUILD
-  printf("sht31: raw [%02X %02X %02X] [%02X %02X %02X]\n",
-         data[0], data[1], data[2], data[3], data[4], data[5]);
-#endif
-
-  /* Verify temperature CRC */
-  uint8_t temp_crc = sht31_crc8(&data[0]);
-  if (temp_crc != data[2])
+  if (!read_success)
   {
-#ifdef PICO_BUILD
-    printf("sht31: Temp CRC fail: got 0x%02X, expected 0x%02X\n", data[2], temp_crc);
-#endif
-    return false;
-  }
-
-  /* Verify humidity CRC */
-  uint8_t hum_crc = sht31_crc8(&data[3]);
-  if (hum_crc != data[5])
-  {
-#ifdef PICO_BUILD
-    printf("sht31: Hum CRC fail: got 0x%02X, expected 0x%02X\n", data[5], hum_crc);
-#endif
     return false;
   }
 
