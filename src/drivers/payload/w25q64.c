@@ -202,10 +202,19 @@ w25q64_status_t w25q64_write_page(uint32_t addr, const uint8_t *buf, uint32_t le
     return W25Q64_ERR_WRITE;
   }
 
-  /* Must be page-aligned for simplicity */
-  if (addr % W25Q64_PAGE_SIZE != 0)
+  /* Check if write crosses page boundary */
+  uint32_t page_start = addr & ~(W25Q64_PAGE_SIZE - 1);
+  uint32_t page_end = page_start + W25Q64_PAGE_SIZE;
+
+  if (addr + len > page_end)
   {
-    return W25Q64_ERR_WRITE;
+    /* Split across pages: write first part, then remainder */
+    uint32_t first_len = page_end - addr;
+    if (w25q64_write_page(addr, buf, first_len) != W25Q64_OK)
+    {
+      return W25Q64_ERR_WRITE;
+    }
+    return w25q64_write_page(page_end, buf + first_len, len - first_len);
   }
 
   write_enable();
