@@ -21,8 +21,8 @@
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
-#include "sht31.h"
 #include "ekf.h"
+#include "sht31.h"
 #include "task.h"
 
 #include <math.h>
@@ -107,6 +107,18 @@ void vSensorReadTask_Step(void)
     {
       /* SHT31 is more accurate, use it if available */
       data_layer_write_temp(sht31_temp);
+
+#ifdef PICO_BUILD
+      /* Debug: print SHT31 readings */
+      if (sht31_humidity >= 0.0f)
+      {
+        printf("[sht31] temp=%.1fC  humidity=%.1f%%\n", (double)sht31_temp, (double)sht31_humidity);
+      }
+      else
+      {
+        printf("[sht31] temp=%.1fC  humidity=N/A\n", (double)sht31_temp);
+      }
+#endif
     }
   }
 
