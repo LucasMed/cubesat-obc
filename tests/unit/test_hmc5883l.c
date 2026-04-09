@@ -46,7 +46,8 @@ float temperature_read(void)
 }
 
 /* ---- BH1750 stub (satisfy sensor_read_task.c link) ---------------------- */
-bool bh1750_read(const float *lux)
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool bh1750_read(float *lux)
 {
   (void)lux;
   return false;

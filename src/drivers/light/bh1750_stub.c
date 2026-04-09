@@ -23,7 +23,8 @@ bool bh1750_is_present(uint8_t addr)
   return true;
 }
 
-bool bh1750_read(const float *lux)
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool bh1750_read(float *lux)
 {
   /* Return false by default — tests can override if needed */
   (void)lux;

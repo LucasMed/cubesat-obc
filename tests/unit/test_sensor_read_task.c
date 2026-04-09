@@ -76,7 +76,8 @@ int hmc5883l_read(float field_uT[3])
 }
 
 /* BH1750 stub — returns false so lux_available is not set */
-bool bh1750_read(const float *lux)
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool bh1750_read(float *lux)
 {
   (void)lux;
   return false;
