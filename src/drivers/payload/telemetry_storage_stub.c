@@ -64,7 +64,8 @@ uint32_t telemetry_storage_get_last_sequence(void)
   return 0;
 }
 
-uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records, uint32_t max_count)
+uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records,
+                                      uint32_t max_count)
 {
   (void)start_seq;
   (void)records;

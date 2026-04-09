@@ -2,9 +2,9 @@
 #ifndef COMMAND_TASK_H
 #define COMMAND_TASK_H
 
-#include <stdint.h>
-
 #include "telemetry_storage.h"
+
+#include <stdint.h>
 
 #define COMMAND_PORT 20
 
@@ -71,10 +71,10 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-  uint32_t total_records;       // Total records in storage
-  uint32_t last_seq;            // Last sequence number stored
-  uint32_t current_seq;         // Sequence number of this record
-  telemetry_record_t record;     // Single telemetry record (64 bytes)
+  uint32_t total_records;     // Total records in storage
+  uint32_t last_seq;          // Last sequence number stored
+  uint32_t current_seq;       // Sequence number of this record
+  telemetry_record_t record;  // Single telemetry record (64 bytes)
 } telemetry_dump_response_t;
 
 void vCommandTask(void *pvParameters);

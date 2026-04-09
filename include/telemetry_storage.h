@@ -146,7 +146,8 @@ extern "C"
    * @param max_count Maximum records to read
    * @return Number of records actually read
    */
-  uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records, uint32_t max_count);
+  uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records,
+                                        uint32_t max_count);
 
   /**
    * @brief Get the total number of valid records stored

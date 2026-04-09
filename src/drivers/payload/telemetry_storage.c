@@ -239,7 +239,8 @@ uint32_t telemetry_storage_get_last_sequence(void)
 #endif
 }
 
-uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records, uint32_t max_count)
+uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records,
+                                      uint32_t max_count)
 {
 #ifdef PICO_BUILD
   if (!s_initialized || records == NULL || max_count == 0)
