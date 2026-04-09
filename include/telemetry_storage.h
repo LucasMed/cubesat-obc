@@ -135,6 +135,33 @@ extern "C"
    */
   uint32_t telemetry_storage_get_base_addr(void);
 
+  /**
+   * @brief Read records starting from a sequence number
+   *
+   * Iterates through flash to find records starting from start_seq.
+   * Returns up to max_count records in chronological order.
+   *
+   * @param start_seq Starting sequence number (0 = from beginning)
+   * @param records Output array for records
+   * @param max_count Maximum records to read
+   * @return Number of records actually read
+   */
+  uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records, uint32_t max_count);
+
+  /**
+   * @brief Get the total number of valid records stored
+   *
+   * @return Total record count
+   */
+  uint32_t telemetry_storage_get_record_count(void);
+
+  /**
+   * @brief Get the last sequence number stored
+   *
+   * @return Last sequence number (0 if no records)
+   */
+  uint32_t telemetry_storage_get_last_sequence(void);
+
 #ifdef __cplusplus
 }
 #endif

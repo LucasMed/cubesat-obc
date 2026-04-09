@@ -220,3 +220,64 @@ uint32_t telemetry_storage_get_base_addr(void)
 {
   return 0x000000;
 }
+
+uint32_t telemetry_storage_get_record_count(void)
+{
+#ifdef PICO_BUILD
+  return s_records_written;
+#else
+  return 0;
+#endif
+}
+
+uint32_t telemetry_storage_get_last_sequence(void)
+{
+#ifdef PICO_BUILD
+  return s_last_sequence;
+#else
+  return 0;
+#endif
+}
+
+uint32_t telemetry_storage_read_batch(uint32_t start_seq, telemetry_record_t *records, uint32_t max_count)
+{
+#ifdef PICO_BUILD
+  if (!s_initialized || records == NULL || max_count == 0)
+  {
+    return 0;
+  }
+
+  uint32_t count = 0;
+  uint32_t addr = TELEMETRY_BASE_ADDR;
+  uint8_t buf[TELEMETRY_RECORD_SIZE];
+
+  // Scan through all possible record slots
+  while (addr < TELEMETRY_MAX_ADDR && count < max_count)
+  {
+    if (w25q64_read(addr, buf, TELEMETRY_RECORD_SIZE) != W25Q64_OK)
+    {
+      break;
+    }
+
+    telemetry_record_t *rec = (telemetry_record_t *)buf;
+
+    // Skip empty slots (sequence 0 could be valid, so check if all zeros)
+    bool is_empty = (rec->timestamp == 0 && rec->sequence == 0);
+
+    if (!is_empty && rec->sequence >= start_seq)
+    {
+      records[count] = *rec;
+      count++;
+    }
+
+    addr += TELEMETRY_RECORD_SIZE;
+  }
+
+  return count;
+#else
+  (void)start_seq;
+  (void)records;
+  (void)max_count;
+  return 0;
+#endif
+}

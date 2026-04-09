@@ -100,6 +100,7 @@ if(NOT PICO_BUILD)
     add_executable(test_command
         test_command.c
         command_task_test.c
+        ../../src/drivers/payload/telemetry_storage_stub.c
     )
     target_include_directories(test_command PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
