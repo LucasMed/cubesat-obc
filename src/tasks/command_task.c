@@ -122,12 +122,21 @@ static void process_text_command(const char *cmd)
   {
     if (strncmp(cmd + 5, "GPS", 3) == 0)
     {
-      gps_reset_stats();
-      uart_puts(uart1, "RESET GPS OK\r\n");
+      // Check if it's COLD START (RESETGPS COLD)
+      if (strncmp(cmd + 8, "COLD", 4) == 0)
+      {
+        gps_cold_start();
+        uart_puts(uart1, "RESET GPS COLD START OK\r\n");
+      }
+      else
+      {
+        gps_reset_stats();
+        uart_puts(uart1, "RESET GPS OK\r\n");
+      }
     }
     else
     {
-      uart_puts(uart1, "RESET: usage: RESETGPS\r\n");
+      uart_puts(uart1, "RESET: usage: RESETGPS | RESETGPS COLD\r\n");
     }
   }
   else if (strncmp(cmd, "GPS", 3) == 0)
@@ -149,7 +158,10 @@ static void process_text_command(const char *cmd)
     }
     else
     {
-      uart_puts(uart1, "GPS: no fix\r\n");
+      char buf[64];
+      uint8_t sats = gps_get_satellites_in_view();
+      snprintf(buf, sizeof(buf), "GPS: no fix sats=%d\r\n", sats);
+      uart_puts(uart1, buf);
     }
   }
   else

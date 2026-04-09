@@ -79,4 +79,11 @@ const GpsStats_t *gps_get_stats(void);
  */
 void gps_reset_stats(void);
 
+/**
+ * @brief Force a GPS cold start (clear ephemeris and restart search)
+ *
+ * Use this when GPS is taking too long to get a fix or has stale data.
+ */
+void gps_cold_start(void);
+
 #endif  // GPS_DRIVER_H

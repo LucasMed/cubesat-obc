@@ -136,6 +136,111 @@ static bool nmea_buffer_pop(uint8_t *byte)
   return true;
 }
 
+// --- UBX Protocol helpers ---
+// UBX message structure: $UBX, CLASS, ID, LENGTH(LE), LENGTH(BE), PAYLOAD, CK_A, CK_B
+
+/**
+ * @brief Calculate UBX checksum (Fletcher)
+ */
+static void ubx_calculate_checksum(const uint8_t *payload, uint16_t len, uint8_t *ck_a,
+                                   uint8_t *ck_b)
+{
+  *ck_a = 0;
+  *ck_b = 0;
+  for (uint16_t i = 0; i < len; i++)
+  {
+    *ck_a += payload[i];
+    *ck_b += *ck_a;
+  }
+}
+
+/**
+ * @brief Send a UBX message to the GPS module
+ */
+static void gps_send_ubx(const uint8_t *payload, uint16_t len)
+{
+#ifdef PICO_BUILD
+  uint8_t ck_a, ck_b;
+  ubx_calculate_checksum(payload, len, &ck_a, &ck_b);
+
+  // Sync char
+  uart_putc(uart0, 0xB5);
+
+  // Header and class/ID
+  uart_putc(uart0, 0x62);
+  for (uint16_t i = 0; i < len; i++)
+  {
+    uart_putc(uart0, payload[i]);
+  }
+
+  // Checksum
+  uart_putc(uart0, ck_a);
+  uart_putc(uart0, ck_b);
+#endif
+}
+
+/**
+ * @brief Send UBX-CFG-RST command for controlled reset
+ *
+ * @param reset_mode 0 = hardware reset, 1 = software reset, 4 = controlled GNSS stop, 5 =
+ * controlled GNSS start
+ * @param clear_mask Which data to clear (bitmask: 0x0001 = ephemeris, 0x0002 = almanac, etc.)
+ */
+static void gps_send_ubx_reset(uint16_t reset_mode, uint16_t clear_mask)
+{
+#ifdef PICO_BUILD
+  // UBX-CFG-RST: Class=06, ID=04
+  const uint8_t payload[4] = {
+      (uint8_t)(clear_mask & 0xFF),         // clearMask low byte
+      (uint8_t)((clear_mask >> 8) & 0xFF),  // clearMask high byte
+      (uint8_t)(reset_mode & 0xFF),         // resetMode low byte
+      (uint8_t)((reset_mode >> 8) & 0xFF)   // resetMode high byte (reserved)
+  };
+  const uint8_t msg[] = {0x06, 0x04};  // UBX class=CFG, ID=RST
+  const uint8_t full_payload[8] = {msg[0],     msg[1],     0x04,       0x00,
+                                   payload[0], payload[1], payload[2], payload[3]};
+
+  gps_send_ubx(full_payload, 8);
+#endif
+}
+
+/**
+ * @brief Perform a GPS cold start internally (clear all data and restart search)
+ */
+static void gps_perform_cold_start(void)
+{
+#ifdef PICO_BUILD
+  // Send controlled stop and start to force fresh satellite search
+  gps_send_ubx_reset(4, 0x0000);  // Controlled GNSS stop
+  sleep_ms(100);
+  gps_send_ubx_reset(5, 0x0000);  // Controlled GNSS start
+#endif
+}
+
+/**
+ * @brief Perform a GPS factory reset (clear all stored data)
+ */
+static void gps_factory_reset(void)
+{
+#ifdef PICO_BUILD
+  // Send controlled reset with clear of all data
+  // clearMask: 0x0001=ephemeris, 0x0002=almanac, 0x0004=health, 0x0008=position,
+  //            0x0010=time, 0x0020=osc, 0x0040=sbas, 0x0080=rtcm
+  uint16_t clear_mask = 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010;  // Clear all position/time data
+
+  // Stop GNSS
+  gps_send_ubx_reset(4, 0x0000);
+  sleep_ms(100);
+
+  // Reset with clear
+  gps_send_ubx_reset(0, clear_mask);  // Immediate controlled reset
+  sleep_ms(500);
+
+  // Start GNSS
+  gps_send_ubx_reset(5, 0x0000);
+#endif
+}
+
 // --- Driver API implementation ---
 bool gps_init(void)
 {
@@ -160,6 +265,12 @@ bool gps_init(void)
   irq_set_exclusive_handler(UART0_IRQ, gps_uart_isr);
   irq_set_enabled(UART0_IRQ, true);
   uart_set_irq_enables(uart0, true, false);
+
+  // Perform GPS cold start to clear stale ephemeris data
+  // This helps when the module has old position data that delays new fix
+  sleep_ms(100);  // Wait for GPS module to be ready
+  gps_factory_reset();
+  printf("GPS: Cold start sent\n");
 #endif
 
   nmea_buffer_clear();
@@ -596,4 +707,15 @@ const GpsStats_t *gps_get_stats(void)
 void gps_reset_stats(void)
 {
   memset(&g_stats, 0, sizeof(g_stats));
+}
+
+void gps_cold_start(void)
+{
+#ifdef PICO_BUILD
+  printf("GPS: Sending cold start command...\n");
+  gps_factory_reset();
+  printf("GPS: Cold start complete\n");
+#else
+  (void)gps_factory_reset;
+#endif
 }

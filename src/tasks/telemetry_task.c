@@ -99,6 +99,7 @@ void vTelemetryTask_Step(void)
   tlm->gps_alt_m = snap.gps_fix.alt_m;
   tlm->gps_utc_s = snap.gps_fix.utc_time;
   tlm->gps_valid = snap.gps_fix.valid ? 1 : 0;
+  tlm->gps_satellites = snap.gps_fix.satellites;
 
   packet->length = sizeof(csp_telemetry_packet_t);
 
@@ -107,12 +108,12 @@ void vTelemetryTask_Step(void)
 
 #ifdef PICO_BUILD
   // Send plain text over UART1 (HC-12) for easy debugging
-  char buf[160];
+  char buf[180];
   int len = snprintf(
       buf, sizeof(buf),
-      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d",
+      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d",
       snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->humidity,
-      tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid);
+      tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites);
   uart_puts(uart1, buf);
   uart_puts(uart1, "\r\n");
 #endif

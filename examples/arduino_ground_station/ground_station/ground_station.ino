@@ -103,6 +103,7 @@ void parseTelemetry(String msg)
   float gps_lon = getValue(msg, "gps_lon=").toFloat();
   float gps_alt = getValue(msg, "gps_alt=").toFloat();
   int gps_valid = getValue(msg, "gps_valid=").toInt();
+  int sats = getValue(msg, "sats=").toInt();
 
   // Mostrar
   Serial.print("Mode=");
@@ -125,6 +126,8 @@ void parseTelemetry(String msg)
   Serial.print(energy_state);
   Serial.print(" GPS=");
   Serial.print(gps_valid ? "OK" : "NO FIX");
+  Serial.print(" Sats=");
+  Serial.print(sats);
   if (gps_valid)
   {
     Serial.print(" Lat=");
