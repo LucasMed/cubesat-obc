@@ -110,7 +110,7 @@ bool sht31_is_present(uint8_t addr)
   if (expected_crc != status[2])
   {
 #ifdef PICO_BUILD
-    printf("sht31: CRC mismatch (expected 0x%02X, got 0x%02X)\n", expected_crc, status[2]);
+    printf("sht31: Status CRC mismatch (expected 0x%02X, got 0x%02X)\n", expected_crc, status[2]);
 #endif
     return false;
   }
@@ -129,9 +129,9 @@ bool sht31_read(float *temperature, float *humidity)
   const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_MEASURE_HIGH >> 8),
                           (uint8_t)(SHT31_CMD_MEASURE_HIGH & 0xFF)};
 
-  /* Wait for measurement (typ 15ms, max 50ms) */
+  /* Wait for measurement (typ 15ms, max 50ms) - use 50ms for reliability */
 #ifdef PICO_BUILD
-  sleep_ms(15);
+  sleep_ms(50);
 #endif
 
   uint8_t data[6];
@@ -143,12 +143,18 @@ bool sht31_read(float *temperature, float *humidity)
     return false;
   }
 
+  /* Debug: print raw bytes */
+#ifdef PICO_BUILD
+  printf("sht31: raw [%02X %02X %02X] [%02X %02X %02X]\n",
+         data[0], data[1], data[2], data[3], data[4], data[5]);
+#endif
+
   /* Verify temperature CRC */
   uint8_t temp_crc = sht31_crc8(&data[0]);
   if (temp_crc != data[2])
   {
 #ifdef PICO_BUILD
-    printf("sht31: Temperature CRC error\n");
+    printf("sht31: Temp CRC fail: got 0x%02X, expected 0x%02X\n", data[2], temp_crc);
 #endif
     return false;
   }
@@ -158,7 +164,7 @@ bool sht31_read(float *temperature, float *humidity)
   if (hum_crc != data[5])
   {
 #ifdef PICO_BUILD
-    printf("sht31: Humidity CRC error\n");
+    printf("sht31: Hum CRC fail: got 0x%02X, expected 0x%02X\n", data[5], hum_crc);
 #endif
     return false;
   }
