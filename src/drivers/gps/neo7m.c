@@ -142,7 +142,8 @@ static bool nmea_buffer_pop(uint8_t *byte)
 /**
  * @brief Calculate UBX checksum (Fletcher)
  */
-static void ubx_calculate_checksum(const uint8_t *payload, uint16_t len, uint8_t *ck_a, uint8_t *ck_b)
+static void ubx_calculate_checksum(const uint8_t *payload, uint16_t len, uint8_t *ck_a,
+                                   uint8_t *ck_b)
 {
   *ck_a = 0;
   *ck_b = 0;
@@ -181,7 +182,8 @@ static void gps_send_ubx(const uint8_t *payload, uint16_t len)
 /**
  * @brief Send UBX-CFG-RST command for controlled reset
  *
- * @param reset_mode 0 = hardware reset, 1 = software reset, 4 = controlled GNSS stop, 5 = controlled GNSS start
+ * @param reset_mode 0 = hardware reset, 1 = software reset, 4 = controlled GNSS stop, 5 =
+ * controlled GNSS start
  * @param clear_mask Which data to clear (bitmask: 0x0001 = ephemeris, 0x0002 = almanac, etc.)
  */
 static void gps_send_ubx_reset(uint16_t reset_mode, uint16_t clear_mask)
@@ -189,13 +191,14 @@ static void gps_send_ubx_reset(uint16_t reset_mode, uint16_t clear_mask)
 #ifdef PICO_BUILD
   // UBX-CFG-RST: Class=06, ID=04
   const uint8_t payload[4] = {
-      (uint8_t)(clear_mask & 0xFF),       // clearMask low byte
-      (uint8_t)((clear_mask >> 8) & 0xFF), // clearMask high byte
-      (uint8_t)(reset_mode & 0xFF),        // resetMode low byte
-      (uint8_t)((reset_mode >> 8) & 0xFF)  // resetMode high byte (reserved)
+      (uint8_t)(clear_mask & 0xFF),         // clearMask low byte
+      (uint8_t)((clear_mask >> 8) & 0xFF),  // clearMask high byte
+      (uint8_t)(reset_mode & 0xFF),         // resetMode low byte
+      (uint8_t)((reset_mode >> 8) & 0xFF)   // resetMode high byte (reserved)
   };
   const uint8_t msg[] = {0x06, 0x04};  // UBX class=CFG, ID=RST
-  const uint8_t full_payload[8] = {msg[0], msg[1], 0x04, 0x00, payload[0], payload[1], payload[2], payload[3]};
+  const uint8_t full_payload[8] = {msg[0],     msg[1],     0x04,       0x00,
+                                   payload[0], payload[1], payload[2], payload[3]};
 
   gps_send_ubx(full_payload, 8);
 #endif
