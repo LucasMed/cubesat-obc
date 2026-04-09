@@ -192,6 +192,23 @@ void data_layer_set_mag_avail(bool mag)
   dl_unlock();
 }
 
+void data_layer_write_lux(float lux)
+{
+  dl_lock();
+  g_snapshot.state.lux = lux;
+  g_snapshot.state.lux_valid = (lux >= 0.0f);
+  g_snapshot.state.lux_available = true;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_set_lux_avail(bool lux)
+{
+  dl_lock();
+  g_snapshot.state.lux_available = lux;
+  dl_unlock();
+}
+
 void data_layer_write_radiation(float dose)
 {
   dl_lock();

@@ -8,6 +8,13 @@
 #include <csp/csp.h>
 #include <stdio.h>
 
+/* BH1750 stub — satisfies sensor_read_task.c link */
+bool bh1750_read(float *lux)
+{
+  (void)lux;
+  return false;
+}
+
 void test_system_integration(void)
 {
   printf("Running test_system_integration...\n");

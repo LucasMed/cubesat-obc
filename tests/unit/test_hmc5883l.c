@@ -45,6 +45,13 @@ float temperature_read(void)
   return 25.0f;
 }
 
+/* ---- BH1750 stub (satisfy sensor_read_task.c link) ---------------------- */
+bool bh1750_read(float *lux)
+{
+  (void)lux;
+  return false;
+}
+
 /* ---- Test helpers ------------------------------------------------------- */
 static int g_failures = 0;
 
