@@ -170,6 +170,24 @@ extern "C"
   void data_layer_set_mag_avail(bool mag);
 
   /**
+   * @brief Update illuminance reading.
+   *
+   * @param lux Illuminance in Lux, or -1 if not available.
+   *
+   * Sets @c lux_valid = true if lux >= 0.
+   */
+  void data_layer_write_lux(float lux);
+
+  /**
+   * @brief Set light sensor hardware availability flag.
+   *
+   * Called once during boot after BH1750 detection.
+   *
+   * @param lux true if the BH1750 was detected on the I2C bus.
+   */
+  void data_layer_set_lux_avail(bool lux);
+
+  /**
    * @brief Update radiation dose in the shared snapshot.
    *
    * @param dose  Radiation dose (placeholder units).

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **BH1750 Light Sensor**: Digital illuminance sensor driver (I2C 0x23, 0.5 lux resolution, 16ms measurement)
+  - Driver: `include/bh1750.h`, `src/drivers/light/bh1750.c`, `src/drivers/light/bh1750_stub.c`
+  - Integration: Data layer, system state, telemetry packet with `lux` field
+  - Commands: `I2CSCAN` (scan I2C bus), `BH1750_TEST` (test BH1750 at address)
+  - Ground station: Arduino now parses and displays `lux` value
 - **GPS Driver Enhancements**: Status reporting and telemetry statistics integration in `gps_driver.h` and `neo7m.c`
 - **Ground Station Communication**: Enhanced telemetry and GPS status reporting capabilities
 - **Command Task Updates**: Extended command parsing for GPS-related operations

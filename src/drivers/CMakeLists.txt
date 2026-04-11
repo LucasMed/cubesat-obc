@@ -31,6 +31,7 @@ if(PICO_BUILD)
         payload/sd_spi.c
         payload/telemetry_storage.c
         env/sht31.c
+        light/bh1750.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
@@ -38,6 +39,7 @@ else()
         temperature/host_temp.c
         payload/telemetry_storage_stub.c
         env/sht31_stub.c
+        light/bh1750_stub.c
     )
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)

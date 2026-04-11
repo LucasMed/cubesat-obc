@@ -16,6 +16,7 @@
 #include "sensor_read_task.h"
 
 #include "FreeRTOS.h"
+#include "bh1750.h"
 #include "config.h"
 #include "data_layer.h"
 #include "drivers/imu/mpu6050.h"
@@ -125,6 +126,16 @@ void vSensorReadTask_Step(void)
     }
   }
 
+  /* Read BH1750 light sensor */
+  if (snap.state.lux_available)
+  {
+    float lux = -1.0f;
+    if (bh1750_read(&lux))
+    {
+      data_layer_write_lux(lux);
+    }
+  }
+
   /* Read magnetometer only if sensor was detected during boot */
   if (snap.state.mag_available)
   {
@@ -175,16 +186,17 @@ void vSensorReadTask(void *pvParameters)
   {
     dl_snapshot_t snap;
     data_layer_read(&snap);
-    if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available)
+    if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available &&
+        !snap.state.lux_available)
     {
       printf("[sensor_read_task] No sensors connected — task suspended\n");
       fflush(stdout);
       vTaskSuspend(NULL); /* park forever — no CPU wasted */
       /* unreachable unless explicitly resumed */
     }
-    printf("[sensor_read_task] Sensors: IMU=%s  Temp=%s  Mag=%s\n",
+    printf("[sensor_read_task] Sensors: IMU=%s  Temp=%s  Mag=%s  Light=%s\n",
            snap.state.imu_available ? "yes" : "no", snap.state.temp_available ? "yes" : "no",
-           snap.state.mag_available ? "yes" : "no");
+           snap.state.mag_available ? "yes" : "no", snap.state.lux_available ? "yes" : "no");
     fflush(stdout);
   }
 

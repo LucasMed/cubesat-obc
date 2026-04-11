@@ -28,6 +28,8 @@
 #endif
 
 #ifdef PICO_BUILD
+  #include "bh1750.h"
+  #include "drivers/i2c_interface.h"
   #include "hardware/uart.h"
   #include "hardware/watchdog.h"
   #include "pico/stdlib.h"
@@ -163,6 +165,45 @@ static void process_text_command(const char *cmd)
       snprintf(buf, sizeof(buf), "GPS: no fix sats=%d\r\n", sats);
       uart_puts(uart1, buf);
     }
+  }
+  else if (strncmp(cmd, "I2CSCAN", 7) == 0)
+  {
+    char buf[128];
+    snprintf(buf, sizeof(buf), "I2C: scanning...\r\n");
+    uart_puts(uart1, buf);
+    printf("[command_task] Text command: I2CSCAN\r\n");
+    int found = i2c_bus_scan(0x03, 0x77);
+    snprintf(buf, sizeof(buf), "I2C: found %d device(s)\r\n", found);
+    uart_puts(uart1, buf);
+  }
+  else if (strncmp(cmd, "BH1750_TEST", 11) == 0)
+  {
+    // Parse optional address argument
+    uint8_t addr = BH1750_ADDR_DEFAULT;  // 0x23
+    if (strlen(cmd) > 12 && cmd[12] == '5' && cmd[13] == 'C')
+    {
+      addr = 0x5C;
+    }
+    char buf[96];
+    snprintf(buf, sizeof(buf), "BH1750: testing 0x%02X...\r\n", addr);
+    uart_puts(uart1, buf);
+
+    // Try to read with OT_H_RES2 command
+    uint8_t cmd_byte = BH1750_CMD_OT_H_RES2;
+    uint8_t data[2];
+    int ret = i2c_bus_write_read(addr, &cmd_byte, 1, data, 2);
+
+    if (ret == 0)
+    {
+      uint16_t raw = ((uint16_t)data[0] << 8) | data[1];
+      float lux = (float)raw / 1.2f;
+      snprintf(buf, sizeof(buf), "BH1750: raw=%d lux=%.1f\r\n", raw, (double)lux);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "BH1750: no response (err=%d)\r\n", ret);
+    }
+    uart_puts(uart1, buf);
   }
   else
   {

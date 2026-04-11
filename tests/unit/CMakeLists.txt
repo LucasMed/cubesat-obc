@@ -353,6 +353,22 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_ekf_mag m)
     add_test(NAME ekf_mag_test COMMAND test_ekf_mag)
 
+    # BH1750 light sensor driver stub + data layer integration tests.
+    # Compiles the real host stub so tests exercise actual code.
+    # sensor_read_task.c + data_layer.c pulled in for integration tests.
+    add_executable(test_bh1750
+        test_bh1750.c
+        ../../src/drivers/light/bh1750_stub.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_bh1750 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_bh1750 m)
+    add_test(NAME bh1750_test COMMAND test_bh1750)
+
     # PR-21 gate: Unit-quaternion utility library.
     # T-QAT-01..05: euler round-trip, q⊗q*=identity, normalize unit norm,
     # rotate_vec 90° yaw/roll, singularity-free at pitch=±90°.

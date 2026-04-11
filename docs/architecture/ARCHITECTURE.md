@@ -58,10 +58,15 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
-| **HMC5883L (Magnet.)**  | SDA          | GPIO4          | 6                    | I2C0 SDA            |
+| **HMC5883L/QMC5883L (Magnet.)** | SDA          | GPIO4          | 6                    | I2C0 SDA            |
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+| **BH1750 (Light)**     | SDA          | GPIO4          | 6                    | I2C0 SDA            |
+|                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | ADDR         | GND            | 3, 8, 13, ...        | Address 0x23 (default) |
 | **GPS (NEO-7M)**       | TX           | GPIO1          | 7                    | UART0 RX (Pico)     |
 |                         | RX           | GPIO0          | 6                    | UART0 TX (Pico)     |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
@@ -100,7 +105,8 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 
 ### 2. **Sensor Drivers** (`src/drivers/`)
 - **IMU Driver** (MPU6050): 6-DOF accelerometer + gyroscope via I2C
-- **Temperature Sensor**: TMP102 or onboard sensor readout
+- **Temperature/Humidity Sensor** (SHT31): I2C temperature + humidity with CRC-8 validation
+- **Light Sensor** (BH1750): Digital illuminance sensor via I2C (0x23 default, 0.5 lux resolution)
 - **Power Monitor**: Battery voltage via ADC
 - **Magnetometer Driver** — **EM baseline: QMC5883L (clone)** detected at I2C addr `0x2C`;
   driver auto-detects HMC5883L (0x1E) or QMC5883L (0x0D/0x2C).
@@ -113,7 +119,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
   - CS pin: GPIO7
   - Used for telemetry logs, event storage
 - **Design Rationale**: Hardware abstraction layer (HAL) pattern—easy to swap sensors
-- **Files**: `drivers/imu/mpu6050.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]; `drivers/payload/w25q64.c`
+- **Files**: `drivers/imu/mpu6050.c`, `drivers/env/sht31.c`, `drivers/light/bh1750.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]; `drivers/payload/w25q64.c`
 
 ### 3. **Control System** (`src/control/`)
 - **EKF (7-State Quaternion)**: `x = [q0, q1, q2, q3, bx, by, bz]` — quaternion attitude + 3 gyro biases
@@ -151,7 +157,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 ### 6. **FreeRTOS Task Layer** (`src/tasks/`)
 | Task | Rate | Priority | Stack | Notes |
 |------|------|----------|-------|-------|
-| SensorRead | 10 Hz | IDLE+4 (4) | 2048 words | IMU + EKF fusion + temp |
+| SensorRead | 10 Hz | IDLE+4 (4) | 2048 words | IMU + EKF fusion + temp + humidity + light (BH1750) |
 | AttitudeControl | 10 Hz | IDLE+3 (3) | 2048 words | LQR/PID dispatch + RK2 dynamics |
 | Telemetry | 1 Hz | IDLE+2 (2) | 2048 words | CSP packet TX |
 | Command | Event | IDLE+2 (2) | 2048 words | CSP port 20, uplink cmds |
@@ -336,12 +342,13 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 2. **Momentum Dumping**: Automated de-saturation strategy for reaction wheels.
 3. **Redundancy**: Dual-sensor voting, graceful degradation.
 4. **Safety**: Autonomous safe-mode, watchdog + supervised shutdown.
+5. **Light Sensor Navigation**: Use BH1750 for eclipse detection (lux < 10 = Earth shadow) and sun acquisition mode.
 
 ---
 
-**Last Updated**: 2026-04-08
+**Last Updated**: 2026-04-11
 **Author**: OBC Development Team
-**Status**: Phase 8 (Full Testing) — W25Q64 Flash Driver Complete
+**Status**: Phase 8 (Full Testing) — BH1750 Light Sensor Added
 
 ### Documentation Discrepancies Fixed (2026-03-20)
 1. FreeRTOS SMP: **Single-core mode** (`configNUMBER_OF_CORES=1`), dual-core disabled pending boot stabilization

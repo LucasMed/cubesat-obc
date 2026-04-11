@@ -35,6 +35,9 @@ typedef struct
   bool imu_ekf_valid;        /**< EKF estimate is converged and fresh */
   bool mag_available;        /**< Magnetometer detected during boot   */
   bool mag_valid;            /**< Magnetometer data is fresh          */
+  float lux;                 /**< Illuminance [lux], -1 if N/A       */
+  bool lux_valid;            /**< lux data is fresh and valid        */
+  bool lux_available;        /**< BH1750 detected during boot        */
   float radiation_dose;      /**< Radiation dose (placeholder unit)   */
   uint16_t image_count;      /**< Number of images stored on SD       */
   bool payload_rail_enabled; /**< Status of 3.3V/5V payload rail     */
