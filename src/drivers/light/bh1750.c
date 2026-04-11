@@ -75,7 +75,7 @@ bool bh1750_init(uint8_t addr)
 
 bool bh1750_is_present(uint8_t addr)
 {
-  /* Trigger a measurement and try to read back */
+  /* Trigger a measurement using write, then read */
   uint8_t cmd = BH1750_CMD_OT_H_RES2;
   uint8_t data[2];
 
@@ -93,7 +93,7 @@ bool bh1750_is_present(uint8_t addr)
     return false;
   }
 
-  /* Plausibility check: raw value must be in valid range */
+  /* Plausibility check */
   uint16_t raw = ((uint16_t)data[0] << 8) | data[1];
   if (raw == 0 || raw == 0xFFFF)
   {
