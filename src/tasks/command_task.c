@@ -32,6 +32,7 @@
   #include "hardware/watchdog.h"
   #include "pico/stdlib.h"
   #include "pico_pins.h"
+  #include "drivers/i2c_interface.h"
 #endif
 
 #ifdef PICO_BUILD
@@ -163,6 +164,14 @@ static void process_text_command(const char *cmd)
       snprintf(buf, sizeof(buf), "GPS: no fix sats=%d\r\n", sats);
       uart_puts(uart1, buf);
     }
+  }
+  else if (strncmp(cmd, "I2CSCAN", 7) == 0)
+  {
+    int found = i2c_bus_scan(0x03, 0x77);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "I2C: found %d device(s)\r\n", found);
+    uart_puts(uart1, buf);
+    printf("[command_task] Text command: I2CSCAN\r\n");
   }
   else
   {
