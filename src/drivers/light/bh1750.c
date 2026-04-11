@@ -50,22 +50,16 @@ bool bh1750_init(uint8_t addr)
     return false;
   }
 
-  /* Wait for sensor to be ready after power-on/reset (first measurement is slower) */
+  /* Wait for sensor to be ready after power-on/reset */
 #ifdef PICO_BUILD
-  sleep_ms(120);
+  sleep_ms(180);
 #else
   /* Host: no delay needed */
 #endif
 
-  /* Verify sensor is present */
-  if (!bh1750_is_present(s_bh1750_addr))
-  {
-#ifdef PICO_BUILD
-    printf("bh1750: not detected at 0x%02X\n", s_bh1750_addr);
-#endif
-    return false;
-  }
-
+  /* BH1750 doesn't have a readable ID register, so we assume it's present
+   * if the power-on and reset commands succeeded. The sensor_read_task
+   * will handle read failures gracefully. */
 #ifdef PICO_BUILD
   printf("bh1750: Initialized at 0x%02X\n", s_bh1750_addr);
 #endif
