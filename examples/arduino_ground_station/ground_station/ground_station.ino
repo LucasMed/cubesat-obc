@@ -16,7 +16,7 @@ void setup()
   HC12.begin(9600);
 
   Serial.println("=== Ground Station Ready ===");
-  Serial.println("Commands: REBOOT|STATUS|ECHO|CAPTURE|MODE=1|2|3|GPS|FAULTS|HELP");
+  Serial.println("Commands: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|HELP|I2CSCAN|RTC_TEST");
 }
 
 void loop()
@@ -97,7 +97,8 @@ void parseTelemetry(String msg)
   bool temp_ok = (flags & 0x02) != 0;
   bool humidity_ok = (flags & 0x04) != 0;
   bool lux_ok = (flags & 0x08) != 0;
-  int energy_state = (flags >> 3) & 0x07;
+  bool rtc_ok = (flags & 0x10) != 0;
+  int energy_state = (flags >> 5) & 0x07;
 
   // Extraer GPS
   float gps_lat = getValue(msg, "gps_lat=").toFloat();
@@ -106,6 +107,7 @@ void parseTelemetry(String msg)
   int gps_valid = getValue(msg, "gps_valid=").toInt();
   int sats = getValue(msg, "sats=").toInt();
   float lux = getValue(msg, "lux=").toFloat();
+  unsigned long rtc = getValue(msg, "rtc=").toInt();
 
   // Mostrar
   Serial.print("Mode=");
@@ -126,6 +128,8 @@ void parseTelemetry(String msg)
   Serial.print("%");
   Serial.print(" Lux=");
   Serial.print(lux_ok ? lux : -1, 1);
+  Serial.print(" RTC=");
+  Serial.print(rtc_ok ? rtc : 0);
   Serial.print(" Energy=");
   Serial.print(energy_state);
   Serial.print(" GPS=");

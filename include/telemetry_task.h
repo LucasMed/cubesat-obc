@@ -21,7 +21,8 @@ typedef struct __attribute__((packed))
   uint8_t gps_valid;       // 1 if GPS fix valid
   uint8_t gps_satellites;  // Number of satellites in fix
   float lux;               // Illuminance [lux]
-  uint8_t flags;  // Bit 0: imu_valid, Bit 1: temp_valid, Bit 2: humidity_valid, Bit 3: lux_valid
+  uint32_t rtc_timestamp;  // Unix epoch seconds (DS3231)
+  uint8_t flags;  // Bit 0: imu_valid, Bit 1: temp_valid, Bit 2: humidity_valid, Bit 3: lux_valid, Bit 4: rtc_valid
 } csp_telemetry_packet_t;
 
 void vTelemetryTask(void *pvParameters);

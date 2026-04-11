@@ -209,6 +209,22 @@ void data_layer_set_lux_avail(bool lux)
   dl_unlock();
 }
 
+void data_layer_write_rtc(uint32_t timestamp)
+{
+  dl_lock();
+  g_snapshot.state.rtc_timestamp = timestamp;
+  g_snapshot.state.rtc_valid = (timestamp > 0);
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_set_rtc_avail(bool rtc)
+{
+  dl_lock();
+  g_snapshot.state.rtc_available = rtc;
+  dl_unlock();
+}
+
 void data_layer_write_radiation(float dose)
 {
   dl_lock();

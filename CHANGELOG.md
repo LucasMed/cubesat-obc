@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **DS3231 RTC**: Real-time clock with battery backup (I2C 0x68, ±2 ppm accuracy)
+  - Driver: `include/ds3231.h`, `src/drivers/rtc/ds3231.c`, `src/drivers/rtc/ds3231_stub.c`
+  - Integration: Data layer, system state with `rtc_timestamp` (Unix epoch), `rtc_valid`, `rtc_available`
+  - Telemetry: Added `rtc_timestamp` field to CSP packet, updated flags (bit 4 = rtc_valid)
+  - Debug: Added `RTC_TEST` command to read and display RTC time
 - **BH1750 Light Sensor**: Digital illuminance sensor driver (I2C 0x23, 0.5 lux resolution, 16ms measurement)
   - Driver: `include/bh1750.h`, `src/drivers/light/bh1750.c`, `src/drivers/light/bh1750_stub.c`
   - Integration: Data layer, system state, telemetry packet with `lux` field

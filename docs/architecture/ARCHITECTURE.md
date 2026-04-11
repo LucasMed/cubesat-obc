@@ -67,6 +67,11 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
 |                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
 |                         | ADDR         | GND            | 3, 8, 13, ...        | Address 0x23 (default) |
+| **DS3231 (RTC)**       | SDA          | GPIO4          | 6                    | I2C0 SDA (shared)   |
+|                         | SCL          | GPIO5          | 7                    | I2C0 SCL (shared)   |
+|                         | VCC          | 3V3            | 36 or 39             | Power               |
+|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VBAT         | -              | -                    | CR2032 battery backup |
 | **GPS (NEO-7M)**       | TX           | GPIO1          | 7                    | UART0 RX (Pico)     |
 |                         | RX           | GPIO0          | 6                    | UART0 TX (Pico)     |
 |                         | VCC          | 3V3            | 36 or 39             | Power               |
@@ -107,6 +112,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **IMU Driver** (MPU6050): 6-DOF accelerometer + gyroscope via I2C
 - **Temperature/Humidity Sensor** (SHT31): I2C temperature + humidity with CRC-8 validation
 - **Light Sensor** (BH1750): Digital illuminance sensor via I2C (0x23 default, 0.5 lux resolution)
+- **RTC** (DS3231): Real-time clock with battery backup via I2C (0x68, ±2 ppm accuracy)
 - **Power Monitor**: Battery voltage via ADC
 - **Magnetometer Driver** — **EM baseline: QMC5883L (clone)** detected at I2C addr `0x2C`;
   driver auto-detects HMC5883L (0x1E) or QMC5883L (0x0D/0x2C).
@@ -119,7 +125,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
   - CS pin: GPIO7
   - Used for telemetry logs, event storage
 - **Design Rationale**: Hardware abstraction layer (HAL) pattern—easy to swap sensors
-- **Files**: `drivers/imu/mpu6050.c`, `drivers/env/sht31.c`, `drivers/light/bh1750.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]; `drivers/payload/w25q64.c`
+- **Files**: `drivers/imu/mpu6050.c`, `drivers/env/sht31.c`, `drivers/light/bh1750.c`, `drivers/rtc/ds3231.c`, `drivers/mag/hmc5883l.c` [EM]; `drivers/mag/lis3mdl.c` [CDR scope, not yet created]; `drivers/payload/w25q64.c`
 
 ### 3. **Control System** (`src/control/`)
 - **EKF (7-State Quaternion)**: `x = [q0, q1, q2, q3, bx, by, bz]` — quaternion attitude + 3 gyro biases
@@ -157,7 +163,7 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 ### 6. **FreeRTOS Task Layer** (`src/tasks/`)
 | Task | Rate | Priority | Stack | Notes |
 |------|------|----------|-------|-------|
-| SensorRead | 10 Hz | IDLE+4 (4) | 2048 words | IMU + EKF fusion + temp + humidity + light (BH1750) |
+| SensorRead | 10 Hz | IDLE+4 (4) | 2048 words | IMU + EKF fusion + temp + humidity + light (BH1750) + RTC (1 Hz) |
 | AttitudeControl | 10 Hz | IDLE+3 (3) | 2048 words | LQR/PID dispatch + RK2 dynamics |
 | Telemetry | 1 Hz | IDLE+2 (2) | 2048 words | CSP packet TX |
 | Command | Event | IDLE+2 (2) | 2048 words | CSP port 20, uplink cmds |
@@ -348,7 +354,7 @@ See [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) for requirements-to-tests m
 
 **Last Updated**: 2026-04-11
 **Author**: OBC Development Team
-**Status**: Phase 8 (Full Testing) — BH1750 Light Sensor Added
+**Status**: Phase 9 — DS3231 RTC Added (BH1750 verified on hardware, pending RTC hardware verification)
 
 ### Documentation Discrepancies Fixed (2026-03-20)
 1. FreeRTOS SMP: **Single-core mode** (`configNUMBER_OF_CORES=1`), dual-core disabled pending boot stabilization

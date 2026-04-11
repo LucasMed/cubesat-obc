@@ -188,6 +188,24 @@ extern "C"
   void data_layer_set_lux_avail(bool lux);
 
   /**
+   * @brief Update RTC timestamp in the shared snapshot.
+   *
+   * @param timestamp Unix epoch seconds, or 0 if not available.
+   *
+   * Sets @c rtc_valid = true if timestamp > 0.
+   */
+  void data_layer_write_rtc(uint32_t timestamp);
+
+  /**
+   * @brief Set RTC hardware availability flag.
+   *
+   * Called once during boot after DS3231 detection.
+   *
+   * @param rtc true if the DS3231 was detected on the I2C bus.
+   */
+  void data_layer_set_rtc_avail(bool rtc);
+
+  /**
    * @brief Update radiation dose in the shared snapshot.
    *
    * @param dose  Radiation dose (placeholder units).

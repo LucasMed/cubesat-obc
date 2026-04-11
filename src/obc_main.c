@@ -21,6 +21,7 @@
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
+#include "ds3231.h"
 #include "eps.h"
 #include "fault_manager.h"
 #include "gps_driver.h"
@@ -129,13 +130,15 @@ static void vStartupTask(void *pvParameters)
   int mag_res = hmc5883l_init();
   bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
   bool bh1750_res = bh1750_init(BH1750_ADDR_DEFAULT);
+  bool ds3231_res = ds3231_init();
   system_state_set_available(imu_res == 0, temp_res == 0);
   data_layer_set_mag_avail(mag_res == 0);
   data_layer_set_lux_avail(bh1750_res);
-  printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s\r\n",
+  data_layer_set_rtc_avail(ds3231_res);
+  printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s  RTC: %s\r\n",
          imu_res == 0 ? "OK" : "not found", temp_res == 0 ? "OK" : "not found",
          mag_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",
-         bh1750_res ? "OK" : "not found");
+         bh1750_res ? "OK" : "not found", ds3231_res ? "OK" : "not found");
   fflush(stdout);
 
   printf("  gps_init...\r\n");

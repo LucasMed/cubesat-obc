@@ -24,13 +24,15 @@
  *   bit 1 : temp_valid
  *   bit 2 : humidity_valid
  *   bit 3 : lux_valid
- *   bits[5:3] : energy_state (ENERGY_NOMINAL=0 .. ENERGY_EMERGENCY=3)
+ *   bit 4 : rtc_valid
+ *   bits[7:5] : energy_state (ENERGY_NOMINAL=0 .. ENERGY_EMERGENCY=3)
  */
 #define TLM_FLAG_IMU_VALID (1u << 0)
 #define TLM_FLAG_TEMP_VALID (1u << 1)
 #define TLM_FLAG_HUMIDITY_VALID (1u << 2)
 #define TLM_FLAG_LUX_VALID (1u << 3)
-#define TLM_FLAG_ENERGY_SHIFT 3u
+#define TLM_FLAG_RTC_VALID (1u << 4)
+#define TLM_FLAG_ENERGY_SHIFT 5u
 
 // Core logic for telemetry (independent of FreeRTOS task loop)
 void vTelemetryTask_Step(void)
@@ -72,6 +74,10 @@ void vTelemetryTask_Step(void)
   {
     tlm->flags |= TLM_FLAG_LUX_VALID;
   }
+  if (snap.state.rtc_valid)
+  {
+    tlm->flags |= TLM_FLAG_RTC_VALID;
+  }
   tlm->flags |= (uint8_t)((snap.energy & 0x07u) << TLM_FLAG_ENERGY_SHIFT);
 
   /* Full ADCS telemetry only when not in FM_SAFE.
@@ -110,6 +116,9 @@ void vTelemetryTask_Step(void)
   /* Light sensor */
   tlm->lux = snap.state.lux;
 
+  /* RTC timestamp */
+  tlm->rtc_timestamp = snap.state.rtc_timestamp;
+
   packet->length = sizeof(csp_telemetry_packet_t);
 
   // 3. Send over CSP port connection-less
@@ -117,12 +126,12 @@ void vTelemetryTask_Step(void)
 
 #ifdef PICO_BUILD
   // Send plain text over UART1 (HC-12) for easy debugging
-  char buf[200];
+  char buf[220];
   int len = snprintf(
       buf, sizeof(buf),
-      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f lux=%.1f flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d",
+      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f lux=%.1f rtc=%lu flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d",
       snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->humidity,
-      tlm->lux, tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
+      tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
       tlm->gps_satellites);
   uart_puts(uart1, buf);
   uart_puts(uart1, "\r\n");

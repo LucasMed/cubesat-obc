@@ -1,7 +1,9 @@
 #include "command_task.h"
 
 #include "FreeRTOS.h"
+#include "bh1750.h"
 #include "data_layer.h"
+#include "ds3231.h"
 #include "fault_manager.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
@@ -99,7 +101,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "MODE=", 5) == 0)
   {
     int mode = atoi(cmd + 5);
-    if (mode >= 1 && mode <= 3)
+    if (mode >= 0 && mode <= 3)
     {
       char buf[32];
       snprintf(buf, sizeof(buf), "MODE=%d OK\r\n", mode);
@@ -112,9 +114,28 @@ static void process_text_command(const char *cmd)
       uart_puts(uart1, "MODE INVALID\r\n");
     }
   }
+  else if (strncmp(cmd, "MODE ", 5) == 0)
+  {
+    /* Also support "MODE 1" (space instead of =) */
+    int mode = atoi(cmd + 5);
+    if (mode >= 0 && mode <= 3)
+    {
+      char buf[32];
+      snprintf(buf, sizeof(buf), "MODE=%d OK\r\n", mode);
+      uart_puts(uart1, buf);
+      printf("[command_task] Text command: MODE %d\r\n", mode);
+      fmm_request_transition((flight_mode_t)mode);
+    }
+    else
+    {
+      uart_puts(uart1, "MODE INVALID\r\n");
+    }
+  }
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
-    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP\r\n");
+    uart_puts(
+        uart1,
+        "CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -156,6 +177,22 @@ static void process_text_command(const char *cmd)
                (unsigned)stats->sentences_received, (unsigned)stats->checksum_errors,
                (unsigned)stats->fixes_invalid, (unsigned)stats->fixes_valid,
                (unsigned)stats->buffer_overflows);
+      uart_puts(uart1, buf);
+    }
+    else if (strncmp(cmd, "RTC_TEST", 8) == 0)
+    {
+      char buf[96];
+      uint16_t year;
+      uint8_t month, day, hour, minute, second;
+      if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
+      {
+        snprintf(buf, sizeof(buf), "RTC: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day, hour,
+                 minute, second);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "RTC: read failed\r\n");
+      }
       uart_puts(uart1, buf);
     }
     else
