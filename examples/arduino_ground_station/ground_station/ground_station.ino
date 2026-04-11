@@ -96,6 +96,7 @@ void parseTelemetry(String msg)
   bool imu_ok = (flags & 0x01) != 0;
   bool temp_ok = (flags & 0x02) != 0;
   bool humidity_ok = (flags & 0x04) != 0;
+  bool lux_ok = (flags & 0x08) != 0;
   int energy_state = (flags >> 3) & 0x07;
 
   // Extraer GPS
@@ -104,6 +105,7 @@ void parseTelemetry(String msg)
   float gps_alt = getValue(msg, "gps_alt=").toFloat();
   int gps_valid = getValue(msg, "gps_valid=").toInt();
   int sats = getValue(msg, "sats=").toInt();
+  float lux = getValue(msg, "lux=").toFloat();
 
   // Mostrar
   Serial.print("Mode=");
@@ -122,6 +124,8 @@ void parseTelemetry(String msg)
   Serial.print(" Hum=");
   Serial.print(humidity_ok ? humidity : -1, 1);
   Serial.print("%");
+  Serial.print(" Lux=");
+  Serial.print(lux_ok ? lux : -1, 1);
   Serial.print(" Energy=");
   Serial.print(energy_state);
   Serial.print(" GPS=");
