@@ -1,12 +1,12 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-04-08
-**Current Phase**: Phase 8 — Full Testing (branch `feature/phase8-full-testing`)
-**Current Branch**: `feature/w25q64-flash-driver`
+**Last Updated**: 2026-04-11
+**Current Phase**: Phase 8 — Full Testing (branch `feature/bh1750-light-sensor`)
+**Current Branch**: `feature/bh1750-light-sensor`
 
 ---
 
-## Hardware Validation Complete ✅ (2026-04-08)
+## Hardware Validation Complete ✅ (2026-04-11)
 
 ### Verified Working Components
 
@@ -15,11 +15,13 @@
 | **MPU-6050/6500** | I2C0 (GPIO4/5) | ✅ OK | Detected ID 0x70 (MPU-6500 variant) |
 | **Temperature** | Internal ADC | ✅ OK | Integrated in MPU-6050 |
 | **QMC5883L (Mag)** | I2C0 (GPIO4/5) | ✅ OK | Clone detected at 0x2C (HMC5883L driver updated) |
+| **SHT31 (Temp/Hum)** | I2C0 (GPIO4/5) | ✅ OK | 0x44, CRC-8 validation |
+| **BH1750 (Light)** | I2C0 (GPIO4/5) | ✅ OK | 0x23, 0.5 lux resolution |
 | **GPS NEO-6M/7M** | UART0 (GPIO0/1) | ✅ OK | 9600 baud, fix obtained |
 | **HC-12 Radio** | UART1 (GPIO8/9) | ✅ OK | 9600 baud, bidirectional |
 | **W25Q64 (Flash)** | SPI0 (GPIO7 CS) | ✅ OK | 8MB, JEDEC ID: M=EF, T=40, C=17 |
 | **Telemetry** | HC-12 TX | ✅ OK | Text format working |
-| **Commands** | HC-12 RX | ✅ OK | REBOOT, MODE, ECHO, CAPTURE |
+| **Commands** | HC-12 RX | ✅ OK | REBOOT, MODE, ECHO, CAPTURE, I2CSCAN, BH1750_TEST |
 | **Camera** | SPI0 | ❌ Not connected | OV2640 pending |
 | **Reaction Wheels** | PWM | ❌ Not connected | Pending |
 | **Magnetorquers** | PWM/GPIO | ❌ Not connected | Pending |
