@@ -50,6 +50,13 @@ bool bh1750_init(uint8_t addr)
     return false;
   }
 
+  /* Wait for sensor to be ready after power-on/reset (first measurement is slower) */
+#ifdef PICO_BUILD
+  sleep_ms(120);
+#else
+  /* Host: no delay needed */
+#endif
+
   /* Verify sensor is present */
   if (!bh1750_is_present(s_bh1750_addr))
   {

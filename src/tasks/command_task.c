@@ -28,12 +28,12 @@
 #endif
 
 #ifdef PICO_BUILD
+  #include "bh1750.h"
+  #include "drivers/i2c_interface.h"
   #include "hardware/uart.h"
   #include "hardware/watchdog.h"
   #include "pico/stdlib.h"
   #include "pico_pins.h"
-  #include "drivers/i2c_interface.h"
-  #include "bh1750.h"
 #endif
 
 #ifdef PICO_BUILD
@@ -187,12 +187,12 @@ static void process_text_command(const char *cmd)
     char buf[96];
     snprintf(buf, sizeof(buf), "BH1750: testing 0x%02X...\r\n", addr);
     uart_puts(uart1, buf);
-    
+
     // Try to read with OT_H_RES2 command
     uint8_t cmd_byte = BH1750_CMD_OT_H_RES2;
     uint8_t data[2];
     int ret = i2c_bus_write_read(addr, &cmd_byte, 1, data, 2);
-    
+
     if (ret == 0)
     {
       uint16_t raw = ((uint16_t)data[0] << 8) | data[1];
