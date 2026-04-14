@@ -266,11 +266,14 @@ bool gps_init(void)
   irq_set_enabled(UART0_IRQ, true);
   uart_set_irq_enables(uart0, true, false);
 
-  // Perform GPS cold start to clear stale ephemeris data
-  // This helps when the module has old position data that delays new fix
+  /* Perform GPS cold start (GNSS stop + restart without clearing ephemeris).
+   * Cold start is gentler than factory reset: it clears in-memory state but keeps
+   * stored ephemeris, allowing faster TTFF (time-to-first-fix) on next startup.
+   * Factory reset would wipe everything, requiring 20-30 min to reacquire sats. */
   sleep_ms(100);  // Wait for GPS module to be ready
-  gps_factory_reset();
-  printf("GPS: Cold start sent\n");
+  gps_perform_cold_start();
+  sleep_ms(500);  // Allow GNSS restart sequence to complete
+  printf("GPS: Cold start sent (ephemeris preserved)\n");
 #endif
 
   nmea_buffer_clear();
