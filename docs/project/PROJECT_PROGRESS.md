@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-04-11
-**Current Phase**: Phase 8 — Full Testing (branch `feature/bh1750-light-sensor`)
-**Current Branch**: `feature/bh1750-light-sensor`
+**Last Updated**: 2026-04-14
+**Current Phase**: Phase 9 — DS3231 RTC Integration (branch `feature/ds3231-rtc`)
+**Current Branch**: `feature/ds3231-rtc`
 
 ---
 

@@ -35,5 +35,5 @@
 
 ## Phase 7: Documentation
 
-- [ ] 7.1 Update `CHANGELOG.md` (DS3231 RTC driver, telemetry, debug command)
-- [ ] 7.2 Update `docs/architecture/ARCHITECTURE.md` (RTC subsystem documentation)
+- [x] 7.1 Update `CHANGELOG.md` (DS3231 RTC driver, telemetry, debug command)
+- [x] 7.2 Update `docs/architecture/ARCHITECTURE.md` (RTC subsystem documentation)
