@@ -20,7 +20,8 @@
 #endif
 
 // MPU6050 Registers
-#define MPU6050_ADDR 0x68
+// NOTE: AD0 pin is pulled HIGH to 3V3, so I2C address is 0x69 (not default 0x68)
+#define MPU6050_ADDR 0x69
 #define MPU6050_PWR_MGMT_1 0x6B
 #define MPU6050_ACCEL_XOUT_H 0x3B
 #define MPU6050_GYRO_XOUT_H 0x43

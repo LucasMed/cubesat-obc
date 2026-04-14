@@ -101,7 +101,7 @@ int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
     if (ret >= 0)
     {
       printf("    Found device at 0x%02X\r\n", addr);
-      
+
       /* Also report to UART1 (HC-12 radio) so remote user can see scan results
        * on telemetry link without needing access to USB console. */
 #ifdef PICO_BUILD
@@ -109,7 +109,7 @@ int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
       snprintf(buf, sizeof(buf), "  0x%02X\r\n", addr);
       uart1_puts_safe(buf);
 #endif
-      
+
       found++;
     }
   }
