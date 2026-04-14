@@ -67,6 +67,10 @@ static void vHeartbeatTask(void *pvParameters)
            (unsigned long)xTaskGetTickCount());
     printf("  HWM Heartbeat=%lu (used=%lu)\r\n", (unsigned long)uxTaskGetStackHighWaterMark(NULL),
            (unsigned long)(2048u - uxTaskGetStackHighWaterMark(NULL)));
+
+    /* Debug: send periodic message to HC-12 to verify TX is working */
+    // uart_puts(uart1, "[CMD] PING OK\r\n");  // REMOVED: was blocking command reception
+
     fflush(stdout); /* guarantee output even if pico short-circuit misbehaves */
     tick++;
     vTaskDelay(pdMS_TO_TICKS(2000));

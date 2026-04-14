@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #ifdef PICO_BUILD
+  #include "../drivers/uart/pico_usart.h"
   #include "hardware/uart.h"
   #include "pico/time.h"
   #include "pico_pins.h"
@@ -129,12 +130,11 @@ void vTelemetryTask_Step(void)
   char buf[220];
   int len = snprintf(
       buf, sizeof(buf),
-      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f lux=%.1f rtc=%lu flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d",
+      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f lux=%.1f rtc=%lu flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d\r\n",
       snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->humidity,
-      tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags, tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
-      tlm->gps_satellites);
-  uart_puts(uart1, buf);
-  uart_puts(uart1, "\r\n");
+      tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags, tlm->gps_lat, tlm->gps_lon,
+      tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites);
+  uart1_puts_safe(buf);
 #endif
 
   printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] flags=0x%02X\n", snap.mode, tlm->attitude[0],

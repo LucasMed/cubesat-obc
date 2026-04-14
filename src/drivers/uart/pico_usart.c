@@ -54,8 +54,8 @@ int csp_usart_open(const csp_usart_conf_t *conf, csp_usart_callback_t rx_callbac
   // Hardcoded pins for now (Task 3.2 strategy)
   if (driver_instance.uart_inst == uart1)
   {
-    gpio_set_function(4, GPIO_FUNC_UART);
-    gpio_set_function(5, GPIO_FUNC_UART);
+    gpio_set_function(8, GPIO_FUNC_UART);
+    gpio_set_function(9, GPIO_FUNC_UART);
   }
   else
   {
@@ -70,12 +70,13 @@ int csp_usart_open(const csp_usart_conf_t *conf, csp_usart_callback_t rx_callbac
   // Create mutex for thread-safe writes
   driver_instance.lock = xSemaphoreCreateMutex();
 
-  // Create RX task
-  if (xTaskCreate(uart_rx_task, "UART_RX", UART_RX_TASK_STACK_SIZE, &driver_instance,
-                  UART_RX_TASK_PRIORITY, &driver_instance.rx_task_handle) != pdPASS)
-  {
-    return CSP_ERR_NOMEM;
-  }
+  // DISABLED: uart_rx_task conflicts with command_task's uart1_listen()
+  // If needed later, use only the CSP callback path
+  // if (xTaskCreate(uart_rx_task, "UART_RX", UART_RX_TASK_STACK_SIZE, &driver_instance,
+  //                 UART_RX_TASK_PRIORITY, &driver_instance.rx_task_handle) != pdPASS)
+  // {
+  //   return CSP_ERR_NOMEM;
+  // }
 
   if (fd)
   {
@@ -120,6 +121,56 @@ void csp_usart_unlock(void *driver_data)
   {
     xSemaphoreGive(driver_instance.lock);
   }
+}
+
+/**
+ * @brief Thread-safe wrapper for uart_puts to UART1
+ * Protects against concurrent writes from telemetry and commands
+ */
+void uart1_puts_safe(const char *str)
+{
+  if (driver_instance.lock)
+  {
+    xSemaphoreTake(driver_instance.lock, portMAX_DELAY);
+  }
+
+  uart_puts(uart1, str);
+
+  if (driver_instance.lock)
+  {
+    xSemaphoreGive(driver_instance.lock);
+  }
+}
+
+/**
+ * @brief Acquire UART1 lock for atomic multi-write operations
+ * Use with uart1_write_unsafe() and uart1_release_lock()
+ */
+void uart1_acquire_lock(void)
+{
+  if (driver_instance.lock)
+  {
+    xSemaphoreTake(driver_instance.lock, portMAX_DELAY);
+  }
+}
+
+/**
+ * @brief Release UART1 lock
+ */
+void uart1_release_lock(void)
+{
+  if (driver_instance.lock)
+  {
+    xSemaphoreGive(driver_instance.lock);
+  }
+}
+
+/**
+ * @brief Write to UART1 WITHOUT acquiring lock (use within uart1_acquire_lock/uart1_release_lock)
+ */
+void uart1_write_unsafe(const char *str)
+{
+  uart_puts(uart1, str);
 }
 
 static void uart_rx_task(void *pvParameters)

@@ -38,7 +38,7 @@ typedef struct
   float lux;                 /**< Illuminance [lux], -1 if N/A       */
   bool lux_valid;            /**< lux data is fresh and valid        */
   bool lux_available;        /**< BH1750 detected during boot        */
-  uint32_t rtc_timestamp;   /**< Unix epoch seconds, 0 if N/A      */
+  uint32_t rtc_timestamp;    /**< Unix epoch seconds, 0 if N/A      */
   bool rtc_valid;            /**< RTC data is fresh and valid        */
   bool rtc_available;        /**< DS3231 detected during boot        */
   float radiation_dose;      /**< Radiation dose (placeholder unit)   */

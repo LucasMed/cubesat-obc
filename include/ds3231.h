@@ -77,8 +77,8 @@ extern "C"
    * @param second Pointer to store second (0-59). Must not be NULL.
    * @return true on success, false on failure (I2C error or invalid data)
    */
-  bool ds3231_read_time(uint16_t *year, uint8_t *month, uint8_t *day,
-                        uint8_t *hour, uint8_t *minute, uint8_t *second);
+  bool ds3231_read_time(uint16_t *year, uint8_t *month, uint8_t *day, uint8_t *hour,
+                        uint8_t *minute, uint8_t *second);
 
   /**
    * @brief Set time in RTC.
@@ -94,8 +94,8 @@ extern "C"
    * @param second Second (0-59)
    * @return true on success, false on failure
    */
-  bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day,
-                       uint8_t hour, uint8_t minute, uint8_t second);
+  bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute,
+                       uint8_t second);
 
   /**
    * @brief Convert RTC time to Unix timestamp.
@@ -111,8 +111,8 @@ extern "C"
    * @param second Second (0-59)
    * @return Unix timestamp (seconds since 1970-01-01 00:00:00 UTC), or 0 on error
    */
-  uint32_t ds3231_to_epoch(uint16_t year, uint8_t month, uint8_t day,
-                            uint8_t hour, uint8_t minute, uint8_t second);
+  uint32_t ds3231_to_epoch(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute,
+                           uint8_t second);
 
 #ifdef __cplusplus
 }

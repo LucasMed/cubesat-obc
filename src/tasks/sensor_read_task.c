@@ -19,10 +19,10 @@
 #include "bh1750.h"
 #include "config.h"
 #include "data_layer.h"
-#include "ds3231.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
+#include "ds3231.h"
 #include "ekf.h"
 #include "sht31.h"
 #include "task.h"
@@ -141,7 +141,7 @@ void vSensorReadTask_Step(void)
   if (snap.state.rtc_available)
   {
     static uint8_t rtc_read_counter = 0;
-    if (++rtc_read_counter >= 10)  /* 10 Hz task → 1 Hz RTC read */
+    if (++rtc_read_counter >= 10) /* 10 Hz task → 1 Hz RTC read */
     {
       rtc_read_counter = 0;
       uint16_t year;
