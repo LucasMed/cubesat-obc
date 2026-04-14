@@ -38,7 +38,7 @@ int mpu6050_init(void)
    * This brings the device from an unknown state into a predictable one.
    * Spec: Reset takes max 100ms; use 50ms conservative delay. */
   data[0] = MPU6050_PWR_MGMT_1;
-  data[1] = 0x80u;  /* Set DEVICE_RESET bit (PWR_MGMT_1[7] = 1) */
+  data[1] = 0x80u; /* Set DEVICE_RESET bit (PWR_MGMT_1[7] = 1) */
   if (i2c_bus_write(MPU6050_ADDR, data, 2u) < 0)
   {
     (void)printf("mpu6050: Failed to reset device\n");
