@@ -1,11 +1,14 @@
 #include <SoftwareSerial.h>
 
-// Pines en el Nano
 const byte HC12RxdPin = 2;
 const byte HC12TxdPin = 3;
 const byte HC12SetPin = 9;
 
 SoftwareSerial HC12(HC12RxdPin, HC12TxdPin);
+
+#define MODE_NORMAL 0
+#define MODE_AT 1
+byte currentMode = MODE_NORMAL;
 
 void setup()
 {
@@ -16,28 +19,55 @@ void setup()
   HC12.begin(9600);
 
   Serial.println("=== Ground Station Ready ===");
-  Serial.println("Commands: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|HELP|I2CSCAN|RTC_TEST");
+  Serial.println(" Commands: AT|STATUS|REBOOT|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|HELP");
+  Serial.println(" Para modo AT: escribe 'AT' y presiona Enter");
 }
 
 void loop()
 {
-  // Enviar comandos desde PC a OBC
+  if (currentMode == MODE_AT)
+  {
+    if (Serial.available())
+    {
+      String cmd = Serial.readStringUntil('\n');
+      cmd.trim();
+      if (cmd.length() > 0)
+      {
+        HC12.println(cmd);
+        Serial.println("-> " + cmd);
+      }
+    }
+    if (HC12.available())
+    {
+      Serial.write(HC12.read());
+    }
+    return;
+  }
+
   if (Serial.available())
   {
     String comando = Serial.readStringUntil('\n');
     comando.trim();
     if (comando.length() > 0)
     {
-      HC12.println(comando);
-      Serial.println("-> Enviado: " + comando);
+      if (comando == "AT")
+      {
+        enterAtMode();
+      }
+      else
+      {
+        HC12.println(comando);
+        Serial.println("-> Enviado: " + comando);
+      }
     }
   }
 
-  // Recibir datos desde OBC
   if (HC12.available())
   {
     String recibido = HC12.readStringUntil('\n');
     recibido.trim();
+
+    if (recibido.length() == 0) return;
 
     if (recibido.startsWith("[TLM]"))
     {
@@ -70,24 +100,28 @@ void loop()
   }
 }
 
+void enterAtMode()
+{
+  Serial.println("=== Modo AT ===");
+  digitalWrite(HC12SetPin, LOW);
+  currentMode = MODE_AT;
+  delay(100);
+}
+
 void parseTelemetry(String msg)
 {
-  // Extraer mode
   int posMode = msg.indexOf("mode=");
   int posAtt = msg.indexOf("att=");
   int mode = msg.substring(posMode + 5, msg.indexOf(' ', posMode + 5)).toInt();
 
-  // Extraer actitud
   String attStr = msg.substring(posAtt + 4, msg.indexOf("flags=") - 1);
   float roll = attStr.substring(0, attStr.indexOf(',')).toFloat();
   float pitch = attStr.substring(attStr.indexOf(',') + 1, attStr.lastIndexOf(',')).toFloat();
   float yaw = attStr.substring(attStr.lastIndexOf(',') + 1).toFloat();
 
-  // Extraer temperatura y humedad
   float temp = getValue(msg, "temp=").toFloat();
   float humidity = getValue(msg, "humidity=").toFloat();
 
-  // Extraer flags
   int posFlags = msg.indexOf("flags=");
   int posGps = msg.indexOf("gps_lat=");
   String flagStr = msg.substring(posFlags + 6, posGps - 1);
@@ -100,7 +134,6 @@ void parseTelemetry(String msg)
   bool rtc_ok = (flags & 0x10) != 0;
   int energy_state = (flags >> 5) & 0x07;
 
-  // Extraer GPS
   float gps_lat = getValue(msg, "gps_lat=").toFloat();
   float gps_lon = getValue(msg, "gps_lon=").toFloat();
   float gps_alt = getValue(msg, "gps_alt=").toFloat();
@@ -109,7 +142,6 @@ void parseTelemetry(String msg)
   float lux = getValue(msg, "lux=").toFloat();
   unsigned long rtc = getValue(msg, "rtc=").toInt();
 
-  // Mostrar
   Serial.print("Mode=");
   Serial.print(mode);
   Serial.print(" Roll=");
@@ -150,7 +182,6 @@ void parseTelemetry(String msg)
 
 void parseGpsStatus(String msg)
 {
-  // Formato: GPS: v=1 lat=-31.43210 lon=-64.18123 alt=431.5 s=6 hdop=1.2
   int valid = getValue(msg, "v=").toInt();
   float lat = getValue(msg, "lat=").toFloat();
   float lon = getValue(msg, "lon=").toFloat();
@@ -178,7 +209,6 @@ void parseGpsStatus(String msg)
 
 void parseGpsStats(String msg)
 {
-  // Formato: GPS STATS: rx=1234 chk_err=0 inv=2 valid=45 overflow=0
   unsigned long rx = getValue(msg, "rx=").toInt();
   unsigned long chk_err = getValue(msg, "chk_err=").toInt();
   unsigned long inv = getValue(msg, "inv=").toInt();
@@ -200,7 +230,6 @@ void parseGpsStats(String msg)
 
 void parseSystemStatus(String msg)
 {
-  // Formato: SYSTEM: mode=NOMINAL energy=NOMINAL imu=OK temp=OK mag=FAIL
   String modeStr = getValue(msg, "mode=");
   String energyStr = getValue(msg, "energy=");
   String imuStr = getValue(msg, "imu=");
@@ -222,8 +251,7 @@ void parseSystemStatus(String msg)
 
 void parseFaults(String msg)
 {
-  // Formato: FAULTS: OK
-  String levelStr = getValue(msg, "FAULTS: ");
+  String levelStr = getValue(msg, "ULTS: ");
   Serial.print("FAULTS: ");
   Serial.println(levelStr);
 }
@@ -231,11 +259,9 @@ void parseFaults(String msg)
 String getValue(String msg, String key)
 {
   int pos = msg.indexOf(key);
-  if (pos == -1)
-    return "0";
+  if (pos == -1) return "0";
   int start = pos + key.length();
   int end = msg.indexOf(' ', start);
-  if (end == -1)
-    end = msg.length();
+  if (end == -1) end = msg.length();
   return msg.substring(start, end);
 }
