@@ -31,6 +31,12 @@ int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
   gpio_pull_up(sda_pin);
   gpio_pull_up(scl_pin);
 
+  /* Allow I2C bus to stabilize and sensors to respond to initial bus activity.
+   * Without this, fast probes after initialization can fail on devices like
+   * MPU6050 that are in sleep mode on POR and need I2C bus settle time.
+   * Spec: MPU6050 POR recovery time ~100ms, we use conservative 10ms here. */
+  sleep_ms(10);
+
   return 0;
 }
 

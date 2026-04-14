@@ -12,6 +12,13 @@
  * with log_event() in Phase 7. See MISRA_DEVIATIONS.md §21.6-D4. */
 #include <stdio.h>
 
+#ifdef PICO_BUILD
+  #include "pico/stdlib.h"
+#else
+  /* Host/emulation build: provide a stub delay (no-op) since host is single-threaded */
+  #define sleep_ms(ms) ((void)(ms))
+#endif
+
 // MPU6050 Registers
 #define MPU6050_ADDR 0x68
 #define MPU6050_PWR_MGMT_1 0x6B
@@ -25,6 +32,20 @@
 int mpu6050_init(void)
 {
   uint8_t data[2];
+
+  /* Soft reset the MPU6050 to ensure clean state on startup.
+   * Write 1 to PWR_MGMT_1[7] (DEVICE_RESET) to trigger POR-like reset.
+   * This brings the device from an unknown state into a predictable one.
+   * Spec: Reset takes max 100ms; use 50ms conservative delay. */
+  data[0] = MPU6050_PWR_MGMT_1;
+  data[1] = 0x80u;  /* Set DEVICE_RESET bit (PWR_MGMT_1[7] = 1) */
+  if (i2c_bus_write(MPU6050_ADDR, data, 2u) < 0)
+  {
+    (void)printf("mpu6050: Failed to reset device\n");
+    return -1;
+  }
+  /* Wait for reset to complete */
+  sleep_ms(50);
 
   // Check Who Am I
   uint8_t id;
