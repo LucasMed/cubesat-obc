@@ -196,28 +196,20 @@ static void process_text_command(const char *cmd)
       uart1_puts_safe(buf);
     }
   }
-  else if (strncmp(cmd, "RTC_TEST", 8) == 0)
+else if (strncmp(cmd, "RTC_TEST", 8) == 0)
   {
     char buf[96];
-    uint16_t year;
-    uint8_t month, day, hour, minute, second;
-    printf("[RTC_TEST] Calling ds3231_read_time...\r\n");
+    /* Use data_layer_read() to get RTC from sensor_read_task */
+    dl_snapshot_t snap;
+    data_layer_read(&snap);
 
-#ifdef PICO_BUILD
-    sleep_ms(50);  // Avoid race condition with sensor_read_task
-#endif
-
-    if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
+    if (snap.state.rtc_valid)
     {
-      snprintf(buf, sizeof(buf), "[CMD] RTC: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day,
-               hour, minute, second);
-      printf("[RTC_TEST] Success: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day, hour,
-             minute, second);
+      snprintf(buf, sizeof(buf), "[CMD] RTC: %lu\r\n", snap.state.rtc_timestamp);
     }
     else
     {
-      snprintf(buf, sizeof(buf), "[CMD] RTC: read failed\r\n");
-      printf("[RTC_TEST] Failed\r\n");
+      snprintf(buf, sizeof(buf), "[CMD] RTC: no data\r\n");
     }
     uart1_puts_safe(buf);
   }
@@ -280,33 +272,28 @@ static void process_text_command(const char *cmd)
     }
     uart1_puts_safe(buf);
   }
-  else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
+else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
   {
     char buf[96];
-    float temperature = 0.0f;
-    float humidity = 0.0f;
-    snprintf(buf, sizeof(buf), "[CMD] SHT31: reading...\r\n");
-    uart1_puts_safe(buf);
+    /* Use data_layer_read() to get temperature/humidity from sensor_read_task */
+    dl_snapshot_t snap;
+    data_layer_read(&snap);
 
-  #ifdef PICO_BUILD
-    sleep_ms(50);  // Avoid race condition with sensor_read_task
-  #endif
-
-    if (sht31_read(&temperature, &humidity))
+    if (snap.state.temp_valid)
     {
-      if (humidity >= 0.0f)
+      if (snap.state.humidity_valid)
       {
         snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=%.1f%%\r\n",
-                 (double)temperature, (double)humidity);
+                 (double)snap.state.temp, (double)snap.state.humidity);
       }
       else
       {
-        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=N/A\r\n", (double)temperature);
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=N/A\r\n", (double)snap.state.temp);
       }
     }
     else
     {
-      snprintf(buf, sizeof(buf), "[CMD] SHT31: no response\r\n");
+      snprintf(buf, sizeof(buf), "[CMD] SHT31: no data\r\n");
     }
     uart1_puts_safe(buf);
   }
