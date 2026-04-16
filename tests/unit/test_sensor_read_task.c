@@ -83,6 +83,15 @@ bool bh1750_read(float *lux)
   return false;
 }
 
+/* INA219 stub — returns false so power_available is not set */
+#include "ina219.h"
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool ina219_read_power(ina219_data_t *data)
+{
+  (void)data;
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */

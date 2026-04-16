@@ -7,6 +7,7 @@
 #include "fault_manager.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
+#include "ina219.h"
 #include "payload_task.h"
 #include "system_state.h"
 #include "task.h"
@@ -137,7 +138,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
     uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST\r\n");
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -249,6 +250,27 @@ static void process_text_command(const char *cmd)
     else
     {
       snprintf(buf, sizeof(buf), "[CMD] BH1750: no response (err=%d)\r\n", ret);
+    }
+    uart1_puts_safe(buf);
+  }
+  else if (strncmp(cmd, "POWER_TEST", 10) == 0)
+  {
+    char buf[96];
+    ina219_data_t data;
+    snprintf(buf, sizeof(buf), "[CMD] POWER: reading INA219...\r\n");
+    uart1_puts_safe(buf);
+
+    if (ina219_read_power(&data))
+    {
+      int bus_v = data.bus_voltage_mv;
+      int curr_ma = data.current_ua / 1000;
+      int pow_mw = data.power_uw / 1000;
+      snprintf(buf, sizeof(buf), "[CMD] POWER: V=%d mV, I=%d mA, P=%d mW\r\n", bus_v, curr_ma,
+               pow_mw);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] POWER: read failed\r\n");
     }
     uart1_puts_safe(buf);
   }

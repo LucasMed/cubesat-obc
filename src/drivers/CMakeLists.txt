@@ -33,6 +33,7 @@ if(PICO_BUILD)
         env/sht31.c
         light/bh1750.c
         rtc/ds3231.c
+        power/ina219.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
@@ -42,6 +43,7 @@ else()
         env/sht31_stub.c
         light/bh1750_stub.c
         rtc/ds3231_stub.c
+        power/ina219_stub.c
     )
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)

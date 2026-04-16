@@ -47,6 +47,15 @@ bool sht31_read(float *temperature, float *humidity)
   return false;
 }
 
+/* INA219 stub for sensor_read_task linking */
+#include "ina219.h"
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool ina219_read_power(ina219_data_t *data)
+{
+  (void)data;
+  return false;
+}
+
 /* ========== Test functions ========== */
 
 /* Test: BH1750 init returns true on host stub */

@@ -33,6 +33,7 @@
 #define TLM_FLAG_HUMIDITY_VALID (1u << 2)
 #define TLM_FLAG_LUX_VALID (1u << 3)
 #define TLM_FLAG_RTC_VALID (1u << 4)
+#define TLM_FLAG_POWER_VALID (1u << 6)
 #define TLM_FLAG_ENERGY_SHIFT 5u
 
 // Core logic for telemetry (independent of FreeRTOS task loop)
@@ -79,6 +80,10 @@ void vTelemetryTask_Step(void)
   {
     tlm->flags |= TLM_FLAG_RTC_VALID;
   }
+  if (snap.state.power_valid)
+  {
+    tlm->flags |= TLM_FLAG_POWER_VALID;
+  }
   tlm->flags |= (uint8_t)((snap.energy & 0x07u) << TLM_FLAG_ENERGY_SHIFT);
 
   /* Full ADCS telemetry only when not in FM_SAFE.
@@ -119,6 +124,11 @@ void vTelemetryTask_Step(void)
 
   /* RTC timestamp */
   tlm->rtc_timestamp = snap.state.rtc_timestamp;
+
+  /* Power monitoring (INA219) */
+  tlm->bus_voltage_mv = snap.state.bus_voltage_mv;
+  tlm->current_ma = (int16_t)(snap.state.current_ua / 1000);
+  tlm->power_mw = (int16_t)(snap.state.power_uw / 1000);
 
   packet->length = sizeof(csp_telemetry_packet_t);
 

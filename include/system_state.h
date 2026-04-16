@@ -41,6 +41,11 @@ typedef struct
   uint32_t rtc_timestamp;    /**< Unix epoch seconds, 0 if N/A      */
   bool rtc_valid;            /**< RTC data is fresh and valid        */
   bool rtc_available;        /**< DS3231 detected during boot        */
+  int16_t bus_voltage_mv;    /**< Bus voltage [mV], -1 if N/A       */
+  int32_t current_ua;        /**< Current [µA], 0 if N/A            */
+  int32_t power_uw;          /**< Power [µW], 0 if N/A              */
+  bool power_valid;          /**< Power data is fresh and valid      */
+  bool power_available;      /**< INA219 detected during boot        */
   float radiation_dose;      /**< Radiation dose (placeholder unit)   */
   uint16_t image_count;      /**< Number of images stored on SD       */
   bool payload_rail_enabled; /**< Status of 3.3V/5V payload rail     */

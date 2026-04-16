@@ -206,6 +206,26 @@ extern "C"
   void data_layer_set_rtc_avail(bool rtc);
 
   /**
+   * @brief Update power monitoring data in the shared snapshot.
+   *
+   * @param bus_voltage_mv Bus voltage in millivolts, or -1 if N/A.
+   * @param current_ua Current in microamps, or 0 if N/A.
+   * @param power_uw Power in microwatts, or 0 if N/A.
+   *
+   * Sets @c power_valid = true if bus_voltage_mv >= 0.
+   */
+  void data_layer_write_power(int16_t bus_voltage_mv, int32_t current_ua, int32_t power_uw);
+
+  /**
+   * @brief Set power monitor hardware availability flag.
+   *
+   * Called once during boot after INA219 detection.
+   *
+   * @param power true if the INA219 was detected on the I2C bus.
+   */
+  void data_layer_set_power_avail(bool power);
+
+  /**
    * @brief Update radiation dose in the shared snapshot.
    *
    * @param dose  Radiation dose (placeholder units).

@@ -22,8 +22,11 @@ typedef struct __attribute__((packed))
   uint8_t gps_satellites;  // Number of satellites in fix
   float lux;               // Illuminance [lux]
   uint32_t rtc_timestamp;  // Unix epoch seconds (DS3231)
+  int16_t bus_voltage_mv;  // Bus voltage [mV] (INA219)
+  int16_t current_ma;      // Current [mA] (INA219)
+  int16_t power_mw;        // Power [mW] (INA219)
   uint8_t flags;  // Bit 0: imu_valid, Bit 1: temp_valid, Bit 2: humidity_valid, Bit 3: lux_valid,
-                  // Bit 4: rtc_valid
+                  // Bit 4: rtc_valid, Bit 6: power_valid, Bits 7:5: energy_state
 } csp_telemetry_packet_t;
 
 void vTelemetryTask(void *pvParameters);
