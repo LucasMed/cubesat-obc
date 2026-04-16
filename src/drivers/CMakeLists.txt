@@ -32,6 +32,7 @@ if(PICO_BUILD)
         payload/telemetry_storage.c
         env/sht31.c
         light/bh1750.c
+        rtc/ds3231.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
@@ -40,6 +41,7 @@ else()
         payload/telemetry_storage_stub.c
         env/sht31_stub.c
         light/bh1750_stub.c
+        rtc/ds3231_stub.c
     )
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)

@@ -1,7 +1,9 @@
 #include "command_task.h"
 
 #include "FreeRTOS.h"
+#include "bh1750.h"
 #include "data_layer.h"
+#include "ds3231.h"
 #include "fault_manager.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
@@ -28,6 +30,7 @@
 #endif
 
 #ifdef PICO_BUILD
+  #include "../drivers/uart/pico_usart.h"
   #include "bh1750.h"
   #include "drivers/i2c_interface.h"
   #include "hardware/uart.h"
@@ -39,11 +42,9 @@
 #ifdef PICO_BUILD
 static void process_text_command(const char *cmd)
 {
-  uart_puts(uart1, "[CMD] ");
-
   if (strncmp(cmd, "REBOOT", 6) == 0)
   {
-    uart_puts(uart1, "REBOOT OK\r\n");
+    uart1_puts_safe("[CMD] REBOOT OK\r\n");
     printf("[command_task] Text command: REBOOT\r\n");
     vTaskDelay(pdMS_TO_TICKS(100));
     watchdog_reboot(0, 0, 10);
@@ -55,21 +56,25 @@ static void process_text_command(const char *cmd)
     dl_snapshot_t snapshot = {0};
     data_layer_read(&snapshot);
 
+    uart1_acquire_lock();
+
     char buf[96];
     const char *mode_names[] = {"BOOT", "SAFE", "DETUMBLE", "NOMINAL", "DIAG", "PAYLOAD"};
     const char *energy_names[] = {"LOW", "NOMINAL", "HIGH"};
-    snprintf(buf, sizeof(buf), "SYSTEM: mode=%s energy=%s imu=%s temp=%s mag=%s\r\n",
+    snprintf(buf, sizeof(buf), "[CMD] SYSTEM: mode=%s energy=%s imu=%s temp=%s mag=%s\r\n",
              mode_names[mode], energy_names[energy], snapshot.state.imu_valid ? "OK" : "FAIL",
              snapshot.state.temp_valid ? "OK" : "FAIL", snapshot.state.mag_valid ? "OK" : "FAIL");
-    uart_puts(uart1, buf);
+    uart1_write_unsafe(buf);
 
     GpsFix_t fix = {0};
     if (gps_get_last_fix(&fix))
     {
-      snprintf(buf, sizeof(buf), "GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
+      snprintf(buf, sizeof(buf), "[CMD] GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
                fix.valid, fix.lat, fix.lon, fix.alt_m, fix.satellites, fix.hdop);
-      uart_puts(uart1, buf);
+      uart1_write_unsafe(buf);
     }
+
+    uart1_release_lock();
     printf("[command_task] Text command: STATUS\r\n");
   }
   else if (strncmp(cmd, "FAULTS", 6) == 0)
@@ -77,18 +82,18 @@ static void process_text_command(const char *cmd)
     fault_level_t level = fault_get_highest_level();
     const char *level_names[] = {"OK", "WARN", "ERROR", "CRITICAL"};
     char buf[32];
-    snprintf(buf, sizeof(buf), "FAULTS: %s\r\n", level_names[level > 3 ? 0 : level]);
-    uart_puts(uart1, buf);
+    snprintf(buf, sizeof(buf), "[CMD] FAULTS: %s\r\n", level_names[level > 3 ? 0 : level]);
+    uart1_puts_safe(buf);
     printf("[command_task] Text command: FAULTS\r\n");
   }
   else if (strncmp(cmd, "ECHO", 4) == 0)
   {
-    uart_puts(uart1, "ECHO OK\r\n");
+    uart1_puts_safe("[CMD] ECHO OK\r\n");
     printf("[command_task] Text command: ECHO\r\n");
   }
   else if (strncmp(cmd, "CAPTURE", 7) == 0)
   {
-    uart_puts(uart1, "CAPTURE OK\r\n");
+    uart1_puts_safe("[CMD] CAPTURE OK\r\n");
     printf("[command_task] Text command: CAPTURE\r\n");
     TaskHandle_t h_payload = xTaskGetHandle("PayloadTask");
     if (h_payload != NULL)
@@ -99,26 +104,44 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "MODE=", 5) == 0)
   {
     int mode = atoi(cmd + 5);
-    if (mode >= 1 && mode <= 3)
+    if (mode >= 0 && mode <= 3)
     {
       char buf[32];
-      snprintf(buf, sizeof(buf), "MODE=%d OK\r\n", mode);
-      uart_puts(uart1, buf);
+      snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      uart1_puts_safe(buf);
       printf("[command_task] Text command: MODE=%d\r\n", mode);
       fmm_request_transition((flight_mode_t)mode);
     }
     else
     {
-      uart_puts(uart1, "MODE INVALID\r\n");
+      uart1_puts_safe("[CMD] MODE INVALID\r\n");
+    }
+  }
+  else if (strncmp(cmd, "MODE ", 5) == 0)
+  {
+    /* Also support "MODE 1" (space instead of =) */
+    int mode = atoi(cmd + 5);
+    if (mode >= 0 && mode <= 3)
+    {
+      char buf[32];
+      snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      uart1_puts_safe(buf);
+      printf("[command_task] Text command: MODE %d\r\n", mode);
+      fmm_request_transition((flight_mode_t)mode);
+    }
+    else
+    {
+      uart1_puts_safe("[CMD] MODE INVALID\r\n");
     }
   }
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
-    uart_puts(uart1, "COMMANDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP\r\n");
+    uart1_puts_safe(
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
-    uart_puts(uart1, "LOG: dump not implemented\r\n");
+    uart1_puts_safe("[CMD] LOG: dump not implemented\r\n");
   }
   else if (strncmp(cmd, "RESET", 5) == 0)
   {
@@ -128,17 +151,17 @@ static void process_text_command(const char *cmd)
       if (strncmp(cmd + 8, "COLD", 4) == 0)
       {
         gps_cold_start();
-        uart_puts(uart1, "RESET GPS COLD START OK\r\n");
+        uart1_puts_safe("[CMD] RESET GPS COLD START OK\r\n");
       }
       else
       {
         gps_reset_stats();
-        uart_puts(uart1, "RESET GPS OK\r\n");
+        uart1_puts_safe("[CMD] RESET GPS OK\r\n");
       }
     }
     else
     {
-      uart_puts(uart1, "RESET: usage: RESETGPS | RESETGPS COLD\r\n");
+      uart1_puts_safe("[CMD] RESET: usage: RESETGPS | RESETGPS COLD\r\n");
     }
   }
   else if (strncmp(cmd, "GPS", 3) == 0)
@@ -146,35 +169,59 @@ static void process_text_command(const char *cmd)
     GpsFix_t fix = {0};
     if (gps_get_last_fix(&fix))
     {
+      uart1_acquire_lock();
+
       char buf[96];
-      snprintf(buf, sizeof(buf), "GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
+      snprintf(buf, sizeof(buf), "[CMD] GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
                fix.valid, fix.lat, fix.lon, fix.alt_m, fix.satellites, fix.hdop);
-      uart_puts(uart1, buf);
+      uart1_write_unsafe(buf);
 
       const GpsStats_t *stats = gps_get_stats();
-      snprintf(buf, sizeof(buf), "GPS STATS: rx=%u chk_err=%u inv=%u valid=%u overflow=%u\r\n",
+      snprintf(buf, sizeof(buf),
+               "[CMD] GPS STATS: rx=%u chk_err=%u inv=%u valid=%u overflow=%u\r\n",
                (unsigned)stats->sentences_received, (unsigned)stats->checksum_errors,
                (unsigned)stats->fixes_invalid, (unsigned)stats->fixes_valid,
                (unsigned)stats->buffer_overflows);
-      uart_puts(uart1, buf);
+      uart1_write_unsafe(buf);
+
+      uart1_release_lock();
     }
     else
     {
       char buf[64];
       uint8_t sats = gps_get_satellites_in_view();
-      snprintf(buf, sizeof(buf), "GPS: no fix sats=%d\r\n", sats);
-      uart_puts(uart1, buf);
+      snprintf(buf, sizeof(buf), "[CMD] GPS: no fix sats=%d\r\n", sats);
+      uart1_puts_safe(buf);
     }
+  }
+  else if (strncmp(cmd, "RTC_TEST", 8) == 0)
+  {
+    char buf[96];
+    uint16_t year;
+    uint8_t month, day, hour, minute, second;
+    printf("[RTC_TEST] Calling ds3231_read_time...\r\n");
+    if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
+    {
+      snprintf(buf, sizeof(buf), "[CMD] RTC: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day,
+               hour, minute, second);
+      printf("[RTC_TEST] Success: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day, hour,
+             minute, second);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] RTC: read failed\r\n");
+      printf("[RTC_TEST] Failed\r\n");
+    }
+    uart1_puts_safe(buf);
   }
   else if (strncmp(cmd, "I2CSCAN", 7) == 0)
   {
-    char buf[128];
-    snprintf(buf, sizeof(buf), "I2C: scanning...\r\n");
-    uart_puts(uart1, buf);
+    uart1_puts_safe("[CMD] I2C: scanning...\r\n");
     printf("[command_task] Text command: I2CSCAN\r\n");
     int found = i2c_bus_scan(0x03, 0x77);
-    snprintf(buf, sizeof(buf), "I2C: found %d device(s)\r\n", found);
-    uart_puts(uart1, buf);
+    char buf[128];
+    snprintf(buf, sizeof(buf), "[CMD] I2C: found %d device(s)\r\n", found);
+    uart1_puts_safe(buf);
   }
   else if (strncmp(cmd, "BH1750_TEST", 11) == 0)
   {
@@ -185,8 +232,8 @@ static void process_text_command(const char *cmd)
       addr = 0x5C;
     }
     char buf[96];
-    snprintf(buf, sizeof(buf), "BH1750: testing 0x%02X...\r\n", addr);
-    uart_puts(uart1, buf);
+    snprintf(buf, sizeof(buf), "[CMD] BH1750: testing 0x%02X...\r\n", addr);
+    uart1_puts_safe(buf);
 
     // Try to read with OT_H_RES2 command
     uint8_t cmd_byte = BH1750_CMD_OT_H_RES2;
@@ -197,17 +244,17 @@ static void process_text_command(const char *cmd)
     {
       uint16_t raw = ((uint16_t)data[0] << 8) | data[1];
       float lux = (float)raw / 1.2f;
-      snprintf(buf, sizeof(buf), "BH1750: raw=%d lux=%.1f\r\n", raw, (double)lux);
+      snprintf(buf, sizeof(buf), "[CMD] BH1750: raw=%d lux=%.1f\r\n", raw, (double)lux);
     }
     else
     {
-      snprintf(buf, sizeof(buf), "BH1750: no response (err=%d)\r\n", ret);
+      snprintf(buf, sizeof(buf), "[CMD] BH1750: no response (err=%d)\r\n", ret);
     }
-    uart_puts(uart1, buf);
+    uart1_puts_safe(buf);
   }
   else
   {
-    uart_puts(uart1, "UNKNOWN CMD\r\n");
+    uart1_puts_safe("[CMD] UNKNOWN CMD\r\n");
   }
 }
 
@@ -219,6 +266,7 @@ static void uart1_listen(void)
   while (uart_is_readable(uart1))
   {
     char c = uart_getc(uart1);
+
     if (c == '\r' || c == '\n')
     {
       if (pos > 0)
@@ -228,7 +276,7 @@ static void uart1_listen(void)
         pos = 0;
       }
     }
-    else if (pos < (int)(sizeof(buffer) - 1))
+    else if (c != '\0' && pos < (int)(sizeof(buffer) - 1))
     {
       buffer[pos++] = c;
     }

@@ -22,6 +22,7 @@
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
+#include "ds3231.h"
 #include "ekf.h"
 #include "sht31.h"
 #include "task.h"
@@ -136,6 +137,23 @@ void vSensorReadTask_Step(void)
     }
   }
 
+  /* Read DS3231 RTC - once per second (every 10 cycles at 10 Hz) */
+  if (snap.state.rtc_available)
+  {
+    static uint8_t rtc_read_counter = 0;
+    if (++rtc_read_counter >= 10) /* 10 Hz task → 1 Hz RTC read */
+    {
+      rtc_read_counter = 0;
+      uint16_t year;
+      uint8_t month, day, hour, minute, second;
+      if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
+      {
+        uint32_t ts = ds3231_to_epoch(year, month, day, hour, minute, second);
+        data_layer_write_rtc(ts);
+      }
+    }
+  }
+
   /* Read magnetometer only if sensor was detected during boot */
   if (snap.state.mag_available)
   {
@@ -187,16 +205,17 @@ void vSensorReadTask(void *pvParameters)
     dl_snapshot_t snap;
     data_layer_read(&snap);
     if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available &&
-        !snap.state.lux_available)
+        !snap.state.lux_available && !snap.state.rtc_available)
     {
       printf("[sensor_read_task] No sensors connected — task suspended\n");
       fflush(stdout);
       vTaskSuspend(NULL); /* park forever — no CPU wasted */
       /* unreachable unless explicitly resumed */
     }
-    printf("[sensor_read_task] Sensors: IMU=%s  Temp=%s  Mag=%s  Light=%s\n",
+    printf("[sensor_read_task] Sensors: IMU=%s  Temp=%s  Mag=%s  Light=%s  RTC=%s\n",
            snap.state.imu_available ? "yes" : "no", snap.state.temp_available ? "yes" : "no",
-           snap.state.mag_available ? "yes" : "no", snap.state.lux_available ? "yes" : "no");
+           snap.state.mag_available ? "yes" : "no", snap.state.lux_available ? "yes" : "no",
+           snap.state.rtc_available ? "yes" : "no");
     fflush(stdout);
   }
 

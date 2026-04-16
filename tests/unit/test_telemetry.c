@@ -220,8 +220,9 @@ static void test_tlm_energy_state_in_flags(void)
     set_state(FM_NOMINAL, states[i], 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 0, 0);
     vTelemetryTask_Step();
     csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
-    uint8_t extracted = (tl->flags >> 3) & 0x07u;
-    CHECK((int)extracted == (int)states[i], "energy state in flags[5:3]");
+    /* Energy state now in bits [7:5] (bits 5, 6, 7) after adding rtc_valid at bit 4 */
+    uint8_t extracted = (tl->flags >> 5) & 0x07u;
+    CHECK((int)extracted == (int)states[i], "energy state in flags[7:5]");
   }
 
   printf("[T-TLM-04] test_tlm_energy_state_in_flags: %s\n",

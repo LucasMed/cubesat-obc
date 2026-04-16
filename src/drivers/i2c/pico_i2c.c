@@ -12,6 +12,10 @@
 
 #include <stdio.h>
 
+#ifdef PICO_BUILD
+  #include "../uart/pico_usart.h"
+#endif
+
 // Define which I2C instance to use (default I2C0)
 #define I2C_INST i2c0
 
@@ -30,6 +34,12 @@ int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
   // Enable pull-ups (hardware usually has them, but safety first)
   gpio_pull_up(sda_pin);
   gpio_pull_up(scl_pin);
+
+  /* Allow I2C bus to stabilize and sensors to respond to initial bus activity.
+   * Without this, fast probes after initialization can fail on devices like
+   * MPU6050 that are in sleep mode on POR and need I2C bus settle time.
+   * Spec: MPU6050 POR recovery time ~100ms, we use conservative 10ms here. */
+  sleep_ms(10);
 
   return 0;
 }
@@ -91,6 +101,15 @@ int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
     if (ret >= 0)
     {
       printf("    Found device at 0x%02X\r\n", addr);
+
+      /* Also report to UART1 (HC-12 radio) so remote user can see scan results
+       * on telemetry link without needing access to USB console. */
+#ifdef PICO_BUILD
+      char buf[32];
+      snprintf(buf, sizeof(buf), "  0x%02X\r\n", addr);
+      uart1_puts_safe(buf);
+#endif
+
       found++;
     }
   }
