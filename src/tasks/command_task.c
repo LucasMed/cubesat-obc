@@ -8,8 +8,8 @@
 #include "flight_mode.h"
 #include "gps_driver.h"
 #include "ina219.h"
-#include "sht31.h"
 #include "payload_task.h"
+#include "sht31.h"
 #include "system_state.h"
 #include "task.h"
 #include "telemetry_storage.h"
@@ -284,7 +284,7 @@ static void process_text_command(const char *cmd)
     uart1_puts_safe(buf);
 
 #ifdef PICO_BUILD
-    sleep_ms(10);  // Avoid race condition with sensor_read_task
+    sleep_ms(50);  // Avoid race condition with sensor_read_task
 #endif
 
     if (sht31_read(&temperature, &humidity))
