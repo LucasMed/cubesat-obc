@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-04-16
 **Current Phase**: Phase 10 — INA219 Power Monitor Integration (branch `feature/ina219-power-monitor`)
-**Current Branch**: `feature/ina219-power-monitor`
+**Current Branch**: `feature/ina219-power-monitor` (PR submitted)
 
 ---
 
@@ -18,7 +18,7 @@
 | **SHT31 (Temp/Hum)** | I2C0 (GPIO4/5) | ✅ OK | 0x44, CRC-8 validation |
 | **BH1750 (Light)** | I2C0 (GPIO4/5) | ✅ OK | 0x23, 0.5 lux resolution |
 | **DS3231 (RTC)** | I2C0 (GPIO4/5) | ✅ OK | 0x68, verified on hardware |
-| **INA219 (Power)** | I2C0 (GPIO4/5) | ✅ Code ready | 0x40, pending hardware verify |
+| **INA219 (Power)** | I2C0 (GPIO4/5) | ✅ OK | 0x40, hardware verified (V=5.7V, I=5mA, P=28mW) |
 | **GPS NEO-6M/7M** | UART0 (GPIO0/1) | ✅ OK | 9600 baud, fix obtained |
 | **HC-12 Radio** | UART1 (GPIO8/9) | ✅ OK | 9600 baud, bidirectional |
 | **W25Q64 (Flash)** | SPI0 (GPIO7 CS) | ✅ OK | 8MB, JEDEC ID: M=EF, T=40, C=17 |

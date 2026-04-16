@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **INA219 Power Monitor**: High-side current/power sensor (I2C 0x40, 0.1 ohm shunt)
   - Driver: `include/ina219.h`, `src/drivers/power/ina219.c`, `src/drivers/power/ina219_stub.c`
   - Integration: Data layer with `bus_voltage_mv`, `current_ua`, `power_uw`, `power_valid`, `power_available`
-  - Telemetry: Added `bus_voltage_mv`, `current_ma`, `power_mw` fields to CSP packet, updated flags (bit 5 = power_valid)
+  - Telemetry: Added `bus_voltage_mv`, `current_ma`, `power_mw` fields to CSP packet, updated flags (bit 6 = power_valid)
   - Debug: Added `POWER_TEST` command to read and display power data
   - Sampling: 1 Hz (every 10 cycles at 10 Hz task rate)
+  - Safety: Threshold checks with fault reporting (V<3V critical, V>5.5V warning, I>500mA error, P>2W warning)
+  - Hardware verified: V=5724mV, I=5mA, P=28mW
 - **DS3231 RTC**: Real-time clock with battery backup (I2C 0x68, ±2 ppm accuracy)
   - Driver: `include/ds3231.h`, `src/drivers/rtc/ds3231.c`, `src/drivers/rtc/ds3231_stub.c`
   - Integration: Data layer, system state with `rtc_timestamp` (Unix epoch), `rtc_valid`, `rtc_available`
