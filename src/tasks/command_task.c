@@ -263,7 +263,7 @@ static void process_text_command(const char *cmd)
     if (ina219_read_power(&data))
     {
       int bus_v = data.bus_voltage_mv;
-      int curr_ma = data.current_ua / 1000;
+      int curr_ma = (data.current_ua + 500) / 1000;  // Round to nearest mA
       int pow_mw = data.power_uw / 1000;
       snprintf(buf, sizeof(buf), "[CMD] POWER: V=%d mV, I=%d mA, P=%d mW\r\n", bus_v, curr_ma,
                pow_mw);
@@ -271,6 +271,32 @@ static void process_text_command(const char *cmd)
     else
     {
       snprintf(buf, sizeof(buf), "[CMD] POWER: read failed\r\n");
+    }
+    uart1_puts_safe(buf);
+  }
+  else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
+  {
+    char buf[96];
+    float temperature = 0.0f;
+    float humidity = 0.0f;
+    snprintf(buf, sizeof(buf), "[CMD] SHT31: reading...\r\n");
+    uart1_puts_safe(buf);
+
+    if (sht31_read(&temperature, &humidity))
+    {
+      if (humidity >= 0.0f)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=%.1f%%\r\n", (double)temperature,
+                 (double)humidity);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=N/A\r\n", (double)temperature);
+      }
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] SHT31: no response\r\n");
     }
     uart1_puts_safe(buf);
   }
