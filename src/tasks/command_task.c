@@ -8,6 +8,7 @@
 #include "flight_mode.h"
 #include "gps_driver.h"
 #include "ina219.h"
+#include "sht31.h"
 #include "payload_task.h"
 #include "system_state.h"
 #include "task.h"
@@ -282,12 +283,16 @@ static void process_text_command(const char *cmd)
     snprintf(buf, sizeof(buf), "[CMD] SHT31: reading...\r\n");
     uart1_puts_safe(buf);
 
+#ifdef PICO_BUILD
+    sleep_ms(10);  // Avoid race condition with sensor_read_task
+#endif
+
     if (sht31_read(&temperature, &humidity))
     {
       if (humidity >= 0.0f)
       {
-        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=%.1f%%\r\n", (double)temperature,
-                 (double)humidity);
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=%.1f%%\r\n",
+                 (double)temperature, (double)humidity);
       }
       else
       {
