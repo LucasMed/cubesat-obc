@@ -24,6 +24,7 @@
 #include "drivers/temperature.h"
 #include "ds3231.h"
 #include "ekf.h"
+#include "ina219.h"
 #include "sht31.h"
 #include "task.h"
 
@@ -150,6 +151,22 @@ void vSensorReadTask_Step(void)
       {
         uint32_t ts = ds3231_to_epoch(year, month, day, hour, minute, second);
         data_layer_write_rtc(ts);
+      }
+    }
+  }
+
+  /* Read INA219 power monitor - once per second (every 10 cycles at 10 Hz) */
+  if (snap.state.power_available)
+  {
+    static uint8_t power_read_counter = 0;
+    if (++power_read_counter >= 10) /* 10 Hz task → 1 Hz power read */
+    {
+      power_read_counter = 0;
+      ina219_data_t power_data;
+      if (ina219_read_power(&power_data))
+      {
+        data_layer_write_power(power_data.bus_voltage_mv, power_data.current_ua,
+                               power_data.power_uw);
       }
     }
   }

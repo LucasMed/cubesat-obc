@@ -19,7 +19,7 @@ void setup()
   HC12.begin(9600);
 
   Serial.println("=== Ground Station Ready ===");
-  Serial.println(" Commands: AT|STATUS|REBOOT|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|HELP");
+  Serial.println(" Commands: AT|STATUS|REBOOT|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SHT31_TEST");
   Serial.println(" Para modo AT: escribe 'AT' y presiona Enter");
 }
 
@@ -75,7 +75,15 @@ void loop()
     }
     else if (recibido.startsWith("[CMD]"))
     {
-      Serial.println(recibido);
+      // Check if it's a power test response
+      if (recibido.indexOf("POWER:") != -1)
+      {
+        parsePowerTest(recibido);
+      }
+      else
+      {
+        Serial.println(recibido);
+      }
     }
     else if (recibido.startsWith("SYSTEM:"))
     {
@@ -178,6 +186,33 @@ void parseTelemetry(String msg)
     Serial.print(gps_alt, 1);
   }
   Serial.println();
+}
+
+void parsePowerTest(String msg)
+{
+  // Format: [CMD] POWER: V=5728 mV, I=5 mA, P=28 mW
+  int posV = msg.indexOf("V=");
+  int posI = msg.indexOf("I=");
+  int posP = msg.indexOf("P=");
+  
+  if (posV != -1 && posI != -1 && posP != -1)
+  {
+    int v = msg.substring(posV + 2, msg.indexOf(' ', posV + 2)).toInt();
+    int i = msg.substring(posI + 2, msg.indexOf(' ', posI + 2)).toInt();
+    int p = msg.substring(posP + 2, msg.indexOf(' ', posP + 2)).toInt();
+    
+    Serial.print("POWER: V=");
+    Serial.print(v);
+    Serial.print(" mV, I=");
+    Serial.print(i);
+    Serial.print(" mA, P=");
+    Serial.print(p);
+    Serial.println(" mW");
+  }
+  else
+  {
+    Serial.println(msg);
+  }
 }
 
 void parseGpsStatus(String msg)

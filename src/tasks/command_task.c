@@ -7,7 +7,9 @@
 #include "fault_manager.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
+#include "ina219.h"
 #include "payload_task.h"
+#include "sht31.h"
 #include "system_state.h"
 #include "task.h"
 #include "telemetry_storage.h"
@@ -137,7 +139,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
     uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST\r\n");
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -197,20 +199,17 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "RTC_TEST", 8) == 0)
   {
     char buf[96];
-    uint16_t year;
-    uint8_t month, day, hour, minute, second;
-    printf("[RTC_TEST] Calling ds3231_read_time...\r\n");
-    if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
+    /* Use data_layer_read() to get RTC from sensor_read_task */
+    dl_snapshot_t snap;
+    data_layer_read(&snap);
+
+    if (snap.state.rtc_valid)
     {
-      snprintf(buf, sizeof(buf), "[CMD] RTC: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day,
-               hour, minute, second);
-      printf("[RTC_TEST] Success: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day, hour,
-             minute, second);
+      snprintf(buf, sizeof(buf), "[CMD] RTC: %u\r\n", (unsigned)snap.state.rtc_timestamp);
     }
     else
     {
-      snprintf(buf, sizeof(buf), "[CMD] RTC: read failed\r\n");
-      printf("[RTC_TEST] Failed\r\n");
+      snprintf(buf, sizeof(buf), "[CMD] RTC: no data\r\n");
     }
     uart1_puts_safe(buf);
   }
@@ -249,6 +248,53 @@ static void process_text_command(const char *cmd)
     else
     {
       snprintf(buf, sizeof(buf), "[CMD] BH1750: no response (err=%d)\r\n", ret);
+    }
+    uart1_puts_safe(buf);
+  }
+  else if (strncmp(cmd, "POWER_TEST", 10) == 0)
+  {
+    char buf[96];
+    ina219_data_t data;
+    snprintf(buf, sizeof(buf), "[CMD] POWER: reading INA219...\r\n");
+    uart1_puts_safe(buf);
+
+    if (ina219_read_power(&data))
+    {
+      int bus_v = data.bus_voltage_mv;
+      int curr_ma = (data.current_ua + 500) / 1000;  // Round to nearest mA
+      int pow_mw = data.power_uw / 1000;
+      snprintf(buf, sizeof(buf), "[CMD] POWER: V=%d mV, I=%d mA, P=%d mW\r\n", bus_v, curr_ma,
+               pow_mw);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] POWER: read failed\r\n");
+    }
+    uart1_puts_safe(buf);
+  }
+  else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
+  {
+    char buf[96];
+    /* Use data_layer_read() to get temperature/humidity from sensor_read_task */
+    dl_snapshot_t snap;
+    data_layer_read(&snap);
+
+    if (snap.state.temp_valid)
+    {
+      if (snap.state.humidity_valid)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=%.1f%%\r\n",
+                 (double)snap.state.temp, (double)snap.state.humidity);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=N/A\r\n",
+                 (double)snap.state.temp);
+      }
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] SHT31: no data\r\n");
     }
     uart1_puts_safe(buf);
   }

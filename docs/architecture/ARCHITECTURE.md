@@ -56,36 +56,42 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 |-------------------------|--------------|----------------|----------------------|---------------------|
 | **MPU-6050 (IMU)**      | SDA          | GPIO4          | 6                    | I2C0 SDA (see config.h) |
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
 | **HMC5883L/QMC5883L (Magnet.)** | SDA          | GPIO4          | 6                    | I2C0 SDA            |
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
 | **BH1750 (Light)**     | SDA          | GPIO4          | 6                    | I2C0 SDA            |
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL            |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
-|                         | ADDR         | GND            | 3, 8, 13, ...        | Address 0x23 (default) |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
+|                         | ADDR         | GND            | 38                   | Address 0x23 (default) |
 | **DS3231 (RTC)**       | SDA          | GPIO4          | 6                    | I2C0 SDA (shared)   |
 |                         | SCL          | GPIO5          | 7                    | I2C0 SCL (shared)   |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
 |                         | VBAT         | -              | -                    | CR2032 battery backup |
+| **INA219 (Power)**      | SDA          | GPIO4         | 6                    | I2C0 SDA (shared)   |
+|                         | SCL          | GPIO5         | 7                    | I2C0 SCL (shared)   |
+|                         | VCC          | 3V3           | 36                   | Power               |
+|                         | GND          | GND           | 38                   | Ground              |
+|                         | Vin+         | -             | -                    | VSYS entrada (pin 39, antes de shunt) |
+|                         | Vin-         | -             | -                    | VSYS carga (después de shunt) |
 | **GPS (NEO-7M)**       | TX           | GPIO1          | 7                    | UART0 RX (Pico)     |
 |                         | RX           | GPIO0          | 6                    | UART0 TX (Pico)     |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
 | **W25Q64 (Flash)**    | DI (MOSI)    | GPIO19         | 24                   | SPI0 MOSI           |
 |                         | DO (MISO)    | GPIO16         | 21                   | SPI0 MISO           |
 |                         | CLK          | GPIO18         | 24                   | SPI0 Clock          |
 |                         | CS           | GPIO7          | 29                   | Chip Select         |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
 | **HC-12/Si4463 (Radio)**| TX           | GPIO5          | 7                    | UART1 RX (Pico)     |
 |                         | RX           | GPIO4          | 6                    | UART1 TX (Pico)     |
-|                         | VCC          | 3V3            | 36 or 39             | Power               |
-|                         | GND          | GND            | 3, 8, 13, ...        | Ground              |
+|                         | VCC          | 3V3            | 36                   | Power               |
+|                         | GND          | GND            | 38                   | Ground              |
 | **Battery Monitor**     | +Vbat        | GPIO26         | 31                   | ADC0                |
 | **Temp. Board**         | -            | GPIO27         | 32                   | ADC1 (onboard)      |
 | **External Watchdog**   | Kick         | GPIO20         | 26                   | Digital output      |
@@ -113,7 +119,8 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 - **Temperature/Humidity Sensor** (SHT31): I2C temperature + humidity with CRC-8 validation
 - **Light Sensor** (BH1750): Digital illuminance sensor via I2C (0x23 default, 0.5 lux resolution)
 - **RTC** (DS3231): Real-time clock with battery backup via I2C (0x68, ±2 ppm accuracy)
-- **Power Monitor**: Battery voltage via ADC
+- **Power Monitor** (INA219): High-side current/power sensor via I2C (0x40, 0.1 ohm shunt, ±2% accuracy)
+- **Battery Monitor**: Battery voltage via ADC (GPIO26)
 - **Magnetometer Driver** — **EM baseline: QMC5883L (clone)** detected at I2C addr `0x2C`;
   driver auto-detects HMC5883L (0x1E) or QMC5883L (0x0D/0x2C).
   **CDR/FM candidate: LIS3MDL** (STMicroelectronics, I2C0 addr `0x1C` SA0=GND, ODR 80 Hz) —

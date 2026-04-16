@@ -225,6 +225,24 @@ void data_layer_set_rtc_avail(bool rtc)
   dl_unlock();
 }
 
+void data_layer_write_power(int16_t bus_voltage_mv, int32_t current_ua, int32_t power_uw)
+{
+  dl_lock();
+  g_snapshot.state.bus_voltage_mv = bus_voltage_mv;
+  g_snapshot.state.current_ua = current_ua;
+  g_snapshot.state.power_uw = power_uw;
+  g_snapshot.state.power_valid = (bus_voltage_mv >= 0);
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_set_power_avail(bool power)
+{
+  dl_lock();
+  g_snapshot.state.power_available = power;
+  dl_unlock();
+}
+
 void data_layer_write_radiation(float dose)
 {
   dl_lock();
