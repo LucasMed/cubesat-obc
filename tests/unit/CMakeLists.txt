@@ -372,6 +372,22 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_bh1750 m)
     add_test(NAME bh1750_test COMMAND test_bh1750)
 
+    # INA219 Power Monitor Driver Tests
+    # T-INA-01..10: Init, is_present, power calculation, data layer integration
+    add_executable(test_ina219
+        test_ina219.c
+        ../../src/drivers/power/ina219_stub.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+        ../../src/control/quaternion.c
+        ../../src/drivers/rtc/ds3231_stub.c
+    )
+    target_include_directories(test_ina219 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_ina219 m)
+    add_test(NAME ina219_test COMMAND test_ina219)
+
     # PR-21 gate: Unit-quaternion utility library.
     # T-QAT-01..05: euler round-trip, q⊗q*=identity, normalize unit norm,
     # rotate_vec 90° yaw/roll, singularity-free at pitch=±90°.

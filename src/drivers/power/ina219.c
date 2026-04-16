@@ -172,9 +172,10 @@ bool ina219_read_power(ina219_data_t *data)
    */
   data->current_ua = ((int32_t)data->shunt_voltage_uv / 100) * 100;  // 0.1 ohm -> 10 µA/LSB
 
-  /* Power: P = V_bus * I (V in mV, I in mA, result in mW, convert to µW) */
-  data->power_uw = (int32_t)data->bus_voltage_mv * (data->current_ua / 1000);
-  data->power_uw *= 1000; /* Convert mW to µW */
+  /* Power: P = V * I
+   * V in mV, I in µA → result in mW → convert to µW (multiply by 1000)
+   * Formula: P_uw = V_mV * I_uA */
+  data->power_uw = (int32_t)data->bus_voltage_mv * data->current_ua;
 
   /* Safety checks - generate faults if anomalies detected */
 #ifdef PICO_BUILD

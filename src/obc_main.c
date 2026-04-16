@@ -295,7 +295,10 @@ int main(void)
     fflush(stdout);
   }
 
+  #define BUILD_TIMESTAMP __DATE__ " " __TIME__
+
   printf("\r\n[BOOT] CubeSat OBC firmware started\r\n");
+  printf("[BOOT] Build: %s\r\n", BUILD_TIMESTAMP);
   fflush(stdout);
 #else
   printf("=== CubeSat OBC Firmware (Host Simulation) ===\n");
