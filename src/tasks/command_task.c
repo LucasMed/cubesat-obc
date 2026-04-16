@@ -196,7 +196,7 @@ static void process_text_command(const char *cmd)
       uart1_puts_safe(buf);
     }
   }
-else if (strncmp(cmd, "RTC_TEST", 8) == 0)
+  else if (strncmp(cmd, "RTC_TEST", 8) == 0)
   {
     char buf[96];
     /* Use data_layer_read() to get RTC from sensor_read_task */
@@ -205,7 +205,7 @@ else if (strncmp(cmd, "RTC_TEST", 8) == 0)
 
     if (snap.state.rtc_valid)
     {
-      snprintf(buf, sizeof(buf), "[CMD] RTC: %lu\r\n", snap.state.rtc_timestamp);
+      snprintf(buf, sizeof(buf), "[CMD] RTC: %u\r\n", (unsigned)snap.state.rtc_timestamp);
     }
     else
     {
@@ -272,7 +272,7 @@ else if (strncmp(cmd, "RTC_TEST", 8) == 0)
     }
     uart1_puts_safe(buf);
   }
-else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
+  else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
   {
     char buf[96];
     /* Use data_layer_read() to get temperature/humidity from sensor_read_task */
@@ -288,7 +288,8 @@ else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
       }
       else
       {
-        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=N/A\r\n", (double)snap.state.temp);
+        snprintf(buf, sizeof(buf), "[CMD] SHT31: temp=%.1fC humidity=N/A\r\n",
+                 (double)snap.state.temp);
       }
     }
     else
