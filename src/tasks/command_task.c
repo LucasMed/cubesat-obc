@@ -202,6 +202,11 @@ static void process_text_command(const char *cmd)
     uint16_t year;
     uint8_t month, day, hour, minute, second;
     printf("[RTC_TEST] Calling ds3231_read_time...\r\n");
+
+#ifdef PICO_BUILD
+    sleep_ms(50);  // Avoid race condition with sensor_read_task
+#endif
+
     if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
     {
       snprintf(buf, sizeof(buf), "[CMD] RTC: %04u-%02u-%02u %02u:%02u:%02u\r\n", year, month, day,
@@ -283,9 +288,9 @@ static void process_text_command(const char *cmd)
     snprintf(buf, sizeof(buf), "[CMD] SHT31: reading...\r\n");
     uart1_puts_safe(buf);
 
-#ifdef PICO_BUILD
+  #ifdef PICO_BUILD
     sleep_ms(50);  // Avoid race condition with sensor_read_task
-#endif
+  #endif
 
     if (sht31_read(&temperature, &humidity))
     {
