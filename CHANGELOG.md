@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] — 2026-04-16 — Multi-Sensor Integration
+
 ### Added
 - **INA219 Power Monitor**: High-side current/power sensor (I2C 0x40, 0.1 ohm shunt)
   - Driver: `include/ina219.h`, `src/drivers/power/ina219.c`, `src/drivers/power/ina219_stub.c`
@@ -34,8 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GPS Stub and Tests**: Updated mocks and unit tests for enhanced GPS functionality
 
 ---
-
-## [0.25.0] — 2026-03-30 — Hardware Validation Complete
 
 ## [0.25.0] — 2026-03-30 — Hardware Validation Complete
 
