@@ -86,6 +86,8 @@ configure() {
     mkdir -p "$BUILD_DIR"
   fi
 
+  mkdir -p "$ARTIFACTS"
+
   cmake -S "$REPO_ROOT" -B "$BUILD_DIR" \
         -G Ninja \
         -DCMAKE_BUILD_TYPE=Debug \
@@ -124,13 +126,8 @@ capture() {
 
   # Capture the build
   # --dir: output directory for intermediate representation
-  # --no-libs: skip system/library analysis (focus on project code)
-  # --fs-capture-search: search for source files
   "$cov_build" \
     --dir "$ARTIFACTS/cov-int" \
-    --no-libs \
-    --fs-capture-search "$REPO_ROOT/src" \
-    --fs-capture-search "$REPO_ROOT/include" \
     cmake --build "$BUILD_DIR" \
     2>&1 | tee "$ARTIFACTS/coverity_build.log"
 
