@@ -383,7 +383,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | **CDR-SAF-03** | WCET Measurement | Measure WCET of all 7 FreeRTOS tasks via DWT->CYCCNT on RP2350 | `include/wcet_profiler.h`, `src/services/wcet/wcet_profiler_pico.c` | ✅ Implemented |
 | **CDR-SAF-04** | Fault Injection Test Suite | Exercise all fault IDs under injection to verify safe-mode response | `tests/unit/test_fault_manager.c`, `tests/integration/test_safe_trigger.c` | 🔄 Partial — CRITICAL→FM_SAFE tested |
 | **CDR-SAF-05** | Coverity CI Integration | Integrate Coverity Scan in CI pipeline for deep static analysis | `vapier/coverity-scan-action@v1` (`.github/workflows/ci.yml`); `scripts/coverity_scan.sh` (local); `scripts/static_analysis.sh` (clang-format/clang-tidy/cppcheck already present) | ✅ Implemented |
-| **CDR-SAF-06** | StartupTask ALIVE Loop Review | Evaluate necessity of ALIVE loop in StartupTask — determine safe-mode entry path if disabled | Code review of `src/tasks/startup_task.c` | 🔄 Pending |
+| **CDR-SAF-06** | StartupTask ALIVE Loop Review | Evaluate necessity of ALIVE loop in StartupTask — determine safe-mode entry path if disabled | `docs/ecss/safety/startup_alive_loop_eval.md` (STA-OBC-001 v1.0) | ✅ Evaluated — ALIVE loop retained; not safety-critical, provides diagnostic HWM + heap telemetry; separate stack-overflow scratch-register mechanism independent of ALIVE loop |
 
 ---
 

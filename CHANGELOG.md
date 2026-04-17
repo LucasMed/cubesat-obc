@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **StartupTask ALIVE Loop Evaluation (CDR-SAF-06 / CDR-SW-05)**: Evaluation of necessity and safety impact
+  - New document: `docs/ecss/safety/startup_alive_loop_eval.md` (STA-OBC-001 v1.0)
+  - Finding: ALIVE loop is NOT safety-critical — FDIR handled by HealthMonitor,
+    watchdog fed by HealthMonitor, stack overflow detected via separate
+    scratch-register mechanism in main()
+  - Recommendation: Retain ALIVE loop — provides diagnostic HWM + heap telemetry
+    at negligible cost (~8 KB RAM, ~0.1% CPU at 5 s period); avoids SMP
+    vTaskDelete() uncertainty; alternative HWM-in-HealthMonitor documented
+  - RTM: CDR-SAF-06 marked ✅ Evaluated
+
 - **Priority Inheritance Analysis (CDR-SAF-02 / OI-SW-3)**: FreeRTOS mutex priority inheritance documentation
   - New document: `docs/ecss/safety/priority_inheritance.md` (PI-OBC-001 v1.0)
   - Covers: priority inversion problem, inheritance mechanism, mutex inventory
