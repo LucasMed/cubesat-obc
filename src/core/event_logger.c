@@ -106,7 +106,9 @@ void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8
   s_tick++;
 
   /* If the ring is full, flush everything to persistent storage first. */
-  if (s_count >= LOG_RING_CAPACITY)
+  /* Coverity CID 1654913: fix boundary condition - must flush BEFORE writing
+   * would exceed capacity. Index valid range is [0, LOG_RING_CAPACITY-1]. */
+  if (s_count >= LOG_RING_CAPACITY - 1)
   {
     flush_and_reset();
   }
