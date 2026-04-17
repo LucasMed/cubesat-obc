@@ -549,11 +549,12 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
       resp.current_seq = 0;  // End of data
     }
 
-    // cppcheck-suppress bufferAccessOutOfBounds
-    // Intentional: CSP packets support larger payloads; this is the telemetry
-    // download protocol using sizeof(telemetry_dump_response_t) = 76 bytes
-    memcpy(cmd->payload, &resp, sizeof(resp));
-    packet->length = sizeof(resp) + 1;
+    /* Coverity CID 1654935/1654921: fix buffer overflow.
+     * telemetry_dump_response_t is 76 bytes, larger than
+     * csp_command_packet_t::payload[32]. Use packet->data
+     * directly which has CSP_BUFFER_SIZE (256 bytes). */
+    memcpy(packet->data, &resp, sizeof(resp));
+    packet->length = (uint8_t)(sizeof(resp) + 1);
     csp_send(conn, packet);
     packet = NULL;
     break;
