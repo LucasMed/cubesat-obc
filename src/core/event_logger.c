@@ -106,9 +106,7 @@ void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8
   s_tick++;
 
   /* If the ring is full, flush everything to persistent storage first. */
-  /* Coverity CID 1654913: fix boundary condition - must flush BEFORE writing
-   * would exceed capacity. Index valid range is [0, LOG_RING_CAPACITY-1]. */
-  if (s_count >= LOG_RING_CAPACITY - 1)
+  if (s_count >= LOG_RING_CAPACITY)
   {
     flush_and_reset();
   }
@@ -127,8 +125,14 @@ void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8
     (void)memcpy(ev.data, data, (size_t)copy_len);
   }
 
-  s_ring[s_count] = ev;
-  s_count++;
+  /* Coverity CID 1654913: bounds check before write.
+   * After flush, s_count may be < LOG_RING_CAPACITY.
+   * Guard against any race condition or logic error. */
+  if (s_count < LOG_RING_CAPACITY)
+  {
+    s_ring[s_count] = ev;
+    s_count++;
+  }
 }
 
 size_t log_read_recent(log_event_t *out, size_t count)
