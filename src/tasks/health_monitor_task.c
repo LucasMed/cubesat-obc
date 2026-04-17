@@ -8,6 +8,7 @@
 #include "flight_mode.h"
 #include "task.h"
 #include "watchdog_hal.h"
+#include "wcet_profiler.h"
 
 #include <stdio.h>
 
@@ -74,7 +75,9 @@ void vHealthMonitorTask(void *pvParameters)
     xNow = xTaskGetTickCount();
     if (xNow >= xLastWakeTime + xFrequency)
     {
+      wcet_task_begin(WCET_TASK_HEALTH_MON);
       vHealthMonitorTask_Step();
+      wcet_task_end(WCET_TASK_HEALTH_MON);
       xLastWakeTime = xNow;
     }
   }

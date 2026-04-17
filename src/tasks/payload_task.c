@@ -12,6 +12,7 @@
 #include "radiation_driver.h"
 #include "rm3100.h"
 #include "storage_manager.h"
+#include "wcet_profiler.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -122,7 +123,9 @@ void vPayloadTask(void *pvParameters)
 
   while (1)
   {
+    wcet_task_begin(WCET_TASK_PAYLOAD);
     vPayloadTask_Step();
+    wcet_task_end(WCET_TASK_PAYLOAD);
     vTaskDelayUntil(&s_last_wake_time, pdMS_TO_TICKS(PAYLOAD_PERIOD_MS));
   }
 }

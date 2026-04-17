@@ -27,6 +27,7 @@
 #include "ina219.h"
 #include "sht31.h"
 #include "task.h"
+#include "wcet_profiler.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -268,6 +269,8 @@ void vSensorReadTask(void *pvParameters)
     }
 #endif
 
+    wcet_task_begin(WCET_TASK_SENSOR_READ);
     vSensorReadTask_Step();
+    wcet_task_end(WCET_TASK_SENSOR_READ);
   }
 }

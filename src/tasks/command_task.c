@@ -13,6 +13,7 @@
 #include "system_state.h"
 #include "task.h"
 #include "telemetry_storage.h"
+#include "wcet_profiler.h"
 
 #include <csp/csp.h>
 #include <stdio.h>
@@ -599,11 +600,13 @@ void vCommandTask(void *pvParameters)
       continue;
     }
 
+    wcet_task_begin(WCET_TASK_COMMAND);
     csp_packet_t *packet;
     while ((packet = csp_read(conn, 50)) != NULL)
     {
       process_command_packet(conn, packet);
     }
+    wcet_task_end(WCET_TASK_COMMAND);
 
     csp_close(conn);
   }

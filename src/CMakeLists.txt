@@ -25,6 +25,7 @@ if(NOT PICO_BUILD)
         tasks_lib
         fault_lib
         eps_lib
+        wcet_lib
     )
 
     install(TARGETS cubesat_obc_firmware DESTINATION .)
@@ -59,6 +60,7 @@ else()
         eps_lib
         adcs_lib
         watchdog_hal_lib
+        wcet_lib
         FreeRTOS-Kernel
         FreeRTOS-Kernel-Heap4
         pico_stdlib
