@@ -5,7 +5,15 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.27.1] — 2026-04-16 — Coverity Bug Fixes
+
+### Fixed
+- **Coverity Scan Bug Fixes (CDR-SAF-05)**: Fixed 2 critical bugs identified by Coverity static analysis
+  - `event_logger.c` (CID 1654913): Out-of-bounds write in `log_event()` — added bounds check before array write to prevent buffer overflow when ring is full
+  - `command_task.c` (CID 1654935/1654921): Buffer overflow in `CMD_TELEMETRY_DUMP` — `telemetry_dump_response_t` (76 bytes) exceeds `payload[32]`; fixed by using `packet->data` directly (256 bytes via `CSP_BUFFER_SIZE`)
+  - Remaining 50 defects: 23 third-party (libcsp/fatfs), 18 test false positives (Ceedling), 2 edge cases, 7 pending classification
+
+## [0.27.0] — 2026-04-16 — Safety Analysis Extensions
 
 ### Added
 - **Fault Injection Test Suite (CDR-SAF-04 / OI-SW-5)**: Comprehensive fault injection for all 25 fault IDs
