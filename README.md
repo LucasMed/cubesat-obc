@@ -26,14 +26,18 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 - **Actuator Models**: Reaction wheels + magnetorquers
 
 ### Real-Time OS
-- **FreeRTOS** with 4 concurrent tasks
-- Task priorities: Sensor (HIGH) → Control (HIGH) → Telemetry (MEDIUM) → Health (LOW)
-- Configurable tick rate, heap, stack sizes; dual-core ready for Pico 2W
+- **FreeRTOS** with 7 concurrent tasks
+- Task priorities: Startup (4) → Sensor/AttitudeCtrl/CSPRouter (3) → Telemetry/Command/GPS/LED (2) → Health/Heartbeat/Payload (1)
+- WCET instrumentation via DWT->CYCCNT on RP2350; dual-core SMP ready for Pico 2W
 
 ### Sensors & Drivers
-- **MPU6050** (6-DOF IMU: gyro + accel) — I²C, `__attribute__((weak))` HAL
-- **HMC5883L** (3-axis magnetometer) — I²C, host stub returns `{25, 0, 42}` µT
-- **TMP102** (temperature) — I²C
+- **MPU6050** (6-DOF IMU: gyro + accel) — I²C, host stub, hardware-verified
+- **QMC5883L** (3-axis magnetometer) — I²C, clone detection for HMC5883L driver
+- **DS3231** (RTC) — I²C 0x68, ±2 ppm, battery backup, Unix epoch output
+- **SHT31** (temp + humidity) — I²C 0x44, CRC-8 validation
+- **BH1750** (light) — I²C 0x23, 0.5 lux resolution
+- **INA219** (power monitor) — I²C 0x40, high-side current/power sensing
+- **GPS NEO-6M/7M** (UART) — NMEA parsing, UTC sync, 9600 baud
 - All drivers host-testable with `PICO_ENABLED=OFF`
 
 ### Hardware Watchdog
@@ -41,14 +45,21 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 - Kick wired into `vHealthMonitorTask_Step()` every health-monitor tick
 
 ### Development Quality
-- ✅ **Unit Tests**: 48 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, closed-loop simulation, fault-to-safe integration …) — **48/48 passing**
-- ✅ **CI/CD**: GitHub Actions with automated build + test
+- ✅ **Unit Tests**: 49 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, closed-loop simulation, fault-to-safe integration, fault injection matrix …) — **49/49 passing**
+- ✅ **CI/CD**: GitHub Actions with automated build + test (7 stages)
 - ✅ **Static Analysis**: cppcheck + clang-tidy + clang-format-14 + Coverity Scan
 - [![Coverity Scan Build Status](https://scan.coverity.com/projects/33049/badge.svg)](https://scan.coverity.com/projects/cubesat-obc)
 - ✅ **CMake Build**: Reproducible, Linux-native and Docker (`PICO_ENABLED=OFF`)
 - ✅ **Dev Container**: One-click VS Code environment via `.devcontainer/`
 - ✅ **Standards**: MISRA C, ECSS conventions, modular architecture
 - ✅ **Documentation**: API docs, coding guides, build guides, traceability matrix
+
+### Safety & FDIR
+- **ISR-Safe Safe Mode**: `fmm_force_safe()` callable from any hardware ISR via critical-section lock (CDR-SAF-01)
+- **Fault Injection Suite**: All 25 fault IDs exercised across 10 subsystems, WARNING/ERROR/CRITICAL levels, cross-subsystem multi-fault matrix (CDR-SAF-04)
+- **WCET Profiler**: ARM Cortex-M33 DWT->CYCCNT instrumentation for all 7 FreeRTOS tasks (CDR-SAF-03)
+- **Priority Inheritance**: FreeRTOS mutex inheritance documented and verified (PI-OBC-001, CDR-SAF-02)
+- **StartupTask ALIVE Loop**: Diagnostic-only (HWM + heap), not safety-critical (STA-OBC-001, CDR-SAF-06)
 
 ---
 
@@ -82,14 +93,14 @@ bash run_linux.sh shell    # interactive shell
 # Prerequisites (Debian/Ubuntu)
 sudo apt install cmake build-essential ninja-build git
 
-git clone https://github.com/yourusername/cubesat-obc.git
+git clone https://github.com/LucasMed/cubesat-obc.git
 cd cubesat-obc
 git submodule update --init --recursive
 bash scripts/apply_patches.sh          # patches libcsp for Linux
 cmake -B build -DPICO_ENABLED=OFF
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
-# Expected: 100% tests passed, 0 tests failed out of 8
+    # Expected: 100% tests passed, 0 tests failed out of 49
 ```
 
 ### Flash to Pico 2W (When SDK Ready)
@@ -108,24 +119,31 @@ picotool load -x build/examples/blink_test.uf2
 ```
 cubesat-obc/
 ├── src/
-│   ├── obc_main.c              # Entry point, FreeRTOS init
+│   ├── obc_main.c              # Entry point, FreeRTOS init, StartupTask
 │   ├── core/                   # DLA, FMM, Fault Manager, EPS Monitor, Logger
-│   ├── drivers/                # Hardware drivers (MPU6050, HMC5883L, TMP102)
+│   ├── drivers/               # Hardware drivers (MPU6050, HMC5883L, DS3231, SHT31, INA219, BH1750, GPS NEO-7M, W25Q64, RM3100, camera, radiation)
 │   ├── actuators/              # RW, magnetorquer models
 │   ├── control/                # EKF, LQR, PID, RK2 dynamics
 │   ├── dynamics/               # RK2 attitude dynamics integrator
-│   ├── services/               # Watchdog HAL, momentum dump
-│   └── tasks/                  # FreeRTOS tasks (4 tasks)
+│   ├── services/              # Watchdog HAL, momentum dump, WCET profiler, comm/CSP
+│   │   └── wcet/              # WCET profiler (DWT CYCCNT on RP2350)
+│   └── tasks/                  # FreeRTOS tasks (7 tasks: SensorRead, AttitudeCtrl, Telemetry, Command, HealthMon, GpsTask, PayloadTask)
 ├── include/                    # Public APIs
-├── tests/unit/                 # Unit tests (23 tests)
+├── tests/unit/                 # Unit tests (49 tests)
+├── tests/integration/           # Integration tests (fault-to-safe, trigger)
 ├── config/                     # FreeRTOS configuration
-├── docs/                       # Architecture, guides, standards, design
-├── scripts/                    # Build, test, analysis, patch scripts
+├── docs/                       # Architecture, guides, standards, safety, design
+│   └── ecss/
+│       ├── safety/            # FMEA, priority inheritance, ALIVE loop eval
+│       └── verification/       # RTM, STP
+├── scripts/                    # Build, test, CI, analysis, patch scripts
 ├── patches/                    # Local patches for third-party submodules
 │   └── libcsp/                 # Linux/POSIX compatibility patches for libcsp
 ├── third_party/
 │   ├── FreeRTOS-Kernel/        # FreeRTOS kernel (git submodule)
+│   ├── pico-sdk/              # Raspberry Pi Pico SDK (git submodule)
 │   └── libcsp/                 # CSP library (git submodule)
+├── .github/workflows/          # GitHub Actions CI (build, test, emulate, Coverity)
 ├── .devcontainer/              # VS Code Dev Container configuration
 ├── docker-compose.yml          # Docker workflow (build/test/coverage/shell)
 ├── run_linux.sh                # Docker convenience wrapper
@@ -142,8 +160,8 @@ cubesat-obc/
 
 ### Run All Tests
 ```bash
-cd build
-ctest --output-on-failure --verbose
+ctest --test-dir build --output-on-failure
+# Expected: 100% tests passed, 0 tests failed out of 49
 ```
 
 ### Run Specific Test
@@ -155,6 +173,25 @@ ctest --test-dir build -R test_pid --output-on-failure
 ```bash
 scripts/static_analysis.sh
 ```
+
+---
+
+## ⚙️ CI/CD Pipeline
+
+The project uses a 7-stage CI pipeline (`scripts/pico_ci.sh all`):
+
+| Stage | Description |
+|-------|-------------|
+| host-test | CMake build + ctest (49 tests) |
+| pico-build | Cross-compile firmware for RP2350 |
+| emu-build | Build with QEMU ARM emulation |
+| emulate | Run tests under QEMU |
+| static | clang-format + clang-tidy + cppcheck |
+| coverity | Coverity Scan deep static analysis |
+| coverage | gcovr HTML + text coverage report |
+
+CI runs on GitHub Actions for every push to `main`, `dev`, and feature branches.
+Coverity Scan executes on `main` and `dev` pushes (requires `COVERITY_SCAN_EMAIL` + `COVERITY_SCAN_TOKEN` secrets).
 
 ---
 
@@ -272,7 +309,7 @@ cmake --build build --verbose
 | Data Layer (DLA) | ✅ Complete | Mutex-protected state store |
 | FMM / Fault / EPS | ✅ Complete | 6-mode FSM, Schmidt-trigger EPS |
 | Telemetry | ✅ Complete | libcsp, 1 Hz packets, FM guard |
-| Tests | ✅ Complete | **23/23** unit tests passing (100%) |
+| Tests | ✅ Complete | **49/49** unit tests passing (100%) |
 | Documentation | ✅ Complete | Design, requirements, traceability, test plans |
 | I2C Drivers | ✅ Complete | MPU6050, TMP102, HMC5883L |
 | WiFi/Telemetry | ✅ Complete | Phase 3 (libcsp) successfully integrated |
@@ -327,14 +364,12 @@ Built with:
 
 ## 📞 Contact & Support
 
-- **Questions**: Open a [GitHub Discussion](https://github.com/yourusername/cubesat-obc/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/yourusername/cubesat-obc/issues)
-- **Email**: [team email]
-- **Wiki**: [Project Wiki](https://github.com/yourusername/cubesat-obc/wiki)
+- **Questions**: Open a [GitHub Discussion](https://github.com/LucasMed/cubesat-obc/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/LucasMed/cubesat-obc/issues)
 
 ---
 
-**Last Updated:** 2026-03-12  
+**Last Updated:** 2026-04-17  
 **Version:** 0.6.0 (Phase 5 — Flight Readiness Completed)
 
 ⭐ If you find this project useful, please star us on GitHub!
