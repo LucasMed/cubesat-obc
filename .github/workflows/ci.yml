@@ -132,6 +132,8 @@ jobs:
           working-directory: build_cov
           # Informational: describe this build in Coverity dashboard
           description: "CubeSat OBC ${{ github.ref_name }} @ ${{ github.sha }}"
+          # Exclude third_party from analysis to reduce false positives
+          analyze-options: --exclude "*/third_party/*"
 
       # Results are hosted by Coverity Scan at scan.coverity.com/projects/cubesat-obc
       # No local artifact upload needed.
