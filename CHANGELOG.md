@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Priority Inheritance Analysis (CDR-SAF-02 / OI-SW-3)**: FreeRTOS mutex priority inheritance documentation
+  - New document: `docs/ecss/safety/priority_inheritance.md` (PI-OBC-001 v1.0)
+  - Covers: priority inversion problem, inheritance mechanism, mutex inventory
+    (`g_dl_mutex`, `driver_instance.lock`, `g_gps_mutex`), task priority map,
+    potential issues, runtime verification via `uxTaskPriorityGet()`, compliance table
+  - RTM: CDR-SAF-02 marked ✅ Implemented; FMEA: OI-SW-3 marked ✅ Implemented
+
 - **Coverity Scan CI Integration (CDR-SAF-05 / OI-SW-4)**: Deep static analysis in CI pipeline
   - New script: `scripts/coverity_scan.sh` — local Coverity scan (configure → cov-build → cov-analyze → cov-format-errors)
   - Added stage `5b coverity` to `scripts/pico_ci.sh` (soft-fail if tool not installed)
