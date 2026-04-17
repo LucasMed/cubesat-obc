@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fault Injection Test Suite (CDR-SAF-04 / OI-SW-5)**: Comprehensive fault injection for all 25 fault IDs
+  - New test: `tests/unit/test_fault_injection.c` (T-FI-01..08, 306 checks)
+  - T-FI-01: All 25 fault IDs injectable, trackable, clearable across 10 subsystems
+  - T-FI-02: WARNING faults auto-clear after WARN_AUTO_CLEAR_TICKS
+  - T-FI-03: ERROR faults persist indefinitely (only explicit clear removes)
+  - T-FI-04: CRITICAL faults trigger FM_SAFE from all 5 flight modes (FM_BOOT/SAFE/NOMINAL/DETUMBLE/DIAGNOSTIC)
+  - T-FI-05: Level precedence (NONE < WARNING < ERROR < CRITICAL)
+  - T-FI-06: Cross-subsystem multi-fault matrix — 10 simultaneous faults
+  - T-FI-07: Count increment per fault ID; clear() keeps slot, re-report bumps count
+  - T-FI-08: Unknown fault IDs accepted for reporting; get_event=false for unmapped
+  - Host-testable: all faults injectable via software (no hardware required)
+  - Test suite: 49/49 tests passing
+  - RTM: CDR-SAF-04 marked ✅ Implemented; FMEA: OI-SW-5 marked ✅ Implemented
+
 - **StartupTask ALIVE Loop Evaluation (CDR-SAF-06 / CDR-SW-05)**: Evaluation of necessity and safety impact
   - New document: `docs/ecss/safety/startup_alive_loop_eval.md` (STA-OBC-001 v1.0)
   - Finding: ALIVE loop is NOT safety-critical — FDIR handled by HealthMonitor,

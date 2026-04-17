@@ -188,7 +188,21 @@ if(NOT PICO_BUILD)
     target_include_directories(test_fault_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_fault_manager m)
     add_test(NAME fault_manager_test COMMAND test_fault_manager)
-    
+
+    # CDR-SAF-04 / OI-SW-5: Fault injection matrix — all 25 fault IDs, all subsystems,
+    # all levels (WARNING/ERROR/CRITICAL), cross-subsystem multi-fault, level precedence.
+    add_executable(test_fault_injection
+        test_fault_injection.c
+        ../../src/services/fault/fault_manager.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_fault_injection PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_fault_injection m)
+    add_test(NAME fault_injection_test COMMAND test_fault_injection)
+
     add_executable(test_fdir_isr
         test_fdir_isr.c
         ../../src/services/fault/fault_manager.c

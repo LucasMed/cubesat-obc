@@ -414,7 +414,7 @@ All software components shall comply with CODING_STANDARDS.md requirements:
 | OI-SW-2 | ISR-safe fmm_force_safe() path (FMM-DES-001 OI-5) | III | Software Lead | Phase 2 |
 | OI-SW-3 | FreeRTOS priority inheritance evaluation | III | Software Lead | ✅ Implemented (CDR-SAF-02) — `docs/ecss/safety/priority_inheritance.md` PI-OBC-001 |
 | OI-SW-4 | Coverity static analysis integration in CI pipeline | III | DevOps | ✅ Implemented (CDR-SAF-05) — `vapier/coverity-scan-action@v1` in CI; local script `scripts/coverity_scan.sh` |
-| OI-SW-5 | Fault injection test suite for all 25 fault IDs | III | Software Lead | Phase 2 |
+| OI-SW-5 | Fault injection test suite for all 25 fault IDs | III | Software Lead | ✅ Implemented (CDR-SAF-04) — `tests/unit/test_fault_injection.c` T-FI-01..08: all 25 fault IDs injectable, WARNING/ERROR/CRITICAL levels, 10 subsystems, cross-subsystem multi-fault matrix |
 
 ---
 
