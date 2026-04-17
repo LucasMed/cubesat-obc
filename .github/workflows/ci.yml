@@ -133,10 +133,5 @@ jobs:
           # Informational: describe this build in Coverity dashboard
           description: "CubeSat OBC ${{ github.ref_name }} @ ${{ github.sha }}"
 
-      - name: Upload Coverity artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverity-results
-          path: |
-            artifacts/coverity_scan.log
+      # Results are hosted by Coverity Scan at scan.coverity.com/projects/cubesat-obc
+      # No local artifact upload needed.
