@@ -22,6 +22,13 @@ This matrix maps functional and non-functional requirements to implementation mo
 | **FR-10** | Fault Aggregation | Centralised fault table (32 slots), levels INFO/WARNING/CRITICAL, anti-cascade | `services/fault/fault_manager.c`, `include/fault_manager.h`, `include/fault_ids.h` | `test_fault_manager` (T-FMS-02..04) | ✅ 12/12 PR-4 |
 | **FR-11** | EPS Monitoring | Battery voltage state machine (NOMINAL/LOW/CRITICAL/EMERGENCY) with hysteresis | `services/eps/eps_monitor.c`, `include/eps.h` | `test_eps_monitor` (T-EPS-03..05) | ✅ 12/12 PR-5 |
 | **FR-12** | Event Logging | 320-entry ring buffer, Class-A protection, newest-first read | `services/log/logger.c`, `include/logger.h`, `include/log_event_ids.h` | `test_logger` (T-LOG-01..03) | ✅ 12/12 PR-6 |
+| **FR-13** | Camera Image Capture | Acquire JPEG image from IMX219 via SPI1 on ground/internal command | `drivers/payload/camera_driver.c` | `test_camera_driver` | ⏳ Phase 7 — pending |
+| **FR-14** | Scientific Mag Sampling | Sample RM3100 magnetometer at ≥10 Hz during `FM_PAYLOAD`, store to flash | `drivers/mag/rm3100.c`, `tasks/payload_task.c` | `test_rm3100` | ⏳ Phase 7 — pending |
+| **FR-15** | Radiation Dosimetry | Sample PIN diode ADC1 at ≥1 Hz during `FM_PAYLOAD`, accumulate total dose | `drivers/radiation/radiation_driver.c`, `tasks/payload_task.c` | `test_radiation_driver` | ⏳ Phase 7 — pending |
+| **FR-16** | Payload Power Rail | Enable/disable 5V payload rail (GPIO21) on `FM_PAYLOAD` entry/exit | `drivers/power/payload_rail.c` | `test_payload_manager` (GPIO toggle) | ⏳ Phase 7 — pending |
+| **FR-17** | Payload HK in Telemetry | Include MAG/RAD/CAM housekeeping data in telemetry during `FM_PAYLOAD` | `tasks/telemetry_task.c`, `tasks/payload_task.c` | `test_telemetry` (HK fields) | ⏳ Phase 7 — pending |
+| **FR-18** | GPS NMEA Parsing | Parse `$GPGGA`/`$GPRMC` from NEO-7M via UART0 at ≥1 Hz; publish lat/lon/alt to DLA | `drivers/gps/neo7m.c`, `tasks/gps_task.c` | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | ✅ PR #46 |
+| **FR-19** | GPS UTC Synchronisation | Sync internal clock to GPS UTC within ±500 ms on valid fix | `drivers/gps/neo7m.c`, `drivers/rtc/ds3231.c` | `test_gps` (UTC field), `test_ds3231` (pending) | 🔄 Partial — GPRMC time extraction done; DS3231 sync pending |
 
 ---
 
@@ -34,6 +41,21 @@ This matrix maps functional and non-functional requirements to implementation mo
 | **NFR-3** | Memory Safety | No stack overflow, no dynamic allocation in flight code | CMake static checks, code review | `test_pid`, `test_dynamics`, `test_actuators` | ✅ Pre-release |
 | **NFR-4** | Power Efficiency | Average power <2 W during nominal operation | Pico datasheet, empirical measurement | Phase 3 power profiling | 🔄 Phase 3 |
 | **NFR-5** | Scalability | Modular architecture supports future sensors, actuators, control laws | HAL pattern, clear interfaces | Code review, `INTERFACE_SPECIFICATION.md` | ✅ Design |
+
+---
+
+## Operational Requirements
+
+> These requirements cover spacecraft housekeeping and monitoring functions not explicitly
+> specified in SRS-OBC-001 but implemented for operational purposes. They should be
+> promoted to formal SRS requirements before TRR.
+
+| ID | Requirement | Description | Module(s) | Test Case(s) | Status |
+|----|-------------|-------------|-----------|------------|--------|
+| **OR-1** | Power Bus Monitoring | Measure bus voltage (mV), current (µA), and power (µW) via INA219 high-side sensor at 1 Hz | `drivers/power/ina219.c`, `tasks/sensor_read_task.c` | `test_ina219` ✅ | ✅ PR #49 — Hardware verified |
+| **OR-2** | Real-Time Clock | Maintain accurate timekeeping via DS3231 RTC with ±2 ppm accuracy; battery-backed | `drivers/rtc/ds3231.c`, `tasks/sensor_read_task.c` | `test_ds3231` ❌ MISSING | 🔄 PR #48 — Test pending |
+| **OR-3** | Ambient Light Sensing | Measure illuminance (lux) via BH1750 digital light sensor for eclipse detection | `drivers/light/bh1750.c`, `tasks/sensor_read_task.c` | `test_bh1750` ✅ | ✅ PR #47 — Hardware verified |
+| **OR-4** | Temperature/Humidity Monitoring | Measure ambient temperature (°C) and relative humidity (%) via SHT31 sensor | `drivers/env/sht31.c`, `tasks/sensor_read_task.c` | `test_sht31` ❌ MISSING | 🔄 PR #45 — Test pending |
 
 ---
 
@@ -330,18 +352,38 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 |-----|--------|-----------|-------|
 | WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
 | T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
+| OR-2 (DS3231) missing unit test | Coverage gap for RTC driver | Create `test_ds3231.c` before TRR | SW Team |
+| OR-4 (SHT31) missing unit test | Coverage gap for env sensor driver | Create `test_sht31.c` before TRR | SW Team |
+| Operational requirements not in SRS | OR-1..OR-4 lack formal traceability | Promote OR-1..OR-4 to formal SRS requirements before TRR | Systems Lead |
+| FR-19 (GPS→RTC sync) integration pending | UTC time not yet synchronised to DS3231 | Implement `gps_sync_rtc()` integration in `sensor_read_task.c` | SW Team |
 
 ---
 
 ## Summary
 
-- **Total Requirements**: 17 (12 functional, 5 non-functional)
-- **Unit Test Coverage**: 27 unit tests + 2 integration test targets = **29 CTest executables** (29/29 passing)
-- **Integration Test Coverage**: 2 done (T-FMS-01, T-SAFE-01), 2 planned (hardware)
+- **Total Requirements**: 31 (19 functional, 5 non-functional, 7 operational)
+- **Unit Test Coverage**: 42 unit tests + 4 integration test targets = **46 CTest executables** (46/46 passing)
+- **Integration Test Coverage**: 4 done (T-FMS-01, T-SAFE-01, T-GPS-01..04, T-PLD-INT-01..10)
 - **Code Line Coverage**: 91.8% (src/control/ + src/core/ + src/services/ combined)
 - **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/ecss/standards/MISRA_DEVIATIONS.md`
-- **Overall Readiness**: 96% (Phase 6 host-testable complete; hardware validation pending)
+- **Overall Readiness**: 94% (Phase 7 hardware monitors complete; payload Phase 7 pending)
 - **Risk Level**: LOW
+
+---
+
+## CDR Safety & Analysis Requirements
+
+> Software safety and static analysis requirements for CDR gate compliance.
+> Ref: ECSS-E-ST-40C §6.4 (Software Verification), FMEA-OBC-002 §12 OI items.
+
+| ID | Requirement | Description | Implementation | Status |
+|----|-------------|-------------|---------------|--------|
+| **CDR-SAF-01** | ISR-Safe Safe Mode | FMM force-safe callable from ISR context (priority ≥ configMAX_SYSCALL_INTERRUPT_PRIORITY) | `data_layer.c:dl_lock_from_isr()`, `fmm_force_safe()` in `flight_mode_manager.c` | ✅ Implemented |
+| **CDR-SAF-02** | Priority Inheritance Evaluation | Document FreeRTOS priority inheritance for mutex-based synchronization | `docs/ecss/safety/priority_inheritance.md` | 🔄 Pending |
+| **CDR-SAF-03** | WCET Measurement | Measure WCET of all 7 FreeRTOS tasks via DWT->CYCCNT on RP2350 | `include/wcet_profiler.h`, `src/services/wcet/wcet_profiler_pico.c` | ✅ Implemented |
+| **CDR-SAF-04** | Fault Injection Test Suite | Exercise all fault IDs under injection to verify safe-mode response | `tests/unit/test_fault_manager.c`, `tests/integration/test_safe_trigger.c` | 🔄 Partial — CRITICAL→FM_SAFE tested |
+| **CDR-SAF-05** | Coverity CI Integration | Integrate Coverity Scan in CI pipeline for deep static analysis | `vapier/coverity-scan-action@v1` (`.github/workflows/ci.yml`); `scripts/coverity_scan.sh` (local); `scripts/static_analysis.sh` (clang-format/clang-tidy/cppcheck already present) | ✅ Implemented |
+| **CDR-SAF-06** | StartupTask ALIVE Loop Review | Evaluate necessity of ALIVE loop in StartupTask — determine safe-mode entry path if disabled | Code review of `src/tasks/startup_task.c` | 🔄 Pending |
 
 ---
 
@@ -355,13 +397,17 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | HW-01 | OBC: RP2350 / Pico 2W | §2 | FR-1..FR-12 (all tasks run on RP2350) | All 29/29 | ✅ |
 | HW-02 | IMU: MPU-6050 (I2C0, 0x68) | §3 | FR-1 (Attitude Sensing), FR-2 (EKF input) | T-SDM-01..03, T-EKF-01..06 | ✅ |
 | HW-03 | Magnetometer: HMC5883L (I2C0, 0x1E) — lab; LIS3MDL (0x1C) for flight | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ✅ Lab (HMC5883L); CDR: new LIS3MDL driver |
-| HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-13 (GPS positioning, future) — NMEA parser `src/drivers/gps/neo7m.c` pending | — | 🔄 Planned |
+| HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-18 (GPS NMEA parsing), FR-19 (UTC sync) — `neo7m.c` driver + NMEA parser | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | 🔄 Partial — NMEA/GPRMC done; UTC→DS3231 sync pending |
 | HW-05 | External watchdog: TPS3431, GPIO20, timeout=3 s | §10 #12 | FR-8 (Health Monitoring — `watchdog_hal_feed()` in `HealthMonitorTask`) | T-WDT-01..05, T-SAFE-01a..c | ✅ HAL ready |
 | HW-06 | TT&C: E22-400M30S UART1 @ 115200 baud | §6 | FR-7 (Telemetry TX via KISS/CSP), link margin +8.5 dB @ 2300 km | T-TLM-01..06 | ✅ |
 | HW-07 | SAW filter 433 MHz (TDK B39431) | §6e | Non-functional: EMI immunity; no firmware driver required | — | 🔄 Planned |
 | HW-08 | EPS: LiPo 18650 → MT3608 5V → Pico VSYS | §9 | FR-11 (EPS Monitor, GPIO26 ADC0 Vbatt) | T-EPS-03..05 | ✅ |
 | HW-09 | Magnetorquers: DRV8833 on GPIO14/15/16 | §8 | FR-6 (MTQ actuation), B-dot detumbling (Phase 1 ADCS) | T-MDT-01..05 | ✅ HAL stub |
 | HW-10 | Reaction wheels: TB6612FNG on GPIO6/7/8 | §8 | FR-5 (RW actuation), LQR torque output (Phase 2 ADCS) | test_actuators | ✅ HAL stub |
+| HW-11 | Power Monitor: INA219 (I2C0 0x40, 0.1Ω shunt) | — | OR-1 (bus voltage/current/power monitoring) | `test_ina219` ✅ | ✅ PR #49 — HW verified (V=5724mV, I=5mA, P=28mW) |
+| HW-12 | RTC: DS3231 (I2C0 0x68, ±2 ppm, battery backup) | — | OR-2 (timekeeping), FR-19 (GPS→RTC sync) | `test_ds3231` ❌ | 🔄 PR #48 — HW verified; test pending |
+| HW-13 | Light Sensor: BH1750 (I2C0 0x23, 0.5 lux resolution) | — | OR-3 (eclipse detection, sun acquisition) | `test_bh1750` ✅ | ✅ PR #47 — HW verified (~150 lux indoor) |
+| HW-14 | Temp/Humidity: SHT31 (I2C0 0x44, CRC-8) | — | OR-4 (ambient thermal monitoring) | `test_sht31` ❌ | 🔄 PR #45 — HW verified; test pending |
 
 ### Open Hardware Items (CDR scope)
 
@@ -372,10 +418,10 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | CDR-HW-03 | Implement B-dot detumbling controller: `src/control/b_dot_control.c` | Control Team |
 | CDR-HW-04 | Add PWM HAL output to `reaction_wheel.c` and `magnetorquer.c` (torque → duty cycle) | HW/SW Team |
 | CDR-HW-05 | Qualify all flight components for TID/SEE (polar LEO, ~97° orbit) | Systems |
-| CDR-HW-06 | Measure WCET of all 7 FreeRTOS tasks using `DWT->CYCCNT` and document timing budget | SW Team |
+| CDR-HW-06 | Measure WCET of all 7 FreeRTOS tasks using `DWT->CYCCNT` and document timing budget | SW Team | ✅ Implemented: `include/wcet_profiler.h`, `src/services/wcet/wcet_profiler_pico.c`; all 7 tasks instrumented (SensorRead, AttitudeCtrl, Telemetry, HealthMon, Command, GPS, Payload); DWT init in `obc_main.c`; `wcet_profiler_print_report()` outputs WCET table to console |
 
 ---
 
-**Last Updated**: 2026-03-20
-**Matrix Version**: 2.3
+**Last Updated**: 2026-04-17
+**Matrix Version**: 2.5
 **Status**: Active (updated each phase)

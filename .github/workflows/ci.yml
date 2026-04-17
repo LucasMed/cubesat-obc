@@ -74,3 +74,57 @@ jobs:
         with:
           name: firmware
           path: artifacts/*.uf2
+
+  # =============================================================================
+  # Coverity Scan — Deep static analysis via Coverity Scan (free for OSS)
+  # =============================================================================
+  # CDR-SAF-05: Coverity static analysis integration in CI pipeline
+  # FMEA OI-SW-4: Coverity analysis integration in CI pipeline
+  #
+  # Setup (one-time):
+  #   1. Sign up at https://scan.coverity.com/projects/cubesat-obc
+  #   2. Register this repo: cubesat-obc (public repos auto-detected)
+  #   3. Add these secrets to the repo:
+  #      https://github.com/<owner>/<repo>/settings/secrets/actions
+  #      - COVERITY_SCAN_EMAIL: email used to register on Coverity Scan
+  #      - COVERITY_SCAN_TOKEN: token from Coverity Scan project settings
+  #
+  # Runs on: main and dev branch pushes only (skip on PRs to reduce load)
+  # =============================================================================
+  coverity-scan:
+    needs: build-test-analyze
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Apply libcsp patches
+        run: bash scripts/apply_patches.sh
+
+      - name: Run Coverity Scan
+        uses: vapier/coverity-scan-action@v1
+        with:
+          email: ${{ secrets.COVERITY_SCAN_EMAIL }}
+          token: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          project: cubesat-obc
+          # Limit to project source (exclude third_party)
+          filter-pattern: |
+            +src/**
+            +include/**
+          # Informational: describe this build in Coverity dashboard
+          description: "CubeSat OBC ${{ github.ref_name }} @ ${{ github.sha }}"
+
+      - name: Upload Coverity artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverity-results
+          path: |
+            artifacts/coverity_scan.log

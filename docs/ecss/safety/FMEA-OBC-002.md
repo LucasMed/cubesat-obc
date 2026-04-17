@@ -413,7 +413,7 @@ All software components shall comply with CODING_STANDARDS.md requirements:
 | OI-SW-1 | QMC5883L clone detection for HMC5883L — verify IC markings before procurement | II | Hardware Lead | Pre-flight |
 | OI-SW-2 | ISR-safe fmm_force_safe() path (FMM-DES-001 OI-5) | III | Software Lead | Phase 2 |
 | OI-SW-3 | FreeRTOS priority inheritance evaluation | III | Software Lead | Phase 2 |
-| OI-SW-4 | Coverity static analysis integration in CI pipeline | III | DevOps | Phase 2 |
+| OI-SW-4 | Coverity static analysis integration in CI pipeline | III | DevOps | ✅ Implemented (CDR-SAF-05) — `vapier/coverity-scan-action@v1` in CI; local script `scripts/coverity_scan.sh` |
 | OI-SW-5 | Fault injection test suite for all 25 fault IDs | III | Software Lead | Phase 2 |
 
 ---
