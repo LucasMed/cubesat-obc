@@ -80,11 +80,13 @@ find_coverity() {
 configure() {
   stage "Coverity 1/3 — Configure build"
 
+  # Always start fresh — avoid stale CMakeCache.txt from different CMake
+  # generators or build environments (e.g. Docker vs local).
   if [[ -d "$BUILD_DIR" ]]; then
-    info "Reusing existing build directory: $BUILD_DIR"
-  else
-    mkdir -p "$BUILD_DIR"
+    info "Cleaning stale build directory: $BUILD_DIR"
+    rm -rf "$BUILD_DIR"
   fi
+  mkdir -p "$BUILD_DIR"
 
   mkdir -p "$ARTIFACTS"
 
@@ -110,6 +112,14 @@ capture() {
     fail "Coverity tool (cov-build) not found."
     info "Download from: https://scan.coverity.com/download#section-downloads"
     info "Or set COVERITY_DIR=/path/to/cov-analysis"
+    return 1
+  fi
+
+  # Detect platform mismatch — Coverity binaries are platform-specific
+  local cov_binary="${COV}/cov-build"
+  if [[ -x "$cov_binary" ]] && ! "$cov_binary" --version &>/dev/null; then
+    fail "Coverity binary not executable (platform mismatch — Linux binary on macOS?)."
+    info "Coverity Scan requires Linux. On macOS, use the GitHub Actions job."
     return 1
   fi
 
@@ -277,11 +287,10 @@ COMMAND="${1:-all}"
 
 case "$COMMAND" in
   all)
-    check_token || exit $?
     configure
     capture
     analyze
-    pass "Coverity analysis complete"
+    pass "Coverity analysis complete (local)"
     ;;
   config)
     configure

@@ -299,6 +299,16 @@ run_coverity() {
     return 0
   fi
 
+  # Coverity binaries are platform-specific — Linux x64 won't run on macOS ARM64.
+  # Check if the binary can execute before attempting the full analysis.
+  if ! "${COV}/cov-build" --version &>/dev/null; then
+    info "Coverity binary not executable on this platform — skipping."
+    info "  Coverity Scan requires Linux. On GitHub Actions (ubuntu-latest) it will run."
+    info "  For local macOS analysis, use: brew install ... or Docker"
+    record "0" "coverity (skipped: wrong platform)"
+    return 0
+  fi
+
   info "Using Coverity from: ${COV}"
 
   # Run Coverity scan script
