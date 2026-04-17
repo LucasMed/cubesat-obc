@@ -41,9 +41,10 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 - Kick wired into `vHealthMonitorTask_Step()` every health-monitor tick
 
 ### Development Quality
-- ✅ **Unit Tests**: 23 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks …) — **23/23 passing**
+- ✅ **Unit Tests**: 48 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, closed-loop simulation, fault-to-safe integration …) — **48/48 passing**
 - ✅ **CI/CD**: GitHub Actions with automated build + test
-- ✅ **Static Analysis**: cppcheck + clang-tidy + clang-format-14
+- ✅ **Static Analysis**: cppcheck + clang-tidy + clang-format-14 + Coverity Scan
+- [![Coverity Scan Build Status](https://scan.coverity.com/projects/33049/badge.svg)](https://scan.coverity.com/projects/cubesat-obc)
 - ✅ **CMake Build**: Reproducible, Linux-native and Docker (`PICO_ENABLED=OFF`)
 - ✅ **Dev Container**: One-click VS Code environment via `.devcontainer/`
 - ✅ **Standards**: MISRA C, ECSS conventions, modular architecture

@@ -91,6 +91,9 @@ refactor/<description>    # Code reorganization
 | Writing Go tests | go-testing |
 | Creating new AI skills | skill-creator |
 | Running SDD phases | sdd-* (auto-resolved) |
+| CDR review, ecss-cdr, cdr checklist, CDR gate validation | ecss-cdr-review |
+| Traceability, ecss-trace, trace, requirements coverage, RTM validation | ecss-trace |
+| ECSS gate, GO/NO-GO, review gate readiness | ecss-gate |
 
 ---
 

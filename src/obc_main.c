@@ -33,6 +33,7 @@
 #include "system_state.h"
 #include "telemetry_task.h"
 #include "w25q64.h"
+#include "wcet_profiler.h"
 
 #ifdef PICO_BUILD
   #include "hardware/watchdog.h"
@@ -165,6 +166,12 @@ static void vStartupTask(void *pvParameters)
 
   printf("  creating tasks...\r\n");
   fflush(stdout);
+
+#ifdef PICO_BUILD
+  printf("  wcet_profiler_init...\r\n");
+  fflush(stdout);
+  (void)wcet_profiler_init();
+#endif
 
 #ifdef PICO_BUILD
   /* Task handles — Pico only; HWM printed in ALIVE loop. */

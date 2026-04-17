@@ -94,7 +94,7 @@ if(NOT PICO_BUILD)
         ../../src/drivers/payload/telemetry_storage_stub.c
     )
     target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_telemetry csp m)
+    target_link_libraries(test_telemetry wcet_lib csp m)
     add_test(NAME telemetry_test COMMAND test_telemetry)
 
     add_executable(test_command
@@ -110,7 +110,7 @@ if(NOT PICO_BUILD)
     # The command test exercises vCommandTask which uses various CSP
     # socket functions.  Link the CSP library so those symbols are
     # satisfied.  Mocks are declared static so they won't collide.
-    target_link_libraries(test_command csp)
+    target_link_libraries(test_command wcet_lib csp)
     add_test(NAME command_test COMMAND test_command)
 
     add_executable(test_comm_init
@@ -130,6 +130,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_tasks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_tasks
         tasks_lib
+        wcet_lib
         control_lib
         dynamics_lib
         drivers_lib
@@ -240,7 +241,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_sensor_read_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
-    target_link_libraries(test_sensor_read_task m)
+    target_link_libraries(test_sensor_read_task wcet_lib m)
     add_test(NAME sensor_read_task_test COMMAND test_sensor_read_task)
 
     # PR-8 gate: Attitude Control Task DLA migration — FM guard, imu_valid guard,
@@ -257,7 +258,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_attitude_control_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
-    target_link_libraries(test_attitude_control_task m)
+    target_link_libraries(test_attitude_control_task wcet_lib m)
     add_test(NAME attitude_control_task_test COMMAND test_attitude_control_task)
 
     # PR-10 gate: Health Monitor Task — verify fault_manager_tick() and
@@ -276,7 +277,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_health_monitor_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
-    target_link_libraries(test_health_monitor_task m)
+    target_link_libraries(test_health_monitor_task wcet_lib m)
     add_test(NAME health_monitor_task_test COMMAND test_health_monitor_task)
 
     add_executable(test_ekf
@@ -310,7 +311,7 @@ if(NOT PICO_BUILD)
         ../../src/drivers/host_spi_gpio_stubs.c
     )
     target_include_directories(test_watchdog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_watchdog m)
+    target_link_libraries(test_watchdog wcet_lib m)
     add_test(NAME watchdog_test COMMAND test_watchdog)
 
     # PR-17 gate: Momentum Dump — init, degenerate B guard, cross-product accuracy,
@@ -339,7 +340,7 @@ if(NOT PICO_BUILD)
         ../../src/drivers/rtc/ds3231_stub.c
     )
     target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_hmc5883l m)
+    target_link_libraries(test_hmc5883l wcet_lib m)
     add_test(NAME hmc5883l_test COMMAND test_hmc5883l)
 
     # PR-19 gate: EKF yaw update via magnetometer.
@@ -369,7 +370,7 @@ if(NOT PICO_BUILD)
         ../../src/drivers/rtc/ds3231_stub.c
     )
     target_include_directories(test_bh1750 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_bh1750 m)
+    target_link_libraries(test_bh1750 wcet_lib m)
     add_test(NAME bh1750_test COMMAND test_bh1750)
 
     # INA219 Power Monitor Driver Tests
@@ -385,8 +386,40 @@ if(NOT PICO_BUILD)
         ../../src/drivers/rtc/ds3231_stub.c
     )
     target_include_directories(test_ina219 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_ina219 m)
+    target_link_libraries(test_ina219 wcet_lib m)
     add_test(NAME ina219_test COMMAND test_ina219)
+
+    # DS3231 RTC Driver Tests
+    # T-DS3231-01..09: Init, is_present, read_time, set_time, epoch conversion, data layer
+    add_executable(test_ds3231
+        test_ds3231.c
+        ../../src/drivers/rtc/ds3231_stub.c
+        ../../src/drivers/env/sht31_stub.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_ds3231 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_ds3231 wcet_lib m)
+    add_test(NAME ds3231_test COMMAND test_ds3231)
+
+    # SHT31 Temperature/Humidity Driver Tests
+    # T-SHT31-01..11: Init, is_present, constants, heater, data layer integration
+    add_executable(test_sht31
+        test_sht31.c
+        ../../src/drivers/env/sht31_stub.c
+        ../../src/tasks/sensor_read_task.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/ekf.c
+        ../../src/control/quaternion.c
+        ../../src/drivers/rtc/ds3231_stub.c
+    )
+    target_include_directories(test_sht31 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_sht31 wcet_lib m)
+    add_test(NAME sht31_test COMMAND test_sht31)
 
     # PR-21 gate: Unit-quaternion utility library.
     # T-QAT-01..05: euler round-trip, q⊗q*=identity, normalize unit norm,

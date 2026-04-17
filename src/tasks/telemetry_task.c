@@ -15,6 +15,7 @@
 
 #include "data_layer.h"
 #include "telemetry_storage.h"
+#include "wcet_profiler.h"
 
 #include <csp/csp.h>
 
@@ -202,7 +203,9 @@ void vTelemetryTask(void *pvParameters)
 
   while (1)
   {
+    wcet_task_begin(WCET_TASK_TELEMETRY);
     vTelemetryTask_Step();
+    wcet_task_end(WCET_TASK_TELEMETRY);
     /* cppcheck-suppress unreadVariable -- macro writes back updated wake time */
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }

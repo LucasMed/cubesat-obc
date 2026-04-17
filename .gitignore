@@ -76,3 +76,8 @@ docs/private/
 *.tmp
 *.bak
 *.log
+
+# Cov analysis
+cov-analysis
+build_coverity
+artifacts/coverity

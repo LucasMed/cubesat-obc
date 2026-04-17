@@ -35,6 +35,7 @@
 #include "magnetorquer.h"
 #include "momentum_dump.h"
 #include "task.h"
+#include "wcet_profiler.h"
 
 #include <stdio.h>
 
@@ -198,6 +199,8 @@ void vAttitudeControlTask(void *pvParameters)
     }
 #endif
 
+    wcet_task_begin(WCET_TASK_ATTITUDE_CTRL);
     vAttitudeControlTask_Step();
+    wcet_task_end(WCET_TASK_ATTITUDE_CTRL);
   }
 }

@@ -50,7 +50,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_safe_trigger PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
-    target_link_libraries(test_safe_trigger m)
+    target_link_libraries(test_safe_trigger wcet_lib m)
     add_test(NAME safe_trigger_test COMMAND test_safe_trigger)
     
     # WP-7.8: Payload Integration Test
@@ -67,7 +67,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_payload_integration PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
-    target_link_libraries(test_payload_integration m)
+    target_link_libraries(test_payload_integration wcet_lib m)
     add_test(NAME payload_integration_test COMMAND test_payload_integration)
 
 else()

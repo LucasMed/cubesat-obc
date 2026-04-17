@@ -20,6 +20,27 @@
   #include "FreeRTOS.h"
   #include "semphr.h"
 static SemaphoreHandle_t g_dl_mutex = NULL;
+
+/* ISR-safe lock: uses critical section instead of mutex.
+ * Safe to call from ISR context (unlike dl_lock which uses xSemaphoreTake). */
+static void dl_lock_from_isr(void)
+{
+  if (g_dl_mutex)
+  {
+    /* taskENTER_CRITICAL_FROM_ISR returns the base priority mask before entering
+     * critical section. FreeRTOS uses this to correctly restore state on exit. */
+    (void)taskENTER_CRITICAL_FROM_ISR();
+  }
+}
+
+static void dl_unlock_from_isr(void)
+{
+  if (g_dl_mutex)
+  {
+    /* Pass the saved base priority mask from dl_lock_from_isr to restore it. */
+    taskEXIT_CRITICAL_FROM_ISR(0);
+  }
+}
 #endif
 
 /* ------------------------------------------------------------------ */
@@ -270,6 +291,26 @@ void data_layer_set_flight_mode(flight_mode_t mode)
   g_snapshot.mode = mode;
   g_snapshot.seq++;
   dl_unlock();
+}
+
+/* ISR-safe variant: uses critical section instead of mutex.
+ * Safe to call from HardFault, PendSV, or any ISR context.
+ * WARNING: Do not call from both ISR and task context for the same field
+ * without external synchronisation — the snapshot may be partially updated. */
+void data_layer_set_flight_mode_from_isr(flight_mode_t mode)
+{
+#ifdef PICO_BUILD
+  dl_lock_from_isr();
+  g_snapshot.mode = mode;
+  g_snapshot.seq++;
+  dl_unlock_from_isr();
+#else
+  /* On host, mutex is a no-op — call the standard function for correct semantics. */
+  dl_lock();
+  g_snapshot.mode = mode;
+  g_snapshot.seq++;
+  dl_unlock();
+#endif
 }
 
 void data_layer_set_energy_state(energy_state_t energy)

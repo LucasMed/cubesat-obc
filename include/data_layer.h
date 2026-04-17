@@ -255,6 +255,16 @@ extern "C"
   void data_layer_set_flight_mode(flight_mode_t mode);
 
   /**
+   * @brief Update the current flight mode from ISR context.
+   *
+   * ISR-safe variant using critical section instead of mutex.
+   * Safe to call from HardFault, PendSV, SysTick, or any hardware ISR.
+   *
+   * @param mode  New @ref flight_mode_t value.
+   */
+  void data_layer_set_flight_mode_from_isr(flight_mode_t mode);
+
+  /**
    * @brief Update the current energy state in the shared snapshot.
    *
    * Called exclusively by the EPS monitor task.

@@ -13,11 +13,12 @@
 #   4  emulate     — rp2040js boot smoke-test on the RP2040 ELF
 #   (optional)
 #   5  static      — clang-format, clang-tidy, cppcheck
+#   5b coverity    — Coverity Scan static analysis (optional, tool required)
 #   6  coverage    — gcovr HTML + text summary
 #
 # Usage:
 #   bash scripts/pico_ci.sh [all|host-test|pico-build|emu-build|emulate|
-#                            static|coverage]
+#                            static|coverity|coverage]
 #   Default: all
 #
 # On success the /artifacts (or ./artifacts) directory contains:
@@ -276,6 +277,53 @@ run_static() {
 }
 
 # =============================================================================
+# Stage 5b — Coverity Scan (optional — tool must be installed separately)
+# =============================================================================
+run_coverity() {
+  stage "5b / coverity — Coverity Scan static analysis"
+
+  # Check if Coverity tool is available
+  local COV_DIR="${COVERITY_DIR:-${REPO_ROOT}/cov-analysis}"
+  local COV=""
+  if [[ -x "${COV_DIR}/bin/cov-build" ]]; then
+    COV="${COV_DIR}/bin"
+  elif command -v cov-build &>/dev/null; then
+    COV="$(dirname "$(command -v cov-build)")"
+  fi
+
+  if [[ -z "$COV" ]]; then
+    info "Coverity tool not found — skipping."
+    info "  Download from: https://scan.coverity.com/download#section-downloads"
+    info "  Or set COVERITY_DIR=/path/to/cov-analysis"
+    record "0" "coverity (skipped)"
+    return 0
+  fi
+
+  info "Using Coverity from: ${COV}"
+
+  # Run Coverity scan script
+  COVERITY_TOKEN="${COVERITY_TOKEN:-}" \
+    bash "${REPO_ROOT}/scripts/coverity_scan.sh" \
+    2>&1 | tee "${ARTIFACTS}/coverity_scan.log"
+
+  local rc=$?
+
+  record "$rc" "coverity"
+
+  if [[ "$rc" == "0" ]]; then
+    pass "Coverity analysis: PASS (see artifacts/coverity_defects.txt)"
+    return 0
+  elif [[ "$rc" == "3" ]]; then
+    info "COVERITY_TOKEN not set — Coverity submission skipped (analysis-only run)"
+    pass "Coverity analysis: PASS (local only, no submission)"
+    return 0
+  else
+    fail "Coverity analysis: FAIL (see artifacts/coverity_scan.log)"
+    return "$rc"
+  fi
+}
+
+# =============================================================================
 # Stage 6 — Coverage report
 # =============================================================================
 run_coverage() {
@@ -353,6 +401,7 @@ case "$COMMAND" in
     run_emu_build  || true
     run_emulate    || true
     run_static     || true
+    run_coverity   || true
     run_coverage   || true
     ;;
   host-test)   run_host_test ;;
@@ -360,9 +409,10 @@ case "$COMMAND" in
   emu-build)   run_emu_build ;;
   emulate)     run_emulate ;;
   static)      run_static ;;
+  coverity)    run_coverity ;;
   coverage)    run_coverage ;;
   *)
-    echo "Usage: $0 [all|host-test|pico-build|emu-build|emulate|static|coverage]"
+    echo "Usage: $0 [all|host-test|pico-build|emu-build|emulate|static|coverity|coverage]"
     exit 2
     ;;
 esac

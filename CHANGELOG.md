@@ -7,9 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **StartupTask ALIVE Loop Evaluation (CDR-SAF-06 / CDR-SW-05)**: Evaluation of necessity and safety impact
+  - New document: `docs/ecss/safety/startup_alive_loop_eval.md` (STA-OBC-001 v1.0)
+  - Finding: ALIVE loop is NOT safety-critical — FDIR handled by HealthMonitor,
+    watchdog fed by HealthMonitor, stack overflow detected via separate
+    scratch-register mechanism in main()
+  - Recommendation: Retain ALIVE loop — provides diagnostic HWM + heap telemetry
+    at negligible cost (~8 KB RAM, ~0.1% CPU at 5 s period); avoids SMP
+    vTaskDelete() uncertainty; alternative HWM-in-HealthMonitor documented
+  - RTM: CDR-SAF-06 marked ✅ Evaluated
+
+- **Priority Inheritance Analysis (CDR-SAF-02 / OI-SW-3)**: FreeRTOS mutex priority inheritance documentation
+  - New document: `docs/ecss/safety/priority_inheritance.md` (PI-OBC-001 v1.0)
+  - Covers: priority inversion problem, inheritance mechanism, mutex inventory
+    (`g_dl_mutex`, `driver_instance.lock`, `g_gps_mutex`), task priority map,
+    potential issues, runtime verification via `uxTaskPriorityGet()`, compliance table
+  - RTM: CDR-SAF-02 marked ✅ Implemented; FMEA: OI-SW-3 marked ✅ Implemented
+
+- **Coverity Scan CI Integration (CDR-SAF-05 / OI-SW-4)**: Deep static analysis in CI pipeline
+  - New script: `scripts/coverity_scan.sh` — local Coverity scan (configure → cov-build → cov-analyze → cov-format-errors)
+  - Added stage `5b coverity` to `scripts/pico_ci.sh` (soft-fail if tool not installed)
+  - GitHub Actions: `coverity-scan` job using `vapier/coverity-scan-action@v1` on main/dev push (skips PRs)
+  - Requires secrets: `COVERITY_SCAN_EMAIL` + `COVERITY_SCAN_TOKEN` (from scan.coverity.com project settings)
+  - FMEA: OI-SW-4 marked ✅ Implemented
+  - RTM: Added "CDR Safety & Analysis Requirements" section with CDR-SAF-01..06
+
+- **WCET Profiler (CDR-HW-06 / OI-3)**: DWT cycle counter instrumentation for all FreeRTOS tasks
+  - New module: `include/wcet_profiler.h`, `src/services/wcet/wcet_profiler_pico.c` (RP2350 DWT), `src/services/wcet/wcet_profiler_host.c` (no-op stub)
+  - `wcet_profiler_init()` enables DWT->CYCCNT (133 MHz on RP2350) via ARM Cortex-M33 DWT unit; `DWT->LAR` unlock sequence for ARMv8-M security
+  - `wcet_task_begin/end(task_id)` wrap each task's work section; ISR-safe (single LDR)
+  - `wcet_profiler_print_report()` outputs WCET(cycles), WCET(μs), Avg(μs), Samples, CPU Load(‰) table
+  - Instrumented: SensorRead, AttitudeCtrl, Telemetry, HealthMon, Command, GPS, Payload
+  - Integrated into: `sensor_read_task.c`, `attitude_control_task.c`, `telemetry_task.c`, `health_monitor_task.c`, `gps_task.c`, `payload_task.c`, `command_task.c`, `obc_main.c`
+  - On host builds: all functions are no-ops (prints "WCET profiling disabled")
+
 ## [0.26.0] — 2026-04-16 — Multi-Sensor Integration
 
 ### Added
+- **Unit Tests**: Added `test_ds3231.c` (T-DS3231-01..09: init, is_present, read_time, set_time, epoch conversion, data layer) and `test_sht31.c` (T-SHT31-01..11: init, is_present, constants, heater, data layer integration, range validation). All 48 tests passing (was 46).
+  - Added FR-13..FR-17 (payload: camera, mag, radiation, power rail, HK telemetry)
+  - Added FR-18 (GPS NMEA parsing), FR-19 (GPS UTC synchronisation)
+  - Added OR-1..OR-4 (operational monitoring: INA219, DS3231, BH1750, SHT31)
+  - Added HW-11..HW-14 (new hardware entries for monitoring components)
+  - Updated HW-04 to reflect GPS partial implementation
+  - Added traceability gaps for missing tests and SRS integration
 - **INA219 Power Monitor**: High-side current/power sensor (I2C 0x40, 0.1 ohm shunt)
   - Driver: `include/ina219.h`, `src/drivers/power/ina219.c`, `src/drivers/power/ina219_stub.c`
   - Integration: Data layer with `bus_voltage_mv`, `current_ua`, `power_uw`, `power_valid`, `power_available`

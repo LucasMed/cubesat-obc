@@ -54,16 +54,43 @@ bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, ui
   return true;
 }
 
+/**
+ * Convert a calendar date/time to Unix epoch (seconds since 1970-01-01 00:00:00 UTC).
+ * Valid range: 1970-01-01 00:00:00 to 2106-02-07 06:28:15 (uint32_t overflow).
+ * Algorithm: days from epoch + seconds within day.
+ */
+static uint32_t days_from_epoch(uint16_t year, uint8_t month, uint8_t day)
+{
+  /* Days per month (non-leap year) */
+  static const uint16_t cum_days[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+
+  /* Count complete years from 1970 to year-1 */
+  uint32_t days = 0;
+  for (uint16_t y = 1970; y < year; y++)
+  {
+    days += (((y % 4 == 0) && (y % 100 != 0)) || (y % 400 == 0)) ? 366 : 365;
+  }
+
+  /* Add days for complete months in current year */
+  days += cum_days[month - 1];
+
+  /* Add day-of-month (1-indexed → 0-indexed) */
+  days += (uint32_t)day - 1;
+
+  /* Leap day correction: if current year is leap and month > Feb, add 1 */
+  bool is_leap = (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0));
+  if (is_leap && month > 2)
+  {
+    days += 1;
+  }
+
+  return days;
+}
+
 uint32_t ds3231_to_epoch(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute,
                          uint8_t second)
 {
-  /* Return a fixed timestamp: 2024-01-01 12:00:00 UTC = 1704100800 */
-  (void)year;
-  (void)month;
-  (void)day;
-  (void)hour;
-  (void)minute;
-  (void)second;
-
-  return 1704100800UL;
+  uint32_t days = days_from_epoch(year, month, day);
+  return (days * 86400UL) + ((uint32_t)hour * 3600UL) + ((uint32_t)minute * 60UL) +
+         (uint32_t)second;
 }
