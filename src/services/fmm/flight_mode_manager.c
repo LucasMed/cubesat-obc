@@ -119,9 +119,9 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
 void fmm_force_safe(void)
 {
   /* Bypasses matrix and fault checks.
-   * WARNING: NOT ISR-safe — data_layer_set_flight_mode() uses xSemaphoreTake().
-   * All callers must be in task context. See FMM-DES-001 OI-5. */
-  data_layer_set_flight_mode(FM_SAFE);
+   * ISR-safe: uses data_layer_set_flight_mode_from_isr() with critical section
+   * instead of xSemaphoreTake(). Safe to call from ISR context (CDR-SAF-01, OI-SW-2). */
+  data_layer_set_flight_mode_from_isr(FM_SAFE);
 }
 
 const char *fmm_mode_name(flight_mode_t mode)
