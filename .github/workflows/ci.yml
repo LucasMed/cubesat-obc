@@ -89,6 +89,10 @@ jobs:
   #      - COVERITY_SCAN_EMAIL: email used to register on Coverity Scan
   #      - COVERITY_SCAN_TOKEN: token from Coverity Scan project settings
   #
+  # IMPORTANT: CMake must use Unix Makefiles (not Ninja) because the
+  # vapier/coverity-scan-action runs `make` by default. The configure step
+  # below sets -G "Unix Makefiles" specifically for this job.
+  #
   # Runs on: main and dev branch pushes only (skip on PRs to reduce load)
   # =============================================================================
   coverity-scan:
@@ -108,16 +112,24 @@ jobs:
       - name: Apply libcsp patches
         run: bash scripts/apply_patches.sh
 
+      - name: Configure CMake for Coverity
+        run: |
+          cmake -S . -B build_cov \
+            -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DPICO_ENABLED=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -Wno-dev
+
       - name: Run Coverity Scan
         uses: vapier/coverity-scan-action@v1
         with:
           email: ${{ secrets.COVERITY_SCAN_EMAIL }}
           token: ${{ secrets.COVERITY_SCAN_TOKEN }}
           project: cubesat-obc
-          # Limit to project source (exclude third_party)
-          filter-pattern: |
-            +src/**
-            +include/**
+          # Use the CMake-generated Makefile in build_cov/
+          command: make
+          working-directory: build_cov
           # Informational: describe this build in Coverity dashboard
           description: "CubeSat OBC ${{ github.ref_name }} @ ${{ github.sha }}"
 
