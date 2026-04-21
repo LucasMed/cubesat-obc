@@ -343,4 +343,12 @@ OI-8 (Heap Sizing)
 
 ---
 
+## 7. Backlog Features
+
+| Feature | Description | Priority | Status |
+|---------|-------------|----------|--------|
+| UART telemetry dump command | Add `DUMP` or `TELEMETRY` text command to read telemetry records from W25Q64 flash via UART (currently only CSP `CMD_TELEMETRY_DUMP` implemented) | Low | Backlog |
+
+---
+
 *End of Document*
