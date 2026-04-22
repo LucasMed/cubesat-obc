@@ -140,7 +140,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
     uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST\r\n");
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -166,6 +166,24 @@ static void process_text_command(const char *cmd)
     {
       uart1_puts_safe("[CMD] RESET: usage: RESETGPS | RESETGPS COLD\r\n");
     }
+  }
+  else if (strncmp(cmd, "GPSSTATS", 7) == 0)
+  {
+    // Debug: show GPS statistics
+    const GpsStats_t *stats = gps_get_stats();
+    GpsFix_t fix = {0};
+    gps_get_last_fix(&fix);
+    char buf[128];
+    snprintf(buf, sizeof(buf),
+             "[CMD] GPS stats: rx=%lu, chksum_err=%lu, parse_err=%lu, "
+             "fix_valid=%lu, fix_invalid=%lu, overflow=%lu\r\n"
+             "       last fix: valid=%d, sats=%u, lat=%.6f, lon=%.6f, "
+             "alt=%.1f, hdop=%.1f\r\n",
+             (unsigned long)stats->sentences_received, (unsigned long)stats->checksum_errors,
+             (unsigned long)stats->parse_errors, (unsigned long)stats->fixes_valid,
+             (unsigned long)stats->fixes_invalid, (unsigned long)stats->buffer_overflows, fix.valid,
+             fix.satellites, (double)fix.lat, (double)fix.lon, (double)fix.alt_m, (double)fix.hdop);
+    uart1_puts_safe(buf);
   }
   else if (strncmp(cmd, "GPS", 3) == 0)
   {

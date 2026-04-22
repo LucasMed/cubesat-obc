@@ -19,9 +19,10 @@
   #include "pico/time.h"
 #endif
 
-/* Safety thresholds */
-#define INA219_VOLTAGE_MIN_MV 3000   /**< 3.0V - battery very low */
-#define INA219_VOLTAGE_MAX_MV 5500   /**< 5.5V - overvoltage */
+/* Safety thresholds - adjusted for USB (5V) + 2S LiPo (7.4V nominal)
+ * USB: 4.0-5.5V | Battery: 6.0-8.4V */
+#define INA219_VOLTAGE_MIN_MV 3500   /**< 3.5V - minimum safe voltage (USB/battery) */
+#define INA219_VOLTAGE_MAX_MV 8500   /**< 8.5V - overvoltage (2S LiPo full charge ~8.4V) */
 #define INA219_CURRENT_MAX_UA 500000 /**< 500mA - overcurrent/short */
 #define INA219_POWER_MAX_UW 2000000  /**< 2W - excessive power draw */
 
@@ -46,6 +47,7 @@
 #define INA219_CONV_READY_MASK 0x02
 
 static uint32_t s_last_reading_ms = 0;
+static int16_t s_last_voltage_mv = 0;
 
 static bool write_register(uint8_t reg, uint16_t value)
 {
@@ -203,10 +205,11 @@ bool ina219_read_power(ina219_data_t *data)
   }
 #endif
 
-  /* Store timestamp */
+  /* Store timestamp and voltage */
 #ifdef PICO_BUILD
   s_last_reading_ms = to_ms_since_boot(get_absolute_time());
 #endif
+  s_last_voltage_mv = data->bus_voltage_mv;
 
   return true;
 }
@@ -220,4 +223,9 @@ bool ina219_reset(void)
 uint32_t ina219_get_last_reading_ms(void)
 {
   return s_last_reading_ms;
+}
+
+int16_t ina219_get_voltage_mv(void)
+{
+  return s_last_voltage_mv;
 }

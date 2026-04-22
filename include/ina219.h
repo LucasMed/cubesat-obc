@@ -114,6 +114,13 @@ extern "C"
    */
   uint32_t ina219_get_last_reading_ms(void);
 
+  /**
+   * @brief Get last measured bus voltage in millivolts.
+   *
+   * @return Bus voltage in mV, or 0 if no reading yet
+   */
+  int16_t ina219_get_voltage_mv(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -138,6 +138,16 @@ static void vStartupTask(void *pvParameters)
   bool bh1750_res = bh1750_init(BH1750_ADDR_DEFAULT);
   bool ds3231_res = ds3231_init();
   bool ina219_res = ina219_init();
+
+  /* DEBUG: Print battery voltage after init */
+  ina219_data_t pwr_data = {0};
+  if (ina219_res && ina219_read_power(&pwr_data))
+  {
+    printf("  Battery: %d mV (I=%d mA)\r\n", pwr_data.bus_voltage_mv,
+           (int)(pwr_data.current_ua / 1000));
+  }
+  fflush(stdout);
+
   system_state_set_available(imu_res == 0, temp_res == 0);
   data_layer_set_mag_avail(mag_res == 0);
   data_layer_set_lux_avail(bh1750_res);
