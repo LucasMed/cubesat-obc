@@ -348,6 +348,42 @@ OI-8 (Heap Sizing)
 | Feature | Description | Priority | Status |
 |---------|-------------|----------|--------|
 | UART telemetry dump command | Add `DUMP` or `TELEMETRY` text command to read telemetry records from W25Q64 flash via UART (currently only CSP `CMD_TELEMETRY_DUMP` implemented) | Low | Backlog |
+| Auto FM_BOOT Transition | Implement deployment timer (30 min) to automatically transition FM_BOOT → FM_DETUMBLE → FM_NOMINAL without manual command | Medium | Backlog |
+| EPS init correction | EPS monitor must report faults if battery voltage is critical at startup, without waiting for first tick | Medium | Backlog |
+
+---
+
+## 8. Implementation Notes: Auto Flight Transition
+
+### 8.1 Mode Auto-Transition (FM_BOOT → FM_DETUMBLE → FM_NOMINAL)
+
+In a real CubeSat mission, the satellite must remain inactive (except for critical tasks) for a mandatory period (typically 30 or 45 minutes) after P-POD deployment before turning on high-power transmitters or actuators.
+
+**Files to modify:**
+
+- `src/obc_main.c`: Add timer in `[ALIVE]` loop of `vStartupTask`
+- Count elapsed time (uptime)
+- After `DEPLOYMENT_DELAY_MS` (e.g., 30 minutes):
+  - Evaluate angular rates (gyroscope)
+  - If rotation > threshold → `fmm_request_transition(FM_DETUMBLE)`
+  - If stable → `fmm_request_transition(FM_NOMINAL)`
+
+### 8.2 EPS Startup Fault Reporting
+
+FMM needs to know if the satellite powered on with critical voltage.
+
+**File to modify:**
+
+- `src/services/eps/eps_monitor.c`: In `eps_monitor_init()`, after evaluating battery state, force fault if state is not NOMINAL
+
+```c
+// After compute_energy_state()
+if (g_snapshot.state != ENERGY_NOMINAL) {
+    handle_state_change(ENERGY_NOMINAL, g_snapshot.state);
+}
+```
+
+*Note: If connected via USB (VBUS active), this check could be bypassed for laboratory development.*
 
 ---
 
