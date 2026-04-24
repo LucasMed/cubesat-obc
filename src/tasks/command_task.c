@@ -140,7 +140,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
     uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST\r\n");
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -231,6 +231,28 @@ static void process_text_command(const char *cmd)
       snprintf(buf, sizeof(buf), "[CMD] RTC: no data\r\n");
     }
     uart1_puts_safe(buf);
+  }
+  else if (strncmp(cmd, "SETTIME ", 8) == 0)
+  {
+    /* Format: SETTIME YYYY MM DD HH MM SS */
+    int year, month, day, hour, minute, second;
+    int n = sscanf(cmd + 8, "%d %d %d %d %d %d", &year, &month, &day, &hour, &minute, &second);
+    if (n == 6)
+    {
+      if (ds3231_set_time((uint16_t)year, (uint8_t)month, (uint8_t)day, (uint8_t)hour,
+                          (uint8_t)minute, (uint8_t)second))
+      {
+        uart1_puts_safe("[CMD] SETTIME OK\r\n");
+      }
+      else
+      {
+        uart1_puts_safe("[CMD] SETTIME FAILED\r\n");
+      }
+    }
+    else
+    {
+      uart1_puts_safe("[CMD] SETTIME: usage: SETTIME YYYY MM DD HH MM SS\r\n");
+    }
   }
   else if (strncmp(cmd, "I2CSCAN", 7) == 0)
   {

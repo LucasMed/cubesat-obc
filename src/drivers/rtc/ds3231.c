@@ -18,6 +18,15 @@
   #include "pico/time.h"
 #endif
 
+/* Register addresses */
+#define DS3231_REG_SECONDS 0x00
+#define DS3231_REG_MINUTES 0x01
+#define DS3231_REG_HOURS 0x02
+#define DS3231_REG_DAY 0x03
+#define DS3231_REG_DATE 0x04
+#define DS3231_REG_MONTH 0x05
+#define DS3231_REG_YEAR 0x06
+
 /* BCD to binary conversion */
 #define BCD_TO_BIN(bcd) ((((bcd) >> 4) * 10) + ((bcd)&0x0F))
 
@@ -53,6 +62,13 @@ bool ds3231_is_present(void)
 {
   uint8_t seconds;
 
+  /* First set the register pointer to 0x00 (seconds) */
+  uint8_t reg_addr = DS3231_REG_SECONDS;
+  if (i2c_bus_write(DS3231_ADDR, &reg_addr, 1) < 0)
+  {
+    return false;
+  }
+
   /* Try to read the seconds register */
   if (i2c_bus_read(DS3231_ADDR, &seconds, 1) < 0)
   {
@@ -74,6 +90,13 @@ bool ds3231_read_time(uint16_t *year, uint8_t *month, uint8_t *day, uint8_t *hou
 {
   if (year == NULL || month == NULL || day == NULL || hour == NULL || minute == NULL ||
       second == NULL)
+  {
+    return false;
+  }
+
+  /* First set the register pointer to 0x00 (seconds) */
+  uint8_t reg_addr = DS3231_REG_SECONDS;
+  if (i2c_bus_write(DS3231_ADDR, &reg_addr, 1) < 0)
   {
     return false;
   }
@@ -138,18 +161,19 @@ bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, ui
     return false;
   }
 
-  /* Prepare data in BCD format */
-  uint8_t data[7];
-  data[0] = BIN_TO_BCD(second);
-  data[1] = BIN_TO_BCD(minute);
-  data[2] = BIN_TO_BCD(hour); /* 24-hour mode */
-  data[3] = 1;                /* Day of week: Sunday = 1 */
-  data[4] = BIN_TO_BCD(day);
-  data[5] = BIN_TO_BCD(month); /* Century bit = 0 */
-  data[6] = BIN_TO_BCD(year - 2000);
+  /* Prepare data in BCD format - starting from register 0x00 */
+  uint8_t data[8];
+  data[0] = DS3231_REG_SECONDS; /* First byte is register address */
+  data[1] = BIN_TO_BCD(second);
+  data[2] = BIN_TO_BCD(minute);
+  data[3] = BIN_TO_BCD(hour); /* 24-hour mode */
+  data[4] = 1;                /* Day of week: Sunday = 1 */
+  data[5] = BIN_TO_BCD(day);
+  data[6] = BIN_TO_BCD(month); /* Century bit = 0 */
+  data[7] = BIN_TO_BCD(year - 2000);
 
-  /* Write to timekeeping registers */
-  if (i2c_bus_write(DS3231_ADDR, data, 7) < 0)
+  /* Write to timekeeping registers starting at 0x00 */
+  if (i2c_bus_write(DS3231_ADDR, data, 8) < 0)
   {
     return false;
   }
