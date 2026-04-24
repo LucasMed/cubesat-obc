@@ -26,6 +26,7 @@
 #include "ekf.h"
 #include "ina219.h"
 #include "sht31.h"
+#include "sun_sensor.h"
 #include "task.h"
 #include "wcet_profiler.h"
 
@@ -168,6 +169,21 @@ void vSensorReadTask_Step(void)
       {
         data_layer_write_power(power_data.bus_voltage_mv, power_data.current_ua,
                                power_data.power_uw);
+      }
+    }
+  }
+
+  /* Read sun sensors - once per second (every 10 cycles at 10 Hz) */
+  {
+    static uint8_t sun_read_counter = 0;
+    if (++sun_read_counter >= 10)
+    {
+      sun_read_counter = 0;
+      sun_sensor_data_t sun_data;
+      if (sun_sensor_read(&sun_data))
+      {
+        /* Sun sensor data - log values */
+        printf("[sun_sensor] X=%u Y=%u\r\n", (unsigned)sun_data.adc_x, (unsigned)sun_data.adc_y);
       }
     }
   }

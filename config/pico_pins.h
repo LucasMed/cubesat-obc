@@ -163,4 +163,8 @@
 #define ADC_TEMP_PIN   27  /**< ADC1 — Board / sensor temperature monitor    */
 #define RAD_SIGNAL_PIN 28  /**< ADC2 — Radiation detector analog signal      */
 
+/* Sun Sensor pins (photodiodes for ADCS) */
+#define SUN_SENSOR_X_PIN 27  /**< ADC1 — Sun sensor X axis */
+#define SUN_SENSOR_Y_PIN 28  /**< ADC2 — Sun sensor Y axis */
+
 #endif /* PICO_PINS_H */
