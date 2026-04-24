@@ -251,6 +251,7 @@ if(NOT PICO_BUILD)
         ../../src/control/quaternion.c
         ../../src/drivers/env/sht31_stub.c
         ../../src/drivers/rtc/ds3231_stub.c
+        ../../src/drivers/sun_sensor_stub.c
     )
     target_include_directories(test_sensor_read_task PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -352,6 +353,7 @@ if(NOT PICO_BUILD)
         ../../src/control/quaternion.c
         ../../src/drivers/env/sht31_stub.c
         ../../src/drivers/rtc/ds3231_stub.c
+        ../../src/drivers/sun_sensor_stub.c
     )
     target_include_directories(test_hmc5883l PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_hmc5883l wcet_lib m)
@@ -382,6 +384,7 @@ if(NOT PICO_BUILD)
         ../../src/control/ekf.c
         ../../src/control/quaternion.c
         ../../src/drivers/rtc/ds3231_stub.c
+        ../../src/drivers/sun_sensor_stub.c
     )
     target_include_directories(test_bh1750 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_bh1750 wcet_lib m)
@@ -398,6 +401,7 @@ if(NOT PICO_BUILD)
         ../../src/control/ekf.c
         ../../src/control/quaternion.c
         ../../src/drivers/rtc/ds3231_stub.c
+        ../../src/drivers/sun_sensor_stub.c
     )
     target_include_directories(test_ina219 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ina219 wcet_lib m)
@@ -414,6 +418,7 @@ if(NOT PICO_BUILD)
         ../../src/core/system_state.c
         ../../src/control/ekf.c
         ../../src/control/quaternion.c
+        ../../src/drivers/sun_sensor_stub.c
     )
     target_include_directories(test_ds3231 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_ds3231 wcet_lib m)
@@ -430,6 +435,7 @@ if(NOT PICO_BUILD)
         ../../src/control/ekf.c
         ../../src/control/quaternion.c
         ../../src/drivers/rtc/ds3231_stub.c
+        ../../src/drivers/sun_sensor_stub.c
     )
     target_include_directories(test_sht31 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_sht31 wcet_lib m)

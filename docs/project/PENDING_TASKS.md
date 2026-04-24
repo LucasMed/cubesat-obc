@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.1  
-**Last Updated:** 2026-03-23  
+**Version:** 2.2  
+**Last Updated:** 2026-04-24  
 **Status:** Active
 
 ---
@@ -111,6 +111,7 @@
 | PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | ✅ Done |
 | RP2350 Flash Backend | Full RP2350 flash backend implementation | High | 8h | flash_backend_stub.c |
 | MC/DC Coverage | MC/DC coverage analysis for certification | High | 20h | Test completion |
+| **Sun Sensor Driver** | Dual-axis photodiode sun sensor on GPIO27/28 | **Done** | **4h** | ✅ Implemented in feat/sun-sensor-driver |
 
 ### 3.2 Phase 8 Effort Summary
 
@@ -225,6 +226,7 @@
 | External Storage | Pending | W25Qxx integration pending |
 | HMC5883L Driver | Partial | Stub implementation, I2C not implemented |
 | GPS Driver | ✅ Complete | 11 comandos, API por valor, stats, HDOP |
+| **Sun Sensor** | **✅ Complete** | Dual-axis photodiode on GPIO27/28 |
 
 ### 6.3 Hardware Dependencies
 
@@ -340,6 +342,7 @@ OI-8 (Heap Sizing)
 | 1.9 | 2026-03-21 | System | ITP-OBC-001 (Integration Test Plan) and ATP-OBC-001 (Acceptance Test Procedure) created |
 | 2.0 | 2026-03-21 | System | FMEA-OBC-001 (Hardware FMEA) and FMEA-OBC-002 (Software FMEA) completed |
 | 2.1 | 2026-03-23 | System | ADCS-SIM-001, OPS-OBC-001, FRR-OBC-001 marked as done |
+| 2.2 | 2026-04-24 | System | Sun sensor driver implemented - dual-axis photodiode on GPIO27/28, feat/sun-sensor-driver branch |
 
 ---
 

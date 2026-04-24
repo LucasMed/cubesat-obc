@@ -5,6 +5,26 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] — 2026-04-24 — Sun Sensor Driver
+
+### Added
+- **Dual-Axis Photodiode Sun Sensor Driver**: New hardware driver for ADCS sun sensing
+  - New files: `include/sun_sensor.h`, `src/drivers/sun_sensor.c`, `src/drivers/sun_sensor_stub.c`
+  - Hardware: Photodiodes (e.g., BPW21) connected to ADC1 (GPIO27) and ADC2 (GPIO28)
+  - Pull-down: 10 kΩ resistors required for voltage divider circuit
+  - API: `sun_sensor_init()`, `sun_sensor_read()`, `sun_sensor_is_sun_visible()`
+  - Output: Raw ADC values (0-4095) + normalized intensity (0.0-1.0)
+  - Integration: `sensor_read_task.c` reads sun sensor data at 100 Hz
+  - Testing: Stub for host-tests, all unit tests pass
+  - ICD documentation: Updated ICD-OBC-001 (§11 Sun Sensor Interface)
+
+### Verified
+- Flatsat test: Sun sensor reads ~3700-3800 ADC (0.91 intensity) in direct light
+- Flatsat test: Sun sensor reads ~1700-2100 ADC (0.43-0.53 intensity) with ambient light
+- Flatsat test: Sun sensor reads ~10-50 ADC (<0.01 intensity) when covered/dark
+
+---
+
 ## [0.27.1] — 2026-04-16 — Coverity Bug Fixes
 
 ### Fixed

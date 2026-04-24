@@ -34,6 +34,7 @@ if(PICO_BUILD)
         light/bh1750.c
         rtc/ds3231.c
         power/ina219.c
+        sun_sensor.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
@@ -45,6 +46,10 @@ else()
         rtc/ds3231_stub.c
         power/ina219_stub.c
     )
+    # For host tests, use stub instead of hardware-dependent sun_sensor.c
+    if(NOT PICO_BUILD)
+        list(APPEND DRIVER_SOURCES sun_sensor_stub.c)
+    endif()
 
     list(APPEND DRIVER_SOURCES host_spi_gpio_stubs.c)
     list(APPEND DRIVER_SOURCES payload/host_sd_spi_stubs.c)
@@ -78,6 +83,7 @@ if(PICO_BUILD)
     target_include_directories(drivers_lib PRIVATE
         ${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include
         ${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include
+        ${PICO_SDK_PATH}/src/rp2_common/hardware_adc/include
     )
 endif()
 
