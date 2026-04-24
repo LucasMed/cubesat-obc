@@ -398,7 +398,73 @@ SAW filter 433 MHz (TDK B39431) ← EMI isolation
 
 ---
 
-## 11. External Watchdog Interface (TPS3431)
+## 11. Sun Sensor Interface (ADC1/ADC2)
+
+> ✅ **IMPLEMENTED — feat/sun-sensor-driver** (2026-04-24)
+
+| Parameter | Value |
+|-----------|-------|
+| Sensor | Dual-axis photodiode (BPW21 or equivalent) |
+| ADC peripheral | ADC1, ADC2 |
+| GPIO X | **GPIO27** (`SUN_SENSOR_X_PIN`) |
+| GPIO Y | **GPIO28** (`SUN_SENSOR_Y_PIN`) |
+| Pull-down | 10 kΩ to GND (required for voltage divider) |
+| Driver | `src/drivers/sun_sensor.c` |
+| Output rate | Configurable (100 Hz in current implementation) |
+
+**Electrical interface:**
+
+```
+Photodiode (reverse-biased or photovoltaic)
+     │
+     ├────> GPIO27 (ADC1) ───[10kΩ]──► GND   → Sun sensor X
+     │
+     └────> GPIO28 (ADC2) ───[10kΩ]──► GND   → Sun sensor Y
+```
+
+> **Wiring note**: The photodiode connects in series with a 10kΩ pull-down resistor
+> to form a voltage divider. The ADC reads the voltage drop across the photodiode,
+> which varies with light intensity.
+
+**Output data:**
+
+| Signal | Units | Range | Consumer |
+|--------|-------|-------|----------|
+| `adc_x` | raw | 0-4095 | `SensorReadTask` → attitude estimation |
+| `adc_y` | raw | 0-4095 | `SensorReadTask` → attitude estimation |
+| `intensity_x` | normalized | 0.0-1.0 | Telemetry |
+| `intensity_y` | normalized | 0.0-1.0 | Telemetry |
+| `sun_detected_x` | boolean | — | ADCS mode logic |
+| `sun_detected_y` | boolean | — | ADCS mode logic |
+
+**Intensity calculation:**
+```
+intensity = adc_value / 4095.0  // Normalized to 0.0-1.0
+```
+
+**Typical values:**
+
+| Condition | ADC Value | Intensity |
+|-----------|-----------|-----------|
+| Direct sun | ~3700-3800 | ~0.90-0.91 |
+| Ambient light | ~1700-2100 | ~0.43-0.53 |
+| Covered/dark | ~10-50 | ~0.00-0.01 |
+
+**API:**
+```c
+bool sun_sensor_init(void);
+bool sun_sensor_read(sun_sensor_data_t *data);
+bool sun_sensor_is_sun_visible(uint16_t threshold);
+```
+
+**Driver files:**
+- Header: `include/sun_sensor.h`
+- Implementation: `src/drivers/sun_sensor.c`
+- Stub (tests): `src/drivers/sun_sensor_stub.c`
+
+---
+
+## 12. External Watchdog Interface (TPS3431)
 
 | Parameter | Value |
 |-----------|-------|
@@ -429,7 +495,7 @@ Boot sequence → FM_BOOT → FM_SAFE
 
 ---
 
-## 12. Debug Interface (USB CDC)
+## 13. Debug Interface (USB CDC)
 
 | Parameter | Value |
 |-----------|-------|
@@ -444,7 +510,7 @@ Boot sequence → FM_BOOT → FM_SAFE
 
 ---
 
-## 13. Software Ownership Matrix
+## 14. Software Ownership Matrix
 
 | Interface | GPIO | Driver file | Task owner | Status |
 |-----------|------|------------|-----------|--------|
@@ -456,7 +522,9 @@ Boot sequence → FM_BOOT → FM_SAFE
 | PWM (RW) | GPIO6/7/**3** | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | PWM (MTQ) | GPIO14/15/16 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | ADC0 (Vbatt) | GPIO26 | `src/services/eps/eps_monitor.c` | `HealthMonitorTask` | ✅ Integrated |
-| ADC1 (RAD-001 — Ph.7) | GPIO27 | `src/drivers/payload/radiation_driver.c` | `PayloadTask` | ⏳ Phase 7 |
+| ADC1 (Sun Sensor X) | GPIO27 | `src/drivers/sun_sensor.c` | `SensorReadTask` | ✅ Integrated |
+| ADC2 (Sun Sensor Y) | GPIO28 | `src/drivers/sun_sensor.c` | `SensorReadTask` | ✅ Integrated |
+| ADC3 (RAD-001 — Ph.7) | GPIO29 | `src/drivers/payload/radiation_driver.c` | `PayloadTask` | ⏳ Phase 7 |
 | SPI1 (CAM-001 — Ph.7) | GPIO10/11/12/13 | `src/drivers/payload/camera_driver.c` | `PayloadTask` | ⏳ Phase 7 |
 | GPIO21 (PAYLOAD_EN — Ph.7) | GPIO21 | `src/services/payload/payload_manager.c` | `PayloadTask` | ⏳ Phase 7 |
 | GPIO22 (CAM_TRIGGER — Ph.7) | GPIO22 | `src/drivers/payload/camera_driver.c` | `PayloadTask` | ⏳ Phase 7 |
@@ -465,7 +533,7 @@ Boot sequence → FM_BOOT → FM_SAFE
 
 ---
 
-## 14. Fault Handling
+## 15. Fault Handling
 
 Interface-level failures propagate through the FDIR chain:
 
@@ -497,7 +565,7 @@ FM_SAFE MODE (magnetorquers only, telemetry heartbeat only)
 
 ---
 
-## 15. Payload Suite Interface (PLS-001) — Phase 7
+## 16. Payload Suite Interface (PLS-001) — Phase 7
 
 Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 
@@ -534,10 +602,13 @@ Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 
 ### 15.3 ADC1 — Radiation Detector (RAD-001)
 
+> ⚠️ **GPIO27 shared**: ADC1 (GPIO27) is shared between RAD-001 and sun sensor.
+> Radiation driver uses GPIO2 for RAD_RESET, freeing GPIO27 for sun sensor primary use.
+
 | Parameter  | Value                                      |
 |------------|--------------------------------------------|
-| ADC channel| ADC1                                       |
-| GPIO       | **GPIO27**                                 |
+| ADC channel| ADC1 (shared with sun sensor)              |
+| GPIO       | **GPIO27** (sun sensor X)                  |
 | Input      | TIA output, 0–3.3 V                        |
 | Driver     | `src/drivers/payload/radiation_driver.c`   |
 | Rate       | 1 Hz (Phase 7)                             |
@@ -559,7 +630,7 @@ Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 | ADC1 (RAD-001) | Known voltage reference + field test | ADC reading within ±1% of reference |
 ---
 
-## 16. Interface Verification Methods
+## 17. Interface Verification Methods
 
 | Interface | Method | Acceptance criterion |
 |-----------|--------|---------------------|
@@ -569,6 +640,7 @@ Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 | UART1 (TT&C) | Loopback + GS round-trip | CSP packet transmitted and echoed by ground station |
 | PWM (RW/MTQ) | Oscilloscope | Correct duty cycle and frequency for commanded torque |
 | ADC0 (Vbatt) | Known voltage reference | Measured V_batt within ±2% of reference |
+| ADC1/2 (Sun Sensor) | Flatsat test with flashlight | ADC value changes with light intensity (10-50 dark, ~3700 bright) |
 | GPIO20 (watchdog) | Forced timeout test | System resets within 3 s of kick cessation |
 | USB CDC | `minicom` / `screen` | Log output received on host at correct rate |
 
@@ -576,9 +648,14 @@ Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 
 ---
 
-## 16. Changelog
+## 18. Changelog
 
 | Version | Date | Description |
 |---------|------|-------------|
 | 1.0 | 2026-03-05 | Initial release — interfaces defined for BOM v1.0 hardware set |
 | 1.1 | 2026-04-06 | GPS Phase 1 & 2 commands implemented (11 CSP + 8 UART text), HDOP, GpsStats_t |
+| 1.3 | 2026-04-24 | Sun sensor driver added — dual-axis photodiode on GPIO27/28 (ADC1/ADC2), API in sun_sensor.h, driver sun_sensor.c |
+
+---
+
+**Document version: 1.3**
