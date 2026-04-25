@@ -34,3 +34,16 @@ bool sht31_set_heater(bool enable)
   (void)enable;
   return true;
 }
+
+bool sht31_start_periodic(uint8_t hz)
+{
+  (void)hz;
+  return true;
+}
+
+bool sht31_fetch(float *temperature, float *humidity)
+{
+  (void)temperature;
+  (void)humidity;
+  return false;
+}
