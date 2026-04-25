@@ -32,6 +32,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 #ifdef PICO_BUILD
   #include "pico/time.h"
 #endif
@@ -105,7 +106,7 @@ void vSensorReadTask_Step(void)
     float temp = temperature_read();
     data_layer_write_temp(temp);
 
-    /* Read SHT31 temperature and humidity for higher accuracy */
+/* Read SHT31 temperature and humidity for higher accuracy */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
     
@@ -115,7 +116,11 @@ void vSensorReadTask_Step(void)
     {
       if (retry > 0)
       {
+#ifdef PICO_BUILD
         sleep_ms(10);  // Wait between retries
+#else
+        usleep(10000);  // Unix equivalent
+#endif
       }
       sht31_ok = sht31_read(&sht31_temp, &sht31_humidity);
     }
