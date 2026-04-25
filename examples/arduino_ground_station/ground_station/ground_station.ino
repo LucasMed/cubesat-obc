@@ -73,11 +73,12 @@ void loop()
 
     if (recibido.length() == 0) return;
 
-    // Detect format: JSON starts with '{', TEXT starts with '[TLM]'
-    if (recibido.startsWith("{"))
+    // Detect format: JSON starts with '[', TEXT starts with '['
+    if (recibido.startsWith("[JSON]"))
     {
-      // JSON format
-      parseTelemetryJson(recibido);
+      // JSON format - remove prefix and parse
+      String jsonMsg = recibido.substring(7);
+      parseTelemetryJson(jsonMsg);
     }
     else if (recibido.startsWith("[TLM]"))
     {
@@ -99,7 +100,7 @@ void loop()
     {
       parseSystemStatus(recibido);
     }
-    else if (recibido.startsWith("FAULTS:"))
+    else if (recibido.startsWith("ULTS:"))
     {
       parseFaults(recibido);
     }
@@ -141,6 +142,8 @@ void parseTelemetry(String msg)
   float temp = getValue(msg, "t=").toFloat();
   float humidity = getValue(msg, "h=").toFloat();
   float lux = getValue(msg, "l=").toFloat();
+  float sun_x = getValue(msg, "sx=").toFloat();
+  float sun_y = getValue(msg, "sy=").toFloat();
   unsigned long rtc = getValue(msg, "r=").toInt();
 
   String flagStr = getValue(msg, "f=0x");
@@ -163,9 +166,6 @@ void parseTelemetry(String msg)
   float gps_alt = gpsStr.substring(g_comma2 + 1).toFloat();
   int gps_valid = getValue(msg, "v=").toInt();
   int sats = getValue(msg, "s=").toInt();
-
-  float sun_x = getValue(msg, "sx=").toFloat();
-  float sun_y = getValue(msg, "sy=").toFloat();
   
   // CRC (optional, format: c=XX)
   String crc_recv = getValue(msg, "c=");
@@ -312,7 +312,7 @@ void parseSystemStatus(String msg)
 void parseFaults(String msg)
 {
   String levelStr = getValue(msg, "ULTS: ");
-  Serial.print("FAULTS: ");
+  Serial.print("ULTS: ");
   Serial.println(levelStr);
 }
 
@@ -326,48 +326,198 @@ String getValue(String msg, String key)
   return msg.substring(start, end);
 }
 
-// Parse JSON telemetry format for simulator
-void parseTelemetryJson(String msg)
+// Get JSON value by Nth colon-separated value (0-indexed)
+// The keys are in FIXED order: ts,m,a,t,h,l,g,v,s,p,sx,sy,f,c
+String getJsonValueByNth(String msg, int n)
 {
-  // Extract values using simple string parsing (no external libraries)
-  float ts = getJsonValue(msg, "ts").toFloat();
-  int mode = getJsonValue(msg, "mode").toInt();
-  
-  // Attitude: {"r":0.50,"p":-1.20,"y":45.30}
-  float roll = getJsonValue(msg, "r").toFloat();
-  float pitch = getJsonValue(msg, "p").toFloat();
-  float yaw = getJsonValue(msg, "y").toFloat();
-  
-  // Environment
-  float temp = getJsonValue(msg, "temp").toFloat();
-  float humidity = getJsonValue(msg, "humidity").toFloat();
-  float lux = getJsonValue(msg, "lux").toFloat();
-  
-  // GPS
-  float gps_lat = getJsonValue(msg, "lat").toFloat();
-  float gps_lon = getJsonValue(msg, "lon").toFloat();
-  float gps_alt = getJsonValue(msg, "alt").toFloat();
-  int gps_valid = getJsonValue(msg, "valid").toInt();
-  int sats = getJsonValue(msg, "sats").toInt();
-  
-  // Power
-  int volt = getJsonValue(msg, "volt").toInt();
-  int curr = getJsonValue(msg, "curr").toInt();
-  int pow = getJsonValue(msg, "pow").toInt();
-  
-  // Sun sensor - get from "sun" object
-  float sun_x = getJsonValueIn(msg, "sun", "x").toFloat();
-  float sun_y = getJsonValueIn(msg, "sun", "y").toFloat();
-  
-  // CRC8 (optional)
-  String crc_recv = getJsonValue(msg, "crc");
-  if (crc_recv.length() > 0)
+  // Find the nth colon
+  int colonPos = -1;
+  for (int i = 0; i <= n; i++)
   {
-    crc_recv.replace("\"", "");
+    colonPos = (i == 0) ? msg.indexOf(':') : msg.indexOf(':', colonPos + 1);
+    if (colonPos == -1) return "0";
   }
   
-  // Flags
-  int flags = getJsonValue(msg, "flags").toInt();
+  // colonPos now at the nth colon
+  int start = colonPos + 1;
+  while (start < msg.length() && msg.charAt(start) == ' ') start++;
+  
+  // Find end: use nth+1 colon position minus 1
+  // Or if no next colon, find closing brace
+  int searchStart = colonPos + 1;
+  int nextColonPos = msg.indexOf(':', searchStart);
+  int end;
+  
+  if (nextColonPos != -1)
+  {
+    // Back up to find comma before next colon
+    end = nextColonPos;
+    while (end > start && (msg.charAt(end - 1) == ' ' || msg.charAt(end - 1) == ',')) end--;
+  }
+  else
+  {
+    // No next colon - go to closing brace
+    end = start;
+    while (end < msg.length() && msg.charAt(end) != '}') end++;
+  }
+  
+  return msg.substring(start, end);
+}
+
+// Parse JSON telemetry format - robust simple parser
+void parseTelemetryJson(String msg)
+{
+  // Debug: show message length and first part
+  Serial.print("JSON: len=");
+  Serial.print(msg.length());
+  Serial.print(" first50=");
+  Serial.println(msg.substring(0, 50));
+  
+  // Find each value by its unique key prefix
+  // Keys in order: ts, m, a, t, h, l, g, v, s, p, sx, sy, f, c
+  
+  // ts - find "ts:" at start
+  int tsPos = msg.indexOf("ts:");
+  int tsStart = tsPos + 3;
+  int tsEnd = msg.indexOf(',', tsStart);
+  float ts = msg.substring(tsStart, tsEnd).toFloat();
+  
+  // m - next key after ts
+  int mStart = tsEnd + 1;
+  int mEnd = msg.indexOf(',', mStart);
+  int mode = msg.substring(mStart, mEnd).toInt();
+  
+  Serial.print("Parsed: ts=");
+  Serial.print(ts);
+  Serial.print(" mode=");
+  Serial.println(mode);
+  
+  // a - attitude: ",a:" to ",t:"
+  int aPos = msg.indexOf(",a:");
+  if (aPos == -1) aPos = msg.indexOf("a:");  // Try start
+  aPos = (aPos >= 0) ? aPos + 2 : tsPos;  // Skip "a"
+  int aStart = aPos + 2;
+  int aEnd = msg.indexOf(",t:", aStart);  // Find next key
+  String attStr = msg.substring(aStart, aEnd);
+  Serial.print("attStr=");
+  Serial.println(attStr);
+  
+  // Parse attitude: r,p,y
+  float roll = 0, pitch = 0, yaw = 0;
+  if (attStr.indexOf(',') != -1)
+  {
+    int c1 = attStr.indexOf(',');
+    int c2 = attStr.lastIndexOf(',');
+    roll = attStr.substring(0, c1).toFloat();
+    pitch = attStr.substring(c1 + 1, c2).toFloat();
+    yaw = attStr.substring(c2 + 1).toFloat();
+  }
+  
+  Serial.print("att: ");
+  Serial.print(roll);
+  Serial.print(",");
+  Serial.print(pitch);
+  Serial.print(",");
+  Serial.println(yaw);
+  
+  // t - temperature: ",t:" to ",h:"
+  int tPos = msg.indexOf(",t:");
+  int tStart = tPos + 3;
+  int tEnd = msg.indexOf(",h:", tStart);
+  float temp = msg.substring(tStart, tEnd).toFloat();
+  
+  // h - humidity: ",h:" to ",l:"
+  int hPos = msg.indexOf(",h:");
+  int hStart = hPos + 3;
+  int hEnd = msg.indexOf(",l:", hStart);
+  float humidity = msg.substring(hStart, hEnd).toFloat();
+  
+  // l - lux: ",l:" to ",g:"
+  int lPos = msg.indexOf(",l:");
+  int lStart = lPos + 3;
+  int lEnd = msg.indexOf(",g:", lStart);
+  float lux_value = msg.substring(lStart, lEnd).toFloat();
+  
+  Serial.print("env: ");
+  Serial.print(temp);
+  Serial.print(",");
+  Serial.print(humidity);
+  Serial.print(",");
+  Serial.println(lux_value);
+  
+  // g - GPS: ",g:" to ",v:"
+  int gPos = msg.indexOf(",g:");
+  int gStart = gPos + 3;
+  int gEnd = msg.indexOf(",v:", gStart);
+  String gpsStr = msg.substring(gStart, gEnd);
+  Serial.print("gpsStr=");
+  Serial.println(gpsStr);
+  float gps_lat = 0, gps_lon = 0, gps_alt = 0;
+  if (gpsStr.indexOf(',') != -1)
+  {
+    int c1 = gpsStr.indexOf(',');
+    int c2 = gpsStr.lastIndexOf(',');
+    gps_lat = gpsStr.substring(0, c1).toFloat();
+    gps_lon = gpsStr.substring(c1 + 1, c2).toFloat();
+    gps_alt = gpsStr.substring(c2 + 1).toFloat();
+  }
+  
+  // v - valid: ",v:" to ",s:"
+  int vPos = msg.indexOf(",v:");
+  int vStart = vPos + 3;
+  int vEnd = msg.indexOf(",s:", vStart);
+  int gps_valid_str = msg.substring(vStart, vEnd).toInt();
+  
+  // s - sats: ",s:" to ",p:"
+  int sPos = msg.indexOf(",s:");
+  int sStart = sPos + 3;
+  int sEnd = msg.indexOf(",p:", sStart);
+  int sats = msg.substring(sStart, sEnd).toInt();
+  Serial.print("sats=");
+  Serial.println(sats);
+  
+  // p - power: ",p:" to ",sx:"
+  int pPos = msg.indexOf(",p:");
+  int pStart = pPos + 3;
+  int pEnd = msg.indexOf(",sx:", pStart);
+  String pwrStr = msg.substring(pStart, pEnd);
+  Serial.print("pwrStr=");
+  Serial.println(pwrStr);
+  int volt = 0, curr = 0, power = 0;
+  if (pwrStr.indexOf(',') != -1)
+  {
+    int c1 = pwrStr.indexOf(',');
+    int c2 = pwrStr.lastIndexOf(',');
+    volt = pwrStr.substring(0, c1).toInt();
+    curr = pwrStr.substring(c1 + 1, c2).toInt();
+    power = pwrStr.substring(c2 + 1).toInt();
+  }
+  
+  // sx - sun x: ",sx:" to ",sy:"
+  int sxPos = msg.indexOf(",sx:");
+  int sxStart = sxPos + 4;
+  int sxEnd = msg.indexOf(",sy:", sxStart);
+  float sun_x = msg.substring(sxStart, sxEnd).toFloat();
+  
+  // sy - sun y: ",sy:" to ",f:"
+  int syPos = msg.indexOf(",sy:");
+  int syStart = syPos + 4;
+  int syEnd = msg.indexOf(",f:", syStart);
+  float sun_y = msg.substring(syStart, syEnd).toFloat();
+  
+  // f - flags: ",f:" to ",c:"
+  int fPos = msg.indexOf(",f:");
+  int fStart = fPos + 3;
+  int fEnd = msg.indexOf(",c:", fStart);
+  int flags = msg.substring(fStart, fEnd).toInt();
+  
+  // c - CRC: ",c:" to "}"
+  int cPos = msg.indexOf(",c:");
+  int cStart = cPos + 3;
+  int cEnd = msg.indexOf('}', cStart);
+  String crc_recv = msg.substring(cStart, cEnd);
+  
+// Decode flags
   bool imu_ok = (flags & 0x01) != 0;
   bool temp_ok = (flags & 0x02) != 0;
   bool humidity_ok = (flags & 0x04) != 0;
@@ -394,7 +544,7 @@ void parseTelemetryJson(String msg)
   Serial.print(humidity_ok ? humidity : -1, 1);
   Serial.print("%");
   Serial.print(" Lux=");
-  Serial.print(lux_ok ? lux : -1, 0);
+  Serial.print(lux_ok ? lux_value : -1, 0);
   Serial.print(" Sun=[");
   Serial.print(sun_ok ? sun_x : -1, 2);
   Serial.print(",");
@@ -403,10 +553,10 @@ void parseTelemetryJson(String msg)
   Serial.print(" Energy=");
   Serial.print(energy_state);
   Serial.print(" GPS=");
-  Serial.print(gps_valid ? "OK" : "NO FIX");
+  Serial.print(gps_valid_str ? "OK" : "NO FIX");
   Serial.print(" Sats=");
   Serial.print(sats);
-  if (gps_valid)
+  if (gps_valid_str)
   {
     Serial.print(" Lat=");
     Serial.print(gps_lat, 6);
@@ -420,67 +570,10 @@ void parseTelemetryJson(String msg)
   Serial.print("mV I=");
   Serial.print(curr);
   Serial.print("mA P=");
-  Serial.print(pow);
+  Serial.print(power);
   Serial.print("mW ts=");
   Serial.print(ts, 0);
+  Serial.print(" CRC=");
+  Serial.print(crc_recv);
   Serial.println();
-}
-
-// Simple JSON value extractor - improved to handle duplicates
-String getJsonValue(String msg, String key)
-{
-  // Build search pattern based on key location
-  String search = "\"" + key + "\":";
-  int pos = msg.indexOf(search);
-  if (pos == -1) return "0";
-  
-  int start = pos + search.length();
-  int end = start;
-  while (end < msg.length())
-  {
-    char c = msg.charAt(end);
-    if (c == ',' || c == '}' || c == ']')
-    {
-      break;
-    }
-    end++;
-  }
-  
-  String val = msg.substring(start, end);
-  val.trim();
-  return val;
-}
-
-// Get JSON value from within a specific parent object (e.g., "sun":{...})
-String getJsonValueIn(String msg, String parent, String key)
-{
-  // Find parent object: "parent":{
-  String parentSearch = "\"" + parent + "\":{";
-  int parentPos = msg.indexOf(parentSearch);
-  if (parentPos == -1) return "0";
-  
-  // Start after the opening brace
-  int searchStart = parentPos + parentSearch.length();
-  
-  // Find the key within this section
-  String keySearch = "\"" + key + "\":";
-  int keyPos = msg.indexOf(keySearch, searchStart);
-  if (keyPos == -1) return "0";
-  
-  // Find end of key: value
-  int valueStart = keyPos + keySearch.length();
-  int valueEnd = valueStart;
-  while (valueEnd < msg.length())
-  {
-    char c = msg.charAt(valueEnd);
-    if (c == ',' || c == '}')
-    {
-      break;
-    }
-    valueEnd++;
-  }
-  
-  String val = msg.substring(valueStart, valueEnd);
-  val.trim();
-  return val;
 }
