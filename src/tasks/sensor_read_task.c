@@ -109,9 +109,9 @@ void vSensorReadTask_Step(void)
 /* Read SHT31 temperature and humidity for higher accuracy */
     static float cached_sht31_temp = 0.0f;
     static float cached_sht31_humidity = 0.0f;
-    static bool sht31_cached = false;
+    static uint16_t sht31_fail_count = 0;
     
-    /* Try to read SHT31 - if fails, use cached value from startup */
+    /* Try to read SHT31 */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
     
@@ -132,18 +132,28 @@ void vSensorReadTask_Step(void)
     
     if (sht31_ok)
     {
-      /* Got fresh reading */
+      /* Got fresh reading - update cache */
       cached_sht31_temp = sht31_temp;
       cached_sht31_humidity = sht31_humidity;
-      sht31_cached = true;
+      sht31_fail_count = 0;
       data_layer_write_temp(sht31_temp);
       data_layer_write_humidity(sht31_humidity);
     }
-    else if (sht31_cached)
+    else
     {
-      /* Use cached value from when SHT31 worked */
-      data_layer_write_temp(cached_sht31_temp);
-      data_layer_write_humidity(cached_sht31_humidity);
+      sht31_fail_count++;
+      /* Every 100 failures, try to clear and retry fresh */
+      if (sht31_fail_count >= 100)
+      {
+        sht31_fail_count = 0;
+        /* Trigger fresh read next cycle */
+      }
+      else if (cached_sht31_temp > 0.0f)
+      {
+        /* Use cached value */
+        data_layer_write_temp(cached_sht31_temp);
+        data_layer_write_humidity(cached_sht31_humidity);
+      }
     }
   }
 
