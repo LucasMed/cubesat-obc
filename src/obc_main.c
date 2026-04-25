@@ -136,6 +136,16 @@ static void vStartupTask(void *pvParameters)
   int temp_res = temperature_init();
   int mag_res = hmc5883l_init();
   bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
+
+  /* Start SHT31 in periodic mode (non-blocking reads) */
+  if (sht31_res)
+  {
+    sht31_res = sht31_start_periodic(10);  // 10 Hz for continuous monitoring
+    if (sht31_res)
+    {
+      printf("sht31: Periodic mode started at 10Hz\r\n");
+    }
+  }
   bool bh1750_res = bh1750_init(BH1750_ADDR_DEFAULT);
   bool ds3231_res = ds3231_init();
   bool ina219_res = ina219_init();
@@ -155,6 +165,7 @@ static void vStartupTask(void *pvParameters)
   data_layer_set_lux_avail(bh1750_res);
   data_layer_set_rtc_avail(ds3231_res);
   data_layer_set_power_avail(ina219_res);
+  data_layer_set_sun_avail(sun_sensor_res);
   printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s  RTC: %s  PWR: %s  Sun: %s\r\n",
          imu_res == 0 ? "OK" : "not found", temp_res == 0 ? "OK" : "not found",
          mag_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",

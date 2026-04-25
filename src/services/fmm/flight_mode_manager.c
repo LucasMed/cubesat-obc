@@ -33,9 +33,6 @@
 /* Allowed-transition matrix                                           */
 /* ------------------------------------------------------------------ */
 
-/* g_allowed[from][to] == 1 means the transition is permitted.        */
-/* The diagonal (same→same) is handled separately as FMM_OK (no-op). */
-/* FM_COUNT is used as array size sentinel.                           */
 static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
     /*               BOOT  SAFE  DETUMBLE  NOMINAL  DIAGNOSTIC  PAYLOAD */
     /* FM_BOOT       */ {0, 1, 1, 0, 0, 0},

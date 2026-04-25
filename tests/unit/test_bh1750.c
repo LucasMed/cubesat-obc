@@ -47,6 +47,13 @@ bool sht31_read(float *temperature, float *humidity)
   return false;
 }
 
+bool sht31_fetch(float *temperature, float *humidity)
+{
+  (void)temperature;
+  (void)humidity;
+  return false;
+}
+
 /* INA219 stub for sensor_read_task linking */
 #include "ina219.h"
 // NOLINTNEXTLINE(readability-non-const-parameter)

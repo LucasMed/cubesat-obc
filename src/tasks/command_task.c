@@ -13,6 +13,7 @@
 #include "system_state.h"
 #include "task.h"
 #include "telemetry_storage.h"
+#include "telemetry_task.h"
 #include "wcet_profiler.h"
 
 #include <csp/csp.h>
@@ -109,11 +110,26 @@ static void process_text_command(const char *cmd)
     int mode = atoi(cmd + 5);
     if (mode >= 0 && mode <= 3)
     {
-      char buf[32];
-      snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      char buf[48];
+      fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
+      if (result == FMM_OK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      }
+      else if (result == FMM_ERR_NOT_ALLOWED)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d NOT ALLOWED\r\n", mode);
+      }
+      else if (result == FMM_ERR_FAULT_BLOCK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d BLOCKED BY FAULT\r\n", mode);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d FAILED\r\n", mode);
+      }
       uart1_puts_safe(buf);
-      printf("[command_task] Text command: MODE=%d\r\n", mode);
-      fmm_request_transition((flight_mode_t)mode);
+      printf("[command_task] MODE=%d result=%d\r\n", mode, result);
     }
     else
     {
@@ -126,11 +142,26 @@ static void process_text_command(const char *cmd)
     int mode = atoi(cmd + 5);
     if (mode >= 0 && mode <= 3)
     {
-      char buf[32];
-      snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      char buf[48];
+      fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
+      if (result == FMM_OK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      }
+      else if (result == FMM_ERR_NOT_ALLOWED)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d NOT ALLOWED\r\n", mode);
+      }
+      else if (result == FMM_ERR_FAULT_BLOCK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d BLOCKED BY FAULT\r\n", mode);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d FAILED\r\n", mode);
+      }
       uart1_puts_safe(buf);
-      printf("[command_task] Text command: MODE %d\r\n", mode);
-      fmm_request_transition((flight_mode_t)mode);
+      printf("[command_task] MODE %d result=%d\r\n", mode, result);
     }
     else
     {
@@ -140,7 +171,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
     uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME\r\n");
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME|TLMFMT|TLMFMT=JSON|TLMFMT=TEXT\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -337,6 +368,33 @@ static void process_text_command(const char *cmd)
     {
       snprintf(buf, sizeof(buf), "[CMD] SHT31: no data\r\n");
     }
+    uart1_puts_safe(buf);
+  }
+  else if (strncmp(cmd, "TLMFMT=", 7) == 0)
+  {
+    /* Set telemetry format: TEXT or JSON */
+    if (strncmp(cmd + 7, "JSON", 4) == 0)
+    {
+      telemetry_set_format(TLM_FORMAT_JSON);
+      uart1_puts_safe("[CMD] TLMFMT=JSON OK\r\n");
+    }
+    else if (strncmp(cmd + 7, "TEXT", 4) == 0)
+    {
+      telemetry_set_format(TLM_FORMAT_TEXT);
+      uart1_puts_safe("[CMD] TLMFMT=TEXT OK\r\n");
+    }
+    else
+    {
+      uart1_puts_safe("[CMD] TLMFMT: usage: TLMFMT=TEXT or TLMFMT=JSON\r\n");
+    }
+  }
+  else if (strncmp(cmd, "TLMFMT", 6) == 0)
+  {
+    /* Show current format */
+    telemetry_format_t fmt = telemetry_get_format();
+    const char *fmt_name = (fmt == TLM_FORMAT_JSON) ? "JSON" : "TEXT";
+    char buf[32];
+    snprintf(buf, sizeof(buf), "[CMD] TLMFMT: %s\r\n", fmt_name);
     uart1_puts_safe(buf);
   }
   else

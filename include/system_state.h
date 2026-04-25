@@ -47,6 +47,10 @@ typedef struct
   bool power_valid;          /**< Power data is fresh and valid      */
   bool power_available;      /**< INA219 detected during boot        */
   float radiation_dose;      /**< Radiation dose (placeholder unit)   */
+  float sun_x;               /**< Sun sensor X intensity (0.0-1.0), -1 if N/A */
+  float sun_y;               /**< Sun sensor Y intensity (0.0-1.0), -1 if N/A */
+  bool sun_valid;            /**< Sun sensor data is fresh and valid    */
+  bool sun_available;        /**< Sun sensor detected during boot       */
   uint16_t image_count;      /**< Number of images stored on SD       */
   bool payload_rail_enabled; /**< Status of 3.3V/5V payload rail     */
 } system_state_t;

@@ -5,6 +5,7 @@
 #include "task.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef PICO_BUILD
   #include "../drivers/uart/pico_usart.h"
@@ -34,8 +35,64 @@
 #define TLM_FLAG_HUMIDITY_VALID (1u << 2)
 #define TLM_FLAG_LUX_VALID (1u << 3)
 #define TLM_FLAG_RTC_VALID (1u << 4)
+#define TLM_FLAG_SUN_VALID (1u << 5)
 #define TLM_FLAG_POWER_VALID (1u << 6)
 #define TLM_FLAG_ENERGY_SHIFT 5u
+
+/* CRC8 calculation (Maxim/Dallas style) */
+static uint8_t crc8_calc(const uint8_t *data, uint16_t len)
+{
+  uint8_t crc = 0;
+  for (uint16_t i = 0; i < len; i++)
+  {
+    crc ^= data[i];
+    for (uint8_t j = 0; j < 8; j++)
+    {
+      if (crc & 0x80)
+      {
+        crc = (crc << 1) ^ 0x31;  // Polynomial for CRC8- Maxim
+      }
+      else
+      {
+        crc <<= 1;
+      }
+    }
+  }
+  return crc;
+}
+
+/* Convert byte to hex char */
+static char byte_to_hex(uint8_t b)
+{
+  return (b < 10) ? ('0' + b) : ('A' + b - 10);
+}
+
+/* Telemetry output format storage - defined in header */
+static volatile telemetry_format_t g_tlm_format = TLM_FORMAT_TEXT;
+
+/* Implementation of format control functions */
+/**
+ * @brief Set telemetry output format.
+ *
+ * Called from command handler.
+ *
+ * @param format  TLM_FORMAT_TEXT or TLM_FORMAT_JSON
+ */
+void telemetry_set_format(telemetry_format_t format)
+{
+  g_tlm_format = format;
+  printf("[telemetry] Format switched to %s\n", (format == TLM_FORMAT_JSON) ? "JSON" : "TEXT");
+}
+
+/**
+ * @brief Get current telemetry format.
+ *
+ * @return Current format.
+ */
+telemetry_format_t telemetry_get_format(void)
+{
+  return g_tlm_format;
+}
 
 // Core logic for telemetry (independent of FreeRTOS task loop)
 void vTelemetryTask_Step(void)
@@ -80,6 +137,10 @@ void vTelemetryTask_Step(void)
   if (snap.state.rtc_valid)
   {
     tlm->flags |= TLM_FLAG_RTC_VALID;
+  }
+  if (snap.state.sun_valid)
+  {
+    tlm->flags |= TLM_FLAG_SUN_VALID;
   }
   if (snap.state.power_valid)
   {
@@ -131,25 +192,69 @@ void vTelemetryTask_Step(void)
   tlm->current_ma = (int16_t)(snap.state.current_ua / 1000);
   tlm->power_mw = (int16_t)(snap.state.power_uw / 1000);
 
+  /* Sun sensor */
+  tlm->sun_x = snap.state.sun_x;
+  tlm->sun_y = snap.state.sun_y;
+
   packet->length = sizeof(csp_telemetry_packet_t);
 
   // 3. Send over CSP port connection-less
   csp_sendto(CSP_PRIO_NORM, GN_ADDRESS, TELEMETRY_PORT, TELEMETRY_PORT, CSP_O_NONE, packet);
 
 #ifdef PICO_BUILD
-  // Send plain text over UART1 (HC-12) for easy debugging
-  char buf[220];
-  int len = snprintf(
-      buf, sizeof(buf),
-      "[TLM] mode=%d att=%.1f,%.1f,%.1f temp=%.1f humidity=%.1f lux=%.1f rtc=%lu flags=0x%02X gps_lat=%.6f gps_lon=%.6f gps_alt=%.1f gps_valid=%d sats=%d\r\n",
-      snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->humidity,
-      tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags, tlm->gps_lat, tlm->gps_lon,
-      tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites);
+  // Send telemetry over UART1 (HC-12) in configured format
+  char buf[512];
+
+  if (g_tlm_format == TLM_FORMAT_JSON)
+  {
+    // JSON format for simulator (simplified, with CRC8)
+    int len = snprintf(
+        buf, sizeof(buf),
+        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
+        (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
+        tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
+        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, tlm->current_ma,
+        tlm->power_mw, tlm->sun_x, tlm->sun_y, tlm->flags);
+
+    uint8_t json_crc = crc8_calc((const uint8_t *)buf + 7, len - 9);  // CRC on data only
+    int pos = len;
+    buf[pos++] = ',';
+    buf[pos++] = 'c';
+    buf[pos++] = ':';
+    buf[pos++] = byte_to_hex(json_crc >> 4);
+    buf[pos++] = byte_to_hex(json_crc & 0x0F);
+    buf[pos++] = '}';
+    buf[pos++] = '\r';
+    buf[pos++] = '\n';
+    buf[pos] = '\0';
+  }
+  else
+  {
+    // TEXT format (compact, with CRC8)
+    int len = snprintf(buf, sizeof(buf),
+                       "[TLM] m=%d a=%.1f,%.1f,%.1f t=%.1f h=%.1f l=%.1f r=%lu f=0x%02X "
+                       "g=%.6f,%.6f,%.1f v=%d s=%d sx=%.2f sy=%.2f c=  \r\n",
+                       snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp,
+                       tlm->humidity, tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags,
+                       tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
+                       tlm->gps_satellites, tlm->sun_x, tlm->sun_y);
+    // Calculate CRC and insert (skip "[TLM] " = 5 chars)
+    uint8_t text_crc = crc8_calc((const uint8_t *)buf + 5, len - 8);  // -8 for " c=  \r\n"
+    buf[len - 6] = byte_to_hex(text_crc >> 4);                        // Replace spaces
+    buf[len - 5] = byte_to_hex(text_crc & 0x0F);
+    (void)len;
+  }
+
   uart1_puts_safe(buf);
+
+  // Debug: show first 100 chars of generated buffer
+  buf[100] = '\0';
+  printf("[telemetry] UART buf (first 100): %s\n", buf + 7);  // Skip "[JSON] " prefix
 #endif
 
-  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] flags=0x%02X\n", snap.mode, tlm->attitude[0],
-         tlm->attitude[1], tlm->attitude[2], tlm->flags);
+  // Debug output to UART0
+  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f flags=0x%02X\n", snap.mode,
+         tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux, tlm->flags);
 
   // Store telemetry to W25Q64 flash for later recovery
   telemetry_record_t record;
