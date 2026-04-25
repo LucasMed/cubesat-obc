@@ -110,11 +110,26 @@ static void process_text_command(const char *cmd)
     int mode = atoi(cmd + 5);
     if (mode >= 0 && mode <= 3)
     {
-      char buf[32];
-      snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      char buf[48];
+      fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
+      if (result == FMM_OK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      }
+      else if (result == FMM_ERR_NOT_ALLOWED)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d NOT ALLOWED\r\n", mode);
+      }
+      else if (result == FMM_ERR_FAULT_BLOCK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d BLOCKED BY FAULT\r\n", mode);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d FAILED\r\n", mode);
+      }
       uart1_puts_safe(buf);
-      printf("[command_task] Text command: MODE=%d\r\n", mode);
-      fmm_request_transition((flight_mode_t)mode);
+      printf("[command_task] MODE=%d result=%d\r\n", mode, result);
     }
     else
     {
@@ -127,11 +142,26 @@ static void process_text_command(const char *cmd)
     int mode = atoi(cmd + 5);
     if (mode >= 0 && mode <= 3)
     {
-      char buf[32];
-      snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      char buf[48];
+      fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
+      if (result == FMM_OK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d OK\r\n", mode);
+      }
+      else if (result == FMM_ERR_NOT_ALLOWED)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d NOT ALLOWED\r\n", mode);
+      }
+      else if (result == FMM_ERR_FAULT_BLOCK)
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d BLOCKED BY FAULT\r\n", mode);
+      }
+      else
+      {
+        snprintf(buf, sizeof(buf), "[CMD] MODE=%d FAILED\r\n", mode);
+      }
       uart1_puts_safe(buf);
-      printf("[command_task] Text command: MODE %d\r\n", mode);
-      fmm_request_transition((flight_mode_t)mode);
+      printf("[command_task] MODE %d result=%d\r\n", mode, result);
     }
     else
     {

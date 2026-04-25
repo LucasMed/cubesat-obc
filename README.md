@@ -4,7 +4,7 @@
 
 Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace software standards. Designed for Pico 2W with extensibility to flight-ready systems.
 
-**Status:** v0.6.0 — Phase 5 (Flight Readiness) Completed
+**Status:** v0.28.0 — Sun Sensor Telemetry + Ground Station Integration
 **Platform:** Linux (native, Docker, or VS Code Dev Container)
 **License:** MIT  
 **Maintainers:** ExArsultre
@@ -44,8 +44,15 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 - `watchdog_hal_init/kick/enable` with weak-symbol stubs
 - Kick wired into `vHealthMonitorTask_Step()` every health-monitor tick
 
+### Ground Station Communication
+- **HC-12 Radio** (433 MHz) + Arduino Nano ground station
+- **JSON/TEXT Format Switching** via `TLMFMT=JSON` / `TLMFMT=TEXT` commands
+- **CRC8 Checksum** (CASPAC polynomial 0x07) for telemetry integrity
+- **Flight Mode Control** via `MODE=0-5` commands with error feedback
+- **Sun Sensor Integration** — dual-axis photodiode telemetry
+
 ### Development Quality
-- ✅ **Unit Tests**: 49 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, closed-loop simulation, fault-to-safe integration, fault injection matrix …) — **49/49 passing**
+- ✅ **Unit Tests**: 50 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, closed-loop simulation, fault-to-safe integration, fault injection matrix, CRC8, sun sensor …) — **50/50 passing**
 - ✅ **CI/CD**: GitHub Actions with automated build + test (7 stages)
 - ✅ **Static Analysis**: cppcheck + clang-tidy + clang-format-14 + Coverity Scan
 - [![Coverity Scan Build Status](https://scan.coverity.com/projects/33049/badge.svg)](https://scan.coverity.com/projects/cubesat-obc)

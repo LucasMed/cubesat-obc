@@ -246,10 +246,15 @@ void vTelemetryTask_Step(void)
   }
 
   uart1_puts_safe(buf);
+
+  // Debug: show first 100 chars of generated buffer
+  buf[100] = '\0';
+  printf("[telemetry] UART buf (first 100): %s\n", buf + 7);  // Skip "[JSON] " prefix
 #endif
 
   // Debug output to UART0
-  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f flags=0x%02X\n", snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux, tlm->flags);
+  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f flags=0x%02X\n", snap.mode,
+         tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux, tlm->flags);
 
   // Store telemetry to W25Q64 flash for later recovery
   telemetry_record_t record;

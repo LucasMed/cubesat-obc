@@ -136,7 +136,7 @@ static void vStartupTask(void *pvParameters)
   int temp_res = temperature_init();
   int mag_res = hmc5883l_init();
   bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
-  
+
   /* Start SHT31 in periodic mode (non-blocking reads) */
   if (sht31_res)
   {

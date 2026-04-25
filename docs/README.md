@@ -130,6 +130,16 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 ---
 
+## Telemetry & Ground Station (`docs/telemetry/`)
+
+> Telemetry protocol and ground station communication specifications.
+
+| Document | File |
+|---|---|
+| Telemetry Protocol Specification | [telemetry/PROTOCOL.md](telemetry/PROTOCOL.md) |
+
+---
+
 ## Project Management (`docs/project/`)
 
 > Informal planning and tracking documents. ECSS equivalent: SMP-OBC-001 inputs.

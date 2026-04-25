@@ -25,8 +25,18 @@ This document describes the telemetry protocol used for communication between th
 
 ### JSON Format
 
-```json
-{"ts":1777133006,"mode":3,"att":{"r":0.50,"p":-1.20,"y":45.30},"env":{"temp":25.5,"humidity":42.0,"lux":50000},"gps":{"lat":-34.901,"lon":-56.164,"alt":520000,"valid":1,"sats":8},"sun":{"x":0.21,"y":0.29},"flags":123,"crc":"A3"}
+**Compact flattened format** (used by OBC):
+
+```
+[JSON] {ts:1777133006,m:3,a:0.5,-1.2,45.3,t:25.5,h:42.0,l:50000,g:-34.901,-56.164,520000,v:1,s:8,p:5000,100,500,sx:0.21,sy:0.29,f:123,c:A3}
+```
+
+**Parsed output** (displayed by ground station):
+
+```
+JSON Mode=3 Roll=0.5 Pitch=-1.2 Yaw=45.3 IMU=OK Temp=25.5C Hum=42.0% Lux=50000 
+Sun=[0.21,0.29] Energy=3 GPS=OK Lat=-34.901 Lon=-56.164 Alt=520000 
+V=5000mV I=100mA P=500mW ts=1777133006 CRC=A3
 ```
 
 ## Field Definitions
@@ -74,14 +84,14 @@ This document describes the telemetry protocol used for communication between th
 
 ## CRC8 Checksum
 
-The CRC8 is calculated using the **Maxim/Dallas** polynomial (0x31):
+The CRC8 is calculated using the **CASPAC polynomial (0x07)**:
 
 ```
-CRC8 = CRC8- Maxim (data)
+CRC8 = CRC8-CASPAC (data)
 ```
 
-- For TEXT: CRC calculated on data after "[TLM] " (5 bytes)
-- For JSON: CRC calculated on the JSON string before appending `"crc":"XX"`
+- For TEXT: CRC calculated on data after "[TLM] " (5 bytes), excluding trailing " c=  \r\n"
+- For JSON: CRC calculated on the JSON string after "[JSON] " prefix (7 bytes), excluding `,c:XX}\r\n`
 - Checksum is appended as 2 uppercase hex digits
 
 ### CRC8 Algorithm (C)
@@ -96,7 +106,7 @@ uint8_t crc8_calc(const uint8_t *data, uint16_t len)
     for (uint8_t j = 0; j < 8; j++)
     {
       if (crc & 0x80)
-        crc = (crc << 1) ^ 0x31;  // Polynomial
+        crc = (crc << 1) ^ 0x07;  // CASPAC polynomial
       else
         crc <<= 1;
     }

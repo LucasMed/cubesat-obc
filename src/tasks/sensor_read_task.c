@@ -106,10 +106,10 @@ void vSensorReadTask_Step(void)
     float temp = temperature_read();
     data_layer_write_temp(temp);
 
-/* Read SHT31 temperature and humidity using periodic mode (non-blocking) */
+    /* Read SHT31 temperature and humidity using periodic mode (non-blocking) */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
-    
+
     if (sht31_fetch(&sht31_temp, &sht31_humidity))
     {
       data_layer_write_temp(sht31_temp);
