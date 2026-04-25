@@ -207,34 +207,22 @@ void vTelemetryTask_Step(void)
 
   if (g_tlm_format == TLM_FORMAT_JSON)
   {
-    // JSON format for simulator (with CRC8)
-    int len =
-        snprintf(buf, sizeof(buf),
-                 "{\"ts\":%lu,\"mode\":%d,\"att\":{\"r\":%.2f,\"p\":%.2f,\"y\":%.2f},"
-                 "\"env\":{\"temp\":%.1f,\"humidity\":%.1f,\"lux\":%.1f},"
-                 "\"gps\":{\"lat\":%.6f,\"lon\":%.6f,\"alt\":%.1f,\"valid\":%d,\"sats\":%d},"
-                 "\"power\":{\"volt\":%d,\"curr\":%d,\"pow\":%d},"
-                 "\"sun\":{\"x\":%.2f,\"y\":%.2f},"
-                 "\"flags\":%u}",
-                 (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
-                 tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
-                 tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv,
-                 tlm->current_ma, tlm->power_mw, tlm->sun_x, tlm->sun_y, tlm->flags);
-    uint8_t json_crc = crc8_calc((const uint8_t *)buf, len);
-    // Append CRC and newline
+    // JSON format for simulator (simplified, with CRC8)
+    int len = snprintf(
+        buf, sizeof(buf),
+        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
+        (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
+        tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
+        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, tlm->current_ma,
+        tlm->power_mw, tlm->sun_x, tlm->sun_y, tlm->flags);
+
+    uint8_t json_crc = crc8_calc((const uint8_t *)buf + 7, len - 9);  // CRC on data only
     int pos = len;
     buf[pos++] = ',';
-    buf[pos++] = '"';
     buf[pos++] = 'c';
-    buf[pos++] = 'r';
-    buf[pos++] = 'c';
-    buf[pos++] = '"';
-    buf[pos++] = '"';
     buf[pos++] = ':';
-    buf[pos++] = '"';
     buf[pos++] = byte_to_hex(json_crc >> 4);
     buf[pos++] = byte_to_hex(json_crc & 0x0F);
-    buf[pos++] = '"';
     buf[pos++] = '}';
     buf[pos++] = '\r';
     buf[pos++] = '\n';
@@ -260,8 +248,8 @@ void vTelemetryTask_Step(void)
   uart1_puts_safe(buf);
 #endif
 
-  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] flags=0x%02X\n", snap.mode, tlm->attitude[0],
-         tlm->attitude[1], tlm->attitude[2], tlm->flags);
+  // Debug output to UART0
+  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f flags=0x%02X\n", snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux, tlm->flags);
 
   // Store telemetry to W25Q64 flash for later recovery
   telemetry_record_t record;
