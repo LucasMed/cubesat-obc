@@ -47,6 +47,13 @@ bool sht31_read(float *temperature, float *humidity)
   return false;
 }
 
+bool sht31_fetch(float *temperature, float *humidity)
+{
+  (void)temperature;
+  (void)humidity;
+  return false;
+}
+
 bool bh1750_read(float *lux)
 {
   (void)lux;
