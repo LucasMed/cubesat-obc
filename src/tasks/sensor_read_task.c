@@ -106,10 +106,15 @@ void vSensorReadTask_Step(void)
     float temp = temperature_read();
     data_layer_write_temp(temp);
 
-    /* Read SHT31 temperature and humidity for higher accuracy */
+/* Read SHT31 temperature and humidity for higher accuracy */
+    static float cached_sht31_temp = 0.0f;
+    static float cached_sht31_humidity = 0.0f;
+    static bool sht31_cached = false;
+    
+    /* Try to read SHT31 - if fails, use cached value from startup */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
-
+    
     // Retry up to 3 times with small delay
     bool sht31_ok = false;
     for (int retry = 0; retry < 3 && !sht31_ok; retry++)
@@ -117,22 +122,28 @@ void vSensorReadTask_Step(void)
       if (retry > 0)
       {
 #ifdef PICO_BUILD
-        sleep_ms(10);  // Wait between retries
+        sleep_ms(10);
 #else
-        usleep(10000);  // Unix equivalent
+        usleep(10000);
 #endif
       }
       sht31_ok = sht31_read(&sht31_temp, &sht31_humidity);
     }
-
+    
     if (sht31_ok)
     {
-      printf("[sensor] SHT31 OK temp=%.1f hum=%.1f\n", sht31_temp, sht31_humidity);
-      /* SHT31 is more accurate, use it if available */
+      /* Got fresh reading */
+      cached_sht31_temp = sht31_temp;
+      cached_sht31_humidity = sht31_humidity;
+      sht31_cached = true;
       data_layer_write_temp(sht31_temp);
-
-      /* Write humidity to data layer (valid if >= 0) */
       data_layer_write_humidity(sht31_humidity);
+    }
+    else if (sht31_cached)
+    {
+      /* Use cached value from when SHT31 worked */
+      data_layer_write_temp(cached_sht31_temp);
+      data_layer_write_humidity(cached_sht31_humidity);
     }
   }
 
