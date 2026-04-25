@@ -367,12 +367,6 @@ String getJsonValueByNth(String msg, int n)
 // Parse JSON telemetry format - robust simple parser
 void parseTelemetryJson(String msg)
 {
-  // Debug: show message length and first part
-  Serial.print("JSON: len=");
-  Serial.print(msg.length());
-  Serial.print(" first50=");
-  Serial.println(msg.substring(0, 50));
-  
   // Find each value by its unique key prefix
   // Keys in order: ts, m, a, t, h, l, g, v, s, p, sx, sy, f, c
   
@@ -387,11 +381,6 @@ void parseTelemetryJson(String msg)
   int mEnd = msg.indexOf(',', mStart);
   int mode = msg.substring(mStart, mEnd).toInt();
   
-  Serial.print("Parsed: ts=");
-  Serial.print(ts);
-  Serial.print(" mode=");
-  Serial.println(mode);
-  
   // a - attitude: ",a:" to ",t:"
   int aPos = msg.indexOf(",a:");
   if (aPos == -1) aPos = msg.indexOf("a:");  // Try start
@@ -399,8 +388,6 @@ void parseTelemetryJson(String msg)
   int aStart = aPos + 2;
   int aEnd = msg.indexOf(",t:", aStart);  // Find next key
   String attStr = msg.substring(aStart, aEnd);
-  Serial.print("attStr=");
-  Serial.println(attStr);
   
   // Parse attitude: r,p,y
   float roll = 0, pitch = 0, yaw = 0;
@@ -412,13 +399,6 @@ void parseTelemetryJson(String msg)
     pitch = attStr.substring(c1 + 1, c2).toFloat();
     yaw = attStr.substring(c2 + 1).toFloat();
   }
-  
-  Serial.print("att: ");
-  Serial.print(roll);
-  Serial.print(",");
-  Serial.print(pitch);
-  Serial.print(",");
-  Serial.println(yaw);
   
   // t - temperature: ",t:" to ",h:"
   int tPos = msg.indexOf(",t:");
@@ -438,20 +418,11 @@ void parseTelemetryJson(String msg)
   int lEnd = msg.indexOf(",g:", lStart);
   float lux_value = msg.substring(lStart, lEnd).toFloat();
   
-  Serial.print("env: ");
-  Serial.print(temp);
-  Serial.print(",");
-  Serial.print(humidity);
-  Serial.print(",");
-  Serial.println(lux_value);
-  
   // g - GPS: ",g:" to ",v:"
   int gPos = msg.indexOf(",g:");
   int gStart = gPos + 3;
   int gEnd = msg.indexOf(",v:", gStart);
   String gpsStr = msg.substring(gStart, gEnd);
-  Serial.print("gpsStr=");
-  Serial.println(gpsStr);
   float gps_lat = 0, gps_lon = 0, gps_alt = 0;
   if (gpsStr.indexOf(',') != -1)
   {
@@ -473,16 +444,12 @@ void parseTelemetryJson(String msg)
   int sStart = sPos + 3;
   int sEnd = msg.indexOf(",p:", sStart);
   int sats = msg.substring(sStart, sEnd).toInt();
-  Serial.print("sats=");
-  Serial.println(sats);
   
   // p - power: ",p:" to ",sx:"
   int pPos = msg.indexOf(",p:");
   int pStart = pPos + 3;
   int pEnd = msg.indexOf(",sx:", pStart);
   String pwrStr = msg.substring(pStart, pEnd);
-  Serial.print("pwrStr=");
-  Serial.println(pwrStr);
   int volt = 0, curr = 0, power = 0;
   if (pwrStr.indexOf(',') != -1)
   {
