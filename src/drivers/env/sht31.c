@@ -134,22 +134,28 @@ bool sht31_read(float *temperature, float *humidity)
   sleep_ms(20);
 #endif
 
-  uint8_t data[6];
-  if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)
+uint8_t data[6];
+  int i2c_result = i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6);
+  if (i2c_result < 0)
   {
+    printf("[sht31] I2C error: %d\n", i2c_result);
     return false;
   }
-
+  
+  printf("[sht31] I2C OK, data=%02X%02X%02X%02X%02X%02X\n", data[0], data[1], data[2], data[3], data[4], data[5]);
+  
   /* Check for obviously corrupt data (all 0xFF) */
   if (data[0] == 0xFF && data[1] == 0xFF)
   {
+    printf("[sht31] corrupt: all 0xFF\n");
     return false;
   }
-
+  
   /* Verify temperature CRC */
   uint8_t temp_crc = sht31_crc8(&data[0]);
   if (temp_crc != data[2])
   {
+    printf("[sht31] temp CRC fail: calc=0x%02X got=0x%02X\n", temp_crc, data[2]);
     return false;
   }
 
