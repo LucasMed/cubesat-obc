@@ -164,7 +164,9 @@ bool sht31_read(float *temperature, float *humidity)
   if (temperature != NULL)
   {
     uint16_t raw_temp = ((uint16_t)data[0] << 8) | data[1];
+    printf("[sht31] raw_temp=0x%04X\n", raw_temp);
     *temperature = -45.0f + 175.0f * ((float)raw_temp / 65535.0f);
+    printf("[sht31] temp=%.1f\n", *temperature);
   }
 
   /* Parse humidity: RH = 100 * (raw / 65535) */
