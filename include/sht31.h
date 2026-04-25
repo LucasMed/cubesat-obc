@@ -57,6 +57,27 @@ extern "C"
    */
   bool sht31_set_heater(bool enable);
 
+  /**
+   * @brief Start periodic measurement mode (recommended for continuous monitoring)
+   *
+   * Call this once at startup, then use sht31_fetch() to read data.
+   *
+   * @param hz Measurement frequency (1, 2, 4, or 10 Hz)
+   * @return true on success
+   */
+  bool sht31_start_periodic(uint8_t hz);
+
+  /**
+   * @brief Fetch data from periodic measurement mode (non-blocking)
+   *
+   * Call this periodically after sht31_start_periodic(). No delay needed.
+   *
+   * @param temperature Output pointer for temperature in Celsius
+   * @param humidity Output pointer for relative humidity in percent
+   * @return true on success
+   */
+  bool sht31_fetch(float *temperature, float *humidity);
+
 /**
  * @brief Get the default I2C address.
  */
