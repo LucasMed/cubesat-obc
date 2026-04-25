@@ -108,18 +108,25 @@ void vSensorReadTask_Step(void)
     /* Read SHT31 temperature and humidity for higher accuracy */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
-    if (sht31_read(&sht31_temp, &sht31_humidity))
+    
+    // Retry up to 3 times with small delay
+    bool sht31_ok = false;
+    for (int retry = 0; retry < 3 && !sht31_ok; retry++)
     {
-      printf("[sensor_read] SHT31 read OK: temp=%.1f hum=%.1f\n", sht31_temp, sht31_humidity);
+      if (retry > 0)
+      {
+        sleep_ms(10);  // Wait between retries
+      }
+      sht31_ok = sht31_read(&sht31_temp, &sht31_humidity);
+    }
+    
+    if (sht31_ok)
+    {
       /* SHT31 is more accurate, use it if available */
       data_layer_write_temp(sht31_temp);
 
       /* Write humidity to data layer (valid if >= 0) */
       data_layer_write_humidity(sht31_humidity);
-    }
-    else
-    {
-      printf("[sensor_read] SHT31 read FAILED - using MPU temp\n");
     }
   }
 
