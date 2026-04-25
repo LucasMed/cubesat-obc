@@ -106,10 +106,10 @@ void vSensorReadTask_Step(void)
     float temp = temperature_read();
     data_layer_write_temp(temp);
 
-/* Read SHT31 temperature and humidity for higher accuracy */
+    /* Read SHT31 temperature and humidity for higher accuracy */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
-    
+
     // Retry up to 3 times with small delay
     bool sht31_ok = false;
     for (int retry = 0; retry < 3 && !sht31_ok; retry++)
@@ -124,9 +124,10 @@ void vSensorReadTask_Step(void)
       }
       sht31_ok = sht31_read(&sht31_temp, &sht31_humidity);
     }
-    
+
     if (sht31_ok)
     {
+      printf("[sensor] SHT31 OK temp=%.1f hum=%.1f\n", sht31_temp, sht31_humidity);
       /* SHT31 is more accurate, use it if available */
       data_layer_write_temp(sht31_temp);
 
