@@ -115,18 +115,6 @@ void vSensorReadTask_Step(void)
 
       /* Write humidity to data layer (valid if >= 0) */
       data_layer_write_humidity(sht31_humidity);
-
-#ifdef PICO_BUILD
-      /* Debug: print SHT31 readings */
-      if (sht31_humidity >= 0.0f)
-      {
-        printf("[sht31] temp=%.1fC  humidity=%.1f%%\n", (double)sht31_temp, (double)sht31_humidity);
-      }
-      else
-      {
-        printf("[sht31] temp=%.1fC  humidity=N/A\n", (double)sht31_temp);
-      }
-#endif
     }
   }
 
@@ -174,6 +162,7 @@ void vSensorReadTask_Step(void)
   }
 
   /* Read sun sensors - once per second (every 10 cycles at 10 Hz) */
+  if (snap.state.sun_available)
   {
     static uint8_t sun_read_counter = 0;
     if (++sun_read_counter >= 10)
@@ -182,8 +171,8 @@ void vSensorReadTask_Step(void)
       sun_sensor_data_t sun_data;
       if (sun_sensor_read(&sun_data))
       {
-        /* Sun sensor data - log values */
-        printf("[sun_sensor] X=%u Y=%u\r\n", (unsigned)sun_data.adc_x, (unsigned)sun_data.adc_y);
+        /* Write to data layer for telemetry */
+        data_layer_write_sun(sun_data.intensity_x, sun_data.intensity_y);
       }
     }
   }
@@ -239,7 +228,7 @@ void vSensorReadTask(void *pvParameters)
     dl_snapshot_t snap;
     data_layer_read(&snap);
     if (!snap.state.imu_available && !snap.state.temp_available && !snap.state.mag_available &&
-        !snap.state.lux_available && !snap.state.rtc_available)
+        !snap.state.lux_available && !snap.state.rtc_available && !snap.state.sun_available)
     {
       printf("[sensor_read_task] No sensors connected — task suspended\n");
       fflush(stdout);

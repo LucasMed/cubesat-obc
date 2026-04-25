@@ -272,6 +272,23 @@ void data_layer_write_radiation(float dose)
   dl_unlock();
 }
 
+void data_layer_write_sun(float sun_x, float sun_y)
+{
+  dl_lock();
+  g_snapshot.state.sun_x = sun_x;
+  g_snapshot.state.sun_y = sun_y;
+  g_snapshot.state.sun_valid = (sun_x >= 0.0f);
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_set_sun_avail(bool sun)
+{
+  dl_lock();
+  g_snapshot.state.sun_available = sun;
+  dl_unlock();
+}
+
 void data_layer_write_payload_status(bool rail_enabled, uint16_t img_count)
 {
   dl_lock();

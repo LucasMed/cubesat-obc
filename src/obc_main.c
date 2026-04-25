@@ -155,6 +155,7 @@ static void vStartupTask(void *pvParameters)
   data_layer_set_lux_avail(bh1750_res);
   data_layer_set_rtc_avail(ds3231_res);
   data_layer_set_power_avail(ina219_res);
+  data_layer_set_sun_avail(sun_sensor_res);
   printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s  RTC: %s  PWR: %s  Sun: %s\r\n",
          imu_res == 0 ? "OK" : "not found", temp_res == 0 ? "OK" : "not found",
          mag_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",

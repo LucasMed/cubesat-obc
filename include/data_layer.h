@@ -233,6 +233,25 @@ extern "C"
   void data_layer_write_radiation(float dose);
 
   /**
+   * @brief Update sun sensor readings.
+   *
+   * @param sun_x  Sun intensity X (0.0-1.0), or -1 if N/A.
+   * @param sun_y  Sun intensity Y (0.0-1.0), or -1 if N/A.
+   *
+   * Sets @c sun_valid = true if sun_x >= 0.
+   */
+  void data_layer_write_sun(float sun_x, float sun_y);
+
+  /**
+   * @brief Set sun sensor hardware availability flag.
+   *
+   * Called once during boot after sun sensor detection.
+   *
+   * @param sun  true if sun sensor was detected.
+   */
+  void data_layer_set_sun_avail(bool sun);
+
+  /**
    * @brief Update payload status in the shared snapshot.
    *
    * @param rail_enabled  Status of the payload power rail.

@@ -6,6 +6,13 @@
 
 #define TELEMETRY_PORT 10
 
+/* Telemetry output format */
+typedef enum
+{
+  TLM_FORMAT_TEXT = 0,
+  TLM_FORMAT_JSON = 1
+} telemetry_format_t;
+
 // Packed struct ensures consistent size across different architectures
 typedef struct __attribute__((packed))
 {
@@ -25,11 +32,15 @@ typedef struct __attribute__((packed))
   int16_t bus_voltage_mv;  // Bus voltage [mV] (INA219)
   int16_t current_ma;      // Current [mA] (INA219)
   int16_t power_mw;        // Power [mW] (INA219)
+  float sun_x;             // Sun sensor X intensity (0.0-1.0) or -1
+  float sun_y;             // Sun sensor Y intensity (0.0-1.0) or -1
   uint8_t flags;  // Bit 0: imu_valid, Bit 1: temp_valid, Bit 2: humidity_valid, Bit 3: lux_valid,
-                  // Bit 4: rtc_valid, Bit 6: power_valid, Bits 7:5: energy_state
+                  // Bit 4: rtc_valid, Bit 5: sun_valid, Bit 6: power_valid, Bits 7:5: energy_state
 } csp_telemetry_packet_t;
 
 void vTelemetryTask(void *pvParameters);
 void vTelemetryTask_Step(void);
+void telemetry_set_format(telemetry_format_t format);
+telemetry_format_t telemetry_get_format(void);
 
 #endif  // TELEMETRY_TASK_H
