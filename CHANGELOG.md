@@ -5,7 +5,7 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.28.0] — 2026-04-24 — Sun Sensor Driver
+## [0.28.0] — 2026-04-25 — Sun Sensor Telemetry + Ground Station
 
 ### Added
 - **Dual-Axis Photodiode Sun Sensor Driver**: New hardware driver for ADCS sun sensing
@@ -18,10 +18,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Testing: Stub for host-tests, all unit tests pass
   - ICD documentation: Updated ICD-OBC-001 (§11 Sun Sensor Interface)
 
+- **Telemetry Format Switching**: Toggle between JSON and TEXT formats via ground station
+  - Command: `TLMFMT=JSON` or `TLMFMT=TEXT`
+  - JSON format: `[JSON] {ts:1777141445,m:2,a:0.0,-0.1,2.3,t:22.9,h:59.3,l:25.8,...}`
+  - TEXT format: `[TLM] m=2 a=0.0,-0.1,2.3 t=22.9 h=59.3 l=25.8 ...`
+  - API: `telemetry_set_format()`, `telemetry_get_format()` in `telemetry_task.h`
+
+- **CRC8 Telemetry Checksum**: End-to-end integrity verification
+  - Polynomial: 0x07 (CASPAC standard)
+  - Appending: `c:XX` hex in JSON format
+  - Unit tests: `test_crc8.c` validates all polynomial cases
+
+- **SHT31 Periodic Mode**: Non-blocking 10Hz sensor reads
+  - New API: `sht31_start_periodic(rate_hz)`, `sht31_fetch()`
+  - Replaces blocking single-shot mode that caused corrupted FF FF FF humidity data
+  - Retry logic with cached value fallback for transient failures
+
+### Fixed
+- **Ground Station JSON Parser** (`examples/arduino_ground_station/`): Robust key-based parser
+  - Fixed parsing of compact JSON telemetry (key-value format without nesting)
+  - All fields parsed: timestamp, mode, attitude, temperature, humidity, GPS, power, sun sensor
+  - Removed debug prints for clean serial output
+
+- **MODE Command Error Handling** (`command_task.c`): Show actual transition result
+  - Before: Always returned `[CMD] MODE=X OK` even when transition was denied
+  - After: Returns `[CMD] MODE=X OK`, `NOT ALLOWED`, or `BLOCKED BY FAULT`
+  - Flight mode transitions now correctly reflected in telemetry
+
 ### Verified
 - Flatsat test: Sun sensor reads ~3700-3800 ADC (0.91 intensity) in direct light
 - Flatsat test: Sun sensor reads ~1700-2100 ADC (0.43-0.53 intensity) with ambient light
 - Flatsat test: Sun sensor reads ~10-50 ADC (<0.01 intensity) when covered/dark
+- Ground station: MODE=1 (SAFE), MODE=2 (DETUMBLE), MODE=3 (NOMINAL after DETUMBLE) all working
+- Telemetry: Sun=[0.38,0.38] values reflecting actual sun sensor readings
 
 ---
 
