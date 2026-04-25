@@ -41,6 +41,7 @@ bool sht31_start_periodic(uint8_t hz)
   return true;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter)
 bool sht31_fetch(float *temperature, float *humidity)
 {
   (void)temperature;
