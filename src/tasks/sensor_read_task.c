@@ -110,11 +110,16 @@ void vSensorReadTask_Step(void)
     float sht31_humidity = 0.0f;
     if (sht31_read(&sht31_temp, &sht31_humidity))
     {
+      printf("[sensor_read] SHT31 read OK: temp=%.1f hum=%.1f\n", sht31_temp, sht31_humidity);
       /* SHT31 is more accurate, use it if available */
       data_layer_write_temp(sht31_temp);
 
       /* Write humidity to data layer (valid if >= 0) */
       data_layer_write_humidity(sht31_humidity);
+    }
+    else
+    {
+      printf("[sensor_read] SHT31 read FAILED - using MPU temp\n");
     }
   }
 
