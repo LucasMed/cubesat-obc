@@ -13,7 +13,11 @@
 
 #include "w25q64.h"
 
+#include "drivers/imu/imu_calib.h"
 #include "spi_payload.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /* Constants available for both Pico and Host builds */
 #define W25Q64_PAGE_SIZE 256
@@ -421,6 +425,128 @@ uint32_t w25q64_get_capacity(void)
 bool w25q64_is_present(void)
 {
   return true;
+}
+
+  /* IMU Calibration Flash Layout (W25Q64) */
+  #define IMU_CALIB_MAGIC 0xDEADBEEF
+  #define IMU_CALIB_OFFSET 0x000000
+  #define IMU_CALIB_SIZE 0x000030  // 4+12+12+6+12+1+4 = 51 bytes
+
+static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
+{
+  uint32_t crc = 0xFFFFFFFF;
+  for (uint32_t i = 0; i < len; i++)
+  {
+    crc ^= data[i];
+    for (int j = 0; j < 8; j++)
+    {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0xEDB88320;
+      else
+        crc >>= 1;
+    }
+  }
+  return ~crc;
+}
+
+w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
+{
+  if (!cal)
+    return W25Q64_ERR_INIT;
+
+  uint8_t buf[IMU_CALIB_SIZE];
+  memset(buf, 0, sizeof(buf));
+
+  uint32_t offset = 0;
+
+  /* Magic */
+  uint32_t magic = IMU_CALIB_MAGIC;
+  memcpy(&buf[offset], &magic, 4);
+  offset += 4;
+
+  /* accel_offset[3] (12 bytes) */
+  memcpy(&buf[offset], cal->accel_offset, 12);
+  offset += 12;
+
+  /* accel_scale[3] (12 bytes) */
+  memcpy(&buf[offset], cal->accel_scale, 12);
+  offset += 12;
+
+  /* gyro_offset_raw[3] (6 bytes) */
+  memcpy(&buf[offset], cal->gyro_offset_raw, 6);
+  offset += 6;
+
+  /* gyro_bias_rads[3] (12 bytes) */
+  memcpy(&buf[offset], cal->gyro_bias_rads, 12);
+  offset += 12;
+
+  /* calibrated flag (1 byte) */
+  buf[offset++] = cal->calibrated ? 1 : 0;
+
+  /* CRC32 (4 bytes) */
+  uint32_t crc = imu_calib_crc32(buf, offset);
+  memcpy(&buf[offset], &crc, 4);
+
+  /* Write to flash (TODO: implement actual flash write for Pico build) */
+  printf("[w25q64] TODO: write %d bytes to offset 0x%06X (Phase 7)\n", IMU_CALIB_SIZE,
+         IMU_CALIB_OFFSET);
+  return W25Q64_OK;
+}
+
+w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
+{
+  if (!cal)
+    return W25Q64_ERR_INIT;
+
+  uint8_t buf[IMU_CALIB_SIZE];
+  memset(buf, 0, sizeof(buf));
+
+  /* Read from flash (TODO: implement actual flash read for Pico build) */
+  printf("[w25q64] TODO: read %d bytes from offset 0x%06X (Phase 7)\n", IMU_CALIB_SIZE,
+         IMU_CALIB_OFFSET);
+
+  uint32_t offset = 0;
+
+  /* Magic */
+  uint32_t magic;
+  memcpy(&magic, &buf[offset], 4);
+  offset += 4;
+  if (magic != IMU_CALIB_MAGIC)
+  {
+    printf("[w25q64] IMU calib: invalid magic 0x%08X\n", magic);
+    return W25Q64_ERR_INIT;
+  }
+
+  /* accel_offset[3] */
+  memcpy(cal->accel_offset, &buf[offset], 12);
+  offset += 12;
+
+  /* accel_scale[3] */
+  memcpy(cal->accel_scale, &buf[offset], 12);
+  offset += 12;
+
+  /* gyro_offset_raw[3] */
+  memcpy(cal->gyro_offset_raw, &buf[offset], 6);
+  offset += 6;
+
+  /* gyro_bias_rads[3] */
+  memcpy(cal->gyro_bias_rads, &buf[offset], 12);
+  offset += 12;
+
+  /* calibrated flag */
+  cal->calibrated = (buf[offset++] == 1);
+
+  /* CRC32 check */
+  uint32_t crc_stored;
+  memcpy(&crc_stored, &buf[offset], 4);
+  uint32_t crc_computed = imu_calib_crc32(buf, offset);
+  if (crc_stored != crc_computed)
+  {
+    printf("[w25q64] IMU calib: CRC mismatch\n");
+    return W25Q64_ERR_INIT;
+  }
+
+  return W25Q64_OK;
 }
 
 #endif /* PICO_BUILD */

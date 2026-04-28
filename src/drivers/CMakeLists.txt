@@ -1,5 +1,6 @@
 set(DRIVER_SOURCES
     imu/mpu6050.c
+    imu/imu_calib.c
     mag/hmc5883l.c
     mag/mag_calib.c
     payload/rm3100.c

@@ -38,4 +38,22 @@ int mpu6050_read(float *roll, float *pitch, float *yaw);
  */
 int mpu6050_read_raw(float accel[3], float gyro[3]);
 
+/**
+ * @brief Write gyroscope offset registers (0x13-0x18).
+ *
+ * @param offset Array of 3 int16_t values for X/Y/Z axes.
+ *        Scale: 32.8 LSB/(°/s) at ±250 °/s.
+ * @return 0 on success, negative on error.
+ */
+int mpu6050_write_gyro_offset(const int16_t offset[3]);
+
+/**
+ * @brief Write accelerometer offset registers (0x06-0x0B).
+ *
+ * @param offset Array of 3 int16_t values for X/Y/Z axes.
+ *        Scale: 2048 LSB/g at ±2g.
+ * @return 0 on success, negative on error.
+ */
+int mpu6050_write_accel_offset(const int16_t offset[3]);
+
 #endif  // MPU6050_H

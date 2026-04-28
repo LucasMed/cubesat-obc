@@ -30,6 +30,10 @@
 // Configuration values
 #define MPU6050_WAKEUP 0x00
 
+// Hardware offset registers
+#define MPU6050_GYRO_XOFFS_USRH 0x13
+#define MPU6050_ACCEL_XOFFSET_H 0x06
+
 int mpu6050_init(void)
 {
   uint8_t data[2];
@@ -75,6 +79,71 @@ int mpu6050_init(void)
   }
 
   (void)printf("mpu6050: initialized successfully\n");
+  return 0;
+}
+
+// Helper: write one register
+static int mpu6050_write_reg(uint8_t reg, uint8_t val)
+{
+  const uint8_t data[2] = {reg, val};
+  return i2c_bus_write(MPU6050_ADDR, data, 2u);
+}
+
+// Helper: read one register
+static int mpu6050_read_reg(uint8_t reg, uint8_t *val)
+{
+  return i2c_bus_write_read(MPU6050_ADDR, &reg, 1, val, 1);
+}
+
+// Gyro offset registers: XG_OFFS_USR (0x13-0x14), YG_OFFS_USR (0x15-0x16), ZG_OFFS_USR (0x17-0x18)
+// Scale: 32.8 LSB/(°/s) at ±250 °/s
+int mpu6050_write_gyro_offset(const int16_t offset[3])
+{
+  for (int i = 0; i < 3; i++)
+  {
+    int16_t val = offset[i];
+    uint8_t reg_high = MPU6050_GYRO_XOFFS_USRH + (i * 2);     // 0x13, 0x15, 0x17
+    uint8_t reg_low = MPU6050_GYRO_XOFFS_USRH + (i * 2) + 1;  // 0x14, 0x16, 0x18
+
+    // High byte
+    uint8_t high = (uint8_t)((val >> 8) & 0xFF);
+    if (mpu6050_write_reg(reg_high, high) < 0)
+    {
+      return -1;
+    }
+    // Low byte
+    uint8_t low = (uint8_t)(val & 0xFF);
+    if (mpu6050_write_reg(reg_low, low) < 0)
+    {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+// Accel offset registers: XA_OFFSET (0x06-0x07), YA_OFFSET (0x08-0x09), ZA_OFFSET (0x0A-0x0B)
+// Scale: 2048 LSB/g at ±2g
+int mpu6050_write_accel_offset(const int16_t offset[3])
+{
+  for (int i = 0; i < 3; i++)
+  {
+    int16_t val = offset[i];
+    uint8_t reg_high = MPU6050_ACCEL_XOFFSET_H + (i * 2);     // 0x06, 0x08, 0x0A
+    uint8_t reg_low = MPU6050_ACCEL_XOFFSET_H + (i * 2) + 1;  // 0x07, 0x09, 0x0B
+
+    // High byte
+    uint8_t high = (uint8_t)((val >> 8) & 0xFF);
+    if (mpu6050_write_reg(reg_high, high) < 0)
+    {
+      return -1;
+    }
+    // Low byte
+    uint8_t low = (uint8_t)(val & 0xFF);
+    if (mpu6050_write_reg(reg_low, low) < 0)
+    {
+      return -1;
+    }
+  }
   return 0;
 }
 

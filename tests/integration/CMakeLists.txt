@@ -7,7 +7,7 @@ if(NOT PICO_BUILD)
         host_spi_gpio_stubs.c
     )
     target_include_directories(test_i2c_mock PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_i2c_mock drivers_lib core_lib)
+    target_link_libraries(test_i2c_mock -Wl,--start-group drivers_lib core_lib tasks_lib -Wl,--end-group)
     add_test(NAME i2c_mock_test COMMAND test_i2c_mock)
 
     # PR-25 gate: T-FMS-01 — CRITICAL fault forces FM_SAFE end-to-end.

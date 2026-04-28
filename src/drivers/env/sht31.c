@@ -285,7 +285,7 @@ bool sht31_fetch(float *temperature, float *humidity)
     return false;
   }
 
-  uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_FETCH >> 8), (uint8_t)(SHT31_CMD_FETCH & 0xFF)};
+  const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_FETCH >> 8), (uint8_t)(SHT31_CMD_FETCH & 0xFF)};
 
   uint8_t data[6];
   if (i2c_bus_write_read(s_sht31_addr, cmd, 2, data, 6) < 0)

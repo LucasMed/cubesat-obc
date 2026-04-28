@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "bh1750.h"
 #include "data_layer.h"
+#include "drivers/imu/imu_calib.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
@@ -127,6 +128,51 @@ static void process_text_command(const char *cmd)
     }
     uart1_puts_safe(buf);
     printf("[command_task] Text command: MAG-CAL-STATUS\r\n");
+  }
+  else if (strncmp(cmd, "IMU-CAL-START", 14) == 0)
+  {
+    imu_calib_start();
+    uart1_puts_safe(
+        "[CMD] IMU-CAL: started — keep stationary for gyro, then 6 orientations for accel\r\n");
+    printf("[command_task] Text command: IMU-CAL-START\r\n");
+  }
+  else if (strncmp(cmd, "IMU-CAL-STOP", 13) == 0)
+  {
+    imu_calib_finish();
+    uart1_puts_safe("[CMD] IMU-CAL: finished — offsets computed\r\n");
+    printf("[command_task] Text command: IMU-CAL-STOP\r\n");
+  }
+  else if (strncmp(cmd, "IMU-CAL-STATUS", 15) == 0)
+  {
+    char buf[64];
+    if (imu_calib_is_valid())
+    {
+      imu_calib_t cal;
+      imu_calib_get(&cal);
+      snprintf(
+          buf, sizeof(buf),
+          "[CMD] IMU-CAL: VALID gyro_bias=%.4f,%.4f,%.4f rad/s accel_offset=%.3f,%.3f,%.3f g\r\n",
+          cal.gyro_bias_rads[0], cal.gyro_bias_rads[1], cal.gyro_bias_rads[2], cal.accel_offset[0],
+          cal.accel_offset[1], cal.accel_offset[2]);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] IMU-CAL: NOT CALIBRATED\r\n");
+    }
+    uart1_puts_safe(buf);
+    printf("[command_task] Text command: IMU-CAL-STATUS\r\n");
+  }
+  else if (strncmp(cmd, "IMU-CAL-SAVE", 13) == 0)
+  {
+    imu_calib_save_to_flash();
+    uart1_puts_safe("[CMD] IMU-CAL: saved to flash\r\n");
+    printf("[command_task] Text command: IMU-CAL-SAVE\r\n");
+  }
+  else if (strncmp(cmd, "IMU-CAL-LOAD", 12) == 0)
+  {
+    imu_calib_load_from_flash();
+    uart1_puts_safe("[CMD] IMU-CAL: loaded from flash\r\n");
+    printf("[command_task] Text command: IMU-CAL-LOAD\r\n");
   }
   else if (strncmp(cmd, "CAPTURE", 7) == 0)
   {

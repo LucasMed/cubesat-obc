@@ -95,13 +95,15 @@ fi
 
   TIDY_FAIL=0
   C_FILES=$(find src -name '*.c' | grep -v third_party | grep -v '/pico_' | sort)
+  # Common include paths for all files
+  COMMON_ARGS="--extra-arg=-I$REPO_ROOT/include --extra-arg=-I$REPO_ROOT/third_party/libcsp/include --extra-arg=-I$BUILD_DIR/third_party/libcsp/include"
   for f in $C_FILES; do
     # Add FatFs include path for diskio.c
     if [[ "$f" == *"payload/diskio.c"* ]]; then
       FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}"
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" --extra-arg=-I$FATFS_INCLUDE_PATH -checks='-*,readability-non-const-parameter' 2>&1 || true)
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS --extra-arg=-I$FATFS_INCLUDE_PATH -checks='-*,readability-non-const-parameter' 2>&1 || true)
     else
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" -checks='-*,readability-non-const-parameter' 2>&1 || true)
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS -checks='-*,readability-non-const-parameter' 2>&1 || true)
     fi
     if echo "$RESULT" | grep -q "warning:\|error:"; then
       echo "$RESULT"

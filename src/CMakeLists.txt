@@ -8,28 +8,8 @@ add_subdirectory(dynamics)
 add_subdirectory(tasks)
 add_subdirectory(services)
 
-# Main firmware executable
-if(NOT PICO_BUILD)
-    add_executable(cubesat_obc_firmware
-        obc_main.c
-    )
-
-    target_include_directories(cubesat_obc_firmware PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-
-    target_link_libraries(cubesat_obc_firmware
-        core_lib
-        drivers_lib
-        actuators_lib
-        control_lib
-        dynamics_lib
-        tasks_lib
-        fault_lib
-        eps_lib
-        wcet_lib
-    )
-
-    install(TARGETS cubesat_obc_firmware DESTINATION .)
-else()
+# Main firmware executable - skip for host builds (only libs + tests)
+if(PICO_BUILD)
     # ── Pico 2W hardware firmware ────────────────────────────────────────────
     add_executable(cubesat_obc_pico
         obc_main.c

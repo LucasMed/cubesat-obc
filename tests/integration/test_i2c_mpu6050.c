@@ -3,6 +3,21 @@
 
 #include <stdio.h>
 
+/* IMU calibration stubs — no-op for host tests */
+#include "drivers/imu/imu_calib.h"
+void imu_calib_collect(const float accel_g[3], const float gyro_dps[3])
+{
+  (void)accel_g;
+  (void)gyro_dps;
+}
+
+void imu_calib_apply_accel(const float accel_raw[3], float accel_cal[3])
+{
+  accel_cal[0] = accel_raw[0];
+  accel_cal[1] = accel_raw[1];
+  accel_cal[2] = accel_raw[2];
+}
+
 #ifdef PICO_BUILD
   #include "config.h"
   #include "pico/stdlib.h"

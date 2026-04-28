@@ -19,6 +19,7 @@
 #include "bh1750.h"
 #include "config.h"
 #include "data_layer.h"
+#include "drivers/imu/imu_calib.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "drivers/temperature.h"
@@ -48,8 +49,8 @@
 #define SENSOR_DT_S 0.1f
 
 /* EKF instance — initialised once on first step. */
-static ekf_t s_ekf;
-static bool s_ekf_initialised = false;
+ekf_t s_ekf;
+bool s_ekf_initialised = false;
 
 /* Magnetometer init flag. */
 static bool s_mag_initialised = false;
@@ -67,11 +68,18 @@ void vSensorReadTask_Step(void)
     float gyro_deg[3];
     if (mpu6050_read_raw(accel, gyro_deg) == 0)
     {
+      /* Feed samples to calibration collector (if active) */
+      imu_calib_collect(accel, gyro_deg);
+
+      /* Apply accelerometer calibration */
+      float accel_cal[3];
+      imu_calib_apply_accel(accel, accel_cal);
+
       /* Convert gyroscope output from deg/s to rad/s (SPEC-2-DLA §2.4) */
       float gyro_rad[3] = {gyro_deg[0] * DEG_TO_RAD, gyro_deg[1] * DEG_TO_RAD,
                            gyro_deg[2] * DEG_TO_RAD};
 
-      /* Write raw gyro rates so downstream tasks always have current rates. */
+      /* Write calibrated IMU data (gyro is HW-calibrated, accel is SW-calibrated) */
       data_layer_write_imu(snap.state.attitude, gyro_rad);
 
       /* --- EKF sensor fusion ------------------------------------------ */
@@ -82,7 +90,7 @@ void vSensorReadTask_Step(void)
       }
 
       ekf_predict(&s_ekf, gyro_rad, SENSOR_DT_S);
-      ekf_update(&s_ekf, accel);
+      ekf_update(&s_ekf, accel_cal);
 
       /* Extract EKF outputs and publish to DLA. */
       float ekf_q[4] = {0.0f, 0.0f, 0.0f, 0.0f};
