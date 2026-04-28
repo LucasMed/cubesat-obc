@@ -135,8 +135,8 @@ void imu_calib_finish(void)
   /* NOTE: EKF seeding is done in sensor_read_task.c after calling
    * imu_calib_finish(). This avoids accessing extern variables
    * from drivers/ and allows proper integration. */
-  // extern ekf_t s_ekf;  // From sensor_read_task.c
-  // extern bool s_ekf_initialised;
+  // __attribute__((weak)) extern ekf_t s_ekf;  // From sensor_read_task.c
+  // __attribute__((weak)) extern bool s_ekf_initialised;
   // if (s_ekf_initialised)
   // {
   //   for (int i = 0; i < 3; i++)
@@ -196,8 +196,8 @@ void imu_calib_load(const imu_calib_t *in)
     }
 
     /* Seed EKF bias states if initialized */
-    extern ekf_t s_ekf;
-    extern bool s_ekf_initialised;
+    __attribute__((weak)) extern ekf_t s_ekf;
+    __attribute__((weak)) extern bool s_ekf_initialised;
     if (s_ekf_initialised)
     {
       for (int i = 0; i < 3; i++)
