@@ -25,6 +25,7 @@
 #include "ds3231.h"
 #include "ekf.h"
 #include "ina219.h"
+#include "mag_calib.h"
 #include "sht31.h"
 #include "sun_sensor.h"
 #include "task.h"
@@ -191,12 +192,20 @@ void vSensorReadTask_Step(void)
       float mag_uT[3];
       if (hmc5883l_read(mag_uT) == 0)
       {
-        data_layer_write_mag(mag_uT);
+        /* Feed raw sample to calibration collector (if active) */
+        mag_calib_collect(mag_uT);
 
-        /* Yaw correction: fuse mag into EKF when filter is ready. */
+        /* Apply hard-iron calibration (if available) */
+        float mag_cal[3];
+        mag_calib_apply(mag_uT, mag_cal);
+
+        /* Write calibrated values to data layer */
+        data_layer_write_mag(mag_cal);
+
+        /* Yaw correction: fuse calibrated mag into EKF when filter is ready. */
         if (s_ekf_initialised)
         {
-          ekf_update_mag(&s_ekf, mag_uT, OBC_MAG_DECLINATION_RAD);
+          ekf_update_mag(&s_ekf, mag_cal, OBC_MAG_DECLINATION_RAD);
         }
       }
     }
