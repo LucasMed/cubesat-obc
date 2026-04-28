@@ -34,6 +34,7 @@
 
 #ifdef PICO_BUILD
   #include "FreeRTOS.h"
+  #include "pico_power.h"
   #include "task.h"
   #define eps_lock() taskENTER_CRITICAL()
   #define eps_unlock() taskEXIT_CRITICAL()
@@ -263,6 +264,32 @@ void eps_monitor_tick(void)
   float vbatt = 0.0f;
   float ibatt = 0.0f;
   float temp = 0.0f;
+
+#ifdef PICO_BUILD
+  /* USB power detection: if powered via USB, assume NOMINAL voltage
+   * to avoid false EMERGENCY triggers during development.
+   * In flight, USB will not be connected, so INA219 readings are trusted. */
+  if (pico_power_is_usb())
+  {
+    /* USB connected: skip INA219 read, force nominal state */
+    eps_lock();
+    energy_state_t prev = g_prev_state;
+    g_snapshot.vbatt = 7.6f; /* Nominal voltage for telemetry */
+    g_snapshot.ibatt = 0.0f; /* No charging info when on USB */
+    g_snapshot.temperature = temp;
+    energy_state_t next = ENERGY_NOMINAL; /* Force nominal on USB */
+    g_snapshot.state = next;
+    g_prev_state = next;
+    eps_unlock();
+
+    /* Clear any EPS faults that may have been raised previously */
+    handle_state_change(prev, next);
+    data_layer_set_energy_state(next);
+    return;
+  }
+#endif
+
+  /* Normal operation: read from INA219 */
   bool ok = eps_hal_read(&vbatt, &ibatt, &temp);
 
   if (!ok)

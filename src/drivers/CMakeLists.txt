@@ -1,6 +1,7 @@
 set(DRIVER_SOURCES
     imu/mpu6050.c
     mag/hmc5883l.c
+    mag/mag_calib.c
     payload/rm3100.c
     payload/spi_payload.c
     payload/camera_driver.c
@@ -35,6 +36,7 @@ if(PICO_BUILD)
         rtc/ds3231.c
         power/ina219.c
         sun_sensor.c
+        pico_power.c
     )
 else()
     list(APPEND DRIVER_SOURCES 

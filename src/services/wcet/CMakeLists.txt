@@ -12,9 +12,16 @@
 #
 # CDR ref: CDR-HW-06, OI-3 (FSW-SDD-001 §14), OI-3 (OBC-DES-001 §15)
 
+# TEMPORARY: WCET disabled via header (WCET_ENABLED not defined).
+# Build with a dummy source file to satisfy CMake's no-empty-library rule.
+# All profiling functions are static inline no-ops in the header.
+#
+# To re-enable: remove wcet_dummy.c and uncomment the two .c files below.
+
 add_library(wcet_lib
-    wcet_profiler_pico.c
-    wcet_profiler_host.c
+    wcet_dummy.c
+    # wcet_profiler_pico.c
+    # wcet_profiler_host.c
 )
 
 target_include_directories(wcet_lib

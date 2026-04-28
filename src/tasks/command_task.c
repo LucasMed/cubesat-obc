@@ -3,16 +3,20 @@
 #include "FreeRTOS.h"
 #include "bh1750.h"
 #include "data_layer.h"
+#include "drivers/imu/mpu6050.h"
+#include "drivers/mag/hmc5883l.h"
+#include "drivers/temperature.h"
 #include "ds3231.h"
+#include "ekf.h"
 #include "fault_manager.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
 #include "ina219.h"
+#include "mag_calib.h"
 #include "payload_task.h"
 #include "sht31.h"
-#include "system_state.h"
+#include "sun_sensor.h"
 #include "task.h"
-#include "telemetry_storage.h"
 #include "telemetry_task.h"
 #include "wcet_profiler.h"
 
@@ -94,6 +98,35 @@ static void process_text_command(const char *cmd)
   {
     uart1_puts_safe("[CMD] ECHO OK\r\n");
     printf("[command_task] Text command: ECHO\r\n");
+  }
+  else if (strncmp(cmd, "MAG-CAL-START", 14) == 0)
+  {
+    mag_calib_start();
+    uart1_puts_safe("[CMD] MAG-CAL: started — rotate CubeSat in all axes\r\n");
+    printf("[command_task] Text command: MAG-CAL-START\r\n");
+  }
+  else if (strncmp(cmd, "MAG-CAL-STOP", 13) == 0)
+  {
+    mag_calib_finish();
+    uart1_puts_safe("[CMD] MAG-CAL: finished — offsets computed\r\n");
+    printf("[command_task] Text command: MAG-CAL-STOP\r\n");
+  }
+  else if (strncmp(cmd, "MAG-CAL-STATUS", 15) == 0)
+  {
+    char buf[64];
+    if (mag_calib_is_valid())
+    {
+      mag_calib_t cal;
+      mag_calib_get(&cal);
+      snprintf(buf, sizeof(buf), "[CMD] MAG-CAL: VALID offsets=%.2f,%.2f,%.2f µT\r\n",
+               cal.offset[0], cal.offset[1], cal.offset[2]);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] MAG-CAL: NOT CALIBRATED\r\n");
+    }
+    uart1_puts_safe(buf);
+    printf("[command_task] Text command: MAG-CAL-STATUS\r\n");
   }
   else if (strncmp(cmd, "CAPTURE", 7) == 0)
   {

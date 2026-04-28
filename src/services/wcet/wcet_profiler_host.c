@@ -3,9 +3,11 @@
  * @brief Host build WCET profiler stub (no-ops).
  *
  * On host builds (unit tests, host firmware), the DWT hardware is not
- * available.  All WCET profiler functions are no-ops.  The host build
- * unit tests should not attempt to include this file — they use the
- * regular host compilation path (no PICO_BUILD).
+ * available.  All WCET profiler functions are no-ops.
+ *
+ * When WCET_ENABLED is NOT defined, the header wcet_profiler.h
+ * already provides static inline no-op implementations.
+ * This file is intentionally left empty for that case.
  *
  * See wcet_profiler.h for the public API documentation.
  */
@@ -14,6 +16,12 @@
 
 #include <stdio.h>
 #include <string.h>
+
+/* ------------------------------------------------------------------ */
+/* When WCET_ENABLED is NOT defined, the header already provides   */
+/* static inline no-ops.  This file adds nothing.                */
+/* ------------------------------------------------------------------ */
+#ifdef WCET_ENABLED
 
 /* ------------------------------------------------------------------ */
 /* Stub state (kept minimal — no real measurements on host)            */
@@ -28,7 +36,7 @@ static uint32_t g_host_max[WCET_TASK_COUNT];
 static uint32_t g_host_samples[WCET_TASK_COUNT];
 
 /* ------------------------------------------------------------------ */
-/* Stub implementations                                                 */
+/* Stub implementations (only when WCET_ENABLED is defined)            */
 /* ------------------------------------------------------------------ */
 
 bool wcet_profiler_init(void)
@@ -80,3 +88,5 @@ void wcet_profiler_reset(void)
   (void)memset(g_host_max, 0, sizeof(g_host_max));
   (void)memset(g_host_samples, 0, sizeof(g_host_samples));
 }
+
+#endif /* WCET_ENABLED */

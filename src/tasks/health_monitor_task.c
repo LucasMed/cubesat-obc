@@ -80,5 +80,14 @@ void vHealthMonitorTask(void *pvParameters)
       wcet_task_end(WCET_TASK_HEALTH_MON);
       xLastWakeTime = xNow;
     }
+
+    /* Safety net: if a CRITICAL fault is active but we missed the notification,
+     * force safe mode at the start of every periodic check.
+     * This ensures EMERGENCY energy state ALWAYS triggers FM_SAFE. */
+    if (fault_get_highest_level() >= FAULT_LEVEL_CRITICAL)
+    {
+      printf("[health_monitor_task] CRITICAL fault detected in safety net — forcing SAFE\n");
+      fmm_force_safe();
+    }
   }
 }
