@@ -84,6 +84,21 @@ typedef struct
 } wcet_result_t;
 
 /**
+ * @brief Enable/disable WCET profiling at compile time.
+ *
+ * Uncomment the following line to enable DWT cycle-counter profiling.
+ * When disabled (default), all wcet_* functions become static inline no-ops.
+ *
+ * The "Unknown destination type (ARM/Thumb)" linker error occurs when
+ * the WCET profiler object files are not linked correctly.  Disabling
+ * here is the fastest way to get a working build while debugging the
+ * linker issue.
+ */
+/* #define WCET_ENABLED 1 */
+
+#ifdef WCET_ENABLED
+
+/**
  * @brief Initialise the DWT cycle counter and WCET profiler.
  *
  * Must be called once during system start-up, before the FreeRTOS scheduler
@@ -162,5 +177,37 @@ void wcet_profiler_print_report(const uint16_t task_period_ms[WCET_TASK_COUNT]);
  * On host builds: no-op.
  */
 void wcet_profiler_reset(void);
+
+#else /* WCET_ENABLED */
+
+/* When WCET profiling is disabled, all functions become static inline no-ops.
+ * This eliminates the "undefined reference" linker errors while keeping
+ * the instrumentation calls in the source code (they just do nothing). */
+
+static inline bool wcet_profiler_init(void)
+{
+  return true;
+}
+static inline void wcet_task_begin(wcet_task_id_t task_id)
+{
+  (void)task_id;
+}
+static inline void wcet_task_end(wcet_task_id_t task_id)
+{
+  (void)task_id;
+}
+static inline bool wcet_get_result(wcet_task_id_t task_id, wcet_result_t *out)
+{
+  (void)task_id;
+  (void)out;
+  return false;
+}
+static inline void wcet_profiler_print_report(const uint16_t task_period_ms[WCET_TASK_COUNT])
+{
+  (void)task_period_ms;
+}
+static inline void wcet_profiler_reset(void) {}
+
+#endif /* WCET_ENABLED */
 
 #endif /* WCET_PROFILER_H */
