@@ -20,6 +20,7 @@ if(PICO_BUILD)
         PICO_BUILD=1
         LIB_FREERTOS_KERNEL=1
         PICO_FLASH_SAFE_EXECUTE_SUPPORT_FREERTOS_SMP=1
+        PICO_INCLUDE_RTC_DATETIME=1
     )
 
     target_include_directories(cubesat_obc_pico PRIVATE
