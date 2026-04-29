@@ -430,7 +430,7 @@ bool w25q64_is_present(void)
   /* IMU Calibration Flash Layout (W25Q64) */
   #define IMU_CALIB_MAGIC 0xDEADBEEF
   #define IMU_CALIB_OFFSET 0x000000
-  #define IMU_CALIB_SIZE 0x000030  // 4+12+12+6+12+1+4 = 51 bytes
+  #define IMU_CALIB_SIZE 0x000034  // 4+12+12+6+12+1+4 = 51 bytes (padded to 52 for alignment)
 
 static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
 {
