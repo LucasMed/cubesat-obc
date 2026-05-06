@@ -5,6 +5,26 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — — GPS Integration Complete + BOM Update
+
+### Added
+- **BOM-OBC-001.md v1.1** (2026-05-05): Major documentation update
+  - Added: SHT31 (I2C 0x44), BH1750 (I2C 0x23), DS3231 (I2C 0x68), INA219 (I2C 0x40), Sun Sensors (GPIO27/28), W25Q64 SPI Flash
+  - Updated: UART1 pins → GPIO8/9, I2C pins confirmed GPIO4/5
+  - Clarified: Magnetometer as QMC5883L clone (0x0D)
+  - Added: Complete pin assignment table (§11) and I2C address table (§11.1)
+  - GPS: ✅ Integrated with patch antenna — receiving satellite signals
+
+### Changed
+- **ICD-OBC-001.md**: Updated I2C addresses (MPU-6050 → 0x70, full device table)
+- **ICD-OBC-001.md §7**: GPS status updated — hardware verified with patch antenna
+
+### Verified
+- GPS NEO-7M: Patch antenna receiving satellite signals correctly
+- All I2C sensors on shared bus confirmed working
+
+---
+
 ## [0.28.0] — 2026-04-25 — Sun Sensor Telemetry + Ground Station
 
 ### Added

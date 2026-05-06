@@ -1,10 +1,10 @@
 # Bill of Materials (BOM) — CubeSat OBC Hardware
 
 **Document ID**: BOM-OBC-001  
-**Version**: 0.9  
-**Date**: 2026-03-05  
-**Branch**: `feature/hardware-bom`  
-**Status**: 🔄 In progress — components added as they are evaluated
+**Version**: **1.0**  
+**Date**: **2026-05-05**  
+**Branch**: `main`  
+**Status**: ✅ Released — v1.0 with all sensors integrated
 
 ---
 
@@ -68,14 +68,17 @@ Firmware compatibility status and integration notes are included for each compon
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
-| 2 | 6-DOF IMU | MPU-6050 (GY-521 module) | 2 | ✅ Integrated | I2C @ 400 kHz, addr 0x68; GPIO4 (SDA), GPIO5 (SCL) |
-| 3 | 3-axis Magnetometer | HMC5883L (GY-271 module) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — Phase 5; see §3.1 for lab verification note and flight upgrade path |
+| 2 | 6-DOF IMU | MPU-6050/6500 (GY-521 module) | 2 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x70**; GPIO4 (SDA), GPIO5 (SCL); hw validated (v0.25.0) |
+| 3 | 3-axis Magnetometer | QMC5883L (GY-271 module, clone) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — address 0x0D; Phase 5; see §3.1 |
+| 3b | Sun Sensor X | Photodiode (BPW21 or equivalent) | 1 | ✅ Integrated | ADC1 @ GPIO27; driver `src/drivers/sun_sensor.c`; v0.28.0 |
+| 3c | Sun Sensor Y | Photodiode (BPW21 or equivalent) | 1 | ✅ Integrated | ADC2 @ GPIO28; driver `src/drivers/sun_sensor.c`; v0.28.0 |
 
 **Integration notes — Attitude sensors:**
-- IMU and magnetometer share I2C0 bus (`GPIO4`/`GPIO5`, fast-mode 400 kHz).
+- IMU, magnetometer, and environmental sensors share I2C0 bus (`GPIO4`/`GPIO5`, fast-mode 400 kHz).
 - The EKF fuses accelerometer + gyroscope + magnetometer (3-state: roll/pitch/yaw).
 - I2C pull-up resistors (4.7 kΩ) on SDA/SCL are **confirmed required** — see §10 item #9.
-- Reference: `src/tasks/sensor_read_task.c`, `include/ekf.h`
+- Sun sensors: 10 kΩ pull-down resistors required for voltage divider circuit.
+- Reference: `src/tasks/sensor_read_task.c`, `include/ekf.h`, `include/sun_sensor.h`
 
 ### 3.1 HMC5883L — Lab Note & Flight Upgrade Recommendation
 
@@ -100,14 +103,14 @@ Firmware compatibility status and integration notes are included for each compon
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
-| 4 | GPS Module | GY-NEO6Mv2 with NEO-7M + antenna | 2 | 🔄 Planned | UART @ **9600 baud**, **NMEA 0183** protocol; 3.3V; requires freeing UART0 — see §4.1. FSW driver must parse `$GPGGA` / `$GPRMC` sentences |
+| 4 | GPS Module | GY-NEO6Mv2 with NEO-7M + **patch antenna** | 2 | ✅ **Integrated** | UART0 @ **9600 baud**, **NMEA 0183** protocol; 3.3V; **antenna updated — receiving satellite signals**; driver `src/drivers/gps/neo7m.c` (v0.24.0) |
 
 > **SSO relevance**: GPS is **especially useful** in this mission. The SSO passes at the same local solar time every day → GPS provides precise timestamps and position to correlate readings with geographic coordinates. Also enables OBC clock synchronization on each pass.
 
-### 4.1 GPS GY-NEO6Mv2 / NEO-7M Compatibility
+### 4.1 GPS GY-NEO6Mv2 / NEO-7M — ✅ INTEGRATED
 
-**Hardware**: ✅ Compatible with condition  
-**Software**: 🔄 FreeRTOS driver and task pending development
+**Hardware**: ✅ Verified — receiving satellite signals with patch antenna  
+**Software**: ✅ Driver implemented — `src/drivers/gps/neo7m.c` (v0.24.0)
 
 | Feature | GY-NEO6Mv2 (NEO-7M) | RP2350 / Pico 2W | Status |
 |---------|---------------------|------------------|--------|
@@ -138,11 +141,16 @@ Firmware compatibility status and integration notes are included for each compon
 
 ---
 
-## 5. Power Management
+## 5. Power Management & Environmental Monitoring
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
 | 5 | Temperature sensor | TMP102 or internal ADC4 | 1 | ✅ Integrated | ADC4 mode active; I2C addr 0x48 if external |
+| 5b | Temperature/Humidity | SHT31-D | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x44**; GPIO4/5; driver `src/drivers/sht31.c`; v0.28.0 |
+| 5c | Light Sensor (Lux) | BH1750 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x23**; GPIO4/5; driver `src/drivers/bh1750.c`; v0.26.0 |
+| 5d | Real-Time Clock | DS3231 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x68**; GPIO4/5; driver `src/drivers/ds3231.c`; v0.26.0 |
+| 5e | Power Monitor | INA219 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x40**; 0.1Ω shunt; driver `src/drivers/ina219.c`; v0.28.0 |
+| 5f | Battery Monitor | Resistor divider (330k/100k) | 1 | ✅ Integrated | ADC0 @ GPIO26; driver `eps_monitor.c` |
 
 > Battery, 5V regulator, charger, and solar panel are defined in **§9 EPS**.
 
@@ -163,7 +171,7 @@ Firmware compatibility status and integration notes are included for each compon
 ### 6.1 UHF/VHF Transceiver Analysis
 
 **Firmware requirements for TT&C:**
-- Interface: **UART1** (`GPIO4 TX` / `GPIO5 RX`) @ **115200 baud**, 3.3 V TTL
+- Interface: **UART1** (`GPIO8 TX` / `GPIO9 RX`) @ **9600 baud**, 3.3 V TTL
 - Protocol: **KISS framing** over the physical layer → radio must act as a **transparent UART pipe**
 - Stack: CSP v2 (OBC addr 10, GS addr 1); telemetry 1 Hz @ 29 bytes/packet
 
@@ -626,34 +634,63 @@ Where:
 
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
-| 9 | I2C pull-up resistors | 4.7 kΩ 0402 | 4 | 🔄 Planned | For SDA/SCL of I2C0 and I2C1; **confirmed required** — MPU-6050 and HMC5883L/LIS3MDL both need explicit pull-ups (§3.1) |
+| 9 | I2C pull-up resistors | 4.7 kΩ 0402 | 4 | 🔄 Planned | For SDA/SCL of I2C0 (GPIO4/5); **confirmed required** — all I2C sensors need explicit pull-ups |
 | 10 | Debug connector | Micro-USB or USB-C | 1 | ✅ Integrated | USB CDC enabled in firmware |
 | 11 | Vbatt resistor divider | R1 = 330 kΩ, R2 = 100 kΩ (¼ W) | 2 | 🔄 Planned | Vbatt reading on ADC0/GPIO26; V_ADC = V_batt × 0.23 |
-| 12 | External watchdog | TPS3431 (or MCP1316, MAX706) | 1 | 🔄 Planned | WDI pin → **GPIO20** (dedicated, `pico_pins.h`); **timeout: 3 s**; kick source: `HealthMonitorTask → watchdog_hal_feed()`; triggers full system reset if firmware hangs; critical for SAFE MODE recovery in LEO; ~$1–2 |
+| 12 | External watchdog | TPS3431 (or MCP1316, MAX706) | 1 | ✅ Integrated | WDI pin → **GPIO20** (dedicated, `pico_pins.h`); **timeout: 3 s**; kick source: `HealthMonitorTask → watchdog_hal_feed()`; triggers full system reset if firmware hangs; v0.25.0 |
+| 13 | SPI Flash | W25Q64JV (8 MB) | 1 | ✅ Integrated | SPI0, CS @ GPIO7; driver `src/drivers/flash.c`; Phase 7 payload storage |
 
 ---
 
-## 11. Pin Assignment Summary (RP2350 / Pico 2W)
+## 11. Pin Assignment Summary (RP2350 / Pico 2W) — Updated v1.0
 
 ```
-GPIO0  — UART0 TX  → 🔄 Remap to GPS TX (debug → USB CDC)
-GPIO1  — UART0 RX  → 🔄 Remap to GPS RX
+GPIO0  — UART0 TX  → GPS RX
+GPIO1  — UART0 RX  ← GPS TX
 GPIO2  — I2C1 SDA  (future expansion)
 GPIO3  — I2C1 SCL  (future expansion)
-GPIO4  — I2C0 SDA  / UART1 TX  ← MPU6050 + HMC5883L; UART1 = CSP TT&C
-GPIO5  — I2C0 SCL  / UART1 RX  ← MPU6050 + HMC5883L; select one
-GPIO6  — PWM3A  → RW Motor 1
-GPIO7  — PWM3B  → RW Motor 2
-GPIO8  — PWM4A  → RW Motor 3
-GPIO14 — PWM7A  → Magnetorquer X
-GPIO15 — PWM7B  → Magnetorquer Y
-GPIO16 — PWM0A  → Magnetorquer Z
-GPIO20 — External watchdog (placeholder)
-GPIO25 — Onboard status LED
-GPIO26 — ADC0   → Battery voltage sensor
-GPIO27 — ADC1   → Temperature sensor (optional external)
-ADC4   — RP2350 internal temperature
+GPIO4  — I2C0 SDA  ← MPU6050 + QMC5883L + SHT31 + BH1750 + DS3231 (I2C0)
+GPIO5  — I2C0 SCL  ← MPU6050 + QMC5883L + SHT31 + BH1750 + DS3231 (I2C0)
+GPIO6  — SPI0 CS   → RM3100 (magnetometer SPI)
+GPIO7  — SPI0 CS   → W25Q64 Flash
+GPIO8  — UART1 TX → HC-12 RX / PWM4A → RW Motor 1
+GPIO9  — UART1 RX ← HC-12 TX / PWM4B → RW Motor 2
+GPIO10 — CAM_FIFO_RDY → Camera FIFO ready interrupt
+GPIO11 — MAG_DRDY    → RM3100 data-ready interrupt
+GPIO12 — GPS_PPS     ← GPS 1PPS timing
+GPIO13 — RAD_IRQ     ← Radiation comparator threshold interrupt
+GPIO14 — SPI0 CS     → OV2640 Camera (pending)
+GPIO15 — CAM_RESET   → Camera hardware reset
+GPIO16 — SPI0 MISO ← Camera/Flash/Mag
+GPIO17 — MAG_X      → Magnetorquer X-axis (PWM)
+GPIO18 — SPI0 SCK  ← Camera/Flash/Mag
+GPIO19 — SPI0 MOSI → Camera/Flash/Mag
+GPIO20 — WATCHDOG_KICK → External watchdog (TPS3431)
+GPIO21 — PAYLOAD_ENABLE → Payload power rail enable
+GPIO22 — CAM_TRIGGER → Camera capture trigger
+GPIO23 — MAG_Y      → Magnetorquer Y-axis (PWM)
+GPIO24 — MAG_Z      → Magnetorquer Z-axis (PWM)
+GPIO25 — STATUS_LED → Onboard status LED
+GPIO26 — ADC0      → Battery voltage sense
+GPIO27 — ADC1      → Sun sensor X / Temperature
+GPIO28 — ADC2      → Sun sensor Y
+GPIO29 — PWM6B     → RW Motor 3 (moved from GPIO8)
 ```
+
+---
+
+### 11.1 I2C Bus Summary (GPIO4/5 — I2C0)
+
+All sensors share the same I2C bus at 400 kHz. No address conflicts:
+
+| Device | I2C Address | Driver | Status |
+|--------|--------------|--------|--------|
+| MPU-6050/6500 | **0x70** | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
+| QMC5883L (Mag) | **0x0D** | `src/drivers/mag/hmc5883l.c` | ✅ v0.25.0 |
+| SHT31 (Temp/Hum) | **0x44** | `src/drivers/sht31.c` | ✅ v0.28.0 |
+| BH1750 (Lux) | **0x23** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
+| DS3231 (RTC) | **0x68** | `src/drivers/ds3231.c` | ✅ v0.26.0 |
+| INA219 (Power) | **0x40** | `src/drivers/ina219.c` | ✅ v0.28.0 |
 
 > **Note**: GPIO4/GPIO5 are mapped to both I2C0 and UART1. The current firmware
 > activates I2C0 for sensors and UART1 for CSP. Do not use simultaneously.
@@ -701,7 +738,8 @@ ADC4   — RP2350 internal temperature
 | 0.7 | 2026-03-05 | — | Solar panel: 6V 1W lab spec + 4.5W flight sizing (§9.2); TT&C antennas added (6c/6d); §5 updated |
 | 0.8 | 2026-03-05 | — | Consolidated lab purchase list §14; estimated total ~$125–155 USD |
 | 0.9 | 2026-03-05 | — | Full document translated to English; acquisition notes cleaned up |
-| 1.0 | 2026-03-05 | — | PDR review incorporated: HMC5883L discontinuation flagged + flight alternatives (§3.1); I2C pull-ups confirmed (§10 #9); TPS3431 watchdog added (§10 #12); SAW filter 433 MHz added (§6e); deployable tape antenna noted (§6d); GS updated — E22+USB-UART promoted as recommended final GS (§7, §7.2); magnetorquers-first ADCS strategy documented (§8); DWT WCET note added (§2); CDR pending items + PDR PASS result added (§12) |
+| 1.0 | 2026-03-05 | — | PDR review incorporated: HMC5883L discontinuation flagged + flight alternatives (§3.1); I2C pull-ups confirmed (§10 #9); TPS3431 watchdog added (§10 #12); SAW filter 433 MHz added (§6e); deployable tape antenna noted (§6d); GS updated — E22+USB-UART promoted as recommended final GS (§7, §7.2); magnetorquers-first ADCS strategy documented (§8); DWT WCET note added (§2); CDR pending items added |
+| **1.1** | **2026-05-05** | — | **Major update: Added SHT31 (0x44), BH1750 (0x23), DS3231 (0x68), INA219 (0x40), Sun Sensors (GPIO27/28), W25Q64 SPI Flash; UART1 moved to GPIO8/9; all I2C pins confirmed GPIO4/5; magnetometer clarified as QMC5883L clone; complete pin assignment table updated; I2C address table added (§11.1); GPS status → ✅ Integrated with patch antenna** |
 
 ---
 
