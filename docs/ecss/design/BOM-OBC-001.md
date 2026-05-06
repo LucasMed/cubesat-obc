@@ -676,12 +676,12 @@ All sensors share the same I2C bus at 400 kHz. No address conflicts:
 
 | Device | I2C Address | Driver | Status |
 |--------|-------------|--------|--------|
-| MPU-6050/6500 IMU | **`0x68`** | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
+| MPU-6050/6500 IMU | **`0x69`** (AD0=VCC) | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
 | QMC5883L Magnetometer | **`0x0D`** | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
 | SHT31 (Temp/Humidity) | **`0x44`** | `src/drivers/sht31.c` | ✅ v0.28.0 |
 | BH1750 (Lux) | **`0x23`** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
 | DS3231 (RTC) | **`0x68`** | `src/drivers/ds3231.c` | ✅ v0.26.0 |
-| INA219 (Power) | **`0x40`** | `src/drivers/ina219.c` | ✅ v0.28.0 |
+| INA219 (Power Monitor) | **`0x40`** | `src/drivers/ina219.c` | ✅ v0.28.0 |
 
 > **Note**: GPIO4/GPIO5 are mapped to both I2C0 and UART1. The current firmware
 > activates I2C0 for sensors and UART1 for CSP. Do not use simultaneously.
