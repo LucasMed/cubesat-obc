@@ -47,12 +47,13 @@ Interfaces covered:
 | I2C | 2× (I2C0, I2C1) |
 | UART | 2× (UART0, UART1) |
 | PWM slices | 8 (16 channels) |
-| ADC channels | 4 (GPIO26–29) + 1 internal temp |
-| USB | USB 1.1 device (CDC) |
+| ADC channels | 3 (GPIO26–28) + 1 internal temp |
+
+> **⚠️ Pico 2W GPIO constraint**: Solo tiene GPIO0-22 y GPIO26-28 (no GPIO23-25, 29 como RP2350).
 
 ---
 
-## 3. Bus Topology
+## 3. Bus Topology (Pico 2W)
 
 ```
                     ┌──────────────────┐
@@ -117,7 +118,7 @@ Interfaces covered:
 
 | Device | I2C Address | Driver | Status |
 |--------|-------------|--------|--------|
-| MPU-6050/6500 IMU | **`0x70`** (AD0=VCC) | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
+| MPU-6050/6500 IMU | **`0x68`** (AD0=GND) | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
 | QMC5883L Magnetometer | **`0x0D`** | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
 | SHT31 (Temp/Humidity) | **`0x44`** | `src/drivers/sht31.c` | ✅ v0.28.0 |
 | BH1750 (Lux) | **`0x23`** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
@@ -134,9 +135,9 @@ Interfaces covered:
 
 | Parameter | Value |
 |-----------|-------|
-| Sensor | MPU-6050 or MPU-6500 (detected @ 0x70) |
+| Sensor | MPU-6050 or MPU-6500 |
 | Bus | I2C0 |
-| Address | **`0x70`** (AD0=VCC on MPU-6050; MPU-6500 default) |
+| Address | **`0x68`** (AD0=GND on MPU-6050; MPU-6500 default) |
 | GPIO | GPIO4 (SDA), GPIO5 (SCL) |
 | Driver | `src/drivers/imu/mpu6050.c` |
 | Output rate | 100 Hz (gyro + accel) |
@@ -344,41 +345,33 @@ SAW filter 433 MHz (TDK B39431) ← EMI isolation
 
 ## 9. ADCS Actuator Interface
 
-### 9.1 Reaction Wheels (TB6612FNG)
+### 9.1 Reaction Wheels (TB6612FNG) — Pico 2W Compatible
 
 | Parameter | Value |
 |-----------|-------|
-| Driver IC | TB6612FNG H-bridge (lab) |
+| Driver IC | TB6612FNG H-bridge |
 | Interface | PWM + direction GPIO |
 | Driver | `src/actuators/reaction_wheel.c` |
 
-| Axis | PWM GPIO | PWM Slice/Ch | Notes |
-|------|----------|-------------|-------|
-| RW1 | **GPIO6** (`RW_MOTOR1_PIN`) | PWM3A | `AttitudeControlTask` |
-| RW2 | **GPIO7** (`RW_MOTOR2_PIN`) | PWM3B | `AttitudeControlTask` |
-| RW3 | **GPIO10** (`RW_MOTOR3_PIN`) | PWM5A | `AttitudeControlTask` |
+| Axis | PWM GPIO | PWM Slice/Ch | Pico 2W Pin | Notes |
+|------|---------|-------------|-------------|-------|
+| RW1 | GPIO10 | PWM5A | 14 | |
+| RW2 | GPIO11 | PWM5B | 15 | |
+| RW3 | GPIO12 | PWM6A | 16 | |
 
-> Direction GPIOs for TB6612 (AIN1/AIN2) to be assigned in `pico_pins.h`
-> during Phase 7 actuator HAL integration.
-
-### 9.2 Magnetorquers (DRV8833) — Phase 1 ADCS Primary Actuator
+### 9.2 Magnetorquers (DRV8833) — Pico 2W Compatible
 
 | Parameter | Value |
 |-----------|-------|
-| Driver IC | DRV8833 H-bridge (lab) |
-| Interface | Bidirectional PWM (2 pins per axis) |
+| Driver IC | DRV8833 H-bridge |
+| Interface | Bidirectional PWM |
 | Driver | `src/actuators/magnetorquer.c` |
-| Control law | B-dot detumbling (Phase 1) + B×L dump |
 
-| Axis | PWM GPIO | PWM Slice/Ch | Notes |
-|------|----------|-------------|-------|
-| MTQ X | **GPIO14** (`MAG_X_PIN`) | PWM7A | `AttitudeControlTask` |
-| MTQ Y | **GPIO15** (`MAG_Y_PIN`) | PWM7B | `AttitudeControlTask` |
-| MTQ Z | **GPIO16** (`MAG_Z_PIN`) | PWM0A | `AttitudeControlTask` |
-
-> **ADCS strategy**: Magnetorquers are the **primary Phase 1 actuator** — B-dot
-> detumbling and SAFE MODE attitude hold require no reaction wheels. Reaction
-> wheels are activated in Phase 2 for precision pointing.
+| Axis | PWM GPIO | PWM Slice/Ch | Pico 2W Pin | Notes |
+|------|---------|-------------|-------------|-------|-------|
+| MTQ X | GPIO17 | PWM0B | 22 | Slice shared with GPIO23 |
+| MTQ Y | GPIO21 | PWM2B | 27 | |
+| MTQ Z | GPIO22 | PWM3A | 29 | Slice shared with GPIO23 |
 
 ---
 
@@ -515,25 +508,22 @@ Boot sequence → FM_BOOT → FM_SAFE
 
 ---
 
-## 14. Software Ownership Matrix
+## 14. Software Ownership Matrix — Pico 2W Compatible
 
 | Interface | GPIO | Driver file | Task owner | Status |
 |-----------|------|------------|-----------|--------|
 | I2C0 (IMU) | GPIO4/5 | `src/drivers/imu/mpu6050.c` | `SensorReadTask` | ✅ Integrated |
 | I2C0 (Mag) | GPIO4/5 | `src/drivers/mag/hmc5883l.c` | `SensorReadTask` | ✅ Integrated |
-| I2C0 (RM3100 — Ph.7) | GPIO4/5, 0x20 | `src/drivers/payload/rm3100.c` | `PayloadTask` | ⏳ Phase 7 |
-| UART0 (GPS) | GPIO0/1 | `src/drivers/gps/neo7m.c` | Navigation (planned) | 🔄 Planned |
+| I2C0 (SHT31/BH1750/DS3231/INA219) | GPIO4/5 | Various drivers | `SensorReadTask` | ✅ Integrated |
+| UART0 (GPS) | GPIO0/1 | `src/drivers/gps/neo7m.c` | Navigation | ✅ Integrated |
 | UART1 (TT&C) | GPIO8/9 | `src/drivers/uart/pico_usart.c` | `CommandTask`, `TelemetryTask` | ✅ Integrated |
-| PWM (RW) | GPIO6/7/**3** | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
-| PWM (MTQ) | GPIO14/15/16 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
+| PWM (RW 1-3) | GPIO10/11/12 | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
+| PWM (MTQ X/Y/Z) | GPIO17/21/22 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | ADC0 (Vbatt) | GPIO26 | `src/services/eps/eps_monitor.c` | `HealthMonitorTask` | ✅ Integrated |
 | ADC1 (Sun Sensor X) | GPIO27 | `src/drivers/sun_sensor.c` | `SensorReadTask` | ✅ Integrated |
 | ADC2 (Sun Sensor Y) | GPIO28 | `src/drivers/sun_sensor.c` | `SensorReadTask` | ✅ Integrated |
-| ADC3 (RAD-001 — Ph.7) | GPIO29 | `src/drivers/payload/radiation_driver.c` | `PayloadTask` | ⏳ Phase 7 |
-| SPI1 (CAM-001 — Ph.7) | GPIO10/11/12/13 | `src/drivers/payload/camera_driver.c` | `PayloadTask` | ⏳ Phase 7 |
-| GPIO21 (PAYLOAD_EN — Ph.7) | GPIO21 | `src/services/payload/payload_manager.c` | `PayloadTask` | ⏳ Phase 7 |
-| GPIO22 (CAM_TRIGGER — Ph.7) | GPIO22 | `src/drivers/payload/camera_driver.c` | `PayloadTask` | ⏳ Phase 7 |
-| GPIO (WDI) | GPIO20 | `src/drivers/watchdog/watchdog_hal.c` | `HealthMonitorTask` | ✅ HAL integrated |
+| SPI0 (Flash) | GPIO7/16/18/19 | TBD | `PayloadTask` | 🔄 Phase 7 |
+| GPIO20 (WDI) | GPIO20 | `src/drivers/watchdog/watchdog_hal.c` | `HealthMonitorTask` | ✅ HAL integrated |
 | USB CDC | — | stdio USB (Pico SDK) | All tasks (printf) | ✅ Integrated |
 
 ---

@@ -125,20 +125,24 @@
  * ====================================================================== */
 
 /**
- * RP2350 PWM.  RW3 was moved to GPIO29 to free GPIO3
- * for the I2C SCL bus (ICD Phase 7, WP-7.4).
+ * RP2350/Pico 2W PWM pins.
+ * RW1-3 use GPIO10/11/12.
  */
-#define RW_MOTOR1_PIN 8   /**< PWM4A */
-#define RW_MOTOR2_PIN 9   /**< PWM4B */
-#define RW_MOTOR3_PIN 29  /**< PWM6B — moved from GPIO3 */
+#define RW_MOTOR1_PIN 10  /**< PWM5A — Reaction Wheel 1 */
+#define RW_MOTOR2_PIN 11  /**< PWM5B — Reaction Wheel 2 */
+#define RW_MOTOR3_PIN 12  /**< PWM6A — Reaction Wheel 3 */
 
 /* ======================================================================
  * Magnetorquer PWM/GPIO Outputs
  * ====================================================================== */
 
-#define MAG_X_PIN 17  /**< Magnetorquer X-axis */
-#define MAG_Y_PIN 23  /**< Magnetorquer Y-axis (GPIO23 on RP2350 is available) */
-#define MAG_Z_PIN 24  /**< Magnetorquer Z-axis (GPIO24 on RP2350 is available) */
+/**
+ * Pico 2W: GPIO0-22, GPIO26-28 only.
+ * Note: GPIO17 shares PWM slice with GPIO23, GPIO22 shares with GPIO23.
+ */
+#define MAG_X_PIN 17 /**< PWM0B — Magnetorquer X-axis */
+#define MAG_Y_PIN 21 /**< PWM2B — Magnetorquer Y-axis */
+#define MAG_Z_PIN 22 /**< PWM3A — Magnetorquer Z-axis */
 
 /* ======================================================================
  * Miscellaneous

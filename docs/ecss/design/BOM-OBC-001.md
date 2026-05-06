@@ -645,36 +645,27 @@ Where:
 ## 11. Pin Assignment Summary (RP2350 / Pico 2W) — Updated v1.0
 
 ```
-GPIO0  — UART0 TX  → GPS RX
-GPIO1  — UART0 RX  ← GPS TX
-GPIO2  — I2C1 SDA  (future expansion)
-GPIO3  — I2C1 SCL  (future expansion)
-GPIO4  — I2C0 SDA  ← MPU6050 + QMC5883L + SHT31 + BH1750 + DS3231 (I2C0)
-GPIO5  — I2C0 SCL  ← MPU6050 + QMC5883L + SHT31 + BH1750 + DS3231 (I2C0)
-GPIO6  — SPI0 CS   → RM3100 (magnetometer SPI)
-GPIO7  — SPI0 CS   → W25Q64 Flash
-GPIO8  — UART1 TX → HC-12 RX / PWM4A → RW Motor 1
-GPIO9  — UART1 RX ← HC-12 TX / PWM4B → RW Motor 2
-GPIO10 — CAM_FIFO_RDY → Camera FIFO ready interrupt
-GPIO11 — MAG_DRDY    → RM3100 data-ready interrupt
-GPIO12 — GPS_PPS     ← GPS 1PPS timing
-GPIO13 — RAD_IRQ     ← Radiation comparator threshold interrupt
-GPIO14 — SPI0 CS     → OV2640 Camera (pending)
-GPIO15 — CAM_RESET   → Camera hardware reset
-GPIO16 — SPI0 MISO ← Camera/Flash/Mag
-GPIO17 — MAG_X      → Magnetorquer X-axis (PWM)
-GPIO18 — SPI0 SCK  ← Camera/Flash/Mag
-GPIO19 — SPI0 MOSI → Camera/Flash/Mag
-GPIO20 — WATCHDOG_KICK → External watchdog (TPS3431)
-GPIO21 — PAYLOAD_ENABLE → Payload power rail enable
-GPIO22 — CAM_TRIGGER → Camera capture trigger
-GPIO23 — MAG_Y      → Magnetorquer Y-axis (PWM)
-GPIO24 — MAG_Z      → Magnetorquer Z-axis (PWM)
-GPIO25 — STATUS_LED → Onboard status LED
-GPIO26 — ADC0      → Battery voltage sense
-GPIO27 — ADC1      → Sun sensor X / Temperature
-GPIO28 — ADC2      → Sun sensor Y
-GPIO29 — PWM6B     → RW Motor 3 (moved from GPIO8)
+GPIO0  — UART0 TX  → GPS RX (pin 1)
+GPIO1  — UART0 RX  ← GPS TX (pin 2)
+GPIO4  — I2C0 SDA  ← Sensors (pin 6)
+GPIO5  — I2C0 SCL  ← Sensors (pin 7)
+GPIO7  — SPI CS   → W25Q64 Flash (pin 10)
+GPIO8  — UART1 TX → HC-12 RX (pin 11)
+GPIO9  — UART1 RX ← HC-12 TX (pin 12)
+GPIO10 — PWM5A    → RW Motor 1 (pin 14)
+GPIO11 — PWM5B    → RW Motor 2 (pin 15)
+GPIO12 — PWM6A    → RW Motor 3 (pin 16)
+GPIO16 — SPI MISO ← Flash (pin 21)
+GPIO17 — PWM0B    → MTQ X (pin 22)
+GPIO18 — SPI SCK  ← Flash (pin 24)
+GPIO19 — SPI MOSI → Flash (pin 25)
+GPIO20 — WATCHDOG_KICK → TPS3431 (pin 26)
+GPIO21 — PWM2B    → MTQ Y (pin 27)
+GPIO22 — PWM3A    → MTQ Z (pin 29)
+GPIO25 — STATUS_LED → Onboard LED
+GPIO26 — ADC0     → Battery (pin 31)
+GPIO27 — ADC1     → Sun sensor X (pin 32)
+GPIO28 — ADC2     → Sun sensor Y (pin 34)
 ```
 
 ---
@@ -684,13 +675,13 @@ GPIO29 — PWM6B     → RW Motor 3 (moved from GPIO8)
 All sensors share the same I2C bus at 400 kHz. No address conflicts:
 
 | Device | I2C Address | Driver | Status |
-|--------|--------------|--------|--------|
-| MPU-6050/6500 | **0x70** | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
-| QMC5883L (Mag) | **0x0D** | `src/drivers/mag/hmc5883l.c` | ✅ v0.25.0 |
-| SHT31 (Temp/Hum) | **0x44** | `src/drivers/sht31.c` | ✅ v0.28.0 |
-| BH1750 (Lux) | **0x23** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
-| DS3231 (RTC) | **0x68** | `src/drivers/ds3231.c` | ✅ v0.26.0 |
-| INA219 (Power) | **0x40** | `src/drivers/ina219.c` | ✅ v0.28.0 |
+|--------|-------------|--------|--------|
+| MPU-6050/6500 IMU | **`0x68`** | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
+| QMC5883L Magnetometer | **`0x0D`** | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
+| SHT31 (Temp/Humidity) | **`0x44`** | `src/drivers/sht31.c` | ✅ v0.28.0 |
+| BH1750 (Lux) | **`0x23`** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
+| DS3231 (RTC) | **`0x68`** | `src/drivers/ds3231.c` | ✅ v0.26.0 |
+| INA219 (Power) | **`0x40`** | `src/drivers/ina219.c` | ✅ v0.28.0 |
 
 > **Note**: GPIO4/GPIO5 are mapped to both I2C0 and UART1. The current firmware
 > activates I2C0 for sensors and UART1 for CSP. Do not use simultaneously.

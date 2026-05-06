@@ -5,23 +5,18 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — — GPS Integration Complete + BOM Update
+## [Unreleased] — — Pico 2W Pin Mapping Fixes
 
-### Added
-- **BOM-OBC-001.md v1.1** (2026-05-05): Major documentation update
-  - Added: SHT31 (I2C 0x44), BH1750 (I2C 0x23), DS3231 (I2C 0x68), INA219 (I2C 0x40), Sun Sensors (GPIO27/28), W25Q64 SPI Flash
-  - Updated: UART1 pins → GPIO8/9, I2C pins confirmed GPIO4/5
-  - Clarified: Magnetometer as QMC5883L clone (0x0D)
-  - Added: Complete pin assignment table (§11) and I2C address table (§11.1)
-  - GPS: ✅ Integrated with patch antenna — receiving satellite signals
-
-### Changed
-- **ICD-OBC-001.md**: Updated I2C addresses (MPU-6050 → 0x70, full device table)
-- **ICD-OBC-001.md §7**: GPS status updated — hardware verified with patch antenna
-
-### Verified
-- GPS NEO-7M: Patch antenna receiving satellite signals correctly
-- All I2C sensors on shared bus confirmed working
+### Fixed
+- **Pico 2W physical pin corrections**: Updated pin mapping for Pico 2W
+  - ADC pins: GPIO26→31, GPIO27→32, GPIO28→34 (not 36/37/38)
+  - Watchdog: GPIO20→26 (not 27)
+  - I2C address: MPU-6050 correctly 0x68 (was incorrectly 0x70)
+- **PWM channel corrections**: Verified PWM slice mapping for RP2350
+  - RW: GPIO10=PWM5A, GPIO11=PWM5B, GPIO12=PWM6A
+  - MTQ: GPIO17=PWM0B, GPIO21=PWM2B, GPIO22=PWM3A
+- **BOM-OBC-001.md**: Updated §11 pin table with corrected physical pins
+- **ICD-OBC-001.md**: Updated §9.1/9.2 PWM tables with correct channels
 
 ---
 
