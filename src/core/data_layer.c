@@ -264,6 +264,25 @@ void data_layer_set_power_avail(bool power)
   dl_unlock();
 }
 
+void data_layer_write_solar_power(int16_t solar_voltage_mv, int32_t solar_current_ua,
+                                  int32_t solar_power_uw)
+{
+  dl_lock();
+  g_snapshot.state.solar_voltage_mv = solar_voltage_mv;
+  g_snapshot.state.solar_current_ua = solar_current_ua;
+  g_snapshot.state.solar_power_uw = solar_power_uw;
+  g_snapshot.state.solar_valid = (solar_voltage_mv >= 0);
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_set_solar_avail(bool solar)
+{
+  dl_lock();
+  g_snapshot.state.solar_available = solar;
+  dl_unlock();
+}
+
 void data_layer_write_radiation(float dose)
 {
   dl_lock();

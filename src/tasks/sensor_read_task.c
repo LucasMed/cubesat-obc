@@ -153,18 +153,31 @@ void vSensorReadTask_Step(void)
     }
   }
 
-  /* Read INA219 power monitor - once per second (every 10 cycles at 10 Hz) */
+  /* Read INA219 power monitors - once per second (every 10 cycles at 10 Hz) */
   if (snap.state.power_available)
   {
     static uint8_t power_read_counter = 0;
     if (++power_read_counter >= 10) /* 10 Hz task → 1 Hz power read */
     {
       power_read_counter = 0;
+
+      /* Bus power monitor */
       ina219_data_t power_data;
       if (ina219_read_power(&power_data))
       {
         data_layer_write_power(power_data.bus_voltage_mv, power_data.current_ua,
                                power_data.power_uw);
+      }
+
+      /* Solar panel monitor (independent availability) */
+      if (snap.state.solar_available)
+      {
+        ina219_data_t solar_data;
+        if (ina219_solar_read_power(&solar_data))
+        {
+          data_layer_write_solar_power(solar_data.bus_voltage_mv, solar_data.current_ua,
+                                       solar_data.power_uw);
+        }
       }
     }
   }

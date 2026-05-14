@@ -226,6 +226,27 @@ extern "C"
   void data_layer_set_power_avail(bool power);
 
   /**
+   * @brief Update solar panel power generation data.
+   *
+   * @param solar_voltage_mv Solar panel voltage in millivolts, or -1 if N/A.
+   * @param solar_current_ua Solar panel current in microamps, or 0 if N/A.
+   * @param solar_power_uw   Solar panel power in microwatts, or 0 if N/A.
+   *
+   * Sets @c solar_valid = true if solar_voltage_mv >= 0.
+   */
+  void data_layer_write_solar_power(int16_t solar_voltage_mv, int32_t solar_current_ua,
+                                    int32_t solar_power_uw);
+
+  /**
+   * @brief Set solar panel INA219 hardware availability flag.
+   *
+   * Called once during boot after solar INA219 detection.
+   *
+   * @param solar true if the solar INA219 was detected on the I2C bus.
+   */
+  void data_layer_set_solar_avail(bool solar);
+
+  /**
    * @brief Update radiation dose in the shared snapshot.
    *
    * @param dose  Radiation dose (placeholder units).

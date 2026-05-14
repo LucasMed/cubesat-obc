@@ -46,6 +46,11 @@ typedef struct
   int32_t power_uw;          /**< Power [µW], 0 if N/A              */
   bool power_valid;          /**< Power data is fresh and valid      */
   bool power_available;      /**< INA219 detected during boot        */
+  int16_t solar_voltage_mv;  /**< Solar panel voltage [mV], -1 if N/A */
+  int32_t solar_current_ua;  /**< Solar panel current [µA], 0 if N/A */
+  int32_t solar_power_uw;    /**< Solar panel power [µW], 0 if N/A  */
+  bool solar_valid;          /**< Solar power data is fresh and valid */
+  bool solar_available;      /**< Solar INA219 detected during boot  */
   float radiation_dose;      /**< Radiation dose (placeholder unit)   */
   float sun_x;               /**< Sun sensor X intensity (0.0-1.0), -1 if N/A */
   float sun_y;               /**< Sun sensor Y intensity (0.0-1.0), -1 if N/A */

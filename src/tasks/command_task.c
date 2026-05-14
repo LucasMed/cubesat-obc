@@ -423,6 +423,27 @@ static void process_text_command(const char *cmd)
     }
     uart1_puts_safe(buf);
   }
+  else if (strncmp(cmd, "SOLAR_TEST", 10) == 0)
+  {
+    char buf[96];
+    ina219_data_t data;
+    snprintf(buf, sizeof(buf), "[CMD] SOLAR: reading solar INA219...\r\n");
+    uart1_puts_safe(buf);
+
+    if (ina219_solar_read_power(&data))
+    {
+      int bus_v = data.bus_voltage_mv;
+      int curr_ma = (data.current_ua + 500) / 1000;
+      int pow_mw = data.power_uw / 1000;
+      snprintf(buf, sizeof(buf), "[CMD] SOLAR: V=%d mV, I=%d mA, P=%d mW\r\n", bus_v, curr_ma,
+               pow_mw);
+    }
+    else
+    {
+      snprintf(buf, sizeof(buf), "[CMD] SOLAR: read failed\r\n");
+    }
+    uart1_puts_safe(buf);
+  }
   else if (strncmp(cmd, "SHT31_TEST", 10) == 0)
   {
     char buf[96];
