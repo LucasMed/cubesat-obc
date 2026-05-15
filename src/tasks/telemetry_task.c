@@ -260,10 +260,10 @@ void vTelemetryTask_Step(void)
                        tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
                        tlm->gps_satellites, tlm->bus_voltage_mv, current_abs, power_abs, solar_v,
                        solar_i, solar_p, tlm->sun_x, tlm->sun_y);
-    // Calculate CRC and insert (skip "[TLM] " = 5 chars)
-    uint8_t text_crc = crc8_calc((const uint8_t *)buf + 5, len - 8);  // -8 for " c=  \r\n"
-    buf[len - 6] = byte_to_hex(text_crc >> 4);                        // Replace spaces
-    buf[len - 5] = byte_to_hex(text_crc & 0x0F);
+    // Calculate CRC and insert (skip "[TLM] " = 6 chars, CRC replaces two spaces after c=)
+    uint8_t text_crc = crc8_calc((const uint8_t *)buf + 6, len - 7);  // -7 for " c=  \r\n"
+    buf[len - 4] = byte_to_hex(text_crc >> 4);                        // Replace 1st space
+    buf[len - 3] = byte_to_hex(text_crc & 0x0F);                      // Replace 2nd space
     (void)len;
   }
 
@@ -271,7 +271,10 @@ void vTelemetryTask_Step(void)
 
   // Debug: show first 100 chars of generated buffer
   buf[100] = '\0';
-  printf("[telemetry] UART buf (first 100): %s\n", buf + 7);  // Skip "[JSON] " prefix
+  if (g_tlm_format == TLM_FORMAT_JSON)
+    printf("[telemetry] UART buf (first 100): %s\n", buf + 7);  // Skip "[JSON] " prefix
+  else
+    printf("[telemetry] UART buf (first 100): %s\n", buf + 6);  // Skip "[TLM] " prefix
 #endif
 
   // Debug output to UART0
