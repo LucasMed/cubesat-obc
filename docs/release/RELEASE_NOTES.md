@@ -256,19 +256,52 @@ pinning is gated on HW stability and is tracked for v1.0.0.
 
 ---
 
+## v0.29.0 — Solar Monitor + Hardware Documentation Alignment (2026-05-15)
+
+**Status**: ✅ Released  
+**Branch**: `main`
+
+### Highlights
+- **Second INA219 Solar Panel Monitor**: Dual-instance power monitoring at 0x41
+  - Device-level API with backward-compatible wrappers, dedicated safety thresholds
+  - Data layer: solar voltage, current, power fields + telemetry integration
+  - Both INA219s read at 1 Hz; 20/20 tests passing (T-INA-01..20)
+- **Hardware Documentation Alignment**: All I2C addresses, pin mappings, and PWM channels
+  corrected across ICD, BOM, and RTM documents
+- **Magnetometer Calibration Driver**: In-flight calibration with Pico power detection
+- **HexSat-100 V2 OpenSCAD Model**: Full parametric 3D mechanical design
+- **50+ tests passing**, 93% line coverage, CI green
+- **Full hardware validation**: 7 I2C devices, GPS, HC-12 radio, ground station
+
+### Components
+| Component | Status |
+|-----------|--------|
+| INA219 Solar Monitor (0x41) | ✅ Dual-instance, HW-verified |
+| I2C Address Alignment (7 devices) | ✅ All docs updated |
+| Pico 2W Pin Mapping | ✅ Corrected ADC/WDT/PWM |
+| Magnetometer Calibration | ✅ Driver implemented |
+| HexSat-100 V2 Model | ✅ OpenSCAD parametric |
+| BOM v1.1 | ✅ All sensors verified |
+| 50+ Unit Tests | ✅ 100% passing |
+| CI Pipeline | ✅ All stages green |
+
+### Open Items (post-release)
+- SMP dual-core enablement (`configNUMBER_OF_CORES = 1`)
+- Flash backend real implementation (W25Q64 driver exists, integration is stub)
+- Camera driver (Phase 8 deferred)
+- Flight qualification testing (vibration, thermal, radiation)
+
+---
+
 ## v1.0.0 — Flight Ready (TBD)
 
-**Status**: ⏳ Planned — Full hardware validation + SMP enablement  
+**Status**: ⏳ Planned — SMP enablement + flight qualification  
 **Target**: Q3 2026
 
 ### Planned Features
 - Enable SMP dual-core (`configNUMBER_OF_CORES = 2`) with core-affinity pinning
   validated on Pico 2W hardware
-- Full stack HWM instrumentation in production heartbeat loop
-- On-hardware integration test suite (real MPU6050 + HMC5883L)
-- Flash-backed persistent logging (Phase 3 logger backend)
-- FDIR authority chain formalised: EPS → Fault Manager → FMM (single path,
-  removing direct `fmm_request_transition` bypass from EPS Monitor)
-- Autonomous safe-mode transition end-to-end test (T-FMS-01, T-SAFE-01)
+- Flash-backed persistent logging via W25Q64 SPI NOR flash
+- Camera driver and FM_PAYLOAD mode
 - Flight qualification testing (vibration, thermal, radiation)
-- SAD v1.0 hardware-validated fields filled in (HWM, jitter, core assignment)
+- MC/DC coverage analysis for certification

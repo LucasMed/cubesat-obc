@@ -4,7 +4,7 @@
 
 Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace software standards. Designed for Pico 2W with extensibility to flight-ready systems.
 
-**Status:** v0.28.0 — Sun Sensor Telemetry + Ground Station Integration
+**Status:** v0.29.0 — Solar Monitor + Hardware Documentation Alignment
 **Platform:** Linux (native, Docker, or VS Code Dev Container)
 **License:** MIT  
 **Maintainers:** ExArsultre

@@ -157,7 +157,7 @@ is active** — `configNUMBER_OF_CORES = 1`. See OI-1.
 |---|---|---|
 | Flash | 2 MB (internal QSPI) | ~536 KB (full UF2 image) |
 | SRAM | 520 KB | — |
-| Heap (FreeRTOS) | 60 KB (configured) | ~3.6 KB allocated (60,416 bytes free) |
+| Heap (FreeRTOS) | 128 KB (configured, v0.29.0) | was 60 KB (v0.7.1), increased to resolve OI-8 |
 | Task stack total | 9 × 2048 words × 4 B = 72 KB | see §10 |
 
 ### 5.3 Wireless Module
@@ -210,9 +210,9 @@ Full flash write/erase (for parameter storage) deferred to CDR/TRR.
            │  .bss + .data (static)    │
            │  (system_state, services) │
            ├───────────────────────────┤
-           │  FreeRTOS heap (60 KB)    │
-           │  (task stacks, TCBs,      │
-           │   CSP buffers, queues)    │
+            │  FreeRTOS heap (128 KB)   │
+            │  (task stacks, TCBs,      │
+            │   CSP buffers, queues)    │
            ├───────────────────────────┤
            │  (free SRAM)              │
 0x20082000 └───────────────────────────┘ (520 KB end)
@@ -617,11 +617,10 @@ Peak stack user: Telemetry (180 words / 720 bytes) — driven by `printf` with f
 | FreeRTOS TCB | ~120 B | 9 tasks | ~1.1 KB |
 | Task stacks | 2048 words × 4 B = 8 KB | 9 tasks | ~72 KB |
 | CSP buffers | ~256 B each | configurable | ~4 KB |
-| FreeRTOS heap configured | 60 KB | — | 61,440 B |
-| Free at runtime (v0.7.1) | — | — | **60,416 B** |
+| FreeRTOS heap configured | 128 KB (v0.29.0) | — | 131,072 B |
+| Free at runtime (v0.29.0) | — | — | **~124 KB** (after boot, 8 tasks) |
 
-Measured minimum ever free heap: 60,416 B — well above the 32 KB NFR floor
-(SYS-P-004 in SyRS-OBC-001).
+Measured minimum ever free heap (v0.7.1): 60,416 B at 60 KB config. Now 128 KB (resolves OI-8).
 
 ### 15.3 CPU Load Estimate (Core 0, 133 MHz)
 

@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-04-16
-**Current Phase**: Phase 10 — INA219 Power Monitor Integration (branch `feature/ina219-power-monitor`)
-**Current Branch**: `feature/ina219-power-monitor` (PR submitted)
+**Last Updated**: 2026-05-15
+**Current Phase**: v0.29.0 Release — Solar Monitor + Hardware Documentation Alignment (merged to `main`)
+**Current Branch**: `main` (first stable release tag)
 
 ---
 

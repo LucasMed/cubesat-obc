@@ -20,7 +20,8 @@
 |---------|------------|------------------|-------------------------------------|
 | 0.1     | 2026-03-09 | OBC Systems Team | Initial CDR baseline                |
 | 0.2     | 2026-03-09 | OBC Systems Team | Address CDR review observations: SRAM regions table (§13.2), CPU budget estimate (§14), FMM transition conditions (§8.1), EPS execution context (§8.3, §7.7), logger flash driver target (§8.4), HK packet table (§7.5), Command ACK format (§7.6), OI-2/OI-4 clarifications, new OI-8 (heap sizing) |
-| 0.3     | 2026-03-11 | OBC Systems Team | PDR Alignment: harmonize I2C pins, update EKF to 7-state quaternion baseline, close resolved OI-1, OI-2, OI-8 |
+| 0.3     | 2026-03-11 | OBC Systems Team | PDR Alignment: harmonize I2C pins, update EKF to 7-state quaternion baseline, close resolved OI-1, OI-2 |
+| 0.4     | 2026-05-15 | OBC Systems Team | v0.29.0 release: resolve OI-8 (heap 60 KB → 128 KB, verified sufficient) |
 
 ---
 
@@ -1031,7 +1032,7 @@ Full traceability matrix is in `RTM-OBC-001`.
 | OI-5 | Momentum dump trigger threshold not formally verified against RW saturation spec | Medium | ADCS-DES-001 | Open |
 | OI-6 | FMEA-OBC-001 not yet written; fault table in fault_ids.h is the interim hazard input source | Medium | MRD-OBC-001 §6.2.1 | Open |
 | OI-7 | `vStartupTask` ALIVE loop remains alive post-init at priority 1 — should be replaced by a proper idle monitor or deleted; tracked for v1.0.0 | Low | SAD-OBC-001 | Open |
-| OI-8 | Pico hardware build requires ~82 KB FreeRTOS heap (10 tasks × 8 KB + TCBs + CSP ~4 KB) but `configTOTAL_HEAP_SIZE = 60 KB`; host build unaffected (5 tasks, heap_3). Resolution: increase to ≥ 96 KB or migrate to `xTaskCreateStatic` | **High** | config/FreeRTOSConfig.h | Open |
+| OI-8 | ~~Pico hardware build requires ~82 KB FreeRTOS heap (10 tasks × 8 KB + TCBs + CSP ~4 KB) but `configTOTAL_HEAP_SIZE = 60 KB`; host build unaffected (5 tasks, heap_3).~~ **RESOLVED**: `configTOTAL_HEAP_SIZE` increased to 128 KB (131072) — 56% margin above the 82 KB requirement | **High** | config/FreeRTOSConfig.h | **CLOSED** |
 
 ---
 

@@ -177,19 +177,16 @@
 | 2.2 | Flash backend stub | High | Open | Data logging |
 | OI-5 | External watchdog GPIO20 | Medium | Open | Hardware |
 | OI-7 | TX PA efficiency concern | Medium | Open | Power budget |
-| OI-8 | Heap sizing (~82KB needed vs 60KB) | Critical | Open | Memory subsystem |
+| OI-8 | Heap sizing (~82KB needed vs 60KB) | Critical | ✅ Resolved (128 KB) | Memory subsystem |
 
 ### 5.1 Critical Issues Detail
 
-#### OI-8: Heap Sizing
-**Issue:** Heap allocation insufficient for RP2350  
-**Current:** 60KB heap  
-**Required:** ~82KB heap  
-**Impact:** Memory allocation failures, potential crashes  
-**Resolution Path:**
-1. Review heap allocation in FreeRTOS config
-2. Adjust linker script for RP2350
-3. Verify with stress testing
+#### OI-8: Heap Sizing ✅ RESOLVED
+**Issue:** Heap allocation insufficient for RP2350 — resolved in phase7-payload merge  
+**Before:** 60KB heap (was insufficient for 8 tasks + CSP)  
+**Now:** `configTOTAL_HEAP_SIZE = 128 KB` (131072 bytes) in `config/FreeRTOSConfig.h`  
+**Required was:** ~82KB  
+**Status:** ✅ Resolved — 128 KB provides 56% margin above the 82 KB requirement
 
 ### 5.2 High Priority Issues
 
@@ -216,7 +213,7 @@
 
 | Issue | Description | Impact | Resolution |
 |-------|-------------|--------|------------|
-| Heap Configuration | 60KB vs 82KB required | Critical | Update FreeRTOS/ linker config for RP2350 |
+| Heap Configuration | ✅ Resolved — 128 KB configured (was 60 KB vs 82 KB required) | None | `configTOTAL_HEAP_SIZE = 131072` in FreeRTOSConfig.h |
 
 ### 6.2 Driver Status
 

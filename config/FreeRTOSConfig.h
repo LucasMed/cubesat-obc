@@ -3,11 +3,11 @@
 #define FREERTOS_CONFIG_H
 
 /**
- * RP2040/Pico 2W Specific Notes:
+ * RP2350 / Pico 2W Specific Notes:
  * - CPU: ARM Cortex-M33 dual-core @ ~150 MHz
  * - RAM: 520 KB total SRAM
  * - Tick rate: 1000 Hz (1ms resolution, common for RTOS)
- * - Heap: Set to 32 KB (typical for Pico projects with FreeRTOS)
+ * - Heap: 128 KB (sufficient for all 8 tasks — resolves OI-8 heap sizing)
  * - Priority levels: 5 (0=lowest/idle, 4=highest)
  * - SMP: Single-core mode (dual-core disabled until boot sequence is stable)
  */

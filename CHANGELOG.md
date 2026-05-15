@@ -5,18 +5,71 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — — Pico 2W Pin Mapping Fixes
+## [0.29.0] — 2026-05-15 — Solar Monitor + Hardware Documentation Alignment
+
+### Added
+- **Second INA219 Solar Panel Monitor**: Dual-instance INA219 power monitoring
+  - New device-level API: `ina219_init_device()`, `ina219_device_read_power()` with backward-compatible singleton wrappers
+  - Solar INA219 at address 0x41 (A0=GND, A1=VS) with dedicated safety thresholds
+  - Data layer: `solar_voltage_mv`, `solar_current_ua`, `solar_power_uw`, `solar_valid`, `solar_available`
+  - Both INA219s read at 1 Hz in `sensor_read_task`
+  - New `SOLAR_TEST` UART command for solar diagnostics
+  - Tests: 20/20 pass (T-INA-01..20) covering device API, solar init/read, and DLA integration
+
+- **Solar Telemetry in Ground Station**: Arduino ground station parses solar fields in both TEXT and JSON formats
+  - JSON: `sp:{V,I,P}` fields in telemetry packet
+  - TEXT: `sp=V,I,P` appended to existing telemetry line
+  - New `SOLAR_TEST` command on ground station menu
+
+- **HexSat-100 V2 Parametric OpenSCAD Model**: Full 3D mechanical design
+  - Hexagonal structure (100 mm flat-to-flat, 120 mm height)
+  - Stacked PCB layout with M2.5 standoffs, magnetorquer cores, solar panel cutouts
+
+- **Magnetometer Calibration Driver**: In-flight calibration for magnetometer
+  - New calibration driver with Pico power detection support
+  - Safety check integration in health monitor task
+  - Host-testable with stub support
 
 ### Fixed
-- **Pico 2W physical pin corrections**: Updated pin mapping for Pico 2W
+- **INA219 Current/Power Formula Corrections** (`ina219.c`):
+  - Current: Fixed formula — `I = V_shunt / R` with 0.1 Ω shunt (was using incorrect calculation)
+  - Power: Added missing `/1000` for mV·µA → µW conversion
+  - Solar telemetry: Added `sp=` fields to both TEXT and JSON formats
+
+- **Pico 2W Physical Pin Mapping Corrections**:
   - ADC pins: GPIO26→31, GPIO27→32, GPIO28→34 (not 36/37/38)
   - Watchdog: GPIO20→26 (not 27)
   - I2C address: MPU-6050 correctly 0x68 (was incorrectly 0x70)
-- **PWM channel corrections**: Verified PWM slice mapping for RP2350
-  - RW: GPIO10=PWM5A, GPIO11=PWM5B, GPIO12=PWM6A
-  - MTQ: GPIO17=PWM0B, GPIO21=PWM2B, GPIO22=PWM3A
-- **BOM-OBC-001.md**: Updated §11 pin table with corrected physical pins
-- **ICD-OBC-001.md**: Updated §9.1/9.2 PWM tables with correct channels
+  - PWM slice mapping verified for RP2350: RW GPIO10=PWM5A, GPIO11=PWM5B, GPIO12=PWM6A; MTQ GPIO17=PWM0B, GPIO21=PWM2B, GPIO22=PWM3A
+
+- **IMU_CALIB_SIZE Buffer Overflow**: Increased buffer size to prevent out-of-bounds access (Coverity finding)
+
+- **Host-Test Linker Errors**: Resolved EKF and IMU calibration linker errors; added weak attribute to external EKF symbols
+
+- **GPS RTC Sync**: Migrated from internal RP2040 RTC to external DS3231 driver
+
+- **Coverity CI**: Removed unsupported `analyze-options` input from Coverity Scan action
+
+### Changed
+- **I2C Address Alignment**: Updated documentation to match hardware scan (7 devices)
+  - QMC5883L: 0x0D → 0x2C
+  - IMU MPU-6050: 0x68 → 0x69
+  - INA219 Solar: added at 0x41
+  - ICD-OBC-001, BOM-OBC-001, RTM-OBC-001 all updated
+
+- **BOM v1.1**: Updated with all sensors verified on hardware (GPS operational with patch antenna confirmed receiving signals)
+
+### Documentation
+- **ICD-OBC-001**: Updated §9.1/9.2 PWM tables with correct RP2350 channels, §11 added Sun Sensor Interface
+- **BOM-OBC-001**: Updated §11 pin table with corrected physical pins, §5 added INA219 Solar entry
+- **RTM-OBC-001**: Updated HW-02, HW-03 addresses; added HW-11b INA219 Solar
+- **Agent Skills**: Added frontend-design, seo, and accessibility skills with license metadata
+
+### Hardware Verified
+- Second INA219 (solar): ✅ OK at 0x41, measures solar panel independently
+- All 7 I2C devices: IMU (0x69), QMC5883L (0x2C), SHT31 (0x44), BH1750 (0x23), DS3231 (0x68), INA219 Bus (0x40), INA219 Solar (0x41)
+- GPS: ✅ Patch antenna working, satellite fixes acquired
+- Flatsat: Solar and bus power telemetry flowing correctly
 
 ---
 
