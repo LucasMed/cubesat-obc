@@ -227,16 +227,17 @@ bool ina219_device_read_power(ina219_t *dev, ina219_data_t *data)
   data->shunt_voltage_uv = (int16_t)shunt_voltage_raw;
   data->shunt_voltage_uv *= 10;  // Convert to microvolts
 
-  /* Current: from calibration register calculation
-   * Current = shunt_voltage / R_shunt * calibration_factor
-   * With our calibration: current_LSB = 10 µA
+  /* Current: I = V / R (Ohm's law)
+   * shunt_voltage_uv in µV, R_shunt = 0.1 Ω
+   * I_µA = V_µV / 0.1 = V_µV * 10
    */
-  data->current_ua = ((int32_t)data->shunt_voltage_uv / 100) * 100;  // 0.1 ohm -> 10 µA/LSB
+  data->current_ua = (int32_t)data->shunt_voltage_uv * 10;
 
   /* Power: P = V * I
-   * V in mV, I in µA → result in mW → convert to µW (multiply by 1000)
-   * Formula: P_uw = V_mV * I_uA */
-  data->power_uw = (int32_t)data->bus_voltage_mv * data->current_ua;
+   * V in mV, I in µA → convert to µW:
+   * P_µW = V_mV * I_µA / 1000
+   */
+  data->power_uw = ((int32_t)data->bus_voltage_mv * data->current_ua) / 1000;
 
   /* Safety checks - generate faults if anomalies detected */
 #ifdef PICO_BUILD

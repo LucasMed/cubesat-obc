@@ -208,13 +208,23 @@ void vTelemetryTask_Step(void)
   if (g_tlm_format == TLM_FORMAT_JSON)
   {
     // JSON format for simulator (simplified, with CRC8)
+    int16_t current_abs = (tlm->current_ma < 0) ? -tlm->current_ma : tlm->current_ma;
+    int16_t power_abs = (tlm->power_mw < 0) ? -tlm->power_mw : tlm->power_mw;
+    int16_t solar_v = snap.state.solar_voltage_mv;
+    int16_t solar_i = (snap.state.solar_current_ua < 0)
+                          ? (int16_t)(-(snap.state.solar_current_ua / 1000))
+                          : (int16_t)(snap.state.solar_current_ua / 1000);
+    int16_t solar_p = (snap.state.solar_power_uw < 0)
+                          ? (int16_t)(-(snap.state.solar_power_uw / 1000))
+                          : (int16_t)(snap.state.solar_power_uw / 1000);
+
     int len = snprintf(
         buf, sizeof(buf),
-        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
+        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,sp:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
         (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
         tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
-        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, tlm->current_ma,
-        tlm->power_mw, tlm->sun_x, tlm->sun_y, tlm->flags);
+        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, current_abs,
+        power_abs, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y, tlm->flags);
 
     uint8_t json_crc = crc8_calc((const uint8_t *)buf + 7, len - 9);  // CRC on data only
     int pos = len;
@@ -231,13 +241,26 @@ void vTelemetryTask_Step(void)
   else
   {
     // TEXT format (compact, with CRC8)
+    int16_t current_abs = (tlm->current_ma < 0) ? -tlm->current_ma : tlm->current_ma;
+    int16_t power_abs = (tlm->power_mw < 0) ? -tlm->power_mw : tlm->power_mw;
+    int16_t solar_v = snap.state.solar_voltage_mv;
+    int16_t solar_i = (snap.state.solar_current_ua < 0)
+                          ? (int16_t)(-(snap.state.solar_current_ua / 1000))
+                          : (int16_t)(snap.state.solar_current_ua / 1000);
+    int16_t solar_p = (snap.state.solar_power_uw < 0)
+                          ? (int16_t)(-(snap.state.solar_power_uw / 1000))
+                          : (int16_t)(snap.state.solar_power_uw / 1000);
+
     int len = snprintf(buf, sizeof(buf),
                        "[TLM] m=%d a=%.1f,%.1f,%.1f t=%.1f h=%.1f l=%.1f r=%lu f=0x%02X "
-                       "g=%.6f,%.6f,%.1f v=%d s=%d sx=%.2f sy=%.2f c=  \r\n",
+                       "g=%.6f,%.6f,%.1f v=%d s=%d p=%d,%d,%d sp=%d,%d,%d "
+                       "sx=%.2f sy=%.2f c=  \r\n",
                        snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp,
                        tlm->humidity, tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags,
                        tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
-                       tlm->gps_satellites, tlm->sun_x, tlm->sun_y);
+                       tlm->gps_satellites, tlm->bus_voltage_mv, current_abs, power_abs,
+                       solar_v, solar_i, solar_p,
+                       tlm->sun_x, tlm->sun_y);
     // Calculate CRC and insert (skip "[TLM] " = 5 chars)
     uint8_t text_crc = crc8_calc((const uint8_t *)buf + 5, len - 8);  // -8 for " c=  \r\n"
     buf[len - 6] = byte_to_hex(text_crc >> 4);                        // Replace spaces
