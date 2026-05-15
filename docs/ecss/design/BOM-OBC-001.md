@@ -69,7 +69,7 @@ Firmware compatibility status and integration notes are included for each compon
 | # | Component | P/N / Model | Qty | Status | Notes |
 |---|-----------|-------------|-----|--------|-------|
 | 2 | 6-DOF IMU | MPU-6050/6500 (GY-521 module) | 2 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x70**; GPIO4 (SDA), GPIO5 (SCL); hw validated (v0.25.0) |
-| 3 | 3-axis Magnetometer | QMC5883L (GY-271 module, clone) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — address 0x0D; Phase 5; see §3.1 |
+| 3 | 3-axis Magnetometer | QMC5883L (GY-271 module, clone) | 2 | ✅ Integrated | I2C0 bus; driver `src/drivers/mag/hmc5883l.c` — address 0x2C (AD0=VCC); Phase 5; see §3.1 |
 | 3b | Sun Sensor X | Photodiode (BPW21 or equivalent) | 1 | ✅ Integrated | ADC1 @ GPIO27; driver `src/drivers/sun_sensor.c`; v0.28.0 |
 | 3c | Sun Sensor Y | Photodiode (BPW21 or equivalent) | 1 | ✅ Integrated | ADC2 @ GPIO28; driver `src/drivers/sun_sensor.c`; v0.28.0 |
 
@@ -84,9 +84,9 @@ Firmware compatibility status and integration notes are included for each compon
 
 **Lab status: ✅ Keep for prototype** — The HMC5883L (GY-271) is easy to source for lab use and the driver (`src/drivers/mag/hmc5883l.c`) is fully integrated and tested. It remains the sensor of choice for all breadboard and lab validation phases.
 
-> **⚠️ Procurement note**: The HMC5883L has been **discontinued by Honeywell**. Many GY-271 modules sold today contain a **QMC5883L clone** (QST Corporation) with a different register map and I2C address (`0x0D` vs `0x1E`). Before using a new GY-271 module, verify the IC markings on the chip itself.
-> - If the IC reads **HMC5883L**: driver works as-is.
-> - If the IC reads **QMC5883L**: adapt `src/drivers/mag/hmc5883l.c` (update I2C address to `0x0D` and register definitions), or use a QMC5883L-specific driver.
+> **⚠️ Procurement note**: The HMC5883L has been **discontinued by Honeywell**. Many GY-271 modules sold today contain a **QMC5883L clone** (QST Corporation) with a different register map and I2C address. Before using a new GY-271 module, verify the IC markings on the chip itself.
+> - If the IC reads **HMC5883L**: driver works as-is (address `0x1E`).
+> - If the IC reads **QMC5883L**: driver auto-detects both `0x0D` (AD0=GND) and `0x2C` (AD0=VCC); the current hardware has AD0 pulled HIGH and responds at **`0x2C`**.
 
 **Flight upgrade recommendation (CDR decision):**
 
@@ -149,8 +149,9 @@ Firmware compatibility status and integration notes are included for each compon
 | 5b | Temperature/Humidity | SHT31-D | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x44**; GPIO4/5; driver `src/drivers/sht31.c`; v0.28.0 |
 | 5c | Light Sensor (Lux) | BH1750 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x23**; GPIO4/5; driver `src/drivers/bh1750.c`; v0.26.0 |
 | 5d | Real-Time Clock | DS3231 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x68**; GPIO4/5; driver `src/drivers/ds3231.c`; v0.26.0 |
-| 5e | Power Monitor | INA219 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x40**; 0.1Ω shunt; driver `src/drivers/ina219.c`; v0.28.0 |
-| 5f | Battery Monitor | Resistor divider (330k/100k) | 1 | ✅ Integrated | ADC0 @ GPIO26; driver `eps_monitor.c` |
+| 5e | Power Monitor (Bus) | INA219 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x40**; 0.1Ω shunt; driver `src/drivers/ina219.c`; v0.28.0 |
+| 5f | Power Monitor (Solar) | INA219 | 1 | ✅ Integrated | I2C0 @ 400 kHz, addr **0x41** (A0=GND, A1=VS); driver `src/drivers/ina219.c`; v0.28.0 |
+| 5g | Battery Monitor | Resistor divider (330k/100k) | 1 | ✅ Integrated | ADC0 @ GPIO26; driver `eps_monitor.c` |
 
 > Battery, 5V regulator, charger, and solar panel are defined in **§9 EPS**.
 
@@ -677,11 +678,12 @@ All sensors share the same I2C bus at 400 kHz. No address conflicts:
 | Device | I2C Address | Driver | Status |
 |--------|-------------|--------|--------|
 | MPU-6050/6500 IMU | **`0x69`** (AD0=VCC) | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
-| QMC5883L Magnetometer | **`0x0D`** | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
+| QMC5883L Magnetometer | **`0x2C`** (AD0=VCC) | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
 | SHT31 (Temp/Humidity) | **`0x44`** | `src/drivers/sht31.c` | ✅ v0.28.0 |
 | BH1750 (Lux) | **`0x23`** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
 | DS3231 (RTC) | **`0x68`** | `src/drivers/ds3231.c` | ✅ v0.26.0 |
 | INA219 (Power Monitor) | **`0x40`** | `src/drivers/ina219.c` | ✅ v0.28.0 |
+| INA219 (Solar Panel) | **`0x41`** (A0=GND, A1=VS) | `src/drivers/ina219.c` | ✅ v0.28.0 |
 
 > **Note**: GPIO4/GPIO5 are mapped to both I2C0 and UART1. The current firmware
 > activates I2C0 for sensors and UART1 for CSP. Do not use simultaneously.

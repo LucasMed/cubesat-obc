@@ -395,8 +395,8 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | HW-REQ | Component | BOM Ref | Firmware Requirement | Tests | Status |
 |--------|-----------|---------|---------------------|-------|--------|
 | HW-01 | OBC: RP2350 / Pico 2W | §2 | FR-1..FR-12 (all tasks run on RP2350) | All 29/29 | ✅ |
-| HW-02 | IMU: MPU-6050 (I2C0, 0x68) | §3 | FR-1 (Attitude Sensing), FR-2 (EKF input) | T-SDM-01..03, T-EKF-01..06 | ✅ |
-| HW-03 | Magnetometer: HMC5883L (I2C0, 0x1E) — lab; LIS3MDL (0x1C) for flight | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ✅ Lab (HMC5883L); CDR: new LIS3MDL driver |
+| HW-02 | IMU: MPU-6050 (I2C0, 0x69, AD0=VCC) | §3 | FR-1 (Attitude Sensing), FR-2 (EKF input) | T-SDM-01..03, T-EKF-01..06 | ✅ |
+| HW-03 | Magnetometer: QMC5883L (I2C0, 0x2C, AD0=VCC) — lab; LIS3MDL (0x1C) for flight | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ✅ Lab (QMC5883L at 0x2C); CDR: new LIS3MDL driver |
 | HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-18 (GPS NMEA parsing), FR-19 (UTC sync) — `neo7m.c` driver + NMEA parser | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | 🔄 Partial — NMEA/GPRMC done; UTC→DS3231 sync pending |
 | HW-05 | External watchdog: TPS3431, GPIO20, timeout=3 s | §10 #12 | FR-8 (Health Monitoring — `watchdog_hal_feed()` in `HealthMonitorTask`) | T-WDT-01..05, T-SAFE-01a..c | ✅ HAL ready |
 | HW-06 | TT&C: E22-400M30S UART1 @ 115200 baud | §6 | FR-7 (Telemetry TX via KISS/CSP), link margin +8.5 dB @ 2300 km | T-TLM-01..06 | ✅ |
@@ -404,7 +404,8 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | HW-08 | EPS: LiPo 18650 → MT3608 5V → Pico VSYS | §9 | FR-11 (EPS Monitor, GPIO26 ADC0 Vbatt) | T-EPS-03..05 | ✅ |
 | HW-09 | Magnetorquers: DRV8833 on GPIO14/15/16 | §8 | FR-6 (MTQ actuation), B-dot detumbling (Phase 1 ADCS) | T-MDT-01..05 | ✅ HAL stub |
 | HW-10 | Reaction wheels: TB6612FNG on GPIO6/7/8 | §8 | FR-5 (RW actuation), LQR torque output (Phase 2 ADCS) | test_actuators | ✅ HAL stub |
-| HW-11 | Power Monitor: INA219 (I2C0 0x40, 0.1Ω shunt) | — | OR-1 (bus voltage/current/power monitoring) | `test_ina219` ✅ | ✅ PR #49 — HW verified (V=5724mV, I=5mA, P=28mW) |
+| HW-11 | Power Monitor (Bus): INA219 (I2C0 0x40, 0.1Ω shunt) | — | OR-1 (bus voltage/current/power monitoring) | `test_ina219` ✅ | ✅ PR #49 — HW verified (V=5724mV, I=5mA, P=28mW) |
+| HW-11b | Power Monitor (Solar): INA219 (I2C0 0x41, A0=GND A1=VS) | — | OR-1 (solar panel monitoring) | — | ✅ I2C bus — device detected |
 | HW-12 | RTC: DS3231 (I2C0 0x68, ±2 ppm, battery backup) | — | OR-2 (timekeeping), FR-19 (GPS→RTC sync) | `test_ds3231` ❌ | 🔄 PR #48 — HW verified; test pending |
 | HW-13 | Light Sensor: BH1750 (I2C0 0x23, 0.5 lux resolution) | — | OR-3 (eclipse detection, sun acquisition) | `test_bh1750` ✅ | ✅ PR #47 — HW verified (~150 lux indoor) |
 | HW-14 | Temp/Humidity: SHT31 (I2C0 0x44, CRC-8) | — | OR-4 (ambient thermal monitoring) | `test_sht31` ❌ | 🔄 PR #45 — HW verified; test pending |
