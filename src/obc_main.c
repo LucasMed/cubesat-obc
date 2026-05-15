@@ -148,9 +148,9 @@ static void vStartupTask(void *pvParameters)
   }
   bool bh1750_res = bh1750_init(BH1750_ADDR_DEFAULT);
   bool ds3231_res = ds3231_init();
-  bool ina219_res   = ina219_init();
+  bool ina219_res = ina219_init();
   bool ina219_solar_res = ina219_solar_init();
-  bool sun_sensor_res   = sun_sensor_init();
+  bool sun_sensor_res = sun_sensor_init();
 
   /* DEBUG: Print battery voltage after init */
   ina219_data_t pwr_data = {0};

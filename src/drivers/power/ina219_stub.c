@@ -42,11 +42,11 @@ bool ina219_init_device(ina219_t *dev, uint8_t addr)
     return false;
   }
 
-  dev->addr              = addr;
+  dev->addr = addr;
   dev->calibration_value = 4096;
-  dev->last_voltage_mv   = 0;
-  dev->last_reading_ms   = 0;
-  dev->initialized       = true;
+  dev->last_voltage_mv = 0;
+  dev->last_reading_ms = 0;
+  dev->initialized = true;
 
 #ifdef PICO_BUILD
   printf("ina219(0x%02X): Initialized (stub)\r\n", addr);
@@ -127,7 +127,7 @@ int16_t ina219_device_get_voltage_mv(ina219_t *dev)
 
 static ina219_t s_bus_stub_dev;
 static ina219_t s_solar_stub_dev;
-static bool s_bus_initialised  = false;
+static bool s_bus_initialised = false;
 static bool s_solar_initialised = false;
 
 bool ina219_init(void)

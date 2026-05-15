@@ -63,20 +63,20 @@
 
 /** Default bus-power monitor at 0x40 */
 static ina219_t s_bus_dev = {
-    .addr             = INA219_ADDR,
+    .addr = INA219_ADDR,
     .calibration_value = INA219_CALIBRATION_VALUE,
-    .last_voltage_mv  = 0,
-    .last_reading_ms  = 0,
-    .initialized      = false,
+    .last_voltage_mv = 0,
+    .last_reading_ms = 0,
+    .initialized = false,
 };
 
 /** Solar-panel monitor at 0x41 */
 static ina219_t s_solar_dev = {
-    .addr             = INA219_ADDR_SOLAR,
+    .addr = INA219_ADDR_SOLAR,
     .calibration_value = INA219_CALIBRATION_VALUE,
-    .last_voltage_mv  = 0,
-    .last_reading_ms  = 0,
-    .initialized      = false,
+    .last_voltage_mv = 0,
+    .last_reading_ms = 0,
+    .initialized = false,
 };
 
 /* ------------------------------------------------------------------ */
@@ -121,10 +121,10 @@ bool ina219_init_device(ina219_t *dev, uint8_t addr)
     return false;
   }
 
-  dev->addr              = addr;
+  dev->addr = addr;
   dev->calibration_value = INA219_CALIBRATION_VALUE;
-  dev->last_voltage_mv   = 0;
-  dev->last_reading_ms   = 0;
+  dev->last_voltage_mv = 0;
+  dev->last_reading_ms = 0;
 
   if (!ina219_device_is_present(dev))
   {
