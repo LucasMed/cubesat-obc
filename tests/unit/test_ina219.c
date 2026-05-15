@@ -78,23 +78,23 @@ void imu_calib_apply_accel(const float accel_raw[3], float accel_cal[3])
 /* ========== Test functions ========== */
 
 /* Test: INA219 init returns true on host stub */
-void test_ina219_init_returns_ok()
+void test_ina219_init_returns_ok(void)
 {
   bool result = ina219_init();
-  assert(result && "ina219_init() must return true on host stub");
+  assert(result);
   printf("  PASS T-INA-01 ina219_init() returns true\n");
 }
 
 /* Test: INA219 is_present returns true */
-void test_ina219_is_present()
+void test_ina219_is_present(void)
 {
   bool result = ina219_is_present();
-  assert(result && "ina219_is_present() must return true on host stub");
+  assert(result);
   printf("  PASS T-INA-02 ina219_is_present() returns true\n");
 }
 
 /* Test: Power calculation - V * I = P */
-void test_ina219_power_calculation()
+void test_ina219_power_calculation(void)
 {
   ina219_data_t data;
 
@@ -104,12 +104,12 @@ void test_ina219_power_calculation()
   data.power_uw = (int32_t)data.bus_voltage_mv * data.current_ua;
 
   /* Expected: P = 5000 * 100000 = 500,000,000 µW = 500 mW */
-  assert(data.power_uw == 500000000 && "power calculation failed");
+  assert(data.power_uw == 500000000);
   printf("  PASS T-INA-03 power calculation V*I=P: %d µW\n", data.power_uw);
 }
 
 /* Test: Power calculation with actual sensor values */
-void test_ina219_power_with_sensor_values()
+void test_ina219_power_with_sensor_values(void)
 {
   ina219_data_t data;
 
@@ -119,33 +119,32 @@ void test_ina219_power_with_sensor_values()
   data.power_uw = (int32_t)data.bus_voltage_mv * data.current_ua;
 
   /* Expected: P = 5728 * 5000 = 28,640,000 µW = 28.64 mW */
-  int32_t expected_power_uw = 28640000;
-  assert(data.power_uw == expected_power_uw && "power calculation mismatch");
+  assert(data.power_uw == 28640000);
 
   /* Convert to mW for display */
   int power_mw = data.power_uw / 1000;
-  assert(power_mw == 28640 && "power in mW should be 28640");
+  assert(power_mw == 28640);
   printf("  PASS T-INA-04 sensor values: V=%d mV, I=%d µA, P=%d µW (%d mW)\n",
          data.bus_voltage_mv, data.current_ua, data.power_uw, power_mw);
 }
 
 /* Test: ina219_read_power returns valid data */
-void test_ina219_read_power()
+void test_ina219_read_power(void)
 {
   ina219_data_t data;
   bool result = ina219_read_power(&data);
 
-  assert(result && "ina219_read_power() must return true");
-  assert(data.bus_voltage_mv > 0 && "bus voltage must be positive");
-  assert(data.current_ua >= 0 && "current must be non-negative");
-  assert(data.power_uw >= 0 && "power must be non-negative");
+  assert(result);
+  assert(data.bus_voltage_mv > 0);
+  assert(data.current_ua >= 0);
+  assert(data.power_uw >= 0);
 
   printf("  PASS T-INA-05 ina219_read_power(): V=%d mV, I=%d µA, P=%d µW\n",
          data.bus_voltage_mv, data.current_ua, data.power_uw);
 }
 
 /* Test: Data layer write and read power */
-void test_ina219_data_layer()
+void test_ina219_data_layer(void)
 {
   /* Write power data to data layer */
   data_layer_write_power(5728, 5000, 28640000);
@@ -154,10 +153,10 @@ void test_ina219_data_layer()
   dl_snapshot_t snap;
   data_layer_read(&snap);
 
-  assert(snap.state.bus_voltage_mv == 5728 && "bus voltage mismatch");
-  assert(snap.state.current_ua == 5000 && "current mismatch");
-  assert(snap.state.power_uw == 28640000 && "power mismatch");
-  assert(snap.state.power_valid == true && "power_valid should be true");
+  assert(snap.state.bus_voltage_mv == 5728);
+  assert(snap.state.current_ua == 5000);
+  assert(snap.state.power_uw == 28640000);
+  assert(snap.state.power_valid == true);
 
   printf("  PASS T-INA-06 data layer: V=%d mV, I=%d µA, P=%d µW\n",
          snap.state.bus_voltage_mv, snap.state.current_ua, snap.state.power_uw);
@@ -165,31 +164,148 @@ void test_ina219_data_layer()
   /* Test power not valid case */
   data_layer_write_power(-1, 0, 0);
   data_layer_read(&snap);
-  assert(snap.state.power_valid == false && "power_valid should be false when V=-1");
+  assert(snap.state.power_valid == false);
 
   printf("  PASS T-INA-07 power_valid=false when voltage=-1\n");
 }
 
 /* Test: Set power availability */
-void test_ina219_availability()
+void test_ina219_availability(void)
 {
   data_layer_set_power_avail(true);
 
   dl_snapshot_t snap;
   data_layer_read(&snap);
-  assert(snap.state.power_available == true && "power_available should be true");
+  assert(snap.state.power_available == true);
 
   printf("  PASS T-INA-08 power_available=true\n");
 
   data_layer_set_power_avail(false);
   data_layer_read(&snap);
-  assert(snap.state.power_available == false && "power_available should be false");
+  assert(snap.state.power_available == false);
 
   printf("  PASS T-INA-09 power_available=false\n");
 }
 
+/* Test: Device-instance based API */
+void test_ina219_init_device(void)
+{
+  ina219_t dev;
+
+  /* NULL pointer guard */
+  bool null_ok = ina219_init_device(NULL, INA219_ADDR);
+  assert(!null_ok);
+  printf("  PASS T-INA-11 NULL pointer guard on init_device\n");
+
+  /* Valid init */
+  bool init_ok = ina219_init_device(&dev, INA219_ADDR);
+  assert(init_ok);
+  assert(dev.initialized);
+  assert(dev.addr == INA219_ADDR);
+  printf("  PASS T-INA-12 ina219_init_device() at 0x%02X\n", (unsigned)dev.addr);
+}
+
+/* Test: Device-instance read power */
+void test_ina219_device_read_power(void)
+{
+  ina219_t dev;
+  ina219_data_t data;
+
+  bool init_ok = ina219_init_device(&dev, INA219_ADDR);
+  assert(init_ok);
+
+  bool read_ok = ina219_device_read_power(&dev, &data);
+  assert(read_ok);
+  assert(data.bus_voltage_mv > 0);
+  assert(data.current_ua >= 0);
+
+  /* Check that instance state was updated */
+  assert(dev.last_voltage_mv == data.bus_voltage_mv);
+  assert(dev.last_reading_ms > 0);
+
+  printf("  PASS T-INA-13 device_read: V=%d mV, I=%d µA, P=%d µW\n",
+         data.bus_voltage_mv, data.current_ua, data.power_uw);
+}
+
+/* Test: Solar INA219 init */
+void test_ina219_solar_init_ok(void)
+{
+  bool result = ina219_solar_init();
+  assert(result);
+  printf("  PASS T-INA-14 ina219_solar_init() returns true\n");
+}
+
+/* Test: Solar INA219 is_present */
+void test_ina219_solar_is_present(void)
+{
+  bool result = ina219_solar_is_present();
+  assert(result);
+  printf("  PASS T-INA-15 ina219_solar_is_present() returns true\n");
+}
+
+/* Test: Solar INA219 read returns valid data */
+void test_ina219_solar_read_power(void)
+{
+  ina219_data_t data;
+  bool result = ina219_solar_read_power(&data);
+
+  assert(result);
+  assert(data.bus_voltage_mv > 0);
+  assert(data.current_ua >= 0);
+  assert(data.power_uw >= 0);
+
+  /* Solar mock data is 6.5V, different from bus mock 5.0V */
+  assert(data.bus_voltage_mv >= 6000);
+  printf("  PASS T-INA-16 solar_read: V=%d mV, I=%d µA, P=%d µW\n",
+         data.bus_voltage_mv, data.current_ua, data.power_uw);
+}
+
+/* Test: Solar panel data layer write and read */
+void test_ina219_solar_data_layer(void)
+{
+  /* Write solar power data to data layer */
+  data_layer_write_solar_power(6500, 100000, 650000);
+
+  /* Read back from data layer */
+  dl_snapshot_t snap;
+  data_layer_read(&snap);
+
+  assert(snap.state.solar_voltage_mv == 6500);
+  assert(snap.state.solar_current_ua == 100000);
+  assert(snap.state.solar_power_uw == 650000);
+  assert(snap.state.solar_valid == true);
+
+  printf("  PASS T-INA-17 solar data layer: V=%d mV, I=%d µA, P=%d µW\n",
+         snap.state.solar_voltage_mv, snap.state.solar_current_ua, snap.state.solar_power_uw);
+
+  /* Test solar not valid case */
+  data_layer_write_solar_power(-1, 0, 0);
+  data_layer_read(&snap);
+  assert(snap.state.solar_valid == false);
+
+  printf("  PASS T-INA-18 solar_valid=false when voltage=-1\n");
+}
+
+/* Test: Solar availability */
+void test_ina219_solar_availability(void)
+{
+  data_layer_set_solar_avail(true);
+
+  dl_snapshot_t snap;
+  data_layer_read(&snap);
+  assert(snap.state.solar_available == true);
+
+  printf("  PASS T-INA-19 solar_available=true\n");
+
+  data_layer_set_solar_avail(false);
+  data_layer_read(&snap);
+  assert(snap.state.solar_available == false);
+
+  printf("  PASS T-INA-20 solar_available=false\n");
+}
+
 /* Test: Power conversion to mW */
-void test_ina219_power_conversion()
+void test_ina219_power_conversion(void)
 {
   /* Test multiple values */
   struct
@@ -209,8 +325,7 @@ void test_ina219_power_conversion()
     int32_t power_uw = (int32_t)test_cases[i].v_mv * test_cases[i].i_ua;
     int32_t power_mw = power_uw / 1000;
 
-    assert(power_mw == test_cases[i].expected_mw &&
-           "power conversion mismatch");
+    assert(power_mw == test_cases[i].expected_mw);
     printf("  PASS T-INA-10.%zu: V=%d mV, I=%d µA → P=%d mW (expected %d mW)\n",
            i, test_cases[i].v_mv, test_cases[i].i_ua,
            power_mw, test_cases[i].expected_mw);
@@ -234,6 +349,19 @@ int main(void)
 
   printf("\n--- Read Function ---\n");
   test_ina219_read_power();
+
+  printf("\n--- Device Instance API ---\n");
+  test_ina219_init_device();
+  test_ina219_device_read_power();
+
+  printf("\n--- Solar Panel INA219 ---\n");
+  test_ina219_solar_init_ok();
+  test_ina219_solar_is_present();
+  test_ina219_solar_read_power();
+
+  printf("\n--- Solar Data Layer Integration ---\n");
+  test_ina219_solar_data_layer();
+  test_ina219_solar_availability();
 
   printf("\n--- Data Layer Integration ---\n");
   test_ina219_data_layer();

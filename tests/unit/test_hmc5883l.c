@@ -53,10 +53,16 @@ bool bh1750_read(float *lux)
   return false;
 }
 
-/* ---- INA219 stub (satisfy sensor_read_task.c link) ---------------------- */
+/* ---- INA219 stubs (satisfy sensor_read_task.c link) ---------------------- */
 #include "ina219.h"
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool ina219_read_power(ina219_data_t *data)
+{
+  (void)data;
+  return false;
+}
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool ina219_solar_read_power(ina219_data_t *data)
 {
   (void)data;
   return false;

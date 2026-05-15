@@ -5,8 +5,12 @@
  * I2C high-side current and power sensor.
  * Datasheet: https://www.ti.com/lit/ds/symlink/ina219.pdf
  *
+ * This driver supports multiple INA219 instances via an instance handle.
+ * A legacy singleton API is provided for the default bus monitor (0x40),
+ * and convenience macros for solar panel monitoring (0x41).
+ *
  * Specifications:
- * - I2C Address: 0x40 (A0=A1=GND, default)
+ * - I2C Address: 0x40 (A0=A1=GND, default), 0x41 (A0=GND, A1=VS, solar)
  * - Bus voltage range: 0-26V (internal 26V shunt voltage max)
  * - Shunt resistance: External (typically 0.1 ohm)
  * - Current resolution: 100 µA (LSB for 400mA range)
@@ -29,6 +33,11 @@ extern "C"
    * @brief I2C address (7-bit, A0=A1=GND).
    */
 #define INA219_ADDR 0x40
+
+  /**
+   * @brief I2C address for solar panel INA219 (A0=GND, A1=VS).
+   */
+#define INA219_ADDR_SOLAR 0x41
 
   /**
    * @brief Register addresses.
@@ -71,29 +80,103 @@ extern "C"
   } ina219_data_t;
 
   /**
-   * @brief Initialize the INA219 power monitor.
+   * @brief INA219 device instance handle.
    *
-   * Configures the sensor with default calibration for ~400mA range
-   * with 0.1 ohm shunt resistor.
+   * Manages per-instance state including I2C address, calibration,
+   * and cached readings.  Callers declare instances and pass them
+   * to the device-level API.
+   */
+  typedef struct
+  {
+    uint8_t addr;               /**< 7-bit I2C address               */
+    uint16_t calibration_value; /**< Calibration register value       */
+    int16_t last_voltage_mv;    /**< Last measured bus voltage [mV]  */
+    uint32_t last_reading_ms;   /**< Timestamp of last reading [ms]  */
+    bool initialized;           /**< true after successful init       */
+  } ina219_t;
+
+  /* ------------------------------------------------------------------ */
+  /*  Instance-based API                                                 */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * @brief Initialise an INA219 device instance.
+   *
+   * Detects the sensor at the given address, resets it, and configures
+   * for continuous 12-bit shunt+bus mode with default calibration.
+   *
+   * @param dev  Pointer to an ina219_t instance (must not be NULL).
+   * @param addr 7-bit I2C address (e.g. INA219_ADDR or INA219_ADDR_SOLAR).
+   * @return true on success, false on failure.
+   */
+  bool ina219_init_device(ina219_t *dev, uint8_t addr);
+
+  /**
+   * @brief Check if an INA219 device is present on the I2C bus.
+   *
+   * @param dev  Pointer to an initialised ina219_t instance.
+   * @return true if the sensor responds.
+   */
+  bool ina219_device_is_present(ina219_t *dev);
+
+  /**
+   * @brief Read power data from an INA219 device.
+   *
+   * Reads bus voltage, shunt voltage, and calculates current/power.
+   * Updates cached voltage and timestamp in the instance handle.
+   *
+   * @param dev   Pointer to an initialised ina219_t instance.
+   * @param data  Pointer to store measurement results (must not be NULL).
+   * @return true on success, false on failure (I2C error).
+   */
+  bool ina219_device_read_power(ina219_t *dev, ina219_data_t *data);
+
+  /**
+   * @brief Reset an INA219 device to default configuration.
+   *
+   * @param dev  Pointer to an initialised ina219_t instance.
+   * @return true on success, false on failure.
+   */
+  bool ina219_device_reset(ina219_t *dev);
+
+  /**
+   * @brief Get last reading timestamp for a device instance.
+   *
+   * @param dev  Pointer to an initialised ina219_t instance.
+   * @return Timestamp in milliseconds since boot, or 0 if no reading yet.
+   */
+  uint32_t ina219_device_get_last_reading_ms(ina219_t *dev);
+
+  /**
+   * @brief Get last measured bus voltage for a device instance.
+   *
+   * @param dev  Pointer to an initialised ina219_t instance.
+   * @return Bus voltage in mV, or 0 if no reading yet.
+   */
+  int16_t ina219_device_get_voltage_mv(ina219_t *dev);
+
+  /* ------------------------------------------------------------------ */
+  /*  Legacy singleton API (bus monitor at INA219_ADDR = 0x40)           */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * @brief Initialise the default bus-power INA219.
+   *
+   * Convenience wrapper around ina219_init_device() using INA219_ADDR.
    *
    * @return true on success, false on failure
    */
   bool ina219_init(void);
 
   /**
-   * @brief Check if INA219 is present on the I2C bus.
-   *
-   * Reads the configuration register to verify communication.
+   * @brief Check if default INA219 is present on the I2C bus.
    *
    * @return true if sensor responds
    */
   bool ina219_is_present(void);
 
   /**
-   * @brief Read power data from INA219.
-   *
-   * Reads bus voltage, shunt voltage, and calculates current/power.
-   * Uses internal calibration for conversion.
+   * @brief Read power data from default INA219.
    *
    * @param data Pointer to store measurement results. Must not be NULL.
    * @return true on success, false on failure (I2C error)
@@ -101,7 +184,7 @@ extern "C"
   bool ina219_read_power(ina219_data_t *data);
 
   /**
-   * @brief Reset INA219 to default configuration.
+   * @brief Reset default INA219 to default configuration.
    *
    * @return true on success, false on failure
    */
@@ -120,6 +203,55 @@ extern "C"
    * @return Bus voltage in mV, or 0 if no reading yet
    */
   int16_t ina219_get_voltage_mv(void);
+
+  /* ------------------------------------------------------------------ */
+  /*  Solar panel convenience API (INA219 at INA219_ADDR_SOLAR = 0x41)   */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * @brief Initialise the solar-panel INA219.
+   *
+   * Convenience wrapper around ina219_init_device() using INA219_ADDR_SOLAR.
+   *
+   * @return true on success, false on failure
+   */
+  bool ina219_solar_init(void);
+
+  /**
+   * @brief Check if solar-panel INA219 is present on the I2C bus.
+   *
+   * @return true if sensor responds
+   */
+  bool ina219_solar_is_present(void);
+
+  /**
+   * @brief Read power data from solar-panel INA219.
+   *
+   * @param data Pointer to store measurement results. Must not be NULL.
+   * @return true on success, false on failure (I2C error)
+   */
+  bool ina219_solar_read_power(ina219_data_t *data);
+
+  /**
+   * @brief Reset solar-panel INA219 to default configuration.
+   *
+   * @return true on success, false on failure
+   */
+  bool ina219_solar_reset(void);
+
+  /**
+   * @brief Get last reading timestamp for solar-panel INA219.
+   *
+   * @return Timestamp in milliseconds
+   */
+  uint32_t ina219_solar_get_last_reading_ms(void);
+
+  /**
+   * @brief Get last measured solar panel voltage in millivolts.
+   *
+   * @return Voltage in mV, or 0 if no reading yet
+   */
+  int16_t ina219_solar_get_voltage_mv(void);
 
 #ifdef __cplusplus
 }
