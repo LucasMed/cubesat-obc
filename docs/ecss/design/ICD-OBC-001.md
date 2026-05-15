@@ -119,11 +119,12 @@ Interfaces covered:
 | Device | I2C Address | Driver | Status |
 |--------|-------------|--------|--------|
 | MPU-6050/6500 IMU | **`0x69`** (AD0=VCC) | `src/drivers/imu/mpu6050.c` | ✅ v0.25.0 |
-| QMC5883L Magnetometer | **`0x0D`** | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
+| QMC5883L Magnetometer | **`0x2C`** (AD0=VCC) | `src/drivers/mag/hmc5883l.c` | ✅ (clone detected) |
 | SHT31 (Temp/Humidity) | **`0x44`** | `src/drivers/sht31.c` | ✅ v0.28.0 |
 | BH1750 (Lux) | **`0x23`** | `src/drivers/bh1750.c` | ✅ v0.26.0 |
 | DS3231 (RTC) | **`0x68`** | `src/drivers/ds3231.c` | ✅ v0.26.0 |
 | INA219 (Power Monitor) | **`0x40`** | `src/drivers/ina219.c` | ✅ v0.28.0 |
+| INA219 (Solar Panel) | **`0x41`** (A0=GND, A1=VS) | `src/drivers/ina219.c` | ✅ v0.28.0 |
 | RM3100 Scientific MAG | **`0x20`** (SA0=SA1=0) | `src/drivers/payload/rm3100.c` | ⏳ Phase 7 |
 
 > **No pin conflict**: I2C0 uses GPIO4/5; UART1 (TT&C) uses GPIO8/9. Both buses can
@@ -137,7 +138,7 @@ Interfaces covered:
 |-----------|-------|
 | Sensor | MPU-6050 or MPU-6500 |
 | Bus | I2C0 |
-| Address | **`0x68`** (AD0=GND on MPU-6050; MPU-6500 default) |
+| Address | **`0x69`** (AD0=VCC on MPU-6050; MPU-6500 default) |
 | GPIO | GPIO4 (SDA), GPIO5 (SCL) |
 | Driver | `src/drivers/imu/mpu6050.c` |
 | Output rate | 100 Hz (gyro + accel) |

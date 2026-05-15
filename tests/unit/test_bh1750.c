@@ -54,10 +54,16 @@ bool sht31_fetch(float *temperature, float *humidity)
   return false;
 }
 
-/* INA219 stub for sensor_read_task linking */
+/* INA219 stubs for sensor_read_task linking */
 #include "ina219.h"
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool ina219_read_power(ina219_data_t *data)
+{
+  (void)data;
+  return false;
+}
+// NOLINTNEXTLINE(readability-non-const-parameter)
+bool ina219_solar_read_power(ina219_data_t *data)
 {
   (void)data;
   return false;
