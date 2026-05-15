@@ -258,9 +258,8 @@ void vTelemetryTask_Step(void)
                        snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp,
                        tlm->humidity, tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags,
                        tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
-                       tlm->gps_satellites, tlm->bus_voltage_mv, current_abs, power_abs,
-                       solar_v, solar_i, solar_p,
-                       tlm->sun_x, tlm->sun_y);
+                       tlm->gps_satellites, tlm->bus_voltage_mv, current_abs, power_abs, solar_v,
+                       solar_i, solar_p, tlm->sun_x, tlm->sun_y);
     // Calculate CRC and insert (skip "[TLM] " = 5 chars)
     uint8_t text_crc = crc8_calc((const uint8_t *)buf + 5, len - 8);  // -8 for " c=  \r\n"
     buf[len - 6] = byte_to_hex(text_crc >> 4);                        // Replace spaces
