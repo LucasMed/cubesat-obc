@@ -5,11 +5,12 @@
  * Defines the energy state enumeration and provides the API for
  * interacting with the EPS monitor task.
  *
- * Voltage thresholds (from SPEC-2-EPS v1.14 Table 3-1):
- *   NOMINAL   : V_batt ≥ 7.4 V
- *   LOW       : 7.0 V ≤ V_batt < 7.4 V
- *   CRITICAL  : 6.6 V ≤ V_batt < 7.0 V
- *   EMERGENCY : V_batt < 6.6 V  (non-essential loads shed immediately)
+ * Voltage thresholds calibrated for a 5 V regulated bus (the INA219
+ * measures the output side of the 5 V regulator, NOT the raw battery):
+ *   NOMINAL   : V_bus ≥ 4.8 V
+ *   LOW       : 4.5 V ≤ V_bus < 4.8 V
+ *   CRITICAL  : 4.2 V ≤ V_bus < 4.5 V
+ *   EMERGENCY : V_bus < 4.2 V
  *
  * Spec ref: SPEC-2-EPS v1.14, SPEC-2 v2.0 §4.9
  */

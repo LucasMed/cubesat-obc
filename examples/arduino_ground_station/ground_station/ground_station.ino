@@ -158,7 +158,6 @@ void parseTelemetry(String msg)
   bool humidity_ok = (flags & 0x04) != 0;
   bool lux_ok = (flags & 0x08) != 0;
   bool rtc_ok = (flags & 0x10) != 0;
-  bool sun_ok = (flags & 0x20) != 0;
   int energy_state = (flags >> 5) & 0x07;
 
   // GPS: g=lat,lon,alt
@@ -225,9 +224,9 @@ void parseTelemetry(String msg)
   Serial.print(" RTC=");
   Serial.print(rtc_ok ? rtc : 0);
   Serial.print(" Sun=[");
-  Serial.print(sun_ok ? sun_x : -1, 2);
+  Serial.print(sun_x, 2);
   Serial.print(",");
-  Serial.print(sun_ok ? sun_y : -1, 2);
+  Serial.print(sun_y, 2);
   Serial.print("]");
   Serial.print(" Energy=");
   Serial.print(energy_state);
@@ -454,17 +453,16 @@ void parseTelemetryJson(String msg)
   int tsEnd = msg.indexOf(',', tsStart);
   float ts = msg.substring(tsStart, tsEnd).toFloat();
   
-  // m - next key after ts
-  int mStart = tsEnd + 1;
+  // m - next key after ts: ",m:VAL," 
+  int mPos = msg.indexOf(",m:");
+  int mStart = mPos + 3;
   int mEnd = msg.indexOf(',', mStart);
   int mode = msg.substring(mStart, mEnd).toInt();
   
   // a - attitude: ",a:" to ",t:"
   int aPos = msg.indexOf(",a:");
-  if (aPos == -1) aPos = msg.indexOf("a:");  // Try start
-  aPos = (aPos >= 0) ? aPos + 2 : tsPos;  // Skip "a"
-  int aStart = aPos + 2;
-  int aEnd = msg.indexOf(",t:", aStart);  // Find next key
+  int aStart = aPos + 3;
+  int aEnd = msg.indexOf(",t:", aStart);
   String attStr = msg.substring(aStart, aEnd);
   
   // Parse attitude: r,p,y
@@ -583,7 +581,6 @@ void parseTelemetryJson(String msg)
   bool humidity_ok = (flags & 0x04) != 0;
   bool lux_ok = (flags & 0x08) != 0;
   bool rtc_ok = (flags & 0x10) != 0;
-  bool sun_ok = (flags & 0x20) != 0;
   int energy_state = (flags >> 5) & 0x07;
   
   // Print formatted output
@@ -606,9 +603,9 @@ void parseTelemetryJson(String msg)
   Serial.print(" Lux=");
   Serial.print(lux_ok ? lux_value : -1, 0);
   Serial.print(" Sun=[");
-  Serial.print(sun_ok ? sun_x : -1, 2);
+  Serial.print(sun_x, 2);
   Serial.print(",");
-  Serial.print(sun_ok ? sun_y : -1, 2);
+  Serial.print(sun_y, 2);
   Serial.print("]");
   Serial.print(" Energy=");
   Serial.print(energy_state);

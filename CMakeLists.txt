@@ -36,7 +36,7 @@ else()
 endif()
 endif()
 
-project(cubesat_obc VERSION 0.29.0 C CXX ASM)
+project(cubesat_obc VERSION 0.29.0 LANGUAGES C CXX ASM)
 
 # Initialize Pico SDK if available
 if(PICO_BUILD)

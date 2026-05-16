@@ -29,14 +29,17 @@
  *   bit 3 : lux_valid
  *   bit 4 : rtc_valid
  *   bits[7:5] : energy_state (ENERGY_NOMINAL=0 .. ENERGY_EMERGENCY=3)
+ *
+ * NOTE: sun_valid and power_valid are NOT in the per-packet flags byte.
+ *       They are set once at init in the data layer and always true when
+ *       the hardware is operational.  Keeping them out of the flags byte
+ *       avoids bit overlap with the energy_state field (bits 7:5).
  */
 #define TLM_FLAG_IMU_VALID (1u << 0)
 #define TLM_FLAG_TEMP_VALID (1u << 1)
 #define TLM_FLAG_HUMIDITY_VALID (1u << 2)
 #define TLM_FLAG_LUX_VALID (1u << 3)
 #define TLM_FLAG_RTC_VALID (1u << 4)
-#define TLM_FLAG_SUN_VALID (1u << 5)
-#define TLM_FLAG_POWER_VALID (1u << 6)
 #define TLM_FLAG_ENERGY_SHIFT 5u
 
 /* CRC8 calculation (Maxim/Dallas style) */
@@ -138,14 +141,9 @@ void vTelemetryTask_Step(void)
   {
     tlm->flags |= TLM_FLAG_RTC_VALID;
   }
-  if (snap.state.sun_valid)
-  {
-    tlm->flags |= TLM_FLAG_SUN_VALID;
-  }
-  if (snap.state.power_valid)
-  {
-    tlm->flags |= TLM_FLAG_POWER_VALID;
-  }
+  /* Note: sun_valid and power_valid are always true at runtime
+   * (checked once at init), so we don't waste flag bits on them.
+   * The ground station always displays sun and power data. */
   tlm->flags |= (uint8_t)((snap.energy & 0x07u) << TLM_FLAG_ENERGY_SHIFT);
 
   /* Full ADCS telemetry only when not in FM_SAFE.

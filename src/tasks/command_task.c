@@ -69,7 +69,7 @@ static void process_text_command(const char *cmd)
 
     char buf[96];
     const char *mode_names[] = {"BOOT", "SAFE", "DETUMBLE", "NOMINAL", "DIAG", "PAYLOAD"};
-    const char *energy_names[] = {"LOW", "NOMINAL", "HIGH"};
+    const char *energy_names[] = {"NOMINAL", "LOW", "CRITICAL", "EMERGENCY"};
     snprintf(buf, sizeof(buf), "[CMD] SYSTEM: mode=%s energy=%s imu=%s temp=%s mag=%s\r\n",
              mode_names[mode], energy_names[energy], snapshot.state.imu_valid ? "OK" : "FAIL",
              snapshot.state.temp_valid ? "OK" : "FAIL", snapshot.state.mag_valid ? "OK" : "FAIL");
