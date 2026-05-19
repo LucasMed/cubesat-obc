@@ -185,6 +185,9 @@ void parseTelemetry(String msg)
     }
   }
   
+  // Battery: b=BAT_mV
+  int battery_mv = getValue(msg, "b=").toInt();
+  
   // Solar panel: sp=V,I,P
   String solarStr = getValue(msg, "sp=");
   int solar_v = 0, solar_i = 0, solar_p = 0;
@@ -250,6 +253,9 @@ void parseTelemetry(String msg)
   Serial.print("mA P=");
   Serial.print(bus_p);
   Serial.print("mW");
+  Serial.print(" Bat=");
+  Serial.print(battery_mv);
+  Serial.print("mV");
   if (solar_v > 0 || solar_i > 0)
   {
     Serial.print(" SolarV=");
@@ -445,7 +451,7 @@ String getJsonValueByNth(String msg, int n)
 void parseTelemetryJson(String msg)
 {
   // Find each value by its unique key prefix
-  // Keys in order: ts, m, a, t, h, l, g, v, s, p, sx, sy, f, c
+  // Keys in order: ts, m, a, t, h, l, g, v, s, p, b, sp, sx, sy, f, c
   
   // ts - find "ts:" at start
   int tsPos = msg.indexOf("ts:");
@@ -521,22 +527,28 @@ void parseTelemetryJson(String msg)
   int sEnd = msg.indexOf(",p:", sStart);
   int sats = msg.substring(sStart, sEnd).toInt();
   
-  // p - power (bus): ",p:" to ",sp:"
-  int pPos = msg.indexOf(",p:");
-  int pStart = pPos + 3;
-  int pEnd = msg.indexOf(",sp:", pStart);
-  String pwrStr = msg.substring(pStart, pEnd);
-  int volt = 0, curr = 0, power = 0;
-  if (pwrStr.indexOf(',') != -1)
-  {
-    int c1 = pwrStr.indexOf(',');
-    int c2 = pwrStr.lastIndexOf(',');
-    volt = pwrStr.substring(0, c1).toInt();
-    curr = pwrStr.substring(c1 + 1, c2).toInt();
-    power = pwrStr.substring(c2 + 1).toInt();
-  }
-  
-  // sp - solar panel: ",sp:" to ",sx:"
+   // p - power (bus): ",p:" to ",b:"
+   int pPos = msg.indexOf(",p:");
+   int pStart = pPos + 3;
+   int pEnd = msg.indexOf(",b:", pStart);
+   String pwrStr = msg.substring(pStart, pEnd);
+   int volt = 0, curr = 0, power = 0;
+   if (pwrStr.indexOf(',') != -1)
+   {
+     int c1 = pwrStr.indexOf(',');
+     int c2 = pwrStr.lastIndexOf(',');
+     volt = pwrStr.substring(0, c1).toInt();
+     curr = pwrStr.substring(c1 + 1, c2).toInt();
+     power = pwrStr.substring(c2 + 1).toInt();
+   }
+   
+   // b - battery: ",b:" to ",sp:"
+   int bPos = msg.indexOf(",b:");
+   int bStart = bPos + 3;
+   int bEnd = msg.indexOf(",sp:", bStart);
+   int battery_mv = msg.substring(bStart, bEnd).toInt();
+   
+   // sp - solar panel: ",sp:" to ",sx:"
   int spPos = msg.indexOf(",sp:");
   int spStart = spPos + 4;
   int spEnd = msg.indexOf(",sx:", spStart);
@@ -629,6 +641,9 @@ void parseTelemetryJson(String msg)
   Serial.print("mA P=");
   Serial.print(power);
   Serial.print("mW");
+  Serial.print(" Bat=");
+  Serial.print(battery_mv);
+  Serial.print("mV");
   if (solar_v > 0 || solar_i > 0)
   {
     Serial.print(" SolarV=");
