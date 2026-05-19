@@ -35,7 +35,6 @@
 
 #ifdef PICO_BUILD
   #include "FreeRTOS.h"
-  #include "pico_power.h"
   #include "task.h"
   #define eps_lock() taskENTER_CRITICAL()
   #define eps_unlock() taskEXIT_CRITICAL()
@@ -45,6 +44,17 @@
 #endif
 
 /* ------------------------------------------------------------------ */
+/* Voltage plausibility bounds (V) — anything outside this range is NOT a
+ * real 1S LiPo (or a USB-charged bus) and indicates the ADC is reading
+ * garbage (USB-only bench, floating pin, weak stub fallback).
+ *
+ * When USB is connected, the system bus (which the divider may tap) can
+ * reach ~5.0 V.  The TP4056 charger ceiling is 4.2 V.  6.0 V covers both
+ * plus margin; any real reading above that is hardware malfunction.
+ * ------------------------------------------------------------------ */
+#define VBATT_PLAUSIBLE_MIN 2.5f
+#define VBATT_PLAUSIBLE_MAX 6.0f
+
 /* Voltage classification thresholds (V)                               */
 /* ------------------------------------------------------------------ */
 
@@ -62,40 +72,16 @@ static energy_state_t g_prev_state = ENERGY_NOMINAL;
 static bool g_initialised = false;
 
 /* ------------------------------------------------------------------ */
-/* HAL stub (weak — override in PICO driver layer or unit tests)       */
+/* HAL entry point — defined by src/drivers/eps_hal.c (same library)  */
 /* ------------------------------------------------------------------ */
 
-/* Forward declaration (satisfies MISRA-C:2012 Rule 8.4) */
+/* Forward declaration only (MISRA-C:2012 Rule 8.4).
+ * The implementation lives in src/drivers/eps_hal.c which is compiled
+ * into the SAME library (eps_lib).  No weak stub here — that would
+ * prevent the linker from pulling in eps_hal.c.o from a static library.
+ * Test files that compile eps_monitor.c directly supply their own
+ * definition of eps_hal_read().                                         */
 bool eps_hal_read(float *vbatt, float *ibatt, float *temp);
-
-/**
- * @brief Read raw EPS telemetry from hardware.
- *
- * The default implementation returns nominal values for host builds.
- * Override with a strong symbol in the hardware driver layer or in
- * unit test files.
- *
- * @param vbatt  Output: measured battery voltage (V).
- * @param ibatt  Output: battery current, positive = charging (A).
- * @param temp   Output: PCB / cell temperature (°C).
- * @return true on success, false if the sensor read failed.
- */
-__attribute__((weak)) bool eps_hal_read(float *vbatt, float *ibatt, float *temp)
-{
-  if (vbatt != NULL)
-  {
-    *vbatt = 7.6f;
-  }
-  if (ibatt != NULL)
-  {
-    *ibatt = 0.5f;
-  }
-  if (temp != NULL)
-  {
-    *temp = 25.0f;
-  }
-  return true;
-}
 
 /* ------------------------------------------------------------------ */
 /* Schmidt-trigger voltage → energy state                              */
@@ -220,11 +206,6 @@ static void handle_state_change(energy_state_t prev, energy_state_t next)
 
 int eps_monitor_init(void)
 {
-  float vbatt = 7.6f;
-  float ibatt = 0.5f;
-  float temp = 25.0f;
-  bool ok = eps_hal_read(&vbatt, &ibatt, &temp);
-
   eps_lock();
 
   (void)memset(&g_snapshot, 0, sizeof(g_snapshot));
@@ -235,26 +216,22 @@ int eps_monitor_init(void)
     g_snapshot.rail_enabled[i] = true;
   }
 
-  if (ok)
-  {
-    g_snapshot.vbatt = vbatt;
-    g_snapshot.ibatt = ibatt;
-    g_snapshot.temperature = temp;
-    g_snapshot.state = compute_energy_state(vbatt, ENERGY_NOMINAL);
-  }
-  else
-  {
-    /* Fail-safe: assume nominal until we get a valid reading */
-    g_snapshot.state = ENERGY_NOMINAL;
-    fault_report(FAULT_EPS_READ_ERROR, FAULT_LEVEL_ERROR);
-  }
+  /* Do NOT read the ADC during init — on RP2350 the ADC clock may not
+   * be ready this early in the boot sequence, and adc_read() busy-waits
+   * on a READY bit that never asserts.  The first eps_monitor_tick()
+   * (called from the FreeRTOS task, well after all clocks are stable)
+   * will read the real hardware.  Until then, assume NOMINAL.          */
+  g_snapshot.vbatt = 7.6f; /* placeholder, overwritten on first tick */
+  g_snapshot.ibatt = 0.0f;
+  g_snapshot.temperature = 25.0f;
+  g_snapshot.state = ENERGY_NOMINAL;
 
-  g_prev_state = g_snapshot.state;
+  g_prev_state = ENERGY_NOMINAL;
   g_initialised = true;
 
   eps_unlock();
 
-  data_layer_set_energy_state(g_snapshot.state);
+  data_layer_set_energy_state(ENERGY_NOMINAL);
   return 0;
 }
 
@@ -269,37 +246,32 @@ void eps_monitor_tick(void)
   float ibatt = 0.0f;
   float temp = 0.0f;
 
-#ifdef PICO_BUILD
-  /* USB power detection: if powered via USB, assume NOMINAL voltage
-   * to avoid false EMERGENCY triggers during development.
-   * In flight, USB will not be connected, so INA219 readings are trusted. */
-  if (pico_power_is_usb())
-  {
-    /* USB connected: skip INA219 read, force nominal state */
-    eps_lock();
-    energy_state_t prev = g_prev_state;
-    g_snapshot.vbatt = 7.6f; /* Nominal voltage for telemetry */
-    g_snapshot.ibatt = 0.0f; /* No charging info when on USB */
-    g_snapshot.temperature = temp;
-    energy_state_t next = ENERGY_NOMINAL; /* Force nominal on USB */
-    g_snapshot.state = next;
-    g_prev_state = next;
-    eps_unlock();
-
-    /* Clear any EPS faults that may have been raised previously */
-    handle_state_change(prev, next);
-    data_layer_set_energy_state(next);
-    return;
-  }
-#endif
-
-  /* Normal operation: read from INA219 */
+  /* Read battery voltage from ADC / INA219 */
   bool ok = eps_hal_read(&vbatt, &ibatt, &temp);
 
   if (!ok)
   {
     fault_report(FAULT_EPS_READ_ERROR, FAULT_LEVEL_ERROR);
     /* Keep previous state — do not update snapshot on a failed read */
+    return;
+  }
+
+  /* Plausibility check: if voltage is outside the 1S LiPo / USB-charged-bus
+   * range (2.5-6.0 V), the ADC is reading garbage (USB-only bench with
+   * floating pin, weak stub fallback, or a hardware fault).
+   * Force NOMINAL to prevent false EMERGENCY triggers during development. */
+  if (vbatt < VBATT_PLAUSIBLE_MIN || vbatt > VBATT_PLAUSIBLE_MAX)
+  {
+    eps_lock();
+    energy_state_t prev = g_prev_state;
+    g_snapshot.vbatt = 7.6f;
+    g_snapshot.ibatt = 0.0f;
+    g_snapshot.temperature = temp;
+    g_snapshot.state = ENERGY_NOMINAL;
+    g_prev_state = ENERGY_NOMINAL;
+    eps_unlock();
+    handle_state_change(prev, ENERGY_NOMINAL);
+    data_layer_set_energy_state(ENERGY_NOMINAL);
     return;
   }
 

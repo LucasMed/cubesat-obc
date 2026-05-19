@@ -38,7 +38,6 @@ if(PICO_BUILD)
         power/ina219.c
         sun_sensor.c
         pico_power.c
-        eps_hal.c
     )
 else()
     list(APPEND DRIVER_SOURCES 
