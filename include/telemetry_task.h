@@ -30,6 +30,7 @@ typedef struct __attribute__((packed))
   float lux;               // Illuminance [lux]
   uint32_t rtc_timestamp;  // Unix epoch seconds (DS3231)
   int16_t bus_voltage_mv;  // Bus voltage [mV] (INA219)
+  int16_t battery_mv;      // Battery voltage [mV] (ADC0/GPIO26)
   int16_t current_ma;      // Current [mA] (INA219)
   int16_t power_mw;        // Power [mW] (INA219)
   float sun_x;             // Sun sensor X intensity (0.0-1.0) or -1

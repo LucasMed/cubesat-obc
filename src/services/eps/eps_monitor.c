@@ -9,12 +9,12 @@
  * HAL entry point: eps_hal_read() is declared __attribute__((weak)) so
  * that unit tests can override it with a stub that injects test voltages.
  *
- * Voltage thresholds calibrated for a 5 V regulated bus (the INA219
- * measures the output side of the 5 V regulator, NOT the raw battery).
- *   NOMINAL   : V_bus >= 4.8 V
- *   LOW       : 4.5 V <= V_bus < 4.8 V
- *   CRITICAL  : 4.2 V <= V_bus < 4.5 V
- *   EMERGENCY : V_bus < 4.2 V
+ * Voltage thresholds calibrated for 1S LiPo battery (3.0–4.2 V)
+ * measured via resistor divider on ADC0 (GPIO26).
+ *   NOMINAL   : V_batt >= 3.6 V
+ *   LOW       : 3.3 V <= V_batt < 3.6 V
+ *   CRITICAL  : 3.0 V <= V_batt < 3.3 V
+ *   EMERGENCY : V_batt < 3.0 V
  *
  * Hysteresis of 0.1 V is applied to upward (recovering) transitions
  * only; downward transitions are accepted immediately (safety-first).
@@ -48,9 +48,9 @@
 /* Voltage classification thresholds (V)                               */
 /* ------------------------------------------------------------------ */
 
-#define VBATT_TH_LOW 4.8f       /**< NOMINAL→LOW boundary (falling) — 5V bus */
-#define VBATT_TH_CRITICAL 4.5f  /**< LOW→CRITICAL boundary (falling) — 5V bus */
-#define VBATT_TH_EMERGENCY 4.2f /**< CRITICAL→EMERGENCY boundary (falling) — 5V bus */
+#define VBATT_TH_LOW 3.6f       /**< NOMINAL→LOW boundary (falling) — 1S LiPo */
+#define VBATT_TH_CRITICAL 3.3f  /**< LOW→CRITICAL boundary (falling) — 1S LiPo */
+#define VBATT_TH_EMERGENCY 3.0f /**< CRITICAL→EMERGENCY boundary (falling) — 1S LiPo */
 #define VBATT_HYSTERESIS 0.1f   /**< Dead band applied to upward transitions */
 
 /* ------------------------------------------------------------------ */
@@ -109,8 +109,8 @@ __attribute__((weak)) bool eps_hal_read(float *vbatt, float *ibatt, float *temp)
  * (voltage recovering) are only accepted when voltage exceeds the base
  * threshold by VBATT_HYSTERESIS, preventing chatter at boundaries.
  *
- * Thresholds are calibrated for a 5 V regulated bus (the INA219 measures
- * the post-regulator bus, NOT the raw battery voltage).
+ * Thresholds are calibrated for a 1S LiPo battery measured via the
+ * resistor divider on ADC0 (GPIO26).
  *
  * @param v     Measured bus voltage (V).
  * @param prev  Energy state from the previous evaluation cycle.

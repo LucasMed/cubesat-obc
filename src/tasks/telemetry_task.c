@@ -15,6 +15,7 @@
 #endif
 
 #include "data_layer.h"
+#include "eps.h"
 #include "telemetry_storage.h"
 #include "wcet_profiler.h"
 
@@ -190,6 +191,19 @@ void vTelemetryTask_Step(void)
   tlm->current_ma = (int16_t)(snap.state.current_ua / 1000);
   tlm->power_mw = (int16_t)(snap.state.power_uw / 1000);
 
+  /* Battery voltage via ADC (raw battery, not regulated bus) */
+  {
+    eps_snapshot_t eps;
+    if (eps_snapshot_get(&eps) == 0)
+    {
+      tlm->battery_mv = (int16_t)(eps.vbatt * 1000.0f);
+    }
+    else
+    {
+      tlm->battery_mv = -1; /* EPS not initialised */
+    }
+  }
+
   /* Sun sensor */
   tlm->sun_x = snap.state.sun_x;
   tlm->sun_y = snap.state.sun_y;
@@ -218,11 +232,11 @@ void vTelemetryTask_Step(void)
 
     int len = snprintf(
         buf, sizeof(buf),
-        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,sp:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
+        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,b:%d,s:%d,p:%d,%d,%d,sp:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
         (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
         tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
-        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, current_abs,
-        power_abs, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y, tlm->flags);
+        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, tlm->battery_mv,
+        current_abs, power_abs, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y, tlm->flags);
 
     uint8_t json_crc = crc8_calc((const uint8_t *)buf + 7, len - 9);  // CRC on data only
     int pos = len;
@@ -251,13 +265,13 @@ void vTelemetryTask_Step(void)
 
     int len = snprintf(buf, sizeof(buf),
                        "[TLM] m=%d a=%.1f,%.1f,%.1f t=%.1f h=%.1f l=%.1f r=%lu f=0x%02X "
-                       "g=%.6f,%.6f,%.1f v=%d s=%d p=%d,%d,%d sp=%d,%d,%d "
+                       "g=%.6f,%.6f,%.1f v=%d b=%d s=%d p=%d,%d,%d sp=%d,%d,%d "
                        "sx=%.2f sy=%.2f c=  \r\n",
                        snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp,
                        tlm->humidity, tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags,
                        tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
-                       tlm->gps_satellites, tlm->bus_voltage_mv, current_abs, power_abs, solar_v,
-                       solar_i, solar_p, tlm->sun_x, tlm->sun_y);
+                       tlm->gps_satellites, tlm->bus_voltage_mv, tlm->battery_mv, current_abs,
+                       power_abs, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y);
     // Calculate CRC and insert (skip "[TLM] " = 6 chars, CRC replaces two spaces after c=)
     uint8_t text_crc = crc8_calc((const uint8_t *)buf + 6, len - 7);  // -7 for " c=  \r\n"
     buf[len - 4] = byte_to_hex(text_crc >> 4);                        // Replace 1st space
@@ -276,8 +290,10 @@ void vTelemetryTask_Step(void)
 #endif
 
   // Debug output to UART0
-  printf("[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f flags=0x%02X\n", snap.mode,
-         tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux, tlm->flags);
+  printf(
+      "[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f batt=%dmV bus=%dmV flags=0x%02X\n",
+      snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux,
+      tlm->battery_mv, tlm->bus_voltage_mv, tlm->flags);
 
   // Store telemetry to W25Q64 flash for later recovery
   telemetry_record_t record;
