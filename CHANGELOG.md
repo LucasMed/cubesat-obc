@@ -5,6 +5,42 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] — 2026-05-19 — Real Battery ADC Telemetry
+
+### Fixed
+- **Battery voltage always showed 7600mV**: Three root causes fixed:
+  - Weak symbol (`__attribute__((weak))`) in `eps_monitor.c` prevented the GNU linker
+    from pulling in the strong Pico HAL from `eps_hal.c` (static library limitation).
+    Fix: moved `eps_hal.c` into `eps_lib` (same library as `eps_monitor.c`) and
+    removed the weak attribute entirely — the linker now MUST resolve the symbol
+    from the strong definition.
+  - `eps_monitor_init()` called `eps_hal_read()` which initialises the ADC hardware
+    (`adc_init` / `adc_gpio_init`) too early in the RP2350 boot sequence, before
+    the ADC clock is stable — caused the firmware to hang. Fix: init no longer
+    reads the ADC; it uses a 7.6V placeholder and the first `eps_monitor_tick()`
+    (from the FreeRTOS task context) reads the real value.
+  - `VBATT_PLAUSIBLE_MAX=4.7V` was too low — when USB is connected, the system bus
+    (which the GPIO26 voltage divider measures) sits at ~4.9-5.0V, triggering the
+    plausibility check and forcing 7600mV. Fix: raised to **6.0V** to cover the
+    USB-charged bus while still detecting floating-ADC garbage (>6.0V).
+
+### Changed
+- **`src/services/eps/CMakeLists.txt`**: Added `../../drivers/eps_hal.c` to `eps_lib`
+  sources so both the declaration and the strong definition live in the same library,
+  eliminating the cross-library weak-symbol problem.
+- **`src/drivers/CMakeLists.txt`**: Removed `eps_hal.c` from `drivers_lib` (now in `eps_lib`).
+
+### Documentation
+- All changes documented in Engram for cross-session recovery.
+
+### Hardware Verified
+- Battery-only: `Bat=3489mV` (3.49V) — real ADC reading via GPIO26 voltage divider
+- USB charging active: `Bat=3871mV` (3.87V) — TP4056 charging, state correctly
+  transitions from LOW→NOMINAL via Schmidt trigger
+- Energy state transitions verified: LOW→NOMINAL at hysteresis threshold
+
+---
+
 ## [0.29.0] — 2026-05-15 — Solar Monitor + Hardware Documentation Alignment
 
 ### Added

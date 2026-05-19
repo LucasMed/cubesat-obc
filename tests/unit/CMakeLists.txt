@@ -94,7 +94,7 @@ if(NOT PICO_BUILD)
         ../../src/drivers/payload/telemetry_storage_stub.c
     )
     target_include_directories(test_telemetry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_telemetry wcet_lib csp m)
+    target_link_libraries(test_telemetry wcet_lib eps_lib csp m)
     add_test(NAME telemetry_test COMMAND test_telemetry)
 
     add_executable(test_command

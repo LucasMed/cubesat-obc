@@ -2,31 +2,21 @@
  * @file pico_power.c
  * @brief Power source detection for Raspberry Pi Pico 2W.
  *
- * Detects whether the board is powered via USB (VBUS) or an external
- * power source (battery).  This is used by the EPS monitor to decide
- * whether to trust the INA219 battery readings or assume nominal
- * voltage during USB development.
+ * Note: This module was originally used by the EPS monitor to force
+ * nominal voltage on USB.  VBUS detection proved unreliable on Pico 2W
+ * (CYW43 keeps the VBUS detect line high when powered from VSYS).
  *
- * The Pico 2W exposes VBUS detection through the USB peripheral:
- *   USB_SIE_STATUS bits contain VBUS_DETECTED (bit 0)
+ * The EPS monitor now uses a voltage-plausibility check instead:
+ * if the ADC reading is inside 1S LiPo range (2.5-4.5 V) the real
+ * voltage is trusted; otherwise it forces nominal (USB-only bench).
  *
- * SDK ref: pico-sdk/src/rp2_common/hardware_usb/include/usb.h
+ * This file is kept for potential future use (e.g. a manual override).
  */
 #include "pico_power.h"
 
-#ifdef PICO_BUILD
-  #include "hardware/structs/usb.h"
-#endif
-
 bool pico_power_is_usb(void)
 {
-#ifdef PICO_BUILD
-  /* Read VBUS_DETECTED bit from USB SIE status register.
-   * USB_SIE_STATUS_VBUS_DETECTED_BITS = 0x00000001
-   * Bit 0 = 1 when VBUS > ~1V (USB connected) */
-  return (usb_hw->sie_status & USB_SIE_STATUS_VBUS_DETECTED_BITS) != 0;
-#else
-  /* Host build: assume USB for development convenience */
-  return true;
-#endif
+  /* Unreliable on Pico 2W when running from VSYS (battery → XL4005).
+   * Use eps_monitor.c's voltage-plausibility approach instead. */
+  return false;
 }
