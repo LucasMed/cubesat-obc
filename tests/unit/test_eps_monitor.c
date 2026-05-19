@@ -2,21 +2,21 @@
  * @file test_eps_monitor.c
  * @brief PR-5 gate: EPS Monitor correctness checks.
  *
- * Thresholds calibrated for a 5 V regulated bus:
- *   NOMINAL   : V_bus >= 4.8 V
- *   LOW       : 4.5 V <= V_bus < 4.8 V
- *   CRITICAL  : 4.2 V <= V_bus < 4.5 V
- *   EMERGENCY : V_bus < 4.2 V
+ * Thresholds calibrated for a 1S LiPo battery (3.0-4.2 V):
+ *   NOMINAL   : V_batt >= 3.6 V
+ *   LOW       : 3.3 V <= V_batt < 3.6 V
+ *   CRITICAL  : 3.0 V <= V_batt < 3.3 V
+ *   EMERGENCY : V_batt < 3.0 V
  *
  * Tests:
  *   1.  eps_snapshot_get() returns -1 before eps_monitor_init()
- *   2.  eps_monitor_init() returns 0; default voltage (5.0V) → NOMINAL
- *   3.  eps_monitor_tick() with 5.0 V → ENERGY_NOMINAL, no VBATT fault
- *   4.  Voltage drop to 4.65 V → ENERGY_LOW, FAULT_EPS_VBATT_LOW WARNING
- *   5.  Voltage drop to 4.35 V → ENERGY_CRITICAL, FAULT_EPS_VBATT_CRITICAL CRITICAL
- *   6.  Voltage drop to 4.0 V → ENERGY_EMERGENCY, FAULT_EPS_VBATT_EMERGENCY CRITICAL
- *   7.  Hysteresis: LOW state, inject 4.85 V → stays ENERGY_LOW
- *   8.  Hysteresis: LOW state, inject 4.95 V → recovers to ENERGY_NOMINAL
+ *   2.  eps_monitor_init() returns 0; default voltage (3.8V) → NOMINAL
+ *   3.  eps_monitor_tick() with 3.8 V → ENERGY_NOMINAL, no VBATT fault
+ *   4.  Voltage drop to 3.45 V → ENERGY_LOW, FAULT_EPS_VBATT_LOW WARNING
+ *   5.  Voltage drop to 3.15 V → ENERGY_CRITICAL, FAULT_EPS_VBATT_CRITICAL CRITICAL
+ *   6.  Voltage drop to 2.8 V → ENERGY_EMERGENCY, FAULT_EPS_VBATT_EMERGENCY CRITICAL
+ *   7.  Hysteresis: LOW state, inject 3.65 V → stays ENERGY_LOW
+ *   8.  Hysteresis: LOW state, inject 3.75 V → recovers to ENERGY_NOMINAL
  *   9.  HAL read failure → FAULT_EPS_READ_ERROR active, state unchanged
  *   10. eps_set_power() enables / disables a rail; reflected in snapshot
  *   11. OBC rail cannot be disabled via eps_set_power()
@@ -36,7 +36,7 @@
 /* HAL stub — strong symbol overrides weak default in eps_monitor.c   */
 /* ------------------------------------------------------------------ */
 
-static float s_vbatt = 5.0f;
+static float s_vbatt = 3.8f;
 static float s_ibatt = 0.5f;
 static float s_temp = 25.0f;
 static bool s_read_ok = true;
@@ -71,7 +71,7 @@ static int g_failures = 0;
 /** Full subsystem reset: DLA → FMM → Fault Manager → EPS Monitor. */
 static void reset_all(void)
 {
-  s_vbatt = 5.0f;
+  s_vbatt = 3.8f;
   s_ibatt = 0.5f;
   s_temp = 25.0f;
   s_read_ok = true;
@@ -101,10 +101,10 @@ static void test_snapshot_before_init(void)
 
 static void test_init_ok(void)
 {
-  reset_all(); /* s_vbatt = 5.0 V → NOMINAL (≥ 4.8 V) */
+  reset_all(); /* s_vbatt = 3.8 V → NOMINAL (≥ 3.6 V) */
   eps_snapshot_t snap = {0};
   CHECK(eps_snapshot_get(&snap) == 0, "snapshot_get must succeed after init");
-  CHECK(snap.state == ENERGY_NOMINAL, "5.0 V must classify as ENERGY_NOMINAL");
+  CHECK(snap.state == ENERGY_NOMINAL, "3.8 V must classify as ENERGY_NOMINAL");
   CHECK(snap.rail_enabled[EPS_RAIL_OBC] == true, "OBC rail must be enabled after init");
   printf("test_init_ok: OK\n");
 }
@@ -116,12 +116,12 @@ static void test_init_ok(void)
 static void test_nominal_voltage(void)
 {
   reset_all(); /* NOMINAL */
-  s_vbatt = 5.0f;
+  s_vbatt = 3.8f;
   eps_monitor_tick();
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
-  CHECK(snap.state == ENERGY_NOMINAL, "5.0 V must remain ENERGY_NOMINAL after tick");
+  CHECK(snap.state == ENERGY_NOMINAL, "3.8 V must remain ENERGY_NOMINAL after tick");
 
   /* Neither VBATT fault should be active */
   CHECK(!fault_is_active(FAULT_EPS_VBATT_LOW), "VBATT_LOW must not be active at nominal voltage");
@@ -138,14 +138,14 @@ static void test_nominal_voltage(void)
 
 static void test_low_voltage(void)
 {
-  reset_all(); /* NOMINAL at 5.0 V */
-  s_vbatt = 4.65f;
+  reset_all(); /* NOMINAL at 3.8 V */
+  s_vbatt = 3.45f;
   eps_monitor_tick();
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
-  CHECK(snap.state == ENERGY_LOW, "4.65 V must transition to ENERGY_LOW");
-  CHECK(snap.vbatt == 4.65f, "snapshot vbatt must reflect injected value");
+  CHECK(snap.state == ENERGY_LOW, "3.45 V must transition to ENERGY_LOW");
+  CHECK(snap.vbatt == 3.45f, "snapshot vbatt must reflect injected value");
 
   CHECK(fault_is_active(FAULT_EPS_VBATT_LOW), "FAULT_EPS_VBATT_LOW must be active");
   fault_event_t ev = {0};
@@ -166,12 +166,12 @@ static void test_low_voltage(void)
 static void test_critical_voltage(void)
 {
   reset_all();
-  s_vbatt = 4.35f;
+  s_vbatt = 3.15f;
   eps_monitor_tick();
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
-  CHECK(snap.state == ENERGY_CRITICAL, "4.35 V must transition to ENERGY_CRITICAL");
+  CHECK(snap.state == ENERGY_CRITICAL, "3.15 V must transition to ENERGY_CRITICAL");
 
   CHECK(fault_is_active(FAULT_EPS_VBATT_CRITICAL), "FAULT_EPS_VBATT_CRITICAL must be active");
   fault_event_t ev = {0};
@@ -194,12 +194,12 @@ static void test_critical_voltage(void)
 static void test_emergency_voltage(void)
 {
   reset_all();
-  s_vbatt = 4.0f;
+  s_vbatt = 2.8f;
   eps_monitor_tick();
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
-  CHECK(snap.state == ENERGY_EMERGENCY, "4.0 V must transition to ENERGY_EMERGENCY");
+  CHECK(snap.state == ENERGY_EMERGENCY, "2.8 V must transition to ENERGY_EMERGENCY");
 
   fault_event_t ev = {0};
   CHECK(fault_is_active(FAULT_EPS_VBATT_EMERGENCY),
@@ -225,16 +225,16 @@ static void test_hysteresis_no_recovery(void)
 {
   /* Drive to LOW state */
   reset_all();
-  s_vbatt = 4.65f;
+  s_vbatt = 3.45f;
   eps_monitor_tick(); /* → LOW */
 
-  /* 4.85 V is above the 4.8 V base threshold but below 4.9 V hysteresis */
-  s_vbatt = 4.85f;
+  /* 3.65 V is above the 3.6 V base threshold but below 3.7 V hysteresis */
+  s_vbatt = 3.65f;
   eps_monitor_tick();
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
-  CHECK(snap.state == ENERGY_LOW, "4.85 V from LOW must NOT recover to NOMINAL (hysteresis)");
+  CHECK(snap.state == ENERGY_LOW, "3.65 V from LOW must NOT recover to NOMINAL (hysteresis)");
   printf("test_hysteresis_no_recovery: OK\n");
 }
 
@@ -246,16 +246,16 @@ static void test_hysteresis_recovery(void)
 {
   /* Drive to LOW state */
   reset_all();
-  s_vbatt = 4.65f;
+  s_vbatt = 3.45f;
   eps_monitor_tick(); /* → LOW */
 
-  /* 4.95 V exceeds 4.8 V + 0.1 V hysteresis → should recover */
-  s_vbatt = 4.95f;
+  /* 3.75 V exceeds 3.6 V + 0.1 V hysteresis → should recover */
+  s_vbatt = 3.75f;
   eps_monitor_tick();
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
-  CHECK(snap.state == ENERGY_NOMINAL, "4.95 V from LOW must recover to ENERGY_NOMINAL");
+  CHECK(snap.state == ENERGY_NOMINAL, "3.75 V from LOW must recover to ENERGY_NOMINAL");
   CHECK(!fault_is_active(FAULT_EPS_VBATT_LOW), "VBATT_LOW must be cleared on recovery");
   printf("test_hysteresis_recovery: OK\n");
 }
@@ -267,7 +267,7 @@ static void test_hysteresis_recovery(void)
 static void test_read_error(void)
 {
   reset_all();     /* NOMINAL */
-  s_vbatt = 3.5f; /* would be EMERGENCY, but read fails */
+  s_vbatt = 2.8f; /* would be EMERGENCY, but read fails */
   s_read_ok = false;
   eps_monitor_tick();
 
@@ -323,14 +323,14 @@ static void test_obc_protected(void)
 static void test_energy_accessor(void)
 {
   reset_all();
-  s_vbatt = 4.35f;
+  s_vbatt = 3.15f;
   eps_monitor_tick(); /* → CRITICAL */
 
   eps_snapshot_t snap = {0};
   eps_snapshot_get(&snap);
   CHECK(eps_get_energy_state() == snap.state, "eps_get_energy_state() must equal snapshot.state");
   CHECK(eps_get_energy_state() == ENERGY_CRITICAL,
-        "eps_get_energy_state() must return ENERGY_CRITICAL after 4.35 V tick");
+        "eps_get_energy_state() must return ENERGY_CRITICAL after 3.15 V tick");
   printf("test_energy_accessor: OK\n");
 }
 
