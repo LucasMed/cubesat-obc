@@ -10,14 +10,12 @@ if(PICO_BUILD)
     target_link_libraries(post_lib PUBLIC
         FreeRTOS-Kernel
         core_lib
-        fmm_lib
         log_lib
         m
     )
 else()
     target_link_libraries(post_lib PUBLIC
         core_lib
-        fmm_lib
         log_lib
         m
     )
