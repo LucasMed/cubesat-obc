@@ -233,7 +233,7 @@ static void vStartupTask(void *pvParameters)
 #ifdef PICO_BUILD
   /* Task handles — Pico only; HWM printed in ALIVE loop. */
   static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
-  static TaskHandle_t h_cmd = NULL, h_health = NULL, h_payload = NULL, h_gps = NULL;
+  static TaskHandle_t h_cmd = NULL, h_health = NULL, h_gps = NULL;
   static TaskHandle_t h_led = NULL, h_hb = NULL;
   #define HPTR(h) (&(h))
 #else

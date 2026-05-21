@@ -160,6 +160,7 @@ static void post_ring_write_index(uint32_t idx)
 static bool post_ring_is_empty(void)
 {
   uint32_t idx = post_ring_read_index();
+  // cppcheck-suppress knownConditionTrueFalse
   return (idx == 0 || idx > POST_RECORD_COUNT);
 }
 

@@ -117,7 +117,7 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
   /* LOG_EVT_MODE_CHANGE (FMM-DES-001 §8.6): emit event with old/new mode in payload.
    * Not called from ISR context — log_event() uses mutex internally and is task-context only. */
   {
-    uint8_t mode_payload[2] = {(uint8_t)current, (uint8_t)target};
+    const uint8_t mode_payload[2] = {(uint8_t)current, (uint8_t)target};
     log_event(LOG_EVT_MODE_CHANGE, LOG_CLASS_OPERATIONAL, mode_payload, 2);
   }
 

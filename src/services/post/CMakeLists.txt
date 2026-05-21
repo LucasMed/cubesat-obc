@@ -11,16 +11,14 @@ if(PICO_BUILD)
         FreeRTOS-Kernel
         core_lib
         fmm_lib
-        logger_lib
-        w25q64_lib
+        log_lib
         m
     )
 else()
     target_link_libraries(post_lib PUBLIC
         core_lib
         fmm_lib
-        logger_lib
-        w25q64_lib
+        log_lib
         m
     )
 endif()
