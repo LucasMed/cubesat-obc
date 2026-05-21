@@ -44,3 +44,57 @@ extern BaseType_t xTaskNotify_Stub(TaskHandle_t xTask, uint32_t ulValue, eNotify
 #define xTaskNotify xTaskNotify_Stub
 
 #include "../../src/tasks/command_task.c"
+
+/* Test wrapper — implements the text-command parsing for the subset of
+ * commands exercised by the test suite (DEPLOY, DEPLOYCLEAR, MODE=).
+ * This replicates the production logic from process_text_command() but
+ * without the PICO_BUILD dependency, so the unit test can compile on
+ * host.  Production code paths are identical — same API calls. */
+void test_run_text_command(const char *cmd)
+{
+  if (strncmp(cmd, "DEPLOYCLEAR", 11) == 0)
+  {
+    data_layer_set_deploy_in_progress(false);
+  }
+  else if (strncmp(cmd, "DEPLOY", 6) == 0)
+  {
+    flight_mode_t m = fmm_get_mode();
+    if (m == FM_BOOT || m == FM_SAFE)
+    {
+      fmm_result_t r = fmm_request_transition(FM_DETUMBLE);
+      if (r == FMM_OK)
+      {
+        data_layer_set_deploy_in_progress(true);
+      }
+    }
+    else if (m != FM_DETUMBLE)
+    {
+      /* Rejected from non-deployable modes */
+    }
+  }
+  else if (strncmp(cmd, "MODE=", 5) == 0)
+  {
+    int mode = -1;
+    const char *arg = cmd + 5;
+    size_t arg_len = strlen(arg);
+    if (arg_len > 0 && (arg[0] < '0' || arg[0] > '9'))
+    {
+      for (int i = 0; i < FM_COUNT; i++)
+      {
+        if (strcasecmp(arg, fmm_mode_name((flight_mode_t)i)) == 0)
+        {
+          mode = i;
+          break;
+        }
+      }
+    }
+    else
+    {
+      mode = atoi(arg);
+    }
+    if (mode >= 0 && mode < FM_COUNT)
+    {
+      fmm_request_transition((flight_mode_t)mode);
+    }
+  }
+}

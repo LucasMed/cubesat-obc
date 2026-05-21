@@ -16,6 +16,17 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* ---- Logger stub (flight_mode_manager.c calls log_event) --------------- */
+#include "logger.h"
+
+void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8_t data_len)
+{
+  (void)event_id;
+  (void)log_class;
+  (void)data;
+  (void)data_len;
+}
+
 /* ---- FreeRTOS mocks ---------------------------------------------------- */
 #include "FreeRTOS.h"
 #include "task.h"

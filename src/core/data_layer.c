@@ -82,6 +82,7 @@ void data_layer_init(void)
   (void)memset(&g_snapshot, 0, sizeof(dl_snapshot_t));
   g_snapshot.mode = FM_BOOT;
   g_snapshot.energy = ENERGY_NOMINAL;
+  /* mode_entry_tick = 0 from memset — deploy monitor treats 0 as "just entered". */
 
 #ifdef PICO_BUILD
   g_dl_mutex = xSemaphoreCreateMutex();
@@ -383,6 +384,65 @@ uint32_t data_layer_get_seq(void)
   uint32_t s = g_snapshot.seq;
   dl_unlock();
   return s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Deploy / POST accessors                                             */
+/* ------------------------------------------------------------------ */
+
+void data_layer_set_deploy_in_progress(bool in_progress)
+{
+  dl_lock();
+  g_snapshot.deploy_in_progress = in_progress;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+bool data_layer_get_deploy_in_progress(void)
+{
+  dl_lock();
+  bool v = g_snapshot.deploy_in_progress;
+  dl_unlock();
+  return v;
+}
+
+void data_layer_set_post_last(const post_record_t *record)
+{
+  if (!record)
+  {
+    return;
+  }
+  dl_lock();
+  g_snapshot.post_last = *record;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+void data_layer_get_post_last(post_record_t *out)
+{
+  if (!out)
+  {
+    return;
+  }
+  dl_lock();
+  *out = g_snapshot.post_last;
+  dl_unlock();
+}
+
+void data_layer_set_mode_entry_tick(uint32_t tick)
+{
+  dl_lock();
+  g_snapshot.mode_entry_tick = tick;
+  g_snapshot.seq++;
+  dl_unlock();
+}
+
+uint32_t data_layer_get_mode_entry_tick(void)
+{
+  dl_lock();
+  uint32_t t = g_snapshot.mode_entry_tick;
+  dl_unlock();
+  return t;
 }
 
 void data_layer_set_gps_fix(const GpsFix_t *fix)

@@ -35,6 +35,15 @@ static int g_failures = 0;
     }                                                                                              \
   } while (0)
 
+/* ---- Logger stub (flight_mode_manager.c calls log_event) --------------- */
+void log_event(uint16_t event_id, uint8_t log_class, const void *data, uint8_t data_len)
+{
+  (void)event_id;
+  (void)log_class;
+  (void)data;
+  (void)data_len;
+}
+
 static void reset_all(void)
 {
   data_layer_init();

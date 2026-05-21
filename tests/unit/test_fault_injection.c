@@ -30,6 +30,23 @@
 #include <string.h>
 
 /* ------------------------------------------------------------------ */
+/* Mock stub for log_event                                             */
+/* ------------------------------------------------------------------ */
+/* flight_mode_manager.c calls log_event() after every transition.
+ * Since the deploy-automation FMM change added this call, provide a
+ * no-op stub for test targets that link flight_mode_manager.c. */
+
+#include "logger.h"
+
+void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8_t data_len)
+{
+  (void)event_id;
+  (void)log_class;
+  (void)data;
+  (void)data_len;
+}
+
+/* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 

@@ -15,6 +15,7 @@
 #include "ina219.h"
 #include "mag_calib.h"
 #include "payload_task.h"
+#include "post.h"
 #include "sht31.h"
 #include "sun_sensor.h"
 #include "task.h"
@@ -25,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 /*
  * When compiling the unit‑test variant we want command_task.c to call
@@ -81,6 +83,29 @@ static void process_text_command(const char *cmd)
       snprintf(buf, sizeof(buf), "[CMD] GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
                fix.valid, fix.lat, fix.lon, fix.alt_m, fix.satellites, fix.hdop);
       uart1_write_unsafe(buf);
+    }
+
+    /* POST summary */
+    {
+      post_record_t post_rec;
+      data_layer_get_post_last(&post_rec);
+      if (post_rec.magic == POST_MAGIC)
+      {
+        uint32_t passed = 0;
+        for (uint32_t b = 0; b < POST_TEST_COUNT; b++)
+        {
+          if (post_rec.test_bitmap & (1u << b))
+          {
+            passed++;
+          }
+        }
+        snprintf(buf, sizeof(buf),
+                 "[CMD] POST: boot=%lu reason=%s pass=%lu/%u\r\n",
+                 (unsigned long)post_rec.boot_count,
+                 post_boot_reason_name(post_rec.boot_reason),
+                 (unsigned long)passed, POST_TEST_COUNT);
+        uart1_write_unsafe(buf);
+      }
     }
 
     uart1_release_lock();
@@ -186,8 +211,33 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "MODE=", 5) == 0)
   {
-    int mode = atoi(cmd + 5);
-    if (mode >= 0 && mode <= 3)
+    int mode = -1;
+
+    /* Try name match first (case-insensitive) */
+    const char *arg = cmd + 5;
+    size_t arg_len = strlen(arg);
+    if (arg_len > 0 && (arg[0] < '0' || arg[0] > '9'))
+    {
+      for (int i = 0; i < FM_COUNT; i++)
+      {
+        if (strcasecmp(arg, fmm_mode_name((flight_mode_t)i)) == 0)
+        {
+          mode = i;
+          break;
+        }
+      }
+      if (mode < 0)
+      {
+        uart1_puts_safe("[CMD] MODE: unknown mode name\r\n");
+        return;
+      }
+    }
+    else
+    {
+      mode = atoi(arg);
+    }
+
+    if (mode >= 0 && mode < FM_COUNT)
     {
       char buf[48];
       fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
@@ -218,8 +268,33 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "MODE ", 5) == 0)
   {
     /* Also support "MODE 1" (space instead of =) */
-    int mode = atoi(cmd + 5);
-    if (mode >= 0 && mode <= 3)
+    int mode = -1;
+
+    /* Try name match first (case-insensitive) */
+    const char *arg = cmd + 5;
+    size_t arg_len = strlen(arg);
+    if (arg_len > 0 && (arg[0] < '0' || arg[0] > '9'))
+    {
+      for (int i = 0; i < FM_COUNT; i++)
+      {
+        if (strcasecmp(arg, fmm_mode_name((flight_mode_t)i)) == 0)
+        {
+          mode = i;
+          break;
+        }
+      }
+      if (mode < 0)
+      {
+        uart1_puts_safe("[CMD] MODE: unknown mode name\r\n");
+        return;
+      }
+    }
+    else
+    {
+      mode = atoi(arg);
+    }
+
+    if (mode >= 0 && mode < FM_COUNT)
     {
       char buf[48];
       fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
@@ -250,7 +325,7 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
     uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME|TLMFMT|TLMFMT=JSON|TLMFMT=TEXT\r\n");
+        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-5|MODE=name|DEPLOY|DEPLOYCLEAR|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME|TLMFMT|TLMFMT=JSON|TLMFMT=TEXT\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -497,6 +572,36 @@ static void process_text_command(const char *cmd)
     snprintf(buf, sizeof(buf), "[CMD] TLMFMT: %s\r\n", fmt_name);
     uart1_puts_safe(buf);
   }
+  else if (strncmp(cmd, "DEPLOYCLEAR", 11) == 0)
+  {
+    data_layer_set_deploy_in_progress(false);
+    uart1_puts_safe("[CMD] DEPLOYCLEAR: deploy flag cleared\r\n");
+  }
+  else if (strncmp(cmd, "DEPLOY", 6) == 0)
+  {
+    flight_mode_t m = fmm_get_mode();
+    if (m == FM_BOOT || m == FM_SAFE)
+    {
+      fmm_result_t r = fmm_request_transition(FM_DETUMBLE);
+      if (r == FMM_OK)
+      {
+        data_layer_set_deploy_in_progress(true);
+        uart1_puts_safe("[CMD] DEPLOY: transition to DETUMBLE\r\n");
+      }
+      else
+      {
+        uart1_puts_safe("[CMD] DEPLOY: transition failed\r\n");
+      }
+    }
+    else if (m == FM_DETUMBLE)
+    {
+      uart1_puts_safe("[CMD] DEPLOY: already in progress\r\n");
+    }
+    else
+    {
+      uart1_puts_safe("[CMD] DEPLOY: rejected (invalid mode)\r\n");
+    }
+  }
   else
   {
     uart1_puts_safe("[CMD] UNKNOWN CMD\r\n");
@@ -624,6 +729,27 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
         .heap_free = 0,
         .uptime_sec = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS / 1000),
         .fault_count = 0};
+
+    /* POST fields */
+    {
+      post_record_t post_rec;
+      data_layer_get_post_last(&post_rec);
+      if (post_rec.magic == POST_MAGIC)
+      {
+        uint32_t passed = 0;
+        for (uint32_t b = 0; b < POST_TEST_COUNT; b++)
+        {
+          if (post_rec.test_bitmap & (1u << b))
+          {
+            passed++;
+          }
+        }
+        resp.boot_count = post_rec.boot_count;
+        resp.post_pass_count = (uint8_t)passed;
+        resp.post_total_count = POST_TEST_COUNT;
+        resp.boot_reason = (uint8_t)post_rec.boot_reason;
+      }
+    }
 
     memcpy(cmd->payload, &resp, sizeof(resp));
     packet->length = sizeof(resp) + 1;
@@ -753,6 +879,21 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
      * directly which has CSP_BUFFER_SIZE (256 bytes). */
     memcpy(packet->data, &resp, sizeof(resp));
     packet->length = (uint8_t)(sizeof(resp) + 1);
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_DEPLOY:
+  {
+    printf("[command_task] Executing DEPLOY\n");
+    flight_mode_t m = fmm_get_mode();
+    if (m == FM_BOOT || m == FM_SAFE)
+    {
+      fmm_request_transition(FM_DETUMBLE);
+      data_layer_set_deploy_in_progress(true);
+    }
+    /* Always send a success response (even for no-op) */
     csp_send(conn, packet);
     packet = NULL;
     break;

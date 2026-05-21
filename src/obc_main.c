@@ -17,6 +17,7 @@
 #include "command_task.h"
 #include "config.h"
 #include "data_layer.h"
+#include "deploy_monitor.h"
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
@@ -24,10 +25,12 @@
 #include "ds3231.h"
 #include "eps.h"
 #include "fault_manager.h"
+#include "flight_mode.h"
 #include "gps_driver.h"
 #include "health_monitor_task.h"
 #include "ina219.h"
 #include "payload_task.h"
+#include "post.h"
 #include "sensor_read_task.h"
 #include "sht31.h"
 #include "sun_sensor.h"
@@ -199,6 +202,26 @@ static void vStartupTask(void *pvParameters)
   fflush(stdout);
 #endif
 
+  /* --- POST: Power-On Self-Test --- */
+  {
+    post_record_t post_rec = {0};
+    post_run(&post_rec);
+    if (post_is_critical_fail(&post_rec))
+    {
+      printf("[STARTUP] POST CRITICAL FAIL — forcing SAFE mode\r\n");
+      fflush(stdout);
+      fmm_force_safe();
+    }
+    else
+    {
+      printf("[STARTUP] POST OK (boot=%lu reason=%s)\r\n",
+             (unsigned long)post_rec.boot_count,
+             post_boot_reason_name(post_rec.boot_reason));
+      fflush(stdout);
+    }
+  }
+  /* --- END POST --- */
+
   printf("  creating tasks...\r\n");
   fflush(stdout);
 
@@ -254,6 +277,9 @@ static void vStartupTask(void *pvParameters)
     extern void gps_task(void *pvParameters);
     CHK(xTaskCreate(gps_task, "GpsTask", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_gps)), "GpsTask");
   }
+
+  CHK(xTaskCreate(vDeployMonitorTask, "DeployMon", 2048, NULL, tskIDLE_PRIORITY + 2, NULL),
+      "DeployMon");
 
   printf("  payload_task_init...\r\n");
   fflush(stdout);

@@ -82,6 +82,8 @@ extern "C"
     (FAULT_SUBSYS_SENSOR | 0x02u) /**< IMU data not refreshed in time    */
   #define FAULT_SENS_TEMP_OUT_RANGE                                                                \
     (FAULT_SUBSYS_SENSOR | 0x03u) /**< Temperature sensor out of range   */
+  #define FAULT_POST_CRITICAL                                                                       \
+    (FAULT_SUBSYS_SENSOR | 0x12u) /**< Critical POST failure (IMU/RTC/Flash) */
 
   /* ------------------------------------------------------------------ */
   /* Timing faults (0x0501 – 0x05FF)                                    */
@@ -141,7 +143,7 @@ extern "C"
   /* Total number of tracked fault IDs                                   */
   /* ------------------------------------------------------------------ */
 
-  #define FAULT_ID_COUNT 25u /**< Must equal the total number of FAULT_* macros above */
+  #define FAULT_ID_COUNT 26u /**< Must equal the total number of FAULT_* macros above */
 
   #ifdef __cplusplus
 }
