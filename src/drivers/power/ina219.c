@@ -292,7 +292,7 @@ bool ina219_device_read_power(ina219_t *dev, ina219_data_t *data)
   return true;
 }
 
-bool ina219_device_reset(ina219_t *dev) // cppcheck-suppress constParameterPointer
+bool ina219_device_reset(ina219_t *dev)  // cppcheck-suppress constParameterPointer
 {
   if (dev == NULL)
   {
