@@ -117,7 +117,7 @@ extern "C"
    * @param dev  Pointer to an initialised ina219_t instance.
    * @return true if the sensor responds.
    */
-  bool ina219_device_is_present(ina219_t *dev);
+  bool ina219_device_is_present(const ina219_t *dev);
 
   /**
    * @brief Read power data from an INA219 device.
@@ -145,7 +145,7 @@ extern "C"
    * @param dev  Pointer to an initialised ina219_t instance.
    * @return Timestamp in milliseconds since boot, or 0 if no reading yet.
    */
-  uint32_t ina219_device_get_last_reading_ms(ina219_t *dev);
+  uint32_t ina219_device_get_last_reading_ms(const ina219_t *dev);
 
   /**
    * @brief Get last measured bus voltage for a device instance.
@@ -153,7 +153,7 @@ extern "C"
    * @param dev  Pointer to an initialised ina219_t instance.
    * @return Bus voltage in mV, or 0 if no reading yet.
    */
-  int16_t ina219_device_get_voltage_mv(ina219_t *dev);
+  int16_t ina219_device_get_voltage_mv(const ina219_t *dev);
 
   /* ------------------------------------------------------------------ */
   /*  Legacy singleton API (bus monitor at INA219_ADDR = 0x40)           */
