@@ -229,9 +229,19 @@ csp_packet_t *mock_csp_buffer_get(size_t size)
 #define csp_buffer_get mock_csp_buffer_get
 
 static csp_packet_t *last_csp_sent = NULL;
+/* Saved response data — copied before free() so tests can read the response
+   after process_command_packet() returns (avoids use-after-free when the
+   handler calls csp_send which frees the packet). */
+#define LAST_RESPONSE_MAX 256
+static uint8_t last_response_data[LAST_RESPONSE_MAX];
+static size_t last_response_len = 0;
 void mock_csp_send(csp_conn_t *conn, csp_packet_t *packet)
 {
   last_csp_sent = packet;
+  size_t copy_len = packet->length;
+  if (copy_len > LAST_RESPONSE_MAX) copy_len = LAST_RESPONSE_MAX;
+  memcpy(last_response_data, packet->data, copy_len);
+  last_response_len = copy_len;
   // in real life csp_send takes ownership, so we free it to simulate that taking ownership
   free(packet);
 }
@@ -485,14 +495,14 @@ void test_command_status_post()
 
   process_command_packet(mock_conn, pkt);
 
-  /* Verify response contains POST fields */
-  system_status_response_t *resp = (system_status_response_t *)pkt->data;
+  /* Response is written to cmd->payload (packet->data + 1), so read from there.
+     mock_csp_send saves a copy in last_response_data before freeing. */
+  csp_command_packet_t *resp_pkt = (csp_command_packet_t *)last_response_data;
+  system_status_response_t *resp = (system_status_response_t *)resp_pkt->payload;
   assert(resp->boot_count == 42);
   assert(resp->post_pass_count == 10);
   assert(resp->post_total_count == 10);
   assert(resp->boot_reason == POST_BOOT_WATCHDOG);
-
-  /* last_csp_sent was freed by mock_csp_send */
   printf("test_command_status_post PASS\n");
 }
 
