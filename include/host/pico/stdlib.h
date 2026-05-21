@@ -4,6 +4,9 @@
 #include <stdio.h>
 
 /* Stub: USB CDC not available on host */
-static inline bool stdio_usb_connected(void) { return false; }
+static inline bool stdio_usb_connected(void)
+{
+  return false;
+}
 
 #endif

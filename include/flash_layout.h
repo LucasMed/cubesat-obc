@@ -25,8 +25,8 @@ extern "C"
   /* Flash geometry                                                      */
   /* ------------------------------------------------------------------ */
 
-#define FLASH_SIZE_BYTES     (8u * 1024u * 1024u)  /* 8 MB */
-#define FLASH_SECTOR_SIZE    4096u                  /* 4 KB erase sector */
+#define FLASH_SIZE_BYTES (8u * 1024u * 1024u) /* 8 MB */
+#define FLASH_SECTOR_SIZE 4096u               /* 4 KB erase sector */
 
   /* ------------------------------------------------------------------ */
   /* Region assignments                                                  */
@@ -40,7 +40,7 @@ extern "C"
   /*                       (reserved for existing / future consumers)    */
 
   /* 0x700000 – 0x700FFF: POST ring buffer (4 KB)                       */
-#define FLASH_SECTOR_POST    0x700000u
+#define FLASH_SECTOR_POST 0x700000u
 
   /* 0x701000 – 0x7FFFFF: unallocated (reserved)                        */
 

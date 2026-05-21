@@ -51,17 +51,17 @@ extern "C"
    */
   typedef struct
   {
-    system_state_t state;  /**< Sensor data: attitude (rad), rates (rad/s),
-                            *   temperature (°C), validity flags             */
-    flight_mode_t mode;    /**< Current flight mode (from FMM)               */
-    energy_state_t energy; /**< Current energy state (from EPS monitor)      */
-    GpsFix_t gps_fix;      /**< Last GPS fix (lat, lon, alt, utc, valid)    */
-    bool deploy_in_progress; /**< True during auto-deploy sequence           */
-    post_record_t post_last; /**< Last POST result from boot self-test       */
+    system_state_t state;     /**< Sensor data: attitude (rad), rates (rad/s),
+                               *   temperature (°C), validity flags             */
+    flight_mode_t mode;       /**< Current flight mode (from FMM)               */
+    energy_state_t energy;    /**< Current energy state (from EPS monitor)      */
+    GpsFix_t gps_fix;         /**< Last GPS fix (lat, lon, alt, utc, valid)    */
+    bool deploy_in_progress;  /**< True during auto-deploy sequence           */
+    post_record_t post_last;  /**< Last POST result from boot self-test       */
     uint32_t mode_entry_tick; /**< xTaskGetTickCount() at last mode entry    */
-    uint32_t seq;          /**< Write sequence counter.  Incremented on every
-                            *   successful write call.  Readers can detect
-                            *   stale copies by comparing seq values.         */
+    uint32_t seq;             /**< Write sequence counter.  Incremented on every
+                               *   successful write call.  Readers can detect
+                               *   stale copies by comparing seq values.         */
   } dl_snapshot_t;
   /**
    * @brief Update the GPS fix in the shared snapshot.

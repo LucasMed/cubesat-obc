@@ -15,18 +15,17 @@
 
 #include "post.h"
 
-#include "data_layer.h"
-#include "fault_manager.h"
-#include "flash_layout.h"
-#include "logger.h"
-#include "log_event_ids.h"
-
 #include "bh1750.h"
+#include "data_layer.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
 #include "ds3231.h"
+#include "fault_manager.h"
+#include "flash_layout.h"
 #include "gps_driver.h"
 #include "ina219.h"
+#include "log_event_ids.h"
+#include "logger.h"
 #include "sht31.h"
 #include "w25q64.h"
 
@@ -41,7 +40,7 @@
 /* ------------------------------------------------------------------ */
 
 static uint32_t s_crc32_table[256];
-static bool     s_crc32_table_initialised = false;
+static bool s_crc32_table_initialised = false;
 
 static void post_crc32_init_table(void)
 {
@@ -297,7 +296,7 @@ static uint32_t post_read_rtc_timestamp(void)
 {
 #ifdef PICO_BUILD
   uint16_t year = 0;
-  uint8_t  month = 0, day = 0, hour = 0, minute = 0, second = 0;
+  uint8_t month = 0, day = 0, hour = 0, minute = 0, second = 0;
   if (ds3231_read_time(&year, &month, &day, &hour, &minute, &second))
   {
     return ds3231_to_epoch(year, month, day, hour, minute, second);
@@ -321,7 +320,7 @@ void post_run(post_record_t *record)
   memset(record, 0, sizeof(*record));
 
   /* ---- 1. Detect boot reason ---- */
-  record->magic       = POST_MAGIC;
+  record->magic = POST_MAGIC;
   record->boot_reason = post_detect_boot_reason(record->task_name, sizeof(record->task_name));
 
   /* ---- 2. Read previous boot count ---- */
@@ -521,9 +520,8 @@ bool post_is_critical_fail(const post_record_t *record)
   }
 
   /* Critical subsystems: IMU (bit 0), RTC (bit 4), Flash (bit 8) */
-  const uint32_t critical_mask = (1u << POST_TEST_IMU)
-                               | (1u << POST_TEST_RTC)
-                               | (1u << POST_TEST_FLASH);
+  const uint32_t critical_mask =
+      (1u << POST_TEST_IMU) | (1u << POST_TEST_RTC) | (1u << POST_TEST_FLASH);
 
   return (record->test_bitmap & critical_mask) != critical_mask;
 }

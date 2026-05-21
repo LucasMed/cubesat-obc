@@ -82,7 +82,7 @@ extern "C"
     (FAULT_SUBSYS_SENSOR | 0x02u) /**< IMU data not refreshed in time    */
   #define FAULT_SENS_TEMP_OUT_RANGE                                                                \
     (FAULT_SUBSYS_SENSOR | 0x03u) /**< Temperature sensor out of range   */
-  #define FAULT_POST_CRITICAL                                                                       \
+  #define FAULT_POST_CRITICAL                                                                      \
     (FAULT_SUBSYS_SENSOR | 0x12u) /**< Critical POST failure (IMU/RTC/Flash) */
 
   /* ------------------------------------------------------------------ */

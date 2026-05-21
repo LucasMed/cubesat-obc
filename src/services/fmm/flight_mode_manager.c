@@ -25,12 +25,11 @@
  * Spec ref: SPEC-2-FMM v1.1, SPEC-2 v2.0 §4.1
  */
 
+#include "FreeRTOS.h"
 #include "data_layer.h"
 #include "fault_manager.h"
 #include "flight_mode.h"
 #include "logger.h"
-
-#include "FreeRTOS.h"
 #include "task.h"
 
 /* ------------------------------------------------------------------ */

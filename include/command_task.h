@@ -21,8 +21,8 @@ typedef enum
   CMD_LOG_DUMP = 9,
   CMD_SENSOR_RESET = 10,
   CMD_GPS_RESET_STATS = 11,
-  CMD_TELEMETRY_DUMP = 12, // Download telemetry from flash
-  CMD_DEPLOY = 13          // Initiate deploy sequence
+  CMD_TELEMETRY_DUMP = 12,  // Download telemetry from flash
+  CMD_DEPLOY = 13           // Initiate deploy sequence
 } command_id_t;
 
 typedef struct __attribute__((packed))
@@ -54,9 +54,9 @@ typedef struct __attribute__((packed))
   uint32_t uptime_sec;
   uint8_t fault_count;
   uint32_t boot_count;      /**< Number of recorded boots (0 if POST never ran)  */
-  uint8_t  post_pass_count; /**< Number of POST tests that passed                */
-  uint8_t  post_total_count;/**< Total number of POST tests                      */
-  uint8_t  boot_reason;     /**< POST_BOOT_* code                                */
+  uint8_t post_pass_count;  /**< Number of POST tests that passed                */
+  uint8_t post_total_count; /**< Total number of POST tests                      */
+  uint8_t boot_reason;      /**< POST_BOOT_* code                                */
 } system_status_response_t;
 
 typedef struct __attribute__((packed))

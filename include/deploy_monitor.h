@@ -33,7 +33,7 @@ extern "C"
    * Waits for subsystems to stabilise and POST to complete before starting
    * the deploy sequence.
    */
-#define DEPLOY_BOOT_SETTLE_MS      5000u   /* 5 s */
+#define DEPLOY_BOOT_SETTLE_MS 5000u /* 5 s */
 
   /**
    * @brief Required time below detumble threshold for stable count.
@@ -41,7 +41,7 @@ extern "C"
    * The leaky counter must reach this many consecutive stable samples
    * (at 100 ms loop) before transitioning DETUMBLE → NOMINAL.
    */
-#define DEPLOY_DETUMBLE_STABLE_MS  5000u   /* 5 s */
+#define DEPLOY_DETUMBLE_STABLE_MS 5000u /* 5 s */
 
   /**
    * @brief Angular rate threshold (rad/s) for detumble stability.
@@ -49,7 +49,7 @@ extern "C"
    * |ω| < this value counts as a "stable" sample.  Each stable sample
    * increments the leaky counter.
    */
-#define DEPLOY_DETUMBLE_THRESHOLD  0.05f   /* rad/s */
+#define DEPLOY_DETUMBLE_THRESHOLD 0.05f /* rad/s */
 
   /**
    * @brief Hard-reset threshold (rad/s).
@@ -57,7 +57,7 @@ extern "C"
    * When |ω| > this value the leaky counter is immediately reset to zero
    * (FMM-DES-001 §4.2.3 OI-2).
    */
-#define DEPLOY_DETUMBLE_HARD_RESET 0.10f   /* rad/s */
+#define DEPLOY_DETUMBLE_HARD_RESET 0.10f /* rad/s */
 
   /* ------------------------------------------------------------------ */
   /* Mode timeout durations (milliseconds)                               */
@@ -68,14 +68,14 @@ extern "C"
    *
    * On timeout the monitor transitions to FM_SAFE.
    */
-#define DEPLOY_TIMEOUT_BOOT_MS        300000u   /* 5 min */
+#define DEPLOY_TIMEOUT_BOOT_MS 300000u /* 5 min */
 
   /**
    * @brief Maximum time allowed in FM_DETUMBLE during deploy sequence.
    *
    * On timeout the monitor transitions to FM_SAFE.
    */
-#define DEPLOY_TIMEOUT_DETUMBLE_MS   1200000u   /* 20 min */
+#define DEPLOY_TIMEOUT_DETUMBLE_MS 1200000u /* 20 min */
 
   /**
    * @brief Maximum time allowed in FM_DIAGNOSTIC during deploy sequence.
@@ -83,7 +83,7 @@ extern "C"
    * On timeout the monitor transitions to FM_NOMINAL (back to nominal ops
    * after debugging).
    */
-#define DEPLOY_TIMEOUT_DIAGNOSTIC_MS 1800000u   /* 30 min */
+#define DEPLOY_TIMEOUT_DIAGNOSTIC_MS 1800000u /* 30 min */
 
   /* ------------------------------------------------------------------ */
   /* Derived constants                                                   */
@@ -94,8 +94,7 @@ extern "C"
    *
    * Computed from the loop period (100 ms) and the stable window.
    */
-#define DEPLOY_STABLE_SAMPLES \
-    (DEPLOY_DETUMBLE_STABLE_MS / 100u)   /* = 50 */
+#define DEPLOY_STABLE_SAMPLES (DEPLOY_DETUMBLE_STABLE_MS / 100u) /* = 50 */
 
   /* ------------------------------------------------------------------ */
   /* Public API                                                          */

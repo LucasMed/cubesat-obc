@@ -13,14 +13,14 @@
  */
 
 #include "deploy_monitor.h"
+
+#include "FreeRTOS.h"
 #include "data_layer.h"
 #include "flight_mode.h"
 #include "post.h"
+#include "task.h"
 
 #include <math.h>
-
-#include "FreeRTOS.h"
-#include "task.h"
 
 /* ------------------------------------------------------------------ */
 /* Internal state                                                      */
@@ -36,12 +36,12 @@ static uint16_t s_detumble_stable_count = 0;
 static const struct
 {
   flight_mode_t mode;
-  uint32_t      timeout_ms;
+  uint32_t timeout_ms;
   flight_mode_t fallback;
 } s_timeouts[] = {
-  { FM_BOOT,       DEPLOY_TIMEOUT_BOOT_MS,       FM_SAFE },
-  { FM_DETUMBLE,   DEPLOY_TIMEOUT_DETUMBLE_MS,   FM_SAFE },
-  { FM_DIAGNOSTIC, DEPLOY_TIMEOUT_DIAGNOSTIC_MS, FM_NOMINAL },
+    {FM_BOOT, DEPLOY_TIMEOUT_BOOT_MS, FM_SAFE},
+    {FM_DETUMBLE, DEPLOY_TIMEOUT_DETUMBLE_MS, FM_SAFE},
+    {FM_DIAGNOSTIC, DEPLOY_TIMEOUT_DIAGNOSTIC_MS, FM_NOMINAL},
 };
 
 #define TIMEOUT_COUNT (sizeof(s_timeouts) / sizeof(s_timeouts[0]))
@@ -83,13 +83,11 @@ void deploy_monitor_step(void)
     dl_snapshot_t snap;
     data_layer_read(&snap);
 
-    uint32_t elapsed = (xTaskGetTickCount() - data_layer_get_mode_entry_tick())
-                       * portTICK_PERIOD_MS;
+    uint32_t elapsed =
+        (xTaskGetTickCount() - data_layer_get_mode_entry_tick()) * portTICK_PERIOD_MS;
 
-    if (post_rec.magic == POST_MAGIC
-        && !post_is_critical_fail(&post_rec)
-        && snap.state.imu_valid
-        && elapsed >= DEPLOY_BOOT_SETTLE_MS)
+    if (post_rec.magic == POST_MAGIC && !post_is_critical_fail(&post_rec) && snap.state.imu_valid &&
+        elapsed >= DEPLOY_BOOT_SETTLE_MS)
     {
       if (fmm_request_transition(FM_DETUMBLE) == FMM_OK)
       {
@@ -106,9 +104,9 @@ void deploy_monitor_step(void)
     dl_snapshot_t snap;
     data_layer_read(&snap);
 
-    float omega = sqrtf(snap.state.rates[0] * snap.state.rates[0]
-                      + snap.state.rates[1] * snap.state.rates[1]
-                      + snap.state.rates[2] * snap.state.rates[2]);
+    float omega = sqrtf(snap.state.rates[0] * snap.state.rates[0] +
+                        snap.state.rates[1] * snap.state.rates[1] +
+                        snap.state.rates[2] * snap.state.rates[2]);
 
     if (omega < DEPLOY_DETUMBLE_THRESHOLD)
     {
@@ -121,11 +119,11 @@ void deploy_monitor_step(void)
     {
       if (omega > DEPLOY_DETUMBLE_HARD_RESET)
       {
-        s_detumble_stable_count = 0;    /* Hard reset */
+        s_detumble_stable_count = 0; /* Hard reset */
       }
       else if (s_detumble_stable_count > 0)
       {
-        s_detumble_stable_count--;       /* Leaky decrement */
+        s_detumble_stable_count--; /* Leaky decrement */
       }
     }
 
@@ -146,8 +144,8 @@ void deploy_monitor_step(void)
   {
     if (mode == s_timeouts[i].mode)
     {
-      uint32_t elapsed = (xTaskGetTickCount() - data_layer_get_mode_entry_tick())
-                         * portTICK_PERIOD_MS;
+      uint32_t elapsed =
+          (xTaskGetTickCount() - data_layer_get_mode_entry_tick()) * portTICK_PERIOD_MS;
       if (elapsed >= s_timeouts[i].timeout_ms)
       {
         /* fmm_request_transition() will emit LOG_EVT_MODE_CHANGE internally */

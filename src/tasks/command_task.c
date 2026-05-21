@@ -99,10 +99,8 @@ static void process_text_command(const char *cmd)
             passed++;
           }
         }
-        snprintf(buf, sizeof(buf),
-                 "[CMD] POST: boot=%lu reason=%s pass=%lu/%u\r\n",
-                 (unsigned long)post_rec.boot_count,
-                 post_boot_reason_name(post_rec.boot_reason),
+        snprintf(buf, sizeof(buf), "[CMD] POST: boot=%lu reason=%s pass=%lu/%u\r\n",
+                 (unsigned long)post_rec.boot_count, post_boot_reason_name(post_rec.boot_reason),
                  (unsigned long)passed, POST_TEST_COUNT);
         uart1_write_unsafe(buf);
       }

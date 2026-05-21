@@ -214,8 +214,7 @@ static void vStartupTask(void *pvParameters)
     }
     else
     {
-      printf("[STARTUP] POST OK (boot=%lu reason=%s)\r\n",
-             (unsigned long)post_rec.boot_count,
+      printf("[STARTUP] POST OK (boot=%lu reason=%s)\r\n", (unsigned long)post_rec.boot_count,
              post_boot_reason_name(post_rec.boot_reason));
       fflush(stdout);
     }
