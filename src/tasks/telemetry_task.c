@@ -232,8 +232,8 @@ void vTelemetryTask_Step(void)
 
     int len = snprintf(
         buf, sizeof(buf),
-        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,b:%d,sp:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
-        (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
+        "[JSON] {ts:%lu,r:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,b:%d,sp:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
+        (unsigned long)tlm->timestamp_ms, (unsigned long)tlm->rtc_timestamp, snap.mode, tlm->attitude[0], tlm->attitude[1],
         tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
         tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, current_abs,
         power_abs, tlm->battery_mv, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y, tlm->flags);
