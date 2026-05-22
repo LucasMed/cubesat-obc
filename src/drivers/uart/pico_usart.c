@@ -173,6 +173,22 @@ void uart1_write_unsafe(const char *str)
   uart_puts(uart1, str);
 }
 
+/**
+ * @brief Write raw bytes to UART1 with lock protection (binary-safe)
+ */
+void uart1_write_buf(const uint8_t *data, size_t len)
+{
+  if (driver_instance.lock)
+  {
+    xSemaphoreTake(driver_instance.lock, portMAX_DELAY);
+  }
+  uart_write_blocking(uart1, data, len);
+  if (driver_instance.lock)
+  {
+    xSemaphoreGive(driver_instance.lock);
+  }
+}
+
 static void uart_rx_task(void *pvParameters)
 {
   pico_usart_driver_t *drv = (pico_usart_driver_t *)pvParameters;

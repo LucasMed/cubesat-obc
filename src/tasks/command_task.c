@@ -322,8 +322,41 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
-    uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-5|MODE=name|DEPLOY|DEPLOYCLEAR|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME|TLMFMT|TLMFMT=JSON|TLMFMT=TEXT\r\n");
+    uart1_puts_safe("[CMD] ── System ──\r\n");
+    uart1_puts_safe("[CMD] REBOOT              reboot OBC\r\n");
+    uart1_puts_safe("[CMD] STATUS              system + GPS + POST status\r\n");
+    uart1_puts_safe("[CMD] FAULTS              highest fault level\r\n");
+    uart1_puts_safe("[CMD] ECHO                connectivity check\r\n");
+    uart1_puts_safe("[CMD] CAPTURE             trigger payload camera\r\n");
+    uart1_puts_safe("[CMD] ── Mode ──\r\n");
+    uart1_puts_safe("[CMD] MODE=<0-5|name>     BOOT|SAFE|DETUMBLE|NOMINAL|DIAGNOSTIC|PAYLOAD\r\n");
+    uart1_puts_safe("[CMD] DEPLOY              BOOT/SAFE → DETUMBLE (deploy panels)\r\n");
+    uart1_puts_safe("[CMD] DEPLOYCLEAR         reset deploy-in-progress flag\r\n");
+    uart1_puts_safe("[CMD] ── GPS ──\r\n");
+    uart1_puts_safe("[CMD] GPS                 last GPS fix\r\n");
+    uart1_puts_safe("[CMD] GPSSTATS            GPS statistics (rx/err/overflow)\r\n");
+    uart1_puts_safe("[CMD] RESETGPS            reset GPS stats\r\n");
+    uart1_puts_safe("[CMD] RESETGPS COLD       cold start GPS\r\n");
+    uart1_puts_safe("[CMD] ── Calibration ──\r\n");
+    uart1_puts_safe("[CMD] MAG-CAL-START       start magnetometer calibration\r\n");
+    uart1_puts_safe("[CMD] MAG-CAL-STOP        stop & compute offsets\r\n");
+    uart1_puts_safe("[CMD] MAG-CAL-STATUS      show magnetometer cal status\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-START       start IMU (gyro+accel) calibration\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-STOP        stop & compute offsets\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-STATUS      show IMU cal status\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-SAVE        save IMU cal to flash\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-LOAD        load IMU cal from flash\r\n");
+    uart1_puts_safe("[CMD] ── Tests ──\r\n");
+    uart1_puts_safe("[CMD] I2CSCAN             scan I2C bus\r\n");
+    uart1_puts_safe("[CMD] BH1750_TEST         test light sensor\r\n");
+    uart1_puts_safe("[CMD] SHT31_TEST          test temp/humidity sensor\r\n");
+    uart1_puts_safe("[CMD] RTC_TEST            test DS3231 RTC\r\n");
+    uart1_puts_safe("[CMD] POWER_TEST          test INA219 bus power\r\n");
+    uart1_puts_safe("[CMD] SOLAR_TEST          test solar panel ADC\r\n");
+    uart1_puts_safe("[CMD] ── Misc ──\r\n");
+    uart1_puts_safe("[CMD] LOG                 dump event log (TODO)\r\n");
+    uart1_puts_safe("[CMD] SETTIME YYYY MM DD HH MM SS   set RTC\r\n");
+    uart1_puts_safe("[CMD] HELP                this message\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -541,33 +574,6 @@ static void process_text_command(const char *cmd)
     {
       snprintf(buf, sizeof(buf), "[CMD] SHT31: no data\r\n");
     }
-    uart1_puts_safe(buf);
-  }
-  else if (strncmp(cmd, "TLMFMT=", 7) == 0)
-  {
-    /* Set telemetry format: TEXT or JSON */
-    if (strncmp(cmd + 7, "JSON", 4) == 0)
-    {
-      telemetry_set_format(TLM_FORMAT_JSON);
-      uart1_puts_safe("[CMD] TLMFMT=JSON OK\r\n");
-    }
-    else if (strncmp(cmd + 7, "TEXT", 4) == 0)
-    {
-      telemetry_set_format(TLM_FORMAT_TEXT);
-      uart1_puts_safe("[CMD] TLMFMT=TEXT OK\r\n");
-    }
-    else
-    {
-      uart1_puts_safe("[CMD] TLMFMT: usage: TLMFMT=TEXT or TLMFMT=JSON\r\n");
-    }
-  }
-  else if (strncmp(cmd, "TLMFMT", 6) == 0)
-  {
-    /* Show current format */
-    telemetry_format_t fmt = telemetry_get_format();
-    const char *fmt_name = (fmt == TLM_FORMAT_JSON) ? "JSON" : "TEXT";
-    char buf[32];
-    snprintf(buf, sizeof(buf), "[CMD] TLMFMT: %s\r\n", fmt_name);
     uart1_puts_safe(buf);
   }
   else if (strncmp(cmd, "DEPLOYCLEAR", 11) == 0)
