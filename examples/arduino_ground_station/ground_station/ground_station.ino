@@ -447,153 +447,162 @@ String getJsonValueByNth(String msg, int n)
   return msg.substring(start, end);
 }
 
-// Parse JSON telemetry format - robust simple parser
+// Helper: safely extract value between two delimiters, returns default if not found
+String safeExtract(String msg, String key, String endDelim, String def)
+{
+  int pos = msg.indexOf(key);
+  if (pos == -1) return def;
+  int start = pos + key.length();
+  int end = msg.indexOf(endDelim, start);
+  if (end == -1) return def;
+  return msg.substring(start, end);
+}
+
+// Parse JSON telemetry format — handles corrupted/concatenated frames gracefully
 void parseTelemetryJson(String msg)
 {
-  // Find each value by its unique key prefix
-  // Keys in order: ts, r, m, a, t, h, l, g, v, s, p, b, sp, sx, sy, f, c
+  // Validate basic frame structure
+  if (msg.length() < 20 || msg.charAt(0) != '{') {
+    // Corrupted or empty frame — skip silently
+    return;
+  }
+  // Detect concatenated frames (two JSONs glued together)
+  if (msg.indexOf('{', 1) != -1) {
+    return;  // Skip — frame boundary issue
+  }
   
-  // ts - find "ts:" at start
-  int tsPos = msg.indexOf("ts:");
-  int tsStart = tsPos + 3;
-  int tsEnd = msg.indexOf(',', tsStart);
-  float ts = msg.substring(tsStart, tsEnd).toFloat();
-  
-   // r - RTC: ",r:" to ",m:"
-   int rPos = msg.indexOf(",r:");
-   int rStart = rPos + 3;
-   int rEnd = msg.indexOf(",m:", rStart);
-   unsigned long rtc = msg.substring(rStart, rEnd).toInt();
-   
-   // m - next key after r: ",m:VAL," 
-   int mPos = msg.indexOf(",m:");
-  int mStart = mPos + 3;
-  int mEnd = msg.indexOf(',', mStart);
-  int mode = msg.substring(mStart, mEnd).toInt();
-  
-  // a - attitude: ",a:" to ",t:"
-  int aPos = msg.indexOf(",a:");
-  int aStart = aPos + 3;
-  int aEnd = msg.indexOf(",t:", aStart);
-  String attStr = msg.substring(aStart, aEnd);
-  
-  // Parse attitude: r,p,y
+  // All values default to 0/false — only overwrite when key is found cleanly
+  float ts = 0;
+  unsigned long rtc = 0;
+  int mode = 0;
   float roll = 0, pitch = 0, yaw = 0;
-  if (attStr.indexOf(',') != -1)
+  float temp = 0, humidity = 0, lux_value = 0;
+  float gps_lat = 0, gps_lon = 0, gps_alt = 0;
+  int gps_valid_str = 0, sats = 0;
+  int volt = 0, curr = 0, power = 0;
+  int battery_mv = 0;
+  int solar_v = 0, solar_i = 0, solar_p = 0;
+  float sun_x = 0, sun_y = 0;
+  int flags = 0;
+  String crc_recv = "";
+  
+  // ts — first key
+  String tsStr = safeExtract(msg, "ts:", ",", "0");
+  ts = tsStr.toFloat();
+  
+  // r — RTC
+  String rStr = safeExtract(msg, ",r:", ",m:", "0");
+  rtc = (unsigned long)rStr.toInt();
+  
+  // m — mode
+  String mStr = safeExtract(msg, ",m:", ",a:", "0");
+  mode = mStr.toInt();
+  
+  // a — attitude (multi-value: roll,pitch,yaw separated by commas)
+  String attStr = safeExtract(msg, ",a:", ",t:", "");
+  if (attStr.length() > 0)
   {
     int c1 = attStr.indexOf(',');
     int c2 = attStr.lastIndexOf(',');
-    roll = attStr.substring(0, c1).toFloat();
-    pitch = attStr.substring(c1 + 1, c2).toFloat();
-    yaw = attStr.substring(c2 + 1).toFloat();
+    if (c1 != -1 && c2 != -1 && c2 > c1)
+    {
+      roll = attStr.substring(0, c1).toFloat();
+      pitch = attStr.substring(c1 + 1, c2).toFloat();
+      yaw = attStr.substring(c2 + 1).toFloat();
+    }
   }
   
-  // t - temperature: ",t:" to ",h:"
-  int tPos = msg.indexOf(",t:");
-  int tStart = tPos + 3;
-  int tEnd = msg.indexOf(",h:", tStart);
-  float temp = msg.substring(tStart, tEnd).toFloat();
+  // t — temperature
+  String tStr = safeExtract(msg, ",t:", ",h:", "0");
+  temp = tStr.toFloat();
   
-  // h - humidity: ",h:" to ",l:"
-  int hPos = msg.indexOf(",h:");
-  int hStart = hPos + 3;
-  int hEnd = msg.indexOf(",l:", hStart);
-  float humidity = msg.substring(hStart, hEnd).toFloat();
+  // h — humidity
+  String hStr = safeExtract(msg, ",h:", ",l:", "0");
+  humidity = hStr.toFloat();
   
-  // l - lux: ",l:" to ",g:"
-  int lPos = msg.indexOf(",l:");
-  int lStart = lPos + 3;
-  int lEnd = msg.indexOf(",g:", lStart);
-  float lux_value = msg.substring(lStart, lEnd).toFloat();
+  // l — lux
+  String lStr = safeExtract(msg, ",l:", ",g:", "0");
+  lux_value = lStr.toFloat();
   
-  // g - GPS: ",g:" to ",v:"
-  int gPos = msg.indexOf(",g:");
-  int gStart = gPos + 3;
-  int gEnd = msg.indexOf(",v:", gStart);
-  String gpsStr = msg.substring(gStart, gEnd);
-  float gps_lat = 0, gps_lon = 0, gps_alt = 0;
-  if (gpsStr.indexOf(',') != -1)
+  // g — GPS (multi-value: lat,lon,alt)
+  String gpsStr = safeExtract(msg, ",g:", ",v:", "");
+  if (gpsStr.length() > 0)
   {
     int c1 = gpsStr.indexOf(',');
     int c2 = gpsStr.lastIndexOf(',');
-    gps_lat = gpsStr.substring(0, c1).toFloat();
-    gps_lon = gpsStr.substring(c1 + 1, c2).toFloat();
-    gps_alt = gpsStr.substring(c2 + 1).toFloat();
+    if (c1 != -1 && c2 != -1 && c2 > c1)
+    {
+      gps_lat = gpsStr.substring(0, c1).toFloat();
+      gps_lon = gpsStr.substring(c1 + 1, c2).toFloat();
+      gps_alt = gpsStr.substring(c2 + 1).toFloat();
+    }
   }
   
-  // v - valid: ",v:" to ",s:"
-  int vPos = msg.indexOf(",v:");
-  int vStart = vPos + 3;
-  int vEnd = msg.indexOf(",s:", vStart);
-  int gps_valid_str = msg.substring(vStart, vEnd).toInt();
+  // v — GPS valid
+  String vStr = safeExtract(msg, ",v:", ",s:", "0");
+  gps_valid_str = vStr.toInt();
   
-  // s - sats: ",s:" to ",p:"
-  int sPos = msg.indexOf(",s:");
-  int sStart = sPos + 3;
-  int sEnd = msg.indexOf(",p:", sStart);
-  int sats = msg.substring(sStart, sEnd).toInt();
+  // s — GPS satellites
+  String sStr = safeExtract(msg, ",s:", ",p:", "0");
+  sats = sStr.toInt();
   
-   // p - power (bus): ",p:" to ",b:"
-   int pPos = msg.indexOf(",p:");
-   int pStart = pPos + 3;
-   int pEnd = msg.indexOf(",b:", pStart);
-   String pwrStr = msg.substring(pStart, pEnd);
-   int volt = 0, curr = 0, power = 0;
-   if (pwrStr.indexOf(',') != -1)
-   {
-     int c1 = pwrStr.indexOf(',');
-     int c2 = pwrStr.lastIndexOf(',');
-     volt = pwrStr.substring(0, c1).toInt();
-     curr = pwrStr.substring(c1 + 1, c2).toInt();
-     power = pwrStr.substring(c2 + 1).toInt();
-   }
-   
-   // b - battery: ",b:" to ",sp:"
-   int bPos = msg.indexOf(",b:");
-   int bStart = bPos + 3;
-   int bEnd = msg.indexOf(",sp:", bStart);
-   int battery_mv = msg.substring(bStart, bEnd).toInt();
-   
-   // sp - solar panel: ",sp:" to ",sx:"
-  int spPos = msg.indexOf(",sp:");
-  int spStart = spPos + 4;
-  int spEnd = msg.indexOf(",sx:", spStart);
-  String solarStr = msg.substring(spStart, spEnd);
-  int solar_v = 0, solar_i = 0, solar_p = 0;
-  if (solarStr.indexOf(',') != -1)
+  // p — bus power (multi-value: V,I,P)
+  String pwrStr = safeExtract(msg, ",p:", ",b:", "");
+  if (pwrStr.length() > 0)
+  {
+    int c1 = pwrStr.indexOf(',');
+    int c2 = pwrStr.lastIndexOf(',');
+    if (c1 != -1 && c2 != -1 && c2 > c1)
+    {
+      volt = pwrStr.substring(0, c1).toInt();
+      curr = pwrStr.substring(c1 + 1, c2).toInt();
+      power = pwrStr.substring(c2 + 1).toInt();
+    }
+  }
+  
+  // b — battery
+  String bStr = safeExtract(msg, ",b:", ",sp:", "0");
+  battery_mv = bStr.toInt();
+  
+  // sp — solar power (multi-value: V,I,P)
+  String solarStr = safeExtract(msg, ",sp:", ",sx:", "");
+  if (solarStr.length() > 0)
   {
     int c1 = solarStr.indexOf(',');
     int c2 = solarStr.lastIndexOf(',');
-    solar_v = solarStr.substring(0, c1).toInt();
-    solar_i = solarStr.substring(c1 + 1, c2).toInt();
-    solar_p = solarStr.substring(c2 + 1).toInt();
+    if (c1 != -1 && c2 != -1 && c2 > c1)
+    {
+      solar_v = solarStr.substring(0, c1).toInt();
+      solar_i = solarStr.substring(c1 + 1, c2).toInt();
+      solar_p = solarStr.substring(c2 + 1).toInt();
+    }
   }
   
-  // sx - sun x: ",sx:" to ",sy:"
-  int sxPos = msg.indexOf(",sx:");
-  int sxStart = sxPos + 4;
-  int sxEnd = msg.indexOf(",sy:", sxStart);
-  float sun_x = msg.substring(sxStart, sxEnd).toFloat();
+  // sx — sun X
+  String sxStr = safeExtract(msg, ",sx:", ",sy:", "0");
+  sun_x = sxStr.toFloat();
   
-  // sy - sun y: ",sy:" to ",f:"
-  int syPos = msg.indexOf(",sy:");
-  int syStart = syPos + 4;
-  int syEnd = msg.indexOf(",f:", syStart);
-  float sun_y = msg.substring(syStart, syEnd).toFloat();
+  // sy — sun Y
+  String syStr = safeExtract(msg, ",sy:", ",f:", "0");
+  sun_y = syStr.toFloat();
   
-  // f - flags: ",f:" to ",c:"
-  int fPos = msg.indexOf(",f:");
-  int fStart = fPos + 3;
-  int fEnd = msg.indexOf(",c:", fStart);
-  int flags = msg.substring(fStart, fEnd).toInt();
+  // f — flags
+  String fStr = safeExtract(msg, ",f:", ",c:", "0");
+  flags = fStr.toInt();
   
-  // c - CRC: ",c:" to "}"
+  // c — CRC (2 hex chars before closing brace)
   int cPos = msg.indexOf(",c:");
-  int cStart = cPos + 3;
-  int cEnd = msg.indexOf('}', cStart);
-  String crc_recv = msg.substring(cStart, cEnd);
+  if (cPos != -1)
+  {
+    int cStart = cPos + 3;
+    // CRC value is 2 hex chars, then '}'
+    if (cStart + 2 <= msg.length())
+    {
+      crc_recv = msg.substring(cStart, cStart + 2);
+    }
+  }
   
-// Decode flags
+  // Decode flags
   bool imu_ok = (flags & 0x01) != 0;
   bool temp_ok = (flags & 0x02) != 0;
   bool humidity_ok = (flags & 0x04) != 0;
