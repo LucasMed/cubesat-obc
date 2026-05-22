@@ -207,7 +207,11 @@ static bool post_test_sht31(void)
 {
 #ifdef PICO_BUILD
   float temp = 0.0f, hum = 0.0f;
-  return sht31_read(&temp, &hum);
+  /* Use sht31_fetch() instead of sht31_read() — the sensor is already in
+   * periodic mode (started during boot). sht31_read() sends a single-shot
+   * command (0x2400) which would BREAK periodic mode, causing subsequent
+   * sht31_fetch() calls in sensor_read_task to fail. */
+  return sht31_fetch(&temp, &hum);
 #else
   return true;
 #endif

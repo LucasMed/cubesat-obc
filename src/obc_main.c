@@ -21,7 +21,6 @@
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
-#include "drivers/temperature.h"
 #include "ds3231.h"
 #include "eps.h"
 #include "fault_manager.h"
@@ -136,7 +135,6 @@ static void vStartupTask(void *pvParameters)
   printf("  sensors...\r\n");
   fflush(stdout);
   int imu_res = mpu6050_init();
-  int temp_res = temperature_init();
   int mag_res = hmc5883l_init();
   bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
 
@@ -172,7 +170,7 @@ static void vStartupTask(void *pvParameters)
   }
   fflush(stdout);
 
-  system_state_set_available(imu_res == 0, temp_res == 0);
+  system_state_set_available(imu_res == 0, sht31_res);
   data_layer_set_mag_avail(mag_res == 0);
   data_layer_set_lux_avail(bh1750_res);
   data_layer_set_rtc_avail(ds3231_res);
@@ -181,7 +179,7 @@ static void vStartupTask(void *pvParameters)
   data_layer_set_sun_avail(sun_sensor_res);
   printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s  RTC: %s  PWR: %s  SOLAR: %s  "
          "Sun: %s\r\n",
-         imu_res == 0 ? "OK" : "not found", temp_res == 0 ? "OK" : "not found",
+         imu_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",
          mag_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",
          bh1750_res ? "OK" : "not found", ds3231_res ? "OK" : "not found",
          ina219_res ? "OK" : "not found", ina219_solar_res ? "OK" : "not found",
