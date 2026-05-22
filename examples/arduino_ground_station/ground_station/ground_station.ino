@@ -410,7 +410,7 @@ String getValue(String msg, String key)
 }
 
 // Get JSON value by Nth colon-separated value (0-indexed)
-// The keys are in FIXED order: ts,m,a,t,h,l,g,v,s,p,sx,sy,f,c
+// The keys are in FIXED order: ts,r,m,a,t,h,l,g,v,s,p,b,sp,sx,sy,f,c
 String getJsonValueByNth(String msg, int n)
 {
   // Find the nth colon
@@ -451,7 +451,7 @@ String getJsonValueByNth(String msg, int n)
 void parseTelemetryJson(String msg)
 {
   // Find each value by its unique key prefix
-  // Keys in order: ts, m, a, t, h, l, g, v, s, p, b, sp, sx, sy, f, c
+  // Keys in order: ts, r, m, a, t, h, l, g, v, s, p, b, sp, sx, sy, f, c
   
   // ts - find "ts:" at start
   int tsPos = msg.indexOf("ts:");
@@ -459,8 +459,14 @@ void parseTelemetryJson(String msg)
   int tsEnd = msg.indexOf(',', tsStart);
   float ts = msg.substring(tsStart, tsEnd).toFloat();
   
-  // m - next key after ts: ",m:VAL," 
-  int mPos = msg.indexOf(",m:");
+   // r - RTC: ",r:" to ",m:"
+   int rPos = msg.indexOf(",r:");
+   int rStart = rPos + 3;
+   int rEnd = msg.indexOf(",m:", rStart);
+   unsigned long rtc = msg.substring(rStart, rEnd).toInt();
+   
+   // m - next key after r: ",m:VAL," 
+   int mPos = msg.indexOf(",m:");
   int mStart = mPos + 3;
   int mEnd = msg.indexOf(',', mStart);
   int mode = msg.substring(mStart, mEnd).toInt();
@@ -653,6 +659,22 @@ void parseTelemetryJson(String msg)
     Serial.print("mA SolarP=");
     Serial.print(solar_p);
     Serial.print("mW");
+  }
+  Serial.print(" RTC=");
+  if (rtc > 0)
+  {
+    Serial.print(rtc);
+    Serial.print(" (");
+    Serial.print((rtc / 86400) % 365);
+    Serial.print("d ");
+    Serial.print((rtc / 3600) % 24);
+    Serial.print("h ");
+    Serial.print((rtc / 60) % 60);
+    Serial.print("m)");
+  }
+  else
+  {
+    Serial.print("N/A");
   }
   Serial.print(" ts=");
   Serial.print(ts, 0);
