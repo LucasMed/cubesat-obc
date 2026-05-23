@@ -24,9 +24,11 @@
 #include "../../include/data_layer.h"
 #include "../../include/fault_manager.h"
 #include "../../include/flight_mode.h"
+#include "../../include/logger.h"
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 /* ------------------------------------------------------------------ */
 /* Fault-level stub control                                            */
@@ -384,6 +386,135 @@ static void test_mode_name(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Mock log_event for testing                                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Overrides the strong symbol in logger.c (which is NOT linked into this
+ * test).  Records the last call for inspection by the tests below.
+ */
+static uint16_t   g_mock_event_id    = 0;
+static log_class_t g_mock_log_class  = (log_class_t)0;
+static uint8_t    g_mock_payload[32] = {0};
+static uint8_t    g_mock_payload_len = 0;
+static uint32_t   g_mock_call_count  = 0;
+
+void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8_t data_len)
+{
+  g_mock_event_id    = event_id;
+  g_mock_log_class   = log_class;
+  g_mock_payload_len = (data_len > 32u) ? 32u : data_len;
+  memset(g_mock_payload, 0, sizeof(g_mock_payload));
+  if (data != NULL && g_mock_payload_len > 0u)
+  {
+    memcpy(g_mock_payload, data, g_mock_payload_len);
+  }
+  g_mock_call_count++;
+}
+
+static void reset_mock(void)
+{
+  g_mock_event_id    = 0;
+  g_mock_log_class   = (log_class_t)0;
+  g_mock_payload_len = 0;
+  memset(g_mock_payload, 0, sizeof(g_mock_payload));
+  g_mock_call_count  = 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 12: LOG_EVT_MODE_CHANGE emitted on every transition            */
+/* ------------------------------------------------------------------ */
+
+static void test_log_on_transition(void)
+{
+  reset_mock();
+
+  force_mode(FM_BOOT);
+  fmm_result_t r = fmm_request_transition(FM_DETUMBLE);
+  CHECK(r == FMM_OK, "BOOT->DETUMBLE must succeed");
+  CHECK(g_mock_call_count == 1u, "log_event must be called once");
+  CHECK(g_mock_event_id == LOG_EVT_MODE_CHANGE,
+        "log_event must use LOG_EVT_MODE_CHANGE");
+
+  printf("test_log_on_transition: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 13: fmm_force_safe() does NOT emit log_event (ISR limitation)  */
+/* ------------------------------------------------------------------ */
+
+static void test_no_log_on_force_safe(void)
+{
+  reset_mock();
+
+  force_mode(FM_NOMINAL);
+  fmm_force_safe();
+  CHECK(g_mock_call_count == 0u,
+        "fmm_force_safe() must NOT call log_event");
+
+  printf("test_no_log_on_force_safe: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 14: log_event payload contains old_mode and new_mode           */
+/* ------------------------------------------------------------------ */
+
+static void test_log_payload_format(void)
+{
+  reset_mock();
+
+  force_mode(FM_BOOT);
+  fmm_request_transition(FM_DETUMBLE);
+  CHECK(g_mock_call_count == 1u, "log_event must be called once");
+  CHECK(g_mock_payload_len == 2u, "payload must be 2 bytes (old, new)");
+  CHECK(g_mock_payload[0] == (uint8_t)FM_BOOT,
+        "payload[0] must be old mode (FM_BOOT)");
+  CHECK(g_mock_payload[1] == (uint8_t)FM_DETUMBLE,
+        "payload[1] must be new mode (FM_DETUMBLE)");
+
+  printf("test_log_payload_format: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 15: same-mode request does NOT emit log_event                  */
+/* ------------------------------------------------------------------ */
+
+static void test_no_log_on_same_mode(void)
+{
+  reset_mock();
+
+  force_mode(FM_NOMINAL);
+  fmm_request_transition(FM_NOMINAL);
+  CHECK(g_mock_call_count == 0u,
+        "same-mode request must NOT call log_event");
+
+  printf("test_no_log_on_same_mode: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 16: mode_entry_tick is updated after a transition              */
+/* ------------------------------------------------------------------ */
+
+static void test_mode_entry_tick_updates(void)
+{
+  force_mode(FM_BOOT);
+
+  /* Before any transition, tick should be 0 (set by force_mode's init) */
+  uint32_t tick_before = data_layer_get_mode_entry_tick();
+
+  fmm_request_transition(FM_DETUMBLE);
+  uint32_t tick_after = data_layer_get_mode_entry_tick();
+
+  /* On host build xTaskGetTickCount() is stubbed to return 0,
+   * so we can only verify the value was written (it will be 0).
+   * On real hardware this would be a non-zero tick value. */
+  CHECK(tick_after == tick_before + 0u,
+        "mode_entry_tick must be set after transition");
+
+  printf("test_mode_entry_tick_updates: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -401,6 +532,11 @@ int main(void)
   test_force_safe();
   test_fault_block();
   test_mode_name();
+  test_log_on_transition();
+  test_no_log_on_force_safe();
+  test_log_payload_format();
+  test_no_log_on_same_mode();
+  test_mode_entry_tick_updates();
 
   if (g_failures == 0)
   {

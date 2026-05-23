@@ -15,6 +15,7 @@
 #include "ina219.h"
 #include "mag_calib.h"
 #include "payload_task.h"
+#include "post.h"
 #include "sht31.h"
 #include "sun_sensor.h"
 #include "task.h"
@@ -25,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 /*
  * When compiling the unit‑test variant we want command_task.c to call
@@ -81,6 +83,27 @@ static void process_text_command(const char *cmd)
       snprintf(buf, sizeof(buf), "[CMD] GPS: v=%d lat=%.5f lon=%.5f alt=%.1f s=%d hdop=%.1f\r\n",
                fix.valid, fix.lat, fix.lon, fix.alt_m, fix.satellites, fix.hdop);
       uart1_write_unsafe(buf);
+    }
+
+    /* POST summary */
+    {
+      post_record_t post_rec;
+      data_layer_get_post_last(&post_rec);
+      if (post_rec.magic == POST_MAGIC)
+      {
+        uint32_t passed = 0;
+        for (uint32_t b = 0; b < POST_TEST_COUNT; b++)
+        {
+          if (post_rec.test_bitmap & (1u << b))
+          {
+            passed++;
+          }
+        }
+        snprintf(buf, sizeof(buf), "[CMD] POST: boot=%lu reason=%s pass=%lu/%u\r\n",
+                 (unsigned long)post_rec.boot_count, post_boot_reason_name(post_rec.boot_reason),
+                 (unsigned long)passed, POST_TEST_COUNT);
+        uart1_write_unsafe(buf);
+      }
     }
 
     uart1_release_lock();
@@ -186,8 +209,33 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "MODE=", 5) == 0)
   {
-    int mode = atoi(cmd + 5);
-    if (mode >= 0 && mode <= 3)
+    int mode = -1;
+
+    /* Try name match first (case-insensitive) */
+    const char *arg = cmd + 5;
+    size_t arg_len = strlen(arg);
+    if (arg_len > 0 && (arg[0] < '0' || arg[0] > '9'))
+    {
+      for (int i = 0; i < FM_COUNT; i++)
+      {
+        if (strcasecmp(arg, fmm_mode_name((flight_mode_t)i)) == 0)
+        {
+          mode = i;
+          break;
+        }
+      }
+      if (mode < 0)
+      {
+        uart1_puts_safe("[CMD] MODE: unknown mode name\r\n");
+        return;
+      }
+    }
+    else
+    {
+      mode = atoi(arg);
+    }
+
+    if (mode >= 0 && mode < FM_COUNT)
     {
       char buf[48];
       fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
@@ -218,8 +266,33 @@ static void process_text_command(const char *cmd)
   else if (strncmp(cmd, "MODE ", 5) == 0)
   {
     /* Also support "MODE 1" (space instead of =) */
-    int mode = atoi(cmd + 5);
-    if (mode >= 0 && mode <= 3)
+    int mode = -1;
+
+    /* Try name match first (case-insensitive) */
+    const char *arg = cmd + 5;
+    size_t arg_len = strlen(arg);
+    if (arg_len > 0 && (arg[0] < '0' || arg[0] > '9'))
+    {
+      for (int i = 0; i < FM_COUNT; i++)
+      {
+        if (strcasecmp(arg, fmm_mode_name((flight_mode_t)i)) == 0)
+        {
+          mode = i;
+          break;
+        }
+      }
+      if (mode < 0)
+      {
+        uart1_puts_safe("[CMD] MODE: unknown mode name\r\n");
+        return;
+      }
+    }
+    else
+    {
+      mode = atoi(arg);
+    }
+
+    if (mode >= 0 && mode < FM_COUNT)
     {
       char buf[48];
       fmm_result_t result = fmm_request_transition((flight_mode_t)mode);
@@ -249,8 +322,41 @@ static void process_text_command(const char *cmd)
   }
   else if (strncmp(cmd, "HELP", 4) == 0)
   {
-    uart1_puts_safe(
-        "[CMD] CMDS: REBOOT|STATUS|ECHO|CAPTURE|MODE=0-3|GPS|GPSSTATS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SETTIME|TLMFMT|TLMFMT=JSON|TLMFMT=TEXT\r\n");
+    uart1_puts_safe("[CMD] ── System ──\r\n");
+    uart1_puts_safe("[CMD] REBOOT              reboot OBC\r\n");
+    uart1_puts_safe("[CMD] STATUS              system + GPS + POST status\r\n");
+    uart1_puts_safe("[CMD] FAULTS              highest fault level\r\n");
+    uart1_puts_safe("[CMD] ECHO                connectivity check\r\n");
+    uart1_puts_safe("[CMD] CAPTURE             trigger payload camera\r\n");
+    uart1_puts_safe("[CMD] ── Mode ──\r\n");
+    uart1_puts_safe("[CMD] MODE=<0-5|name>     BOOT|SAFE|DETUMBLE|NOMINAL|DIAGNOSTIC|PAYLOAD\r\n");
+    uart1_puts_safe("[CMD] DEPLOY              BOOT/SAFE → DETUMBLE (deploy panels)\r\n");
+    uart1_puts_safe("[CMD] DEPLOYCLEAR         reset deploy-in-progress flag\r\n");
+    uart1_puts_safe("[CMD] ── GPS ──\r\n");
+    uart1_puts_safe("[CMD] GPS                 last GPS fix\r\n");
+    uart1_puts_safe("[CMD] GPSSTATS            GPS statistics (rx/err/overflow)\r\n");
+    uart1_puts_safe("[CMD] RESETGPS            reset GPS stats\r\n");
+    uart1_puts_safe("[CMD] RESETGPS COLD       cold start GPS\r\n");
+    uart1_puts_safe("[CMD] ── Calibration ──\r\n");
+    uart1_puts_safe("[CMD] MAG-CAL-START       start magnetometer calibration\r\n");
+    uart1_puts_safe("[CMD] MAG-CAL-STOP        stop & compute offsets\r\n");
+    uart1_puts_safe("[CMD] MAG-CAL-STATUS      show magnetometer cal status\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-START       start IMU (gyro+accel) calibration\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-STOP        stop & compute offsets\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-STATUS      show IMU cal status\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-SAVE        save IMU cal to flash\r\n");
+    uart1_puts_safe("[CMD] IMU-CAL-LOAD        load IMU cal from flash\r\n");
+    uart1_puts_safe("[CMD] ── Tests ──\r\n");
+    uart1_puts_safe("[CMD] I2CSCAN             scan I2C bus\r\n");
+    uart1_puts_safe("[CMD] BH1750_TEST         test light sensor\r\n");
+    uart1_puts_safe("[CMD] SHT31_TEST          test temp/humidity sensor\r\n");
+    uart1_puts_safe("[CMD] RTC_TEST            test DS3231 RTC\r\n");
+    uart1_puts_safe("[CMD] POWER_TEST          test INA219 bus power\r\n");
+    uart1_puts_safe("[CMD] SOLAR_TEST          test solar panel ADC\r\n");
+    uart1_puts_safe("[CMD] ── Misc ──\r\n");
+    uart1_puts_safe("[CMD] LOG                 dump event log (TODO)\r\n");
+    uart1_puts_safe("[CMD] SETTIME YYYY MM DD HH MM SS   set RTC\r\n");
+    uart1_puts_safe("[CMD] HELP                this message\r\n");
   }
   else if (strncmp(cmd, "LOG", 3) == 0)
   {
@@ -470,32 +576,35 @@ static void process_text_command(const char *cmd)
     }
     uart1_puts_safe(buf);
   }
-  else if (strncmp(cmd, "TLMFMT=", 7) == 0)
+  else if (strncmp(cmd, "DEPLOYCLEAR", 11) == 0)
   {
-    /* Set telemetry format: TEXT or JSON */
-    if (strncmp(cmd + 7, "JSON", 4) == 0)
+    data_layer_set_deploy_in_progress(false);
+    uart1_puts_safe("[CMD] DEPLOYCLEAR: deploy flag cleared\r\n");
+  }
+  else if (strncmp(cmd, "DEPLOY", 6) == 0)
+  {
+    flight_mode_t m = fmm_get_mode();
+    if (m == FM_BOOT || m == FM_SAFE)
     {
-      telemetry_set_format(TLM_FORMAT_JSON);
-      uart1_puts_safe("[CMD] TLMFMT=JSON OK\r\n");
+      fmm_result_t r = fmm_request_transition(FM_DETUMBLE);
+      if (r == FMM_OK)
+      {
+        data_layer_set_deploy_in_progress(true);
+        uart1_puts_safe("[CMD] DEPLOY: transition to DETUMBLE\r\n");
+      }
+      else
+      {
+        uart1_puts_safe("[CMD] DEPLOY: transition failed\r\n");
+      }
     }
-    else if (strncmp(cmd + 7, "TEXT", 4) == 0)
+    else if (m == FM_DETUMBLE)
     {
-      telemetry_set_format(TLM_FORMAT_TEXT);
-      uart1_puts_safe("[CMD] TLMFMT=TEXT OK\r\n");
+      uart1_puts_safe("[CMD] DEPLOY: already in progress\r\n");
     }
     else
     {
-      uart1_puts_safe("[CMD] TLMFMT: usage: TLMFMT=TEXT or TLMFMT=JSON\r\n");
+      uart1_puts_safe("[CMD] DEPLOY: rejected (invalid mode)\r\n");
     }
-  }
-  else if (strncmp(cmd, "TLMFMT", 6) == 0)
-  {
-    /* Show current format */
-    telemetry_format_t fmt = telemetry_get_format();
-    const char *fmt_name = (fmt == TLM_FORMAT_JSON) ? "JSON" : "TEXT";
-    char buf[32];
-    snprintf(buf, sizeof(buf), "[CMD] TLMFMT: %s\r\n", fmt_name);
-    uart1_puts_safe(buf);
   }
   else
   {
@@ -625,6 +734,27 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
         .uptime_sec = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS / 1000),
         .fault_count = 0};
 
+    /* POST fields */
+    {
+      post_record_t post_rec;
+      data_layer_get_post_last(&post_rec);
+      if (post_rec.magic == POST_MAGIC)
+      {
+        uint32_t passed = 0;
+        for (uint32_t b = 0; b < POST_TEST_COUNT; b++)
+        {
+          if (post_rec.test_bitmap & (1u << b))
+          {
+            passed++;
+          }
+        }
+        resp.boot_count = post_rec.boot_count;
+        resp.post_pass_count = (uint8_t)passed;
+        resp.post_total_count = POST_TEST_COUNT;
+        resp.boot_reason = (uint8_t)post_rec.boot_reason;
+      }
+    }
+
     memcpy(cmd->payload, &resp, sizeof(resp));
     packet->length = sizeof(resp) + 1;
     csp_send(conn, packet);
@@ -753,6 +883,21 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
      * directly which has CSP_BUFFER_SIZE (256 bytes). */
     memcpy(packet->data, &resp, sizeof(resp));
     packet->length = (uint8_t)(sizeof(resp) + 1);
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_DEPLOY:
+  {
+    printf("[command_task] Executing DEPLOY\n");
+    flight_mode_t m = fmm_get_mode();
+    if (m == FM_BOOT || m == FM_SAFE)
+    {
+      fmm_request_transition(FM_DETUMBLE);
+      data_layer_set_deploy_in_progress(true);
+    }
+    /* Always send a success response (even for no-op) */
     csp_send(conn, packet);
     packet = NULL;
     break;

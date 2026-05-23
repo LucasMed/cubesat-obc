@@ -17,17 +17,19 @@
 #include "command_task.h"
 #include "config.h"
 #include "data_layer.h"
+#include "deploy_monitor.h"
 #include "drivers/i2c_interface.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
-#include "drivers/temperature.h"
 #include "ds3231.h"
 #include "eps.h"
 #include "fault_manager.h"
+#include "flight_mode.h"
 #include "gps_driver.h"
 #include "health_monitor_task.h"
 #include "ina219.h"
 #include "payload_task.h"
+#include "post.h"
 #include "sensor_read_task.h"
 #include "sht31.h"
 #include "sun_sensor.h"
@@ -133,7 +135,6 @@ static void vStartupTask(void *pvParameters)
   printf("  sensors...\r\n");
   fflush(stdout);
   int imu_res = mpu6050_init();
-  int temp_res = temperature_init();
   int mag_res = hmc5883l_init();
   bool sht31_res = sht31_init(SHT31_ADDR_DEFAULT);
 
@@ -169,7 +170,7 @@ static void vStartupTask(void *pvParameters)
   }
   fflush(stdout);
 
-  system_state_set_available(imu_res == 0, temp_res == 0);
+  system_state_set_available(imu_res == 0, sht31_res);
   data_layer_set_mag_avail(mag_res == 0);
   data_layer_set_lux_avail(bh1750_res);
   data_layer_set_rtc_avail(ds3231_res);
@@ -178,7 +179,7 @@ static void vStartupTask(void *pvParameters)
   data_layer_set_sun_avail(sun_sensor_res);
   printf("  IMU: %s  Temp: %s  Mag: %s  SHT31: %s  BH1750: %s  RTC: %s  PWR: %s  SOLAR: %s  "
          "Sun: %s\r\n",
-         imu_res == 0 ? "OK" : "not found", temp_res == 0 ? "OK" : "not found",
+         imu_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",
          mag_res == 0 ? "OK" : "not found", sht31_res ? "OK" : "not found",
          bh1750_res ? "OK" : "not found", ds3231_res ? "OK" : "not found",
          ina219_res ? "OK" : "not found", ina219_solar_res ? "OK" : "not found",
@@ -199,6 +200,25 @@ static void vStartupTask(void *pvParameters)
   fflush(stdout);
 #endif
 
+  /* --- POST: Power-On Self-Test --- */
+  {
+    post_record_t post_rec = {0};
+    post_run(&post_rec);
+    if (post_is_critical_fail(&post_rec))
+    {
+      printf("[STARTUP] POST CRITICAL FAIL — forcing SAFE mode\r\n");
+      fflush(stdout);
+      fmm_force_safe();
+    }
+    else
+    {
+      printf("[STARTUP] POST OK (boot=%lu reason=%s)\r\n", (unsigned long)post_rec.boot_count,
+             post_boot_reason_name(post_rec.boot_reason));
+      fflush(stdout);
+    }
+  }
+  /* --- END POST --- */
+
   printf("  creating tasks...\r\n");
   fflush(stdout);
 
@@ -211,7 +231,7 @@ static void vStartupTask(void *pvParameters)
 #ifdef PICO_BUILD
   /* Task handles — Pico only; HWM printed in ALIVE loop. */
   static TaskHandle_t h_sensor = NULL, h_ctrl = NULL, h_telem = NULL;
-  static TaskHandle_t h_cmd = NULL, h_health = NULL, h_payload = NULL, h_gps = NULL;
+  static TaskHandle_t h_cmd = NULL, h_health = NULL, h_gps = NULL;
   static TaskHandle_t h_led = NULL, h_hb = NULL;
   #define HPTR(h) (&(h))
 #else
@@ -254,6 +274,9 @@ static void vStartupTask(void *pvParameters)
     extern void gps_task(void *pvParameters);
     CHK(xTaskCreate(gps_task, "GpsTask", 2048, NULL, tskIDLE_PRIORITY + 2, HPTR(h_gps)), "GpsTask");
   }
+
+  CHK(xTaskCreate(vDeployMonitorTask, "DeployMon", 2048, NULL, tskIDLE_PRIORITY + 2, NULL),
+      "DeployMon");
 
   printf("  payload_task_init...\r\n");
   fflush(stdout);

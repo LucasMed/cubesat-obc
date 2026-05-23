@@ -31,6 +31,14 @@
 #endif
 
 /* ------------------------------------------------------------------ */
+/* Configurable SHT31 stub globals (defined in sht31_stub.c)           */
+/* ------------------------------------------------------------------ */
+
+extern bool   s_sht31_fetch_ret;
+extern float  s_sht31_fetch_temp;
+extern float  s_sht31_fetch_humid;
+
+/* ------------------------------------------------------------------ */
 /* Driver stubs (strong symbols override the absent drivers_lib)       */
 /* ------------------------------------------------------------------ */
 
@@ -144,6 +152,9 @@ static void reset(void)
   s_gyro_deg[1] = 45.0f;
   s_gyro_deg[2] = 180.0f;
   s_temp_val = 36.5f;
+  s_sht31_fetch_ret = false;
+  s_sht31_fetch_temp = 0.0f;
+  s_sht31_fetch_humid = 0.0f;
 }
 
 /* ------------------------------------------------------------------ */
@@ -227,6 +238,8 @@ static void test_temp_unavailable(void)
 static void test_temp_available(void)
 {
   reset();
+  s_sht31_fetch_ret = true;
+  s_sht31_fetch_temp = 42.0f;
   s_temp_val = 42.0f;
   data_layer_set_sensor_avail(false, true);
   vSensorReadTask_Step();
@@ -245,6 +258,8 @@ static void test_temp_available(void)
 static void test_both_sensors(void)
 {
   reset();
+  s_sht31_fetch_ret = true;
+  s_sht31_fetch_temp = 20.0f;
   s_temp_val = 20.0f;
   data_layer_set_sensor_avail(true, true);
   vSensorReadTask_Step();

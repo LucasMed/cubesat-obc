@@ -70,6 +70,23 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_payload_integration wcet_lib m)
     add_test(NAME payload_integration_test COMMAND test_payload_integration)
 
+    # T-DEPLOY-01/02: Deploy sequence integration tests.
+    # Real deploy_monitor + FMM + POST + data_layer; stubs for all HW dependencies.
+    add_executable(test_deploy_seq
+        test_deploy_seq.c
+        ../../src/services/fmm/deploy_monitor.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/services/post/post.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_deploy_seq PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    target_link_libraries(test_deploy_seq m)
+    add_test(NAME deploy_seq_test COMMAND test_deploy_seq)
+
 else()
     # Pico hardware integration tests
     add_executable(test_i2c_hardware

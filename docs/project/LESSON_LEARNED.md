@@ -1,3 +1,49 @@
+# SDD Deploy Automation — Lessons Learned (2026-05-21)
+
+## Separate the State Machine from the Orchestrator
+
+**Problem**: Initial design considered adding auto-transition logic inside the FMM state machine itself.
+
+**Solution**: Keeping FMM as a pure state machine and placing deploy orchestration in a separate `deploy_monitor` task was the right call. The deploy monitor calls `fmm_request_transition()` — it's an **operator** on FMM, not part of it. This separation made testing easier (deploy monitor tests mock FMM, FMM tests don't need deploy state) and keeps FMM reusable.
+
+## Review Wiring Before Implementation Completion
+
+**Problem**: The `deploy_monitor` task was never created in `obc_main.c`. All 22 other tasks were complete, all tests passed, but 0 of the deploy_monitor logic ran at runtime because neither `#include "deploy_monitor.h"` nor `xTaskCreate()` were added.
+
+**Lesson**: Add a verification step that checks "is the new task created?" and "is the new code path reachable from `main()`?" as part of every task-level acceptance criteria. The verification phase found this (CRITICAL), but better to catch at apply time.
+
+## Float Constants Need Explicit Suffixes in Embedded C
+
+**Problem**: `DEPLOY_DETUMBLE_THRESHOLD 0.05f` without the `f` suffix can trigger double-precision math on ARM Cortex-M33, pulling in `__aeabi_dcmp` and bloating the binary.
+
+**Solution**: All float constants in deploy_monitor.h use explicit `f` suffix.
+
+## Leaky Counter vs Hard Reset
+
+**Problem**: The spec originally said "reset to zero" on any ω ≥ 0.05 sample. With real IMU noise, this would prevent detumble transition from ever completing.
+
+**Solution**: Use leaky counter hysteresis — decrement on borderline samples (0.05–0.10 rad/s), hard reset only on severe excursions (> 0.10 rad/s). Documented in the design as a resolved question.
+
+## ISR Context Limitations
+
+**Problem**: `fmm_force_safe()` can be called from ISR context (e.g., via fault chain), but `xTaskGetTickCount()` is not ISR-safe on all FreeRTOS ports.
+
+**Solution**: Skip `mode_entry_tick` update in ISR context. The watchdog scratch register is the authoritative forensic record for safe-mode entry timing. Document the limitation explicitly.
+
+## Flash Layout Requires Centralised Management
+
+**Problem**: Multiple subsystems (POST, telemetry storage, fault logs, config) write to W25Q64 flash. Without a centralised `flash_layout.h`, sector collisions are inevitable.
+
+**Solution**: Created `include/flash_layout.h` as single source of truth with `static_assert` guards for non-overlapping regions.
+
+## Test Harness Drift Risk
+
+**Problem**: `process_text_command()` is gated behind `#ifdef PICO_BUILD`, so host tests use a reimplementation (`test_run_text_command`) which can drift from production code.
+
+**Lesson**: Future changes should consider making the text command parser compilable on host by guarding only the hardware-specific parts.
+
+---
+
 # FreeRTOS on Raspberry Pi Pico 2 (Cortex-M33)
 ## Lesson Learned: Context Switching & Hardware Architecture Mismatch
 

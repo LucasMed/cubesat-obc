@@ -7,11 +7,13 @@
  */
 
 #ifdef PICO_BUILD
+  #include <stddef.h>
 
 /**
  * @brief Thread-safe wrapper for uart_puts to UART1 (single atomic write)
  */
 void uart1_puts_safe(const char *str);
+void uart1_write_buf(const uint8_t *data, size_t len);
 
 /**
  * @brief Acquire UART1 lock for atomic multi-write operations

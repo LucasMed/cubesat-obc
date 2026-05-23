@@ -175,6 +175,32 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_fmm m)
     add_test(NAME fmm_test COMMAND test_fmm)
 
+    # POST suite — boot reason names, critical-fail detection, host-run validation
+    add_executable(test_post
+        test_post.c
+        ../../src/services/post/post.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_post PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_post m)
+    add_test(NAME post_test COMMAND test_post)
+
+    # Deploy Monitor — init, flag reflection, macro validation
+    add_executable(test_deploy_monitor
+        test_deploy_monitor.c
+        ../../src/services/fmm/deploy_monitor.c
+        ../../src/services/fmm/flight_mode_manager.c
+        ../../src/services/post/post.c
+        ../../src/core/data_layer.c
+        ../../src/core/system_state.c
+        ../../src/control/quaternion.c
+    )
+    target_include_directories(test_deploy_monitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_deploy_monitor m)
+    add_test(NAME deploy_monitor_test COMMAND test_deploy_monitor)
+
     # PR-4 gate: Fault Manager — table, severity, auto-clear, CRITICAL side-effects.
     # Links real fault_manager + fmm + data_layer so fmm_force_safe() is live.
     add_executable(test_fault_manager

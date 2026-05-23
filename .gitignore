@@ -23,6 +23,7 @@ out/
 vendor/
 external/
 node_modules/
+openspec/
 
 # IDE and editor files
 .vscode/

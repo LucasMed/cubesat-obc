@@ -22,7 +22,6 @@
 #include "drivers/imu/imu_calib.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
-#include "drivers/temperature.h"
 #include "ds3231.h"
 #include "ekf.h"
 #include "ina219.h"
@@ -109,13 +108,11 @@ void vSensorReadTask_Step(void)
     }
   }
 
-  /* Read temperature only if sensor was detected */
+  /* Read SHT31 temperature and humidity using periodic mode (non-blocking).
+   * NOTE: only SHT31 provides AMBIENT temperature. The Pico internal ADC
+   * sensor reads ~80°C (chip self-heating) — NOT written to telemetry. */
   if (snap.state.temp_available)
   {
-    float temp = temperature_read();
-    data_layer_write_temp(temp);
-
-    /* Read SHT31 temperature and humidity using periodic mode (non-blocking) */
     float sht31_temp = 0.0f;
     float sht31_humidity = 0.0f;
 

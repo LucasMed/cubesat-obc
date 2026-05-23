@@ -57,6 +57,15 @@ void eps_monitor_tick(void) {}
 #include "flight_mode.h"
 #include "health_monitor_task.h"
 
+/* ---- Logger stub (flight_mode_manager.c calls log_event) --------------- */
+void log_event(uint16_t event_id, uint8_t log_class, const void *data, uint8_t data_len)
+{
+  (void)event_id;
+  (void)log_class;
+  (void)data;
+  (void)data_len;
+}
+
 /* ---- Test helpers ------------------------------------------------------- */
 static int g_failures = 0;
 

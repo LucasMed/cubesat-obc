@@ -1,18 +1,304 @@
 #include <SoftwareSerial.h>
 
+/* =================================================================
+ * Binary Telemetry Packet Protocol — Arduino Ground Station
+ *
+ * The OBC sends 55-byte frames interleaved with text command responses:
+ *   Binary  : [0xAA] [0x55] [53-byte telemetry_packet_t]
+ *   Text    : Lines ending in \n, prefixed like [CMD], GPS:, etc.
+ *
+ * State machine detects binary frames by sync word, falls through
+ * to line-based text processing for command responses.
+ * ================================================================= */
+
+/* ---- Binary protocol constants (mirrors OBC) ---- */
+#define TLM_SYNC_BYTE_1  0xAA
+#define TLM_SYNC_BYTE_2  0x55
+#define TLM_PACKET_SIZE  53
+
+/* State machine states */
+enum { ST_IDLE, ST_GOT_AA, ST_COLLECT, ST_VERIFY };
+
+/* ---- Binary telemetry packet (packed, 53 bytes) ---- */
+typedef struct __attribute__((packed)) {
+  uint32_t ts;            // [0]  FreeRTOS tick ms
+  uint32_t rtc;           // [4]  Unix epoch seconds
+  uint8_t  mode;          // [8]  OBC mode
+  int16_t  roll;          // [9]  ×10
+  int16_t  pitch;         // [11] ×10
+  int16_t  yaw;           // [13] ×10
+  int16_t  temp;          // [15] ×10 (0.1°C)
+  int16_t  humidity;      // [17] ×10 (0.1%)
+  uint16_t lux;           // [19] lux
+  int32_t  gps_lat;       // [21] ×1e7
+  int32_t  gps_lon;       // [25] ×1e7
+  int16_t  gps_alt;       // [29] meters
+  uint8_t  gps_valid;     // [31] 0=no fix
+  uint8_t  gps_sats;      // [32] satellites
+  int16_t  bus_mv;        // [33] bus voltage mV
+  int16_t  bus_ma;        // [35] bus current mA
+  int16_t  bus_mw;        // [37] bus power mW
+  int16_t  battery_mv;    // [39] battery mV
+  int16_t  solar_mv;      // [41] solar mV
+  int16_t  solar_ma;      // [43] solar mA
+  int16_t  solar_mw;      // [45] solar mW
+  int16_t  sun_x;         // [47] ×100
+  int16_t  sun_y;         // [49] ×100
+  uint8_t  flags;         // [51] bitmask
+  uint8_t  crc;           // [52] CRC-8/MAXIM over bytes 0..51
+} telemetry_packet_t;
+
+/* ---- Pinout ---- */
 const byte HC12RxdPin = 2;
 const byte HC12TxdPin = 3;
 const byte HC12SetPin = 9;
 
+/* ---- Buffers ---- */
+#define LINE_BUF_SIZE 256
+char line_buf[LINE_BUF_SIZE];
+byte frame_buf[TLM_PACKET_SIZE];
+
+/* ---- State ---- */
 SoftwareSerial HC12(HC12RxdPin, HC12TxdPin);
 
 #define MODE_NORMAL 0
-#define MODE_AT 1
+#define MODE_AT     1
 byte currentMode = MODE_NORMAL;
 
-// Telemetry format: 0=TEXT, 1=JSON
-byte tlmFormat = 0;
+/* Frame reception state machine */
+byte rx_state = ST_IDLE;
+byte rx_pos   = 0;
 
+/* ================================================================
+ * CRC-8/MAXIM (Dallas 1-Wire) — matches OBC tlm_crc8()
+ * ================================================================ */
+static uint8_t crc8_maxim(const uint8_t *data, uint16_t len)
+{
+  uint8_t crc = 0;
+  for (uint16_t i = 0; i < len; i++)
+  {
+    crc ^= data[i];
+    for (uint8_t j = 0; j < 8; j++)
+    {
+      if (crc & 0x80)
+        crc = (crc << 1) ^ 0x31;
+      else
+        crc <<= 1;
+    }
+  }
+  return crc;
+}
+
+/* ================================================================
+ * Binary frame parser
+ * ================================================================ */
+void parseBinaryFrame(const telemetry_packet_t *pkt)
+{
+  /* Decode fixed-point fields */
+  float roll  = pkt->roll  / 10.0f;
+  float pitch = pkt->pitch / 10.0f;
+  float yaw   = pkt->yaw   / 10.0f;
+  float temp  = pkt->temp  / 10.0f;
+  float hum   = pkt->humidity / 10.0f;
+  float gps_lat = pkt->gps_lat / 10000000.0f;
+  float gps_lon = pkt->gps_lon / 10000000.0f;
+  float sun_x   = pkt->sun_x  / 100.0f;
+  float sun_y   = pkt->sun_y  / 100.0f;
+
+  /* Decode flags */
+  bool imu_ok      = (pkt->flags & 0x01) != 0;
+  bool temp_ok     = (pkt->flags & 0x02) != 0;
+  bool hum_ok      = (pkt->flags & 0x04) != 0;
+  bool lux_ok      = (pkt->flags & 0x08) != 0;
+  bool rtc_ok      = (pkt->flags & 0x10) != 0;
+  int  energy_state = (pkt->flags >> 5) & 0x07;
+
+  /* ---- Print formatted output ---- */
+  Serial.print("Mode=");
+  Serial.print(pkt->mode);
+  Serial.print(" Roll=");
+  Serial.print(roll, 1);
+  Serial.print(" Pitch=");
+  Serial.print(pitch, 1);
+  Serial.print(" Yaw=");
+  Serial.print(yaw, 1);
+  Serial.print(" IMU=");
+  Serial.print(imu_ok ? "OK" : "FAIL");
+
+  if (temp_ok) { Serial.print(" Temp="); Serial.print(temp, 1); Serial.print("C"); }
+  if (hum_ok)  { Serial.print(" Hum=");  Serial.print(hum, 1);  Serial.print("%"); }
+  if (lux_ok)  { Serial.print(" Lux=");  Serial.print(pkt->lux); }
+
+  if (rtc_ok && pkt->rtc > 0)
+  {
+    Serial.print(" RTC=");
+    Serial.print(pkt->rtc);
+    Serial.print(" (");
+    Serial.print((pkt->rtc / 86400) % 365);
+    Serial.print("d ");
+    Serial.print((pkt->rtc / 3600) % 24);
+    Serial.print("h ");
+    Serial.print((pkt->rtc / 60) % 60);
+    Serial.print("m)");
+  }
+
+  Serial.print(" Sun=[");
+  Serial.print(sun_x, 2);
+  Serial.print(",");
+  Serial.print(sun_y, 2);
+  Serial.print("] Energy=");
+  Serial.print(energy_state);
+
+  /* GPS */
+  Serial.print(" GPS=");
+  Serial.print(pkt->gps_valid ? "OK" : "NO FIX");
+  Serial.print(" Sats=");
+  Serial.print(pkt->gps_sats);
+  if (pkt->gps_valid)
+  {
+    Serial.print(" Lat=");
+    Serial.print(gps_lat, 6);
+    Serial.print(" Lon=");
+    Serial.print(gps_lon, 6);
+    Serial.print(" Alt=");
+    Serial.print(pkt->gps_alt);
+  }
+
+  /* Bus power */
+  Serial.print(" V=");
+  Serial.print(pkt->bus_mv);
+  Serial.print("mV I=");
+  Serial.print(pkt->bus_ma);
+  Serial.print("mA P=");
+  Serial.print(pkt->bus_mw);
+  Serial.print("mW");
+
+  /* Battery */
+  Serial.print(" Bat=");
+  if (pkt->battery_mv > 0) { Serial.print(pkt->battery_mv); Serial.print("mV"); }
+  else                     { Serial.print("N/A"); }
+
+  /* Solar */
+  if (pkt->solar_mv > 0 || pkt->solar_ma > 0)
+  {
+    Serial.print(" SolarV=");
+    Serial.print(pkt->solar_mv);
+    Serial.print("mV SolarI=");
+    Serial.print(pkt->solar_ma);
+    Serial.print("mA SolarP=");
+    Serial.print(pkt->solar_mw);
+    Serial.print("mW");
+  }
+
+  Serial.print(" ts=");
+  Serial.print(pkt->ts);
+  Serial.print(" CRC=");
+  Serial.print(pkt->crc, HEX);
+  Serial.println();
+}
+
+/* ================================================================
+ * State machine: feed one byte from HC-12
+ * Returns true if the byte was consumed by a binary frame.
+ * ================================================================ */
+bool feedByte(byte b)
+{
+  switch (rx_state)
+  {
+    case ST_IDLE:
+      if (b == TLM_SYNC_BYTE_1)
+      {
+        rx_state = ST_GOT_AA;
+        return true;
+      }
+      return false;  // Not binary — caller should treat as text
+
+    case ST_GOT_AA:
+      if (b == TLM_SYNC_BYTE_2)
+      {
+        rx_state = ST_COLLECT;
+        rx_pos = 0;
+        return true;
+      }
+      /* False alarm: 0xAA followed by non-0x55 */
+      rx_state = ST_IDLE;
+      /* The 0xAA was consumed above and is lost — but 0xAA is non-printable
+       * so no text data is lost. The current byte (non-0x55) goes back to
+       * text processing. */
+      return false;
+
+    case ST_COLLECT:
+      frame_buf[rx_pos++] = b;
+      if (rx_pos >= TLM_PACKET_SIZE)
+      {
+        rx_state = ST_VERIFY;
+      }
+      return true;
+
+    case ST_VERIFY:
+      /* This shouldn't be reached with actual bytes — VERIFY is resolved
+         immediately. But handle gracefully. */
+      rx_state = ST_IDLE;
+      return false;
+
+    default:
+      rx_state = ST_IDLE;
+      return false;
+  }
+}
+
+/* ================================================================
+ * Check and parse a complete binary frame
+ * Called when rx_state == ST_VERIFY
+ * ================================================================ */
+void tryParseFrame(void)
+{
+  if (rx_state != ST_VERIFY) return;
+  rx_state = ST_IDLE;
+
+  telemetry_packet_t *pkt = (telemetry_packet_t *)frame_buf;
+  uint8_t expected_crc = crc8_maxim(frame_buf, TLM_PACKET_SIZE - 1);
+
+  if (expected_crc == pkt->crc)
+  {
+    Serial.print(">");  /* Confirmation: entering binary parser */
+    parseBinaryFrame(pkt);
+  }
+  else
+  {
+    Serial.print("[CRC FAIL] expected=0x");
+    Serial.print(expected_crc, HEX);
+    Serial.print(" got=0x");
+    Serial.print(pkt->crc, HEX);
+    Serial.print(" len=");
+    Serial.print(HC12.available());
+    Serial.println();
+  }
+}
+
+/* ================================================================
+ * Text line processing (command responses from OBC)
+ * ================================================================ */
+void processTextLine(const String &line)
+{
+  if (line.length() == 0) return;
+
+  if (line.startsWith("[CMD]"))
+  {
+    if (line.indexOf("POWER:") != -1)    { parsePowerTest(line); }
+    else if (line.indexOf("SOLAR:") != -1) { parseSolarTest(line); }
+    else                                   { Serial.println(line); }
+  }
+  else if (line.startsWith("SYSTEM:"))   { parseSystemStatus(line); }
+  else if (line.startsWith("GPS STATS:")) { parseGpsStats(line); }
+  else if (line.startsWith("GPS:"))      { parseGpsStatus(line); }
+  else if (line.startsWith("ULTS:"))     { parseFaults(line); }
+  else                                   { Serial.println(line); }
+}
+
+/* ================================================================
+ * Arduino setup / loop
+ * ================================================================ */
 void setup()
 {
   pinMode(HC12SetPin, OUTPUT);
@@ -21,14 +307,16 @@ void setup()
   Serial.begin(9600);
   HC12.begin(9600);
 
-  Serial.println("=== Ground Station Ready ===");
-  Serial.println(" Commands: AT|STATUS|REBOOT|ECHO|CAPTURE|MODE=0-3|GPS|FAULTS|LOG|RESET|HELP|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SOLAR_TEST|SHT31_TEST|TLMFMT|TLMFMT=JSON|TLMFMT=TEXT");
-  Serial.println(" Para modo AT: escribe 'AT' y presiona Enter");
-  Serial.println(" Para formato JSON: escribe 'TLMFMT=JSON'");
+  Serial.println("=== Ground Station Ready (Binary Protocol) ===");
+  Serial.println(" Commands: HELP|AT|STATUS|REBOOT|ECHO|CAPTURE|MODE=<0-5|name>|DEPLOY|DEPLOYCLEAR|GPS|GPSSTATS|RESETGPS|RESETGPS COLD");
+  Serial.println("           FAULTS|LOG|I2CSCAN|BH1750_TEST|RTC_TEST|POWER_TEST|SOLAR_TEST|SHT31_TEST|SETTIME");
+  Serial.println("           MAG-CAL-START|MAG-CAL-STOP|MAG-CAL-STATUS|IMU-CAL-START|IMU-CAL-STOP|IMU-CAL-STATUS|IMU-CAL-SAVE|IMU-CAL-LOAD");
+  Serial.println(" Binary telemetry auto-detected from OBC.");
 }
 
 void loop()
 {
+  /* ---- Serial input: user commands → HC-12 ---- */
   if (currentMode == MODE_AT)
   {
     if (Serial.available())
@@ -66,63 +354,50 @@ void loop()
     }
   }
 
-  if (HC12.available())
+  /* ---- HC-12 data: binary frames + text lines ---- */
+  while (HC12.available())
   {
-    String recibido = HC12.readStringUntil('\n');
-    recibido.trim();
+    byte b = HC12.read();
 
-    if (recibido.length() == 0) return;
+    /* Feed into state machine — if it matches a binary frame, done */
+    if (feedByte(b))
+    {
+      /* If we just completed a frame, parse it */
+      if (rx_state == ST_VERIFY)
+      {
+        tryParseFrame();
+      }
+      continue;
+    }
 
-    // Detect format: JSON starts with '[', TEXT starts with '['
-    if (recibido.startsWith("[JSON]"))
+    /* Not binary — treat as text byte */
+    static int line_pos = 0;
+
+    if (b == '\n' || line_pos >= LINE_BUF_SIZE - 1)
     {
-      // JSON format - remove prefix and parse
-      String jsonMsg = recibido.substring(7);
-      parseTelemetryJson(jsonMsg);
+      line_buf[line_pos] = '\0';
+      String line = String(line_buf);
+      line.trim();
+      line_pos = 0;
+      processTextLine(line);
     }
-    else if (recibido.startsWith("[TLM]"))
+    else if (b != '\r')
     {
-      parseTelemetry(recibido);
+      line_buf[line_pos++] = (char)b;
     }
-    else if (recibido.startsWith("[CMD]"))
-    {
-      // Check if it's a power test response
-      if (recibido.indexOf("POWER:") != -1)
-      {
-        parsePowerTest(recibido);
-      }
-      else if (recibido.indexOf("SOLAR:") != -1)
-      {
-        parseSolarTest(recibido);
-      }
-      else
-      {
-        Serial.println(recibido);
-      }
-    }
-    else if (recibido.startsWith("SYSTEM:"))
-    {
-      parseSystemStatus(recibido);
-    }
-    else if (recibido.startsWith("ULTS:"))
-    {
-      parseFaults(recibido);
-    }
-    else if (recibido.startsWith("GPS:"))
-    {
-      parseGpsStatus(recibido);
-    }
-    else if (recibido.startsWith("GPS STATS:"))
-    {
-      parseGpsStats(recibido);
-    }
-    else
-    {
-      Serial.println(recibido);
-    }
+    /* On '\r', just skip */
+  }
+
+  /* Check for pending frame in case all bytes arrived in one burst */
+  if (rx_state == ST_VERIFY)
+  {
+    tryParseFrame();
   }
 }
 
+/* ================================================================
+ * AT mode
+ * ================================================================ */
 void enterAtMode()
 {
   Serial.println("=== Modo AT ===");
@@ -131,157 +406,20 @@ void enterAtMode()
   delay(100);
 }
 
-void parseTelemetry(String msg)
+/* ================================================================
+ * Text response parsers (unchanged from original)
+ * ================================================================ */
+
+void parsePowerTest(const String &msg)
 {
-  // Compact format: m=mode a=r,p,y t=temp h=humidity l=lux r=rtc f=flags g=lat,lon,alt v=valid s=sats
-  int mode = getValue(msg, "m=").toInt();
-  
-  String attStr = getValue(msg, "a=");
-  int comma1 = attStr.indexOf(',');
-  int comma2 = attStr.lastIndexOf(',');
-  float roll = attStr.substring(0, comma1).toFloat();
-  float pitch = attStr.substring(comma1 + 1, comma2).toFloat();
-  float yaw = attStr.substring(comma2 + 1).toFloat();
-
-  float temp = getValue(msg, "t=").toFloat();
-  float humidity = getValue(msg, "h=").toFloat();
-  float lux = getValue(msg, "l=").toFloat();
-  float sun_x = getValue(msg, "sx=").toFloat();
-  float sun_y = getValue(msg, "sy=").toFloat();
-  unsigned long rtc = getValue(msg, "r=").toInt();
-
-  String flagStr = getValue(msg, "f=0x");
-  int flags = (int)strtol(("0x" + flagStr).c_str(), NULL, 16);
-
-  bool imu_ok = (flags & 0x01) != 0;
-  bool temp_ok = (flags & 0x02) != 0;
-  bool humidity_ok = (flags & 0x04) != 0;
-  bool lux_ok = (flags & 0x08) != 0;
-  bool rtc_ok = (flags & 0x10) != 0;
-  int energy_state = (flags >> 5) & 0x07;
-
-  // GPS: g=lat,lon,alt
-  String gpsStr = getValue(msg, "g=");
-  int g_comma1 = gpsStr.indexOf(',');
-  int g_comma2 = gpsStr.lastIndexOf(',');
-  float gps_lat = gpsStr.substring(0, g_comma1).toFloat();
-  float gps_lon = gpsStr.substring(g_comma1 + 1, g_comma2).toFloat();
-  float gps_alt = gpsStr.substring(g_comma2 + 1).toFloat();
-  int gps_valid = getValue(msg, "v=").toInt();
-  int sats = getValue(msg, "s=").toInt();
-  
-  // Power (bus): p=V,I,P
-  String pwrStr = getValue(msg, "p=");
-  int bus_v = 0, bus_i = 0, bus_p = 0;
-  if (pwrStr.length() > 0 && pwrStr != "0")
-  {
-    int c1 = pwrStr.indexOf(',');
-    int c2 = pwrStr.lastIndexOf(',');
-    if (c1 != -1 && c2 != -1)
-    {
-      bus_v = pwrStr.substring(0, c1).toInt();
-      bus_i = pwrStr.substring(c1 + 1, c2).toInt();
-      bus_p = pwrStr.substring(c2 + 1).toInt();
-    }
-  }
-  
-  // Battery: b=BAT_mV
-  int battery_mv = getValue(msg, "b=").toInt();
-  
-  // Solar panel: sp=V,I,P
-  String solarStr = getValue(msg, "sp=");
-  int solar_v = 0, solar_i = 0, solar_p = 0;
-  if (solarStr.length() > 0 && solarStr != "0")
-  {
-    int c1 = solarStr.indexOf(',');
-    int c2 = solarStr.lastIndexOf(',');
-    if (c1 != -1 && c2 != -1)
-    {
-      solar_v = solarStr.substring(0, c1).toInt();
-      solar_i = solarStr.substring(c1 + 1, c2).toInt();
-      solar_p = solarStr.substring(c2 + 1).toInt();
-    }
-  }
-  
-  // CRC (optional, format: c=XX)
-  String crc_recv = getValue(msg, "c=");
-  
-  Serial.print("Mode=");
-  Serial.print(mode);
-  Serial.print(" Roll=");
-  Serial.print(roll);
-  Serial.print(" Pitch=");
-  Serial.print(pitch);
-  Serial.print(" Yaw=");
-  Serial.print(yaw);
-  Serial.print(" IMU=");
-  Serial.print(imu_ok ? "OK" : "FAIL");
-  Serial.print(" Temp=");
-  Serial.print(temp_ok ? temp : -1, 1);
-  Serial.print("C");
-  Serial.print(" Hum=");
-  Serial.print(humidity_ok ? humidity : -1, 1);
-  Serial.print("%");
-  Serial.print(" Lux=");
-  Serial.print(lux_ok ? lux : -1, 1);
-  Serial.print(" RTC=");
-  Serial.print(rtc_ok ? rtc : 0);
-  Serial.print(" Sun=[");
-  Serial.print(sun_x, 2);
-  Serial.print(",");
-  Serial.print(sun_y, 2);
-  Serial.print("]");
-  Serial.print(" Energy=");
-  Serial.print(energy_state);
-  Serial.print(" GPS=");
-  Serial.print(gps_valid ? "OK" : "NO FIX");
-  Serial.print(" Sats=");
-  Serial.print(sats);
-  if (gps_valid)
-  {
-    Serial.print(" Lat=");
-    Serial.print(gps_lat, 6);
-    Serial.print(" Lon=");
-    Serial.print(gps_lon, 6);
-    Serial.print(" Alt=");
-    Serial.print(gps_alt, 1);
-  }
-  Serial.print(" V=");
-  Serial.print(bus_v);
-  Serial.print("mV I=");
-  Serial.print(bus_i);
-  Serial.print("mA P=");
-  Serial.print(bus_p);
-  Serial.print("mW");
-  Serial.print(" Bat=");
-  Serial.print(battery_mv);
-  Serial.print("mV");
-  if (solar_v > 0 || solar_i > 0)
-  {
-    Serial.print(" SolarV=");
-    Serial.print(solar_v);
-    Serial.print("mV SolarI=");
-    Serial.print(solar_i);
-    Serial.print("mA SolarP=");
-    Serial.print(solar_p);
-    Serial.print("mW");
-  }
-  Serial.println();
-}
-
-void parsePowerTest(String msg)
-{
-  // Format: [CMD] POWER: V=5728 mV, I=5 mA, P=28 mW
   int posV = msg.indexOf("V=");
   int posI = msg.indexOf("I=");
   int posP = msg.indexOf("P=");
-  
   if (posV != -1 && posI != -1 && posP != -1)
   {
     int v = msg.substring(posV + 2, msg.indexOf(' ', posV + 2)).toInt();
     int i = msg.substring(posI + 2, msg.indexOf(' ', posI + 2)).toInt();
     int p = msg.substring(posP + 2, msg.indexOf(' ', posP + 2)).toInt();
-    
     Serial.print("POWER: V=");
     Serial.print(v);
     Serial.print(" mV, I=");
@@ -296,19 +434,16 @@ void parsePowerTest(String msg)
   }
 }
 
-void parseSolarTest(String msg)
+void parseSolarTest(const String &msg)
 {
-  // Format: [CMD] SOLAR: V=896 mV, I=0 mA, P=0 mW
   int posV = msg.indexOf("V=");
   int posI = msg.indexOf("I=");
   int posP = msg.indexOf("P=");
-  
   if (posV != -1 && posI != -1 && posP != -1)
   {
     int v = msg.substring(posV + 2, msg.indexOf(' ', posV + 2)).toInt();
     int i = msg.substring(posI + 2, msg.indexOf(' ', posI + 2)).toInt();
     int p = msg.substring(posP + 2, msg.indexOf(' ', posP + 2)).toInt();
-    
     Serial.print("SOLAR PANEL: V=");
     Serial.print(v);
     Serial.print(" mV, I=");
@@ -323,14 +458,14 @@ void parseSolarTest(String msg)
   }
 }
 
-void parseGpsStatus(String msg)
+void parseGpsStatus(const String &msg)
 {
-  int valid = getValue(msg, "v=").toInt();
-  float lat = getValue(msg, "lat=").toFloat();
-  float lon = getValue(msg, "lon=").toFloat();
-  float alt = getValue(msg, "alt=").toFloat();
-  int sats = getValue(msg, "s=").toInt();
-  float hdop = getValue(msg, "hdop=").toFloat();
+  int valid    = getValue(msg, "v=").toInt();
+  float lat    = getValue(msg, "lat=").toFloat();
+  float lon    = getValue(msg, "lon=").toFloat();
+  float alt    = getValue(msg, "alt=").toFloat();
+  int sats     = getValue(msg, "s=").toInt();
+  float hdop   = getValue(msg, "hdop=").toFloat();
 
   Serial.print("GPS FIX: ");
   Serial.print(valid ? "VALID" : "NO FIX");
@@ -350,13 +485,13 @@ void parseGpsStatus(String msg)
   Serial.println();
 }
 
-void parseGpsStats(String msg)
+void parseGpsStats(const String &msg)
 {
-  unsigned long rx = getValue(msg, "rx=").toInt();
-  unsigned long chk_err = getValue(msg, "chk_err=").toInt();
-  unsigned long inv = getValue(msg, "inv=").toInt();
-  unsigned long valid = getValue(msg, "valid=").toInt();
-  unsigned long overflow = getValue(msg, "overflow=").toInt();
+  unsigned long rx       = (unsigned long)getValue(msg, "rx=").toInt();
+  unsigned long chk_err  = (unsigned long)getValue(msg, "chk_err=").toInt();
+  unsigned long inv      = (unsigned long)getValue(msg, "inv=").toInt();
+  unsigned long valid    = (unsigned long)getValue(msg, "valid=").toInt();
+  unsigned long overflow = (unsigned long)getValue(msg, "overflow=").toInt();
 
   Serial.print("GPS STATS: rx=");
   Serial.print(rx);
@@ -371,13 +506,13 @@ void parseGpsStats(String msg)
   Serial.println();
 }
 
-void parseSystemStatus(String msg)
+void parseSystemStatus(const String &msg)
 {
-  String modeStr = getValue(msg, "mode=");
+  String modeStr   = getValue(msg, "mode=");
   String energyStr = getValue(msg, "energy=");
-  String imuStr = getValue(msg, "imu=");
-  String tempStr = getValue(msg, "temp=");
-  String magStr = getValue(msg, "mag=");
+  String imuStr    = getValue(msg, "imu=");
+  String tempStr   = getValue(msg, "temp=");
+  String magStr    = getValue(msg, "mag=");
 
   Serial.print("SYSTEM: mode=");
   Serial.print(modeStr);
@@ -392,14 +527,17 @@ void parseSystemStatus(String msg)
   Serial.println();
 }
 
-void parseFaults(String msg)
+void parseFaults(const String &msg)
 {
   String levelStr = getValue(msg, "ULTS: ");
   Serial.print("ULTS: ");
   Serial.println(levelStr);
 }
 
-String getValue(String msg, String key)
+/* ================================================================
+ * Helper: extract value by key ("key=value ...")
+ * ================================================================ */
+String getValue(const String &msg, const String &key)
 {
   int pos = msg.indexOf(key);
   if (pos == -1) return "0";
@@ -407,256 +545,4 @@ String getValue(String msg, String key)
   int end = msg.indexOf(' ', start);
   if (end == -1) end = msg.length();
   return msg.substring(start, end);
-}
-
-// Get JSON value by Nth colon-separated value (0-indexed)
-// The keys are in FIXED order: ts,m,a,t,h,l,g,v,s,p,sx,sy,f,c
-String getJsonValueByNth(String msg, int n)
-{
-  // Find the nth colon
-  int colonPos = -1;
-  for (int i = 0; i <= n; i++)
-  {
-    colonPos = (i == 0) ? msg.indexOf(':') : msg.indexOf(':', colonPos + 1);
-    if (colonPos == -1) return "0";
-  }
-  
-  // colonPos now at the nth colon
-  int start = colonPos + 1;
-  while (start < msg.length() && msg.charAt(start) == ' ') start++;
-  
-  // Find end: use nth+1 colon position minus 1
-  // Or if no next colon, find closing brace
-  int searchStart = colonPos + 1;
-  int nextColonPos = msg.indexOf(':', searchStart);
-  int end;
-  
-  if (nextColonPos != -1)
-  {
-    // Back up to find comma before next colon
-    end = nextColonPos;
-    while (end > start && (msg.charAt(end - 1) == ' ' || msg.charAt(end - 1) == ',')) end--;
-  }
-  else
-  {
-    // No next colon - go to closing brace
-    end = start;
-    while (end < msg.length() && msg.charAt(end) != '}') end++;
-  }
-  
-  return msg.substring(start, end);
-}
-
-// Parse JSON telemetry format - robust simple parser
-void parseTelemetryJson(String msg)
-{
-  // Find each value by its unique key prefix
-  // Keys in order: ts, m, a, t, h, l, g, v, s, p, b, sp, sx, sy, f, c
-  
-  // ts - find "ts:" at start
-  int tsPos = msg.indexOf("ts:");
-  int tsStart = tsPos + 3;
-  int tsEnd = msg.indexOf(',', tsStart);
-  float ts = msg.substring(tsStart, tsEnd).toFloat();
-  
-  // m - next key after ts: ",m:VAL," 
-  int mPos = msg.indexOf(",m:");
-  int mStart = mPos + 3;
-  int mEnd = msg.indexOf(',', mStart);
-  int mode = msg.substring(mStart, mEnd).toInt();
-  
-  // a - attitude: ",a:" to ",t:"
-  int aPos = msg.indexOf(",a:");
-  int aStart = aPos + 3;
-  int aEnd = msg.indexOf(",t:", aStart);
-  String attStr = msg.substring(aStart, aEnd);
-  
-  // Parse attitude: r,p,y
-  float roll = 0, pitch = 0, yaw = 0;
-  if (attStr.indexOf(',') != -1)
-  {
-    int c1 = attStr.indexOf(',');
-    int c2 = attStr.lastIndexOf(',');
-    roll = attStr.substring(0, c1).toFloat();
-    pitch = attStr.substring(c1 + 1, c2).toFloat();
-    yaw = attStr.substring(c2 + 1).toFloat();
-  }
-  
-  // t - temperature: ",t:" to ",h:"
-  int tPos = msg.indexOf(",t:");
-  int tStart = tPos + 3;
-  int tEnd = msg.indexOf(",h:", tStart);
-  float temp = msg.substring(tStart, tEnd).toFloat();
-  
-  // h - humidity: ",h:" to ",l:"
-  int hPos = msg.indexOf(",h:");
-  int hStart = hPos + 3;
-  int hEnd = msg.indexOf(",l:", hStart);
-  float humidity = msg.substring(hStart, hEnd).toFloat();
-  
-  // l - lux: ",l:" to ",g:"
-  int lPos = msg.indexOf(",l:");
-  int lStart = lPos + 3;
-  int lEnd = msg.indexOf(",g:", lStart);
-  float lux_value = msg.substring(lStart, lEnd).toFloat();
-  
-  // g - GPS: ",g:" to ",v:"
-  int gPos = msg.indexOf(",g:");
-  int gStart = gPos + 3;
-  int gEnd = msg.indexOf(",v:", gStart);
-  String gpsStr = msg.substring(gStart, gEnd);
-  float gps_lat = 0, gps_lon = 0, gps_alt = 0;
-  if (gpsStr.indexOf(',') != -1)
-  {
-    int c1 = gpsStr.indexOf(',');
-    int c2 = gpsStr.lastIndexOf(',');
-    gps_lat = gpsStr.substring(0, c1).toFloat();
-    gps_lon = gpsStr.substring(c1 + 1, c2).toFloat();
-    gps_alt = gpsStr.substring(c2 + 1).toFloat();
-  }
-  
-  // v - valid: ",v:" to ",s:"
-  int vPos = msg.indexOf(",v:");
-  int vStart = vPos + 3;
-  int vEnd = msg.indexOf(",s:", vStart);
-  int gps_valid_str = msg.substring(vStart, vEnd).toInt();
-  
-  // s - sats: ",s:" to ",p:"
-  int sPos = msg.indexOf(",s:");
-  int sStart = sPos + 3;
-  int sEnd = msg.indexOf(",p:", sStart);
-  int sats = msg.substring(sStart, sEnd).toInt();
-  
-   // p - power (bus): ",p:" to ",b:"
-   int pPos = msg.indexOf(",p:");
-   int pStart = pPos + 3;
-   int pEnd = msg.indexOf(",b:", pStart);
-   String pwrStr = msg.substring(pStart, pEnd);
-   int volt = 0, curr = 0, power = 0;
-   if (pwrStr.indexOf(',') != -1)
-   {
-     int c1 = pwrStr.indexOf(',');
-     int c2 = pwrStr.lastIndexOf(',');
-     volt = pwrStr.substring(0, c1).toInt();
-     curr = pwrStr.substring(c1 + 1, c2).toInt();
-     power = pwrStr.substring(c2 + 1).toInt();
-   }
-   
-   // b - battery: ",b:" to ",sp:"
-   int bPos = msg.indexOf(",b:");
-   int bStart = bPos + 3;
-   int bEnd = msg.indexOf(",sp:", bStart);
-   int battery_mv = msg.substring(bStart, bEnd).toInt();
-   
-   // sp - solar panel: ",sp:" to ",sx:"
-  int spPos = msg.indexOf(",sp:");
-  int spStart = spPos + 4;
-  int spEnd = msg.indexOf(",sx:", spStart);
-  String solarStr = msg.substring(spStart, spEnd);
-  int solar_v = 0, solar_i = 0, solar_p = 0;
-  if (solarStr.indexOf(',') != -1)
-  {
-    int c1 = solarStr.indexOf(',');
-    int c2 = solarStr.lastIndexOf(',');
-    solar_v = solarStr.substring(0, c1).toInt();
-    solar_i = solarStr.substring(c1 + 1, c2).toInt();
-    solar_p = solarStr.substring(c2 + 1).toInt();
-  }
-  
-  // sx - sun x: ",sx:" to ",sy:"
-  int sxPos = msg.indexOf(",sx:");
-  int sxStart = sxPos + 4;
-  int sxEnd = msg.indexOf(",sy:", sxStart);
-  float sun_x = msg.substring(sxStart, sxEnd).toFloat();
-  
-  // sy - sun y: ",sy:" to ",f:"
-  int syPos = msg.indexOf(",sy:");
-  int syStart = syPos + 4;
-  int syEnd = msg.indexOf(",f:", syStart);
-  float sun_y = msg.substring(syStart, syEnd).toFloat();
-  
-  // f - flags: ",f:" to ",c:"
-  int fPos = msg.indexOf(",f:");
-  int fStart = fPos + 3;
-  int fEnd = msg.indexOf(",c:", fStart);
-  int flags = msg.substring(fStart, fEnd).toInt();
-  
-  // c - CRC: ",c:" to "}"
-  int cPos = msg.indexOf(",c:");
-  int cStart = cPos + 3;
-  int cEnd = msg.indexOf('}', cStart);
-  String crc_recv = msg.substring(cStart, cEnd);
-  
-// Decode flags
-  bool imu_ok = (flags & 0x01) != 0;
-  bool temp_ok = (flags & 0x02) != 0;
-  bool humidity_ok = (flags & 0x04) != 0;
-  bool lux_ok = (flags & 0x08) != 0;
-  bool rtc_ok = (flags & 0x10) != 0;
-  int energy_state = (flags >> 5) & 0x07;
-  
-  // Print formatted output
-  Serial.print("JSON Mode=");
-  Serial.print(mode);
-  Serial.print(" Roll=");
-  Serial.print(roll, 1);
-  Serial.print(" Pitch=");
-  Serial.print(pitch, 1);
-  Serial.print(" Yaw=");
-  Serial.print(yaw, 1);
-  Serial.print(" IMU=");
-  Serial.print(imu_ok ? "OK" : "FAIL");
-  Serial.print(" Temp=");
-  Serial.print(temp_ok ? temp : -1, 1);
-  Serial.print("C");
-  Serial.print(" Hum=");
-  Serial.print(humidity_ok ? humidity : -1, 1);
-  Serial.print("%");
-  Serial.print(" Lux=");
-  Serial.print(lux_ok ? lux_value : -1, 0);
-  Serial.print(" Sun=[");
-  Serial.print(sun_x, 2);
-  Serial.print(",");
-  Serial.print(sun_y, 2);
-  Serial.print("]");
-  Serial.print(" Energy=");
-  Serial.print(energy_state);
-  Serial.print(" GPS=");
-  Serial.print(gps_valid_str ? "OK" : "NO FIX");
-  Serial.print(" Sats=");
-  Serial.print(sats);
-  if (gps_valid_str)
-  {
-    Serial.print(" Lat=");
-    Serial.print(gps_lat, 6);
-    Serial.print(" Lon=");
-    Serial.print(gps_lon, 6);
-    Serial.print(" Alt=");
-    Serial.print(gps_alt, 0);
-  }
-  Serial.print(" V=");
-  Serial.print(volt);
-  Serial.print("mV I=");
-  Serial.print(curr);
-  Serial.print("mA P=");
-  Serial.print(power);
-  Serial.print("mW");
-  Serial.print(" Bat=");
-  Serial.print(battery_mv);
-  Serial.print("mV");
-  if (solar_v > 0 || solar_i > 0)
-  {
-    Serial.print(" SolarV=");
-    Serial.print(solar_v);
-    Serial.print("mV SolarI=");
-    Serial.print(solar_i);
-    Serial.print("mA SolarP=");
-    Serial.print(solar_p);
-    Serial.print("mW");
-  }
-  Serial.print(" ts=");
-  Serial.print(ts, 0);
-  Serial.print(" CRC=");
-  Serial.print(crc_recv);
-  Serial.println();
 }

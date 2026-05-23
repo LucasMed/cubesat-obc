@@ -39,4 +39,37 @@
   #define __noinit
 #endif
 
+/* macOS does not provide sem_timedwait() (POSIX option).
+ * Provide a simple poll-based fallback so libcsp's POSIX arch compiles. */
+#include <errno.h>
+#include <semaphore.h>
+#include <time.h>
+
+static inline int csp_macos_sem_timedwait(sem_t *sem, const struct timespec *abs_timeout)
+{
+  struct timespec now;
+  for (;;)
+  {
+    int ret = sem_trywait(sem);
+    if (ret == 0)
+    {
+      return 0;
+    }
+    if (errno != EAGAIN)
+    {
+      return -1;
+    }
+    clock_gettime(CLOCK_REALTIME, &now);
+    if (now.tv_sec > abs_timeout->tv_sec ||
+        (now.tv_sec == abs_timeout->tv_sec && now.tv_nsec >= abs_timeout->tv_nsec))
+    {
+      errno = ETIMEDOUT;
+      return -1;
+    }
+    struct timespec sleep = {0, 1000000}; /* 1 ms */
+    nanosleep(&sleep, NULL);
+  }
+}
+#define sem_timedwait(sem, ts) csp_macos_sem_timedwait((sem), (ts))
+
 #endif  // CSP_MACOS_COMPAT_H

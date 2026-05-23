@@ -38,6 +38,9 @@ if(PICO_BUILD)
         dynamics_lib
         tasks_lib
         fault_lib
+        fmm_lib
+        post_lib
+        log_lib
         eps_lib
         adcs_lib
         watchdog_hal_lib

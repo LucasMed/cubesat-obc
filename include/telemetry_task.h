@@ -6,13 +6,6 @@
 
 #define TELEMETRY_PORT 10
 
-/* Telemetry output format */
-typedef enum
-{
-  TLM_FORMAT_TEXT = 0,
-  TLM_FORMAT_JSON = 1
-} telemetry_format_t;
-
 // Packed struct ensures consistent size across different architectures
 typedef struct __attribute__((packed))
 {
@@ -41,7 +34,5 @@ typedef struct __attribute__((packed))
 
 void vTelemetryTask(void *pvParameters);
 void vTelemetryTask_Step(void);
-void telemetry_set_format(telemetry_format_t format);
-telemetry_format_t telemetry_get_format(void);
 
 #endif  // TELEMETRY_TASK_H

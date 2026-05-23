@@ -8,6 +8,11 @@
 #include <csp/csp.h>
 #include <stdio.h>
 
+/* SHT31 stub globals (defined in sht31_stub.c, linked via drivers_lib) */
+extern bool   s_sht31_fetch_ret;
+extern float  s_sht31_fetch_temp;
+extern float  s_sht31_fetch_humid;
+
 /* BH1750 stub — satisfies sensor_read_task.c link */
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool bh1750_read(float *lux)
@@ -33,15 +38,20 @@ void test_system_integration(void)
   assert(state.imu_valid == false);
   assert(state.temp_valid == false);
 
-  // 3. Run sensor read step (uses host i2c/temp mocks)
+  // 3. Configure SHT31 stub to simulate a successful temperature read
+  s_sht31_fetch_ret  = true;
+  s_sht31_fetch_temp = 25.0f;
+  s_sht31_fetch_humid = 0.0f;
+
+  // 4. Run sensor read step (uses host i2c/stub mocks)
   vSensorReadTask_Step();
 
-  // 4. Verify state updated
+  // 5. Verify state updated
   system_state_get(&state);
   assert(state.imu_valid == true);
   assert(state.temp_valid == true);
-  // Based on host mocks: ID 0x68 means mock IMU is "working"
-  // Mock temp is 25.0f
+  // Based on host mocks: IMU ID 0x68 means mock is "working"; temp comes from
+  // SHT31 stub which we configured to return 25.0f
   assert(state.temp == 25.0f);
 
   // 5. Run control and telemetry steps

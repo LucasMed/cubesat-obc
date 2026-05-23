@@ -41,6 +41,7 @@ extern "C"
 #define LOG_EVT_ENERGY_CHANGE 0x0102u /**< Energy state changed (EPS)             */
 #define LOG_EVT_CMD_CLASS_C 0x0103u   /**< Class-C (privileged) command received  */
 #define LOG_EVT_FAULT_ERROR 0x0104u   /**< A FAULT_LEVEL_ERROR was raised         */
+#define LOG_EVT_POST_COMPLETE 0x0105u /**< POST suite finished (bitmap + pass/fail) */
 
   /* ------------------------------------------------------------------ */
   /* Class C — Informational events (circular buffer, may be overwritten)*/

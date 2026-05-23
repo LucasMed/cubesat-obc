@@ -24,9 +24,25 @@
 #include "../../include/fault_ids.h"
 #include "../../include/fault_manager.h"
 #include "../../include/flight_mode.h"
+#include "../../include/logger.h"
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
+
+/* ------------------------------------------------------------------ */
+/* Mock stub for log_event                                              */
+/* ------------------------------------------------------------------ */
+
+/* flight_mode_manager.c calls log_event() after every transition.
+ * Provide a no-op stub so this test can link (logger_lib is NOT linked). */
+void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8_t data_len)
+{
+  (void)event_id;
+  (void)log_class;
+  (void)data;
+  (void)data_len;
+}
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */

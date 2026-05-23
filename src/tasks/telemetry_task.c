@@ -14,6 +14,7 @@
   #include "pico_pins.h"
 #endif
 
+#include "../protocols/telemetry_packet.h"
 #include "data_layer.h"
 #include "eps.h"
 #include "telemetry_storage.h"
@@ -42,61 +43,6 @@
 #define TLM_FLAG_LUX_VALID (1u << 3)
 #define TLM_FLAG_RTC_VALID (1u << 4)
 #define TLM_FLAG_ENERGY_SHIFT 5u
-
-/* CRC8 calculation (Maxim/Dallas style) */
-static uint8_t crc8_calc(const uint8_t *data, uint16_t len)
-{
-  uint8_t crc = 0;
-  for (uint16_t i = 0; i < len; i++)
-  {
-    crc ^= data[i];
-    for (uint8_t j = 0; j < 8; j++)
-    {
-      if (crc & 0x80)
-      {
-        crc = (crc << 1) ^ 0x31;  // Polynomial for CRC8- Maxim
-      }
-      else
-      {
-        crc <<= 1;
-      }
-    }
-  }
-  return crc;
-}
-
-/* Convert byte to hex char */
-static char byte_to_hex(uint8_t b)
-{
-  return (b < 10) ? ('0' + b) : ('A' + b - 10);
-}
-
-/* Telemetry output format storage - defined in header */
-static volatile telemetry_format_t g_tlm_format = TLM_FORMAT_TEXT;
-
-/* Implementation of format control functions */
-/**
- * @brief Set telemetry output format.
- *
- * Called from command handler.
- *
- * @param format  TLM_FORMAT_TEXT or TLM_FORMAT_JSON
- */
-void telemetry_set_format(telemetry_format_t format)
-{
-  g_tlm_format = format;
-  printf("[telemetry] Format switched to %s\n", (format == TLM_FORMAT_JSON) ? "JSON" : "TEXT");
-}
-
-/**
- * @brief Get current telemetry format.
- *
- * @return Current format.
- */
-telemetry_format_t telemetry_get_format(void)
-{
-  return g_tlm_format;
-}
 
 // Core logic for telemetry (independent of FreeRTOS task loop)
 void vTelemetryTask_Step(void)
@@ -214,79 +160,49 @@ void vTelemetryTask_Step(void)
   csp_sendto(CSP_PRIO_NORM, GN_ADDRESS, TELEMETRY_PORT, TELEMETRY_PORT, CSP_O_NONE, packet);
 
 #ifdef PICO_BUILD
-  // Send telemetry over UART1 (HC-12) in configured format
-  char buf[512];
+  /* Send binary telemetry over UART1 (HC-12)
+   *
+   * Format: [SYNC 0xAA 0x55] [53-byte telemetry_packet_t]
+   * Total: 55 bytes @ 9600 baud ≈ 55ms — fits in SoftwareSerial buffer.
+   */
+  telemetry_packet_t bin;
+  memset(&bin, 0, sizeof(bin));
 
-  if (g_tlm_format == TLM_FORMAT_JSON)
-  {
-    // JSON format for simulator (simplified, with CRC8)
-    int16_t current_abs = (tlm->current_ma < 0) ? -tlm->current_ma : tlm->current_ma;
-    int16_t power_abs = (tlm->power_mw < 0) ? -tlm->power_mw : tlm->power_mw;
-    int16_t solar_v = snap.state.solar_voltage_mv;
-    int16_t solar_i = (snap.state.solar_current_ua < 0)
-                          ? (int16_t)(-(snap.state.solar_current_ua / 1000))
-                          : (int16_t)(snap.state.solar_current_ua / 1000);
-    int16_t solar_p = (snap.state.solar_power_uw < 0)
-                          ? (int16_t)(-(snap.state.solar_power_uw / 1000))
-                          : (int16_t)(snap.state.solar_power_uw / 1000);
+  /* Convert float/int fields to fixed-point */
+  bin.ts = (uint32_t)tlm->timestamp_ms;
+  bin.rtc = (uint32_t)tlm->rtc_timestamp;
+  bin.mode = (uint8_t)snap.mode;
+  bin.roll = (int16_t)(tlm->attitude[0] * 10.0f);
+  bin.pitch = (int16_t)(tlm->attitude[1] * 10.0f);
+  bin.yaw = (int16_t)(tlm->attitude[2] * 10.0f);
+  bin.temp = (int16_t)(tlm->temp * 10.0f);
+  bin.humidity = (int16_t)(tlm->humidity * 10.0f);
+  bin.lux = (uint16_t)(tlm->lux);
+  bin.gps_lat = (int32_t)(tlm->gps_lat * 10000000.0);
+  bin.gps_lon = (int32_t)(tlm->gps_lon * 10000000.0);
+  bin.gps_alt = (int16_t)(tlm->gps_alt_m);
+  bin.gps_valid = (uint8_t)tlm->gps_valid;
+  bin.gps_sats = (uint8_t)tlm->gps_satellites;
+  bin.bus_mv = (int16_t)(tlm->bus_voltage_mv);
+  bin.bus_ma = (int16_t)((tlm->current_ma < 0) ? -tlm->current_ma : tlm->current_ma);
+  bin.bus_mw = (int16_t)((tlm->power_mw < 0) ? -tlm->power_mw : tlm->power_mw);
+  bin.battery_mv = (int16_t)(tlm->battery_mv);
+  bin.solar_mv = (int16_t)(snap.state.solar_voltage_mv);
+  bin.solar_ma =
+      (int16_t)((snap.state.solar_current_ua < 0) ? (int16_t)(-(snap.state.solar_current_ua / 1000))
+                                                  : (int16_t)(snap.state.solar_current_ua / 1000));
+  bin.solar_mw =
+      (int16_t)((snap.state.solar_power_uw < 0) ? (int16_t)(-(snap.state.solar_power_uw / 1000))
+                                                : (int16_t)(snap.state.solar_power_uw / 1000));
+  bin.sun_x = (int16_t)(tlm->sun_x * 100.0f);
+  bin.sun_y = (int16_t)(tlm->sun_y * 100.0f);
+  bin.flags = (uint8_t)tlm->flags;
+  bin.crc = tlm_crc8((const uint8_t *)&bin, sizeof(bin) - 1);
 
-    int len = snprintf(
-        buf, sizeof(buf),
-        "[JSON] {ts:%lu,m:%d,a:%.1f,%.1f,%.1f,t:%.1f,h:%.1f,l:%.1f,g:%.6f,%.6f,%.1f,v:%d,s:%d,p:%d,%d,%d,b:%d,sp:%d,%d,%d,sx:%.2f,sy:%.2f,f:%u",
-        (unsigned long)tlm->timestamp_ms, snap.mode, tlm->attitude[0], tlm->attitude[1],
-        tlm->attitude[2], tlm->temp, tlm->humidity, tlm->lux, tlm->gps_lat, tlm->gps_lon,
-        tlm->gps_alt_m, tlm->gps_valid, tlm->gps_satellites, tlm->bus_voltage_mv, current_abs,
-        power_abs, tlm->battery_mv, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y, tlm->flags);
-
-    uint8_t json_crc = crc8_calc((const uint8_t *)buf + 7, len - 9);  // CRC on data only
-    int pos = len;
-    buf[pos++] = ',';
-    buf[pos++] = 'c';
-    buf[pos++] = ':';
-    buf[pos++] = byte_to_hex(json_crc >> 4);
-    buf[pos++] = byte_to_hex(json_crc & 0x0F);
-    buf[pos++] = '}';
-    buf[pos++] = '\r';
-    buf[pos++] = '\n';
-    buf[pos] = '\0';
-  }
-  else
-  {
-    // TEXT format (compact, with CRC8)
-    int16_t current_abs = (tlm->current_ma < 0) ? -tlm->current_ma : tlm->current_ma;
-    int16_t power_abs = (tlm->power_mw < 0) ? -tlm->power_mw : tlm->power_mw;
-    int16_t solar_v = snap.state.solar_voltage_mv;
-    int16_t solar_i = (snap.state.solar_current_ua < 0)
-                          ? (int16_t)(-(snap.state.solar_current_ua / 1000))
-                          : (int16_t)(snap.state.solar_current_ua / 1000);
-    int16_t solar_p = (snap.state.solar_power_uw < 0)
-                          ? (int16_t)(-(snap.state.solar_power_uw / 1000))
-                          : (int16_t)(snap.state.solar_power_uw / 1000);
-
-    int len = snprintf(buf, sizeof(buf),
-                       "[TLM] m=%d a=%.1f,%.1f,%.1f t=%.1f h=%.1f l=%.1f r=%lu f=0x%02X "
-                       "g=%.6f,%.6f,%.1f v=%d s=%d p=%d,%d,%d b=%d sp=%d,%d,%d "
-                       "sx=%.2f sy=%.2f c=  \r\n",
-                       snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp,
-                       tlm->humidity, tlm->lux, (unsigned long)tlm->rtc_timestamp, tlm->flags,
-                       tlm->gps_lat, tlm->gps_lon, tlm->gps_alt_m, tlm->gps_valid,
-                       tlm->gps_satellites, tlm->bus_voltage_mv, current_abs, power_abs,
-                       tlm->battery_mv, solar_v, solar_i, solar_p, tlm->sun_x, tlm->sun_y);
-    // Calculate CRC and insert (skip "[TLM] " = 6 chars, CRC replaces two spaces after c=)
-    uint8_t text_crc = crc8_calc((const uint8_t *)buf + 6, len - 7);  // -7 for " c=  \r\n"
-    buf[len - 4] = byte_to_hex(text_crc >> 4);                        // Replace 1st space
-    buf[len - 3] = byte_to_hex(text_crc & 0x0F);                      // Replace 2nd space
-    (void)len;
-  }
-
-  uart1_puts_safe(buf);
-
-  // Debug: show first 100 chars of generated buffer
-  buf[100] = '\0';
-  if (g_tlm_format == TLM_FORMAT_JSON)
-    printf("[telemetry] UART buf (first 100): %s\n", buf + 7);  // Skip "[JSON] " prefix
-  else
-    printf("[telemetry] UART buf (first 100): %s\n", buf + 6);  // Skip "[TLM] " prefix
+  /* Send sync word + packet */
+  uint8_t sync[2] = {TLM_SYNC_BYTE_1, TLM_SYNC_BYTE_2};
+  uart1_write_buf(sync, 2);
+  uart1_write_buf((const uint8_t *)&bin, sizeof(bin));
 #endif
 
   // Debug output to UART0

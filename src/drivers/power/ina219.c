@@ -177,7 +177,7 @@ bool ina219_init_device(ina219_t *dev, uint8_t addr)
   return true;
 }
 
-bool ina219_device_is_present(ina219_t *dev)
+bool ina219_device_is_present(const ina219_t *dev)
 {
   if (dev == NULL)
   {
@@ -292,7 +292,7 @@ bool ina219_device_read_power(ina219_t *dev, ina219_data_t *data)
   return true;
 }
 
-bool ina219_device_reset(ina219_t *dev)
+bool ina219_device_reset(ina219_t *dev)  // cppcheck-suppress constParameterPointer
 {
   if (dev == NULL)
   {
@@ -302,7 +302,7 @@ bool ina219_device_reset(ina219_t *dev)
   return write_register(dev->addr, INA219_REG_CONFIG, INA219_CONFIG_RESET);
 }
 
-uint32_t ina219_device_get_last_reading_ms(ina219_t *dev)
+uint32_t ina219_device_get_last_reading_ms(const ina219_t *dev)
 {
   if (dev == NULL)
   {
@@ -311,7 +311,7 @@ uint32_t ina219_device_get_last_reading_ms(ina219_t *dev)
   return dev->last_reading_ms;
 }
 
-int16_t ina219_device_get_voltage_mv(ina219_t *dev)
+int16_t ina219_device_get_voltage_mv(const ina219_t *dev)
 {
   if (dev == NULL)
   {

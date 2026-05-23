@@ -56,7 +56,7 @@ bool ina219_init_device(ina219_t *dev, uint8_t addr)
   return true;
 }
 
-bool ina219_device_is_present(ina219_t *dev)
+bool ina219_device_is_present(const ina219_t *dev)
 {
   (void)dev;
   return true;
@@ -103,7 +103,7 @@ bool ina219_device_reset(ina219_t *dev)
   return true;
 }
 
-uint32_t ina219_device_get_last_reading_ms(ina219_t *dev)
+uint32_t ina219_device_get_last_reading_ms(const ina219_t *dev)
 {
   if (dev == NULL)
   {
@@ -112,7 +112,7 @@ uint32_t ina219_device_get_last_reading_ms(ina219_t *dev)
   return dev->last_reading_ms;
 }
 
-int16_t ina219_device_get_voltage_mv(ina219_t *dev)
+int16_t ina219_device_get_voltage_mv(const ina219_t *dev)
 {
   if (dev == NULL)
   {

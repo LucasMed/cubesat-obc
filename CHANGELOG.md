@@ -5,6 +5,44 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] — 2026-05-21 — Deploy Automation
+
+### Added
+- **Power-On Self-Test (POST) suite**: Structured hardware verification at boot with persistent results in W25Q64 flash
+  - 10-subsystem test coverage: I2C bus, IMU self-test, MAG ID, SHT31, BH1750, RTC, INA219 bus, INA219 solar, GPS, Flash
+  - Boot reason detection from watchdog scratch registers (POWER_ON, WATCHDOG, STACK_OVERFLOW, BROWNOUT)
+  - Ring buffer of last 32 POST records in flash sector at 0x700000 with CRC32 integrity
+  - Critical POST failures (IMU/RTC/Flash) force FM_SAFE and block deploy sequence
+  - POST summary displayed in STATUS command (boot count, pass count, boot reason)
+
+- **Deploy Monitor FreeRTOS task**: Autonomous orbital deployment sequence
+  - `OI-1`: Auto `FM_BOOT → FM_DETUMBLE` after POST OK + IMU valid + 5s settle
+  - `OI-2`: Auto `FM_DETUMBLE → FM_NOMINAL` when `|ω| < 0.05 rad/s` sustained 5s (leaky counter hysteresis)
+  - `OI-6`: Mode dwell timeouts — BOOT 5 min → SAFE, DETUMBLE 20 min → SAFE, DIAGNOSTIC 30 min → NOMINAL
+  - `deploy_in_progress` flag tracks deployment state; cleared on SAFE/NOMINAL entry
+  - Ground preemptable: manual MODE command cancels auto-transition
+
+- **DEPLOY command** (CSP `CMD_DEPLOY = 13` + text): Initiate deploy from BOOT/SAFE → DETUMBLE
+  - DEPLOYCLEAR text command to reset deploy flag without mode change
+  - Mode name parsing: `MODE=DETUMBLE`, `MODE=nominal` (case-insensitive)
+  - MODE range extended 0–3 → 0–5 (unlocks DIAGNOSTIC=4, PAYLOAD=5)
+
+- **Event logging**: `LOG_EVT_MODE_CHANGE` (0x0101) on every FMM transition; `LOG_EVT_POST_COMPLETE` (0x0105) on POST completion
+
+### Fixed
+- **MODE range bug**: `MODE=4/5` previously rejected (0–3 bound); now accepts via `mode < FM_COUNT`
+- **deploy_in_progress not cleared on SAFE timeout**: FMM-SPEC-083 fix — cleared in timeout handler when fallback is FM_SAFE
+
+### Documentation
+- Main FMM specs established at `openspec/specs/fmm/spec.md` (52 requirements, 9 groups)
+
+### Testing
+- Test suite: **53/53 passing** (was 49)
+- New test files: `test_post.c`, `test_deploy_monitor.c`, `test_deploy_seq.c`
+- Updated: `test_fmm.c` (event logging), `command_task_test.c` (DEPLOY, MODE name, POST in STATUS)
+
+---
+
 ## [0.30.0] — 2026-05-19 — Real Battery ADC Telemetry
 
 ### Fixed

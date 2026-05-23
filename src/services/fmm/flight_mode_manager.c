@@ -25,9 +25,12 @@
  * Spec ref: SPEC-2-FMM v1.1, SPEC-2 v2.0 §4.1
  */
 
+#include "FreeRTOS.h"
 #include "data_layer.h"
 #include "fault_manager.h"
 #include "flight_mode.h"
+#include "logger.h"
+#include "task.h"
 
 /* ------------------------------------------------------------------ */
 /* Allowed-transition matrix                                           */
@@ -110,6 +113,17 @@ fmm_result_t fmm_request_transition(flight_mode_t target)
   }
 
   data_layer_set_flight_mode(target);
+
+  /* LOG_EVT_MODE_CHANGE (FMM-DES-001 §8.6): emit event with old/new mode in payload.
+   * Not called from ISR context — log_event() uses mutex internally and is task-context only. */
+  {
+    const uint8_t mode_payload[2] = {(uint8_t)current, (uint8_t)target};
+    log_event(LOG_EVT_MODE_CHANGE, LOG_CLASS_OPERATIONAL, mode_payload, 2);
+  }
+
+  /* Record entry tick for mode timeout enforcement (OI-6) */
+  data_layer_set_mode_entry_tick(xTaskGetTickCount());
+
   return FMM_OK;
 }
 
@@ -117,7 +131,14 @@ void fmm_force_safe(void)
 {
   /* Bypasses matrix and fault checks.
    * ISR-safe: uses data_layer_set_flight_mode_from_isr() with critical section
-   * instead of xSemaphoreTake(). Safe to call from ISR context (CDR-SAF-01, OI-SW-2). */
+   * instead of xSemaphoreTake(). Safe to call from ISR context (CDR-SAF-01, OI-SW-2).
+   *
+   * NOTE: LOG_EVT_MODE_CHANGE is NOT emitted here because:
+   *   - log_event() uses a mutex and is NOT ISR-safe
+   *   - The watchdog scratch register is the authoritative forensic record for safe-mode entry
+   *   - LOG_EVT_SAFE_ENTRY (0x0001) is already emitted by fault_manager.c when fmm_force_safe() is
+   *     called from the fault chain in task context
+   * mode_entry_tick is NOT updated — xTaskGetTickCount() is unsafe in ISR context. */
   data_layer_set_flight_mode_from_isr(FM_SAFE);
 }
 

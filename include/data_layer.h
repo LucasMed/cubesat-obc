@@ -27,6 +27,7 @@
 #include "eps.h"
 #include "flight_mode.h"
 #include "gps_driver.h"
+#include "post.h"
 #include "system_state.h"
 
 #include <stdbool.h>
@@ -50,14 +51,17 @@ extern "C"
    */
   typedef struct
   {
-    system_state_t state;  /**< Sensor data: attitude (rad), rates (rad/s),
-                            *   temperature (°C), validity flags             */
-    flight_mode_t mode;    /**< Current flight mode (from FMM)               */
-    energy_state_t energy; /**< Current energy state (from EPS monitor)      */
-    GpsFix_t gps_fix;      /**< Last GPS fix (lat, lon, alt, utc, valid)    */
-    uint32_t seq;          /**< Write sequence counter.  Incremented on every
-                            *   successful write call.  Readers can detect
-                            *   stale copies by comparing seq values.         */
+    system_state_t state;     /**< Sensor data: attitude (rad), rates (rad/s),
+                               *   temperature (°C), validity flags             */
+    flight_mode_t mode;       /**< Current flight mode (from FMM)               */
+    energy_state_t energy;    /**< Current energy state (from EPS monitor)      */
+    GpsFix_t gps_fix;         /**< Last GPS fix (lat, lon, alt, utc, valid)    */
+    bool deploy_in_progress;  /**< True during auto-deploy sequence           */
+    post_record_t post_last;  /**< Last POST result from boot self-test       */
+    uint32_t mode_entry_tick; /**< xTaskGetTickCount() at last mode entry    */
+    uint32_t seq;             /**< Write sequence counter.  Incremented on every
+                               *   successful write call.  Readers can detect
+                               *   stale copies by comparing seq values.         */
   } dl_snapshot_t;
   /**
    * @brief Update the GPS fix in the shared snapshot.
@@ -336,6 +340,51 @@ extern "C"
    * last read without taking the full mutex.
    */
   uint32_t data_layer_get_seq(void);
+
+  /* ------------------------------------------------------------------ */
+  /* Deploy / POST accessors                                             */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * @brief Set the deploy-in-progress flag.
+   * @param in_progress true when deploy sequence is active.
+   */
+  void data_layer_set_deploy_in_progress(bool in_progress);
+
+  /**
+   * @brief Get the deploy-in-progress flag.
+   * @return true if the deploy sequence is active.
+   */
+  bool data_layer_get_deploy_in_progress(void);
+
+  /**
+   * @brief Store the most recent POST record.
+   * @param record  POST record to save (must not be NULL).
+   */
+  void data_layer_set_post_last(const post_record_t *record);
+
+  /**
+   * @brief Retrieve the most recent POST record.
+   * @param out  Populated with the stored record (must not be NULL).
+   */
+  void data_layer_get_post_last(post_record_t *out);
+
+  /**
+   * @brief Set the mode-entry tick count.
+   *
+   * Called by the FMM on every successful mode transition to record
+   * when the current mode was entered.  Used by the deploy monitor
+   * for timeout enforcement.
+   *
+   * @param tick  Value of xTaskGetTickCount() at mode entry.
+   */
+  void data_layer_set_mode_entry_tick(uint32_t tick);
+
+  /**
+   * @brief Get the mode-entry tick count.
+   * @return The tick count recorded at the last mode transition.
+   */
+  uint32_t data_layer_get_mode_entry_tick(void);
 
 #ifdef __cplusplus
 }

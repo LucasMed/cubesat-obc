@@ -148,15 +148,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libcsp/CMakeLists.txt")
     # Strategy: clear csp_common's INTERFACE_COMPILE_OPTIONS (the source of
     # -Werror/-Wpedantic) and add back only the warnings we want.
     if(APPLE)
-        # macOS has stricter warnings when compiling libcsp.  We keep
-        # the Ethernet driver disabled on the host since it depends on
-        # linux-specific APIs, but leave the USART code enabled so that
-        # the host firmware executable and unit tests can link.  The
-        # drivers are mocked in tests when necessary.
-        target_compile_definitions(csp PRIVATE
-            CSP_DISABLE_ETHERNET=1
-            # keep USART enabled for host builds
-        )
+        # macOS has stricter warnings when compiling libcsp.
         set_property(TARGET csp_common PROPERTY INTERFACE_COMPILE_OPTIONS
             -Wall -Wextra -Wcast-align -Wmissing-prototypes
             -Wpointer-arith -Wshadow -Wwrite-strings
