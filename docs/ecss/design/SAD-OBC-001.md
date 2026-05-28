@@ -31,6 +31,12 @@ Fields marked `[TBD-HW]` require additional hardware instrumentation (planned v1
 | WiFi/BT | CYW43439 (LED driven via GPIO) |
 | Board | Pico 2W |
 | SDK | Raspberry Pi Pico SDK 2.1.1 |
+| Mechanical | **HexSat-130** — hexagonal form factor, 115 mm flat-to-flat × 130 mm height |
+
+> **Mechanical note**: The satellite structure is a custom hexagonal form factor
+> (HexSat-130) distinct from standard 1U CubeSat. See `mechanical/hexsat130_v1.scad`
+> for the parametric mechanical model. The camera payload (OV2640) is mounted
+> laterally on a side panel for Earth observation, not on a nadir-facing top plate.
 
 ### 2.1 Active Core Configuration (v0.7.0)
 

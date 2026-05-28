@@ -433,7 +433,7 @@ GND         ─────────────▶ GND, STBY
 |-----------|----------------|-------|---------|
 | Bidirectional H-bridge driver | DRV8833 (module) or L9110S | ~$1–2 each | Reverses current through coil (dipole +/−) |
 | Electromagnetic coil | Homemade ferrite-core coil (AWG28, 300 turns) | ~$2–4 each | Generates magnetic dipole proportional to current |
-| Ferrite core | MnZn bar 8×70 mm | ~$1 each | Increases permeability → more moment per turn |
+| Ferrite core | MnZn bar 8×50 mm | ~$1 each | Increases permeability → more moment per turn |
 
 **Wiring diagram — Magnetorquer × 1 axis (repeat × 3):**
 ```
@@ -657,12 +657,12 @@ GPIO10 — PWM5A    → RW Motor 1 (pin 14)
 GPIO11 — PWM5B    → RW Motor 2 (pin 15)
 GPIO12 — PWM6A    → RW Motor 3 (pin 16)
 GPIO16 — SPI MISO ← Flash (pin 21)
-GPIO17 — PWM0B    → MTQ X (pin 22)
+GPIO14 — PWM7A    → MTQ X (pin 31)
 GPIO18 — SPI SCK  ← Flash (pin 24)
 GPIO19 — SPI MOSI → Flash (pin 25)
 GPIO20 — WATCHDOG_KICK → TPS3431 (pin 26)
-GPIO21 — PWM2B    → MTQ Y (pin 27)
-GPIO22 — PWM3A    → MTQ Z (pin 29)
+GPIO15 — PWM7B    → MTQ Y (pin 32)
+GPIO16 — PWM0A    → MTQ Z (pin 33)
 GPIO25 — STATUS_LED → Onboard LED
 GPIO26 — ADC0     → Battery (pin 31)
 GPIO27 — ADC1     → Sun sensor X (pin 32)
@@ -755,7 +755,7 @@ All sensors share the same I2C bus at 400 kHz. No address conflicts:
 | 8 | RW | H-bridge motor driver | TB6612FNG (breakout module) | 3 | ~$2.5 | ~$7.50 | AliExpress |
 | 9 | RW | Inertia disk | Acrylic or aluminum ~5 cm Ø, 5–10 mm | 3 | ~$1 | ~$3 | AliExpress / hardware store |
 | 10 | MTQ | H-bridge driver | DRV8833 (module) | 3 | ~$1.5 | ~$4.50 | AliExpress |
-| 11 | MTQ | Ferrite core | MnZn bar 8×70 mm | 3 | ~$1.5 | ~$4.50 | AliExpress |
+| 11 | MTQ | Ferrite core | MnZn bar 8×50 mm | 3 | ~$1.5 | ~$4.50 | AliExpress |
 | 12 | MTQ | Copper wire | AWG28 enameled, 50 m spool | 1 | ~$4 | ~$4 | AliExpress / local electronics |
 | 13 | EPS | LiPo 18650 battery | Samsung 30Q 3000 mAh, 3.7V 1S | 2 | ~$8 | ~$16 | Local electronics store |
 | 14 | EPS | 5V Boost converter | MT3608 module (up to 28V, 2A) | 2 | ~$1 | ~$2 | AliExpress |

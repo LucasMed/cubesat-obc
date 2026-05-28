@@ -50,12 +50,12 @@ Supporting subsystems include:
 
 ### 4.1 SPI Bus
 
-SPI bus shared between payload devices.
+SPI0 bus shared between payload devices and onboard flash.
 
-**Devices on SPI:**
-- Magnetometer
-- Camera
-- microSD storage
+**Devices on SPI0:**
+- Magnetometer (RM3100)
+- Camera (OV2640)
+- Flash storage (W25Q64)
 
 | Signal | Direction | Description |
 | :--- | :--- | :--- |
@@ -217,32 +217,33 @@ or
 
 ### 11.1 SPI Bus Mapping
 
-Shared SPI bus between camera, magnetometer, and microSD.
+Shared SPI0 bus between camera, magnetometer, and flash storage.
 
 | Signal | OBC Pin | Payload Device | Device Pin | Direction | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **SPI_MOSI** | GPIO19 | Camera / Mag / SD | MOSI | OBC → Payload | Shared SPI bus |
-| **SPI_MISO** | GPIO16 | Camera / Mag / SD | MISO | Payload → OBC | Shared SPI bus |
-| **SPI_SCK** | GPIO18 | Camera / Mag / SD | SCK | OBC → Payload | Shared SPI clock |
-| **SPI_CS_CAM** | GPIO14 | Camera | CS | OBC → Camera | Camera chip select |
+| **SPI_MOSI** | GPIO19 | Camera / Mag / Flash | MOSI | OBC → Payload | Shared SPI0 bus |
+| **SPI_MISO** | GPIO17 | Camera / Mag / Flash | MISO | Payload → OBC | Shared SPI0 bus — changed from GPIO16 (now MTQ Z) |
+| **SPI_SCK** | GPIO18 | Camera / Mag / Flash | SCK | OBC → Payload | Shared SPI0 clock |
+| **SPI_CS_CAM** | GPIO23 | Camera | CS | OBC → Camera | Camera chip select — changed from GPIO14 (now MTQ X) |
 | **SPI_CS_MAG** | GPIO6 | Magnetometer | CS | OBC → Sensor | Magnetometer chip select |
-| **SPI_CS_SD** | GPIO7 | microSD | CS | OBC → Storage | SD card select |
+| **SPI_CS_FLASH** | GPIO7 | Flash (W25Q64) | CS | OBC → Storage | Flash chip select (replaces microSD) |
 
 **SPI Mode:**
 - Mode 0
 
 **SPI Max Clock:**
-- 20 MHz
+- 1 MHz (init) / 10 MHz (data transfer)
 
 ### 11.2 Camera Control Signals
 
 Camera based on Arducam Mini Module Camera Shield with OV2640 2MP.
+Camera registers configured via I2C1 (GPIO2 SDA, GPIO3 SCL). Image data transferred via SPI0.
 
 | Signal | OBC Pin | Camera Pin | Direction | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| **CAM_RESET**| GPIO8 | RESET | OBC → Camera | Hardware reset |
-| **CAM_TRIGGER**| GPIO9 | TRIG | OBC → Camera | Capture trigger |
-| **CAM_FIFO_RDY**| GPIO10 | FIFO_RDY | Camera → OBC | Optional interrupt |
+| **CAM_RESET**| GPIO24 | RESET | OBC → Camera | Hardware reset — changed from GPIO8 (now UART1 TX / HC-12) |
+| **CAM_TRIGGER**| GPIO22 | TRIG | OBC → Camera | Capture trigger — changed from GPIO9 (now UART1 RX / HC-12) |
+| **CAM_FIFO_RDY**| GPIO10 | FIFO_RDY | Camera → OBC | Optional interrupt — shared with RW_MOTOR1_PWM ⚠️ |
 
 ### 11.3 Magnetometer Interface
 
@@ -273,7 +274,7 @@ Detector based on Hamamatsu S1223-01 PIN Photodiode with OPA134 Operational Ampl
 
 | Signal | OBC Pin | Type | Direction | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| **RAD_SIGNAL** | ADC0 (GPIO26)| Analog | Payload → OBC | Pulse measurement |
+| **RAD_SIGNAL** | ADC2 (GPIO28)| Analog | Payload → OBC | Pulse measurement |
 | **RAD_THRESHOLD**| GPIO13 | Digital | Payload → OBC | Comparator interrupt |
 
 **ADC Configuration:**
@@ -289,95 +290,108 @@ Detector based on Hamamatsu S1223-01 PIN Photodiode with OPA134 Operational Ampl
 
 ### 11.7 Reserved Pins
 
-| OBC Pin | Purpose |
-| :--- | :--- |
-| **GPIO15** | Payload expansion |
-| **GPIO17** | Debug |
+_(All previously reserved GPIOs have been allocated — see Section 11.8 for current usage.)_
 
 ### 11.8 Summary of OBC Pin Usage
 
 | Interface | Pins Used |
 | :--- | :--- |
-| **SPI** | GPIO16, 18, 19 |
-| **Chip Selects** | GPIO6, 7, 14 |
-| **Camera Control** | GPIO8, 9, 10 |
+| **SPI** | GPIO17, 18, 19 |
+| **Chip Selects** | GPIO6, 7, 23 |
+| **Camera Control** | GPIO10, 22, 24 |
+| **Camera I2C Config** | GPIO2, 3 |
 | **Magnetometer IRQ** | GPIO11 |
 | **GPS** | GPIO0, 1, 12 |
-| **Radiation Detector** | GPIO13, 26 |
+| **Radiation Detector** | GPIO13, 28 |
+| **Magnetorquer PWM** | GPIO14, 15, 16 (non-payload) |
 
-**Total pins used:**
-- 13 GPIO
+**Total payload pins used:**
+- 12 GPIO (payload only)
 - 1 ADC
 
-*Compatible with RP2040 / RP2350 MCU pin availability.*
+*GPIO14/15/16 allocated to magnetorquers (ADCS subsystem). See ICD-OBC-001 for full pinout.*
 
 ### 11.9 OBC Pinout Allocation Diagram
 
-OBC based on RP2040 / RP2350 MCU (e.g., Raspberry Pi Pico / Pico 2 W).
+OBC based on RP2350 MCU (Raspberry Pi Pico 2W).
 
 ```text
-                OBC MCU (RP2040 / RP2350)
-               ┌──────────────────────────┐
-               │                          │
- UART0_TX  →   │ GPIO0  ────────────── GPS RX
- UART0_RX  ←   │ GPIO1  ────────────── GPS TX
-               │                          │
- I2C_SDA   ↔   │ GPIO4  ────────────── I2C Payload Bus
- I2C_SCL   ↔   │ GPIO5  ────────────── I2C Payload Bus
-               │                          │
- SPI_CS_MAG →  │ GPIO6  ────────────── RM3100 CS
- SPI_CS_SD  →  │ GPIO7  ────────────── microSD CS
-               │                          │
- CAM_RESET  →  │ GPIO8  ────────────── Camera RESET
- CAM_TRIGGER→  │ GPIO9  ────────────── Camera Trigger
-               │                          │
- CAM_FIFO_RDY← │ GPIO10 ────────────── Camera Interrupt
- MAG_DRDY   ←  │ GPIO11 ────────────── Magnetometer DRDY
- GPS_PPS    ←  │ GPIO12 ────────────── GPS 1PPS
- RAD_IRQ    ←  │ GPIO13 ────────────── Radiation Comparator
-               │                          │
- SPI_CS_CAM →  │ GPIO14 ────────────── Camera CS
-               │                          │
- SPI_MISO   ←  │ GPIO16 ────────────── SPI Bus
- SPI_SCK    →  │ GPIO18 ────────────── SPI Bus
- SPI_MOSI   →  │ GPIO19 ────────────── SPI Bus
-               │                          │
- WDT_KICK   →  │ GPIO20 ────────────── External Watchdog
-               │                          │
- RAD_SIGNAL ←  │ GPIO26 (ADC0) ─────── Radiation Analog Signal
-               │                          │
-               └──────────────────────────┘
+                    OBC MCU (RP2350 / Pico 2W)
+                  ┌──────────────────────────────────┐
+                  │                                  │
+ UART0_TX  →      │ GPIO0   ────────────── GPS RX    │
+ UART0_RX  ←      │ GPIO1   ────────────── GPS TX    │
+                  │                                  │
+ I2C1_SDA  ↔      │ GPIO2   ────────────── Camera I2C Config
+ I2C1_SCL  ↔      │ GPIO3   ────────────── Camera I2C Config
+                  │                                  │
+ I2C0_SDA  ↔      │ GPIO4   ────────────── IMU (MPU6050) SDA
+ I2C0_SCL  ↔      │ GPIO5   ────────────── IMU (MPU6050) SCL
+                  │                                  │
+ SPI_CS_MAG →     │ GPIO6   ────────────── RM3100 CS
+ SPI_CS_FLASH →   │ GPIO7   ────────────── Flash (W25Q64) CS
+                  │                                  │
+ UART1_TX   →     │ GPIO8   ────────────── HC-12 Radio RX
+ UART1_RX   ←     │ GPIO9   ────────────── HC-12 Radio TX
+                  │                                  │
+ CAM_FIFO_RDY ←   │ GPIO10  ────────────── Camera Interrupt ⚠️ shared RW1_PWM
+ MAG_DRDY    ←    │ GPIO11  ────────────── Magnetometer DRDY ⚠️ shared RW2_PWM
+ GPS_PPS     ←    │ GPIO12  ────────────── GPS 1PPS ⚠️ shared RW3_PWM
+ RAD_IRQ     ←    │ GPIO13  ────────────── Radiation Comparator
+                  │                                  │
+ MTQ_X (PWM) →    │ GPIO14  ────────────── Magnetorquer X (was SPI_CS_CAM)
+ MTQ_Y (PWM) →    │ GPIO15  ────────────── Magnetorquer Y (was reserved)
+ MTQ_Z (PWM) →    │ GPIO16  ────────────── Magnetorquer Z (was SPI_MISO)
+                  │                                  │
+ SPI_MISO    ←    │ GPIO17  ────────────── SPI0 Bus (was debug/reserved)
+ SPI_SCK     →    │ GPIO18  ────────────── SPI0 Bus
+ SPI_MOSI    →    │ GPIO19  ────────────── SPI0 Bus
+                  │                                  │
+ WDT_KICK    →    │ GPIO20  ────────────── External Watchdog
+                  │                                  │
+ PAYLOAD_ENABLE → │ GPIO21  ────────────── Payload 5V rail enable
+ CAM_TRIGGER →    │ GPIO22  ────────────── Camera Capture Trigger (was future bus)
+                  │                                  │
+ SPI_CS_CAM  →    │ GPIO23  ────────────── Camera CS (was spare)
+ CAM_RESET   →    │ GPIO24  ────────────── Camera Hardware Reset (was spare)
+                  │                                  │
+ RAD_SIGNAL  ←    │ GPIO28 (ADC2) ──────── Radiation Analog Signal
+                  │                                  │
+                  └──────────────────────────────────┘
 ```
 
 ### 11.10 Bus Allocation Summary
 
 | Bus | Devices |
 | :--- | :--- |
-| **SPI0** | Camera, Magnetometer, microSD |
+| **SPI0** | Camera, Magnetometer, Flash (W25Q64) |
 | **UART0** | GPS |
-| **I2C0** | Reserved payload bus |
-| **ADC0** | Radiation detector |
+| **UART1** | HC-12 Radio (TT&C) |
+| **I2C0** | IMU (MPU6050) |
+| **I2C1** | Camera register configuration (OV2640) |
+| **ADC** | Radiation detector (ADC2 / GPIO28) |
 | **GPIO Interrupts** | Camera, Magnetometer, GPS, Radiation |
 
 ### 11.11 GPIO Usage Summary
 
 | Resource | Usage |
 | :--- | :--- |
-| **Total GPIO used** | 14 |
-| **SPI pins** | 3 |
-| **SPI chip selects** | 3 |
-| **Interrupt lines** | 4 |
-| **Analog inputs** | 1 |
-| **Control signals** | 3 |
+| **Total payload GPIO used** | 12 |
+| **SPI data pins** | 3 (GPIO17/18/19) |
+| **SPI chip selects** | 3 (GPIO6/7/23) |
+| **Interrupt lines** | 4 (GPIO10/11/12/13) |
+| **Analog inputs** | 1 (GPIO28) |
+| **Camera control** | 2 (GPIO22/24) |
+| **Camera I2C config** | 2 (GPIO2/3) |
+| **Payload enable** | 1 (GPIO21) |
 
-*The RP2040 / RP2350 has >26 GPIOs, leaving ample margin for future expansion.*
+*The RP2350 has 30 GPIOs, leaving ample margin for future expansion.*
 
 ### 11.12 Reserved for Future Payload Expansion
 
-| Pin | Potential Use |
-| :--- | :--- |
-| **GPIO15** | Secondary payload control |
-| **GPIO21–22**| Future sensor bus |
+_(GPIO15 now allocated to magnetorquer Y; GPIO21 to PAYLOAD_ENABLE; GPIO22 to CAM_TRIGGER.
+No unreserved GPIOs remain for payload expansion on the current OBC pinout.
+See ICD-OBC-001 for the complete system-level GPIO allocation.)_
 
 ---
 

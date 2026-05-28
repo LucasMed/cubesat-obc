@@ -136,25 +136,27 @@ payload power rail and communicate with the OBC via standard digital interfaces.
 ```
 OBC (RP2350)
 │
-├─ SPI1 ──────────────────┬──────────────────┐
-│                    CAM-001 (IMX219)   MAG-001 (RM3100)*
+├─ SPI0 ──────────────────┬──────────────────┐
+│                    CAM-001 (OV2640)   MAG-001 (RM3100)*
 │
 ├─ ADC1 (GPIO27) ──── RAD-001 (PIN diode)
 │
 ├─ GPIO21 (PAYLOAD_ENABLE) ──── 5 V rail switch
 │
-└─ GPIO22 (CAM_TRIGGER) ──── CAM-001 capture trigger
+├─ GPIO22 (CAM_TRIGGER) ──── CAM-001 capture trigger
+│
+└─ GPIO24 (CAM_RESET)  ──── CAM-001 hardware reset
 ```
-*RM3100 default interface: I2C0 (GPIO4/5, address 0x20). SPI mode optional.
+*RM3100 default interface: I2C0 (GPIO4/5, address 0x20). SPI0 CS @ GPIO6 optional.
 
 ### 4.2 Instrument Summary
 
-| Instrument | Model         | Interface | Power (avg) | Data rate |
-|------------|---------------|-----------|-------------|-----------|
-| CAM-001    | Sony IMX219   | SPI1      | 300 mW      | ~2 MB/capture (on command) |
-| MAG-001    | PNI RM3100    | I2C0      | 30 mW       | ~1.2 kB/s (10 Hz log) |
-| RAD-001    | PIN diode     | ADC1      | 80 mW       | ~0.1 kB/s (1 Hz log)  |
-| **Total**  |               |           | **410 mW**  | **< 1 MB/orbit (nominal)** |
+| Instrument | Model                   | Interface | Power (avg) | Data rate |
+|------------|-------------------------|-----------|-------------|-----------|
+| CAM-001    | OV2640 Arducam Mini 2MP | SPI0      | 200 mW      | ~200 KB/capture (on command) |
+| MAG-001    | PNI RM3100              | I2C0      | 30 mW       | ~1.2 kB/s (10 Hz log) |
+| RAD-001    | PIN diode               | ADC1      | 80 mW       | ~0.1 kB/s (1 Hz log)  |
+| **Total**  |                         |           | **310 mW**  | **< 1 MB/orbit (nominal)** |
 
 ### 4.3 Operational Concept
 
@@ -181,76 +183,110 @@ Ground contact: downlink stored payload data via TT&C (CSP)
 
 ### 5.1 Instrument Identification
 
-| Parameter            | Value                           |
-|----------------------|---------------------------------|
-| Instrument ID        | CAM-001                         |
-| Sensor               | Sony IMX219                     |
-| Representative module| Raspberry Pi Camera V2 (or equivalent OAK / Arducam SPI bridge) |
-| Scientific purpose   | Earth surface observation (LEO) |
-| Cost estimate        | 25 – 40 USD                     |
+| Parameter            | Value                                        |
+|----------------------|----------------------------------------------|
+| Instrument ID        | CAM-001                                      |
+| Sensor               | OV2640 Arducam Mini (2 MP)                   |
+| Representative module| Arducam Mini 2MP SPI camera (M12/CS mount)   |
+| Scientific purpose   | Earth surface observation (LEO) — lateral mount |
+| Cost estimate        | 15 – 25 USD                                  |
 
 ### 5.2 Technical Characteristics
 
-| Parameter          | Value                   | Notes |
-|--------------------|-------------------------|-------|
-| Resolution         | 8 MP (3280 × 2464)      | Full sensor |
-| Pixel size         | 1.12 µm × 1.12 µm       | |
-| Optical format     | 1/4"                    | |
+| Parameter          | Value                     | Notes |
+|--------------------|---------------------------|-------|
+| Resolution         | 2 MP (1600 × 1200)        | UXGA full sensor |
+| Pixel size         | 2.2 µm × 2.2 µm           | |
+| Optical format     | 1/4"                      | |
 | Shutter            | Rolling electronic shutter | |
-| Frame rate (full)  | 15 fps                  | Partial crop: 30+ fps |
-| Spectral range     | 400 – 750 nm (visible)  | CFA Bayer array |
-| Dynamic range      | ~70 dB                  | |
-| Operating voltage  | 1.8 V (core), 2.8 V (pixel) — from 5V rail via on-module regulator | |
-| Interface          | MIPI CSI-2 (native) / **SPI via bridge board** | SPI bridge required |
-| Quiescent current  | < 5 mA                  | Sleep mode |
-| Active current     | ~60 – 80 mA @ 3.3 V    | |
-| Active power       | **~ 250 – 300 mW**     | |
+| Frame rate (UXGA)  | 15 fps                    | SVGA (800×600): 30+ fps |
+| Spectral range     | 400 – 700 nm (visible)    | CFA Bayer array |
+| Dynamic range      | ~60 dB                    | |
+| Operating voltage  | 3.3 V (on-module regulator from 5V rail) | |
+| Interface          | **SPI (native)**          | No CSI bridge required |
+| Quiescent current  | < 3 mA                    | Sleep mode |
+| Active current     | ~40 – 60 mA @ 3.3 V      | |
+| Active power       | **~ 200 mW**              | |
 
-> **Interface note**: The IMX219 natively uses MIPI CSI-2 LVDS, which is not
-> available on the RP2350. For SPI integration, an intermediate SPI bridge board
-> (e.g. Arducam IMX219 SPI module, or Arducam Mini 2MP) is required. This bridge
-> buffers frames from the IMX219 and provides a 10 MHz SPI read interface to the
-> MCU. An alternative approach is an OV2640 camera, which provides native SPI
-> output; however, IMX219 provides superior image quality and is the baseline for
-> this specification.
+> **Interface note**: The OV2640 Arducam Mini provides native SPI output at
+> up to 10 MHz, eliminating the need for a CSI-2 bridge. The module integrates
+> a FIFO buffer (AL422B) that captures full frames at sensor speed and provides
+> a standard SPI read interface to the MCU. This simplifies the wiring,
+> reduces power consumption, and lowers cost compared to the IMX219 CSI bridge
+> approach evaluated in earlier designs.
 
 ### 5.3 Output Data Characteristics
 
 | Format      | Typical size per capture | Notes |
 |-------------|--------------------------|-------|
-| JPEG (Q=70) | 200 – 500 KB             | 8 MP full resolution |
-| JPEG (Q=50) | 100 – 300 KB             | Adequate for ground verification |
-| RAW (full)  | ~6.4 MB                  | Not recommended — storage and downlink limited |
+| JPEG (Q=70) | 100 – 250 KB             | 2 MP UXGA resolution |
+| JPEG (Q=50) | 60 – 150 KB              | Adequate for ground verification |
+| RAW (UXGA)  | ~1.9 MB                  | Not recommended — storage and downlink limited |
 
-**Recommended configuration for Phase 7**: JPEG Q=70, full resolution → expected
-~300 KB per image. Configurable via `config.h`.
+**Recommended configuration for Phase 7**: JPEG Q=70, UXGA (1600×1200) → expected
+~150 KB per image. Configurable via `config.h`.
 
-### 5.4 Operational Profile
+### 5.4 Mechanical Mounting — Lateral Earth Observation
+
+The OV2640 camera is mounted on **side panel 0** (radial +X direction) for lateral
+Earth observation. Unlike a typical nadir-pointing top-plate mount, the lateral
+configuration:
+
+- Views the Earth limb when the satellite is nadir-pointing (+Z toward Earth)
+- Does not require a top-plate aperture or dedicated camera shelf
+- Places the camera behind a **18×18 mm window cutout** with transparent acrylic cover
+- Positions the camera PCB at approximately **z = 50 mm** (mid-height), aligned with the side panel window
+
+**Mounting Assembly**:
+```
+Side panel (outer)          Window (acrylic, flush)
+┌─────────────────────────────────┐
+│  ╔════════════════════════════╗ │
+│  ║  Camera window 18×18 mm   ║ │
+│  ╚════════════════════════════╝ │
+│  ┌──────────────────────────┐  │
+│  │ OV2640 PCB (32×32 mm)    │  │  ← Inside satellite
+│  │ M2 screws at 28 mm pitch │  │
+│  └──────────────────────────┘  │
+└─────────────────────────────────┘
+```
+
+The camera mount bracket (aluminum or 3D-printed PLA) attaches to the standoffs
+via M3 screws and holds the camera PCB flat against the panel's inner surface.
+The lens (~8 mm protrusion) extends through the window cutout.
+
+### 5.5 Operational Profile
 
 | Activity        | Trigger      | Duration | Notes |
 |-----------------|-------------|----------|-------|
-| Initialization  | FM_PAYLOAD entry | < 500 ms | SPI bridge power-on, register init |
-| Image capture   | Ground command CAM_TRIGGER | ~2 s (readout + JPEG compress) | |
-| Data transfer   | Internal MISO stream | ~1.5 s @ 10 MHz SPI | frame transfer to OBC RAM buffer |
-| JPEG compress   | On-module (bridge) or OBC | ~0.5 s | depends on bridge capability |
+| Initialization  | FM_PAYLOAD entry | < 300 ms | SPI init, register config |
+| Image capture   | Ground command CAM_TRIGGER | ~1 s (readout + JPEG compress) | |
+| Data transfer   | SPI0 MISO stream | ~1 s @ 10 MHz SPI0 | frame transfer to OBC RAM buffer |
+| JPEG compress   | On-module (FIFO bridge) | ~0.3 s | AL422B buffer |
 | Store to flash  | Post-capture | ~100 ms | write to extended flash / SD card |
-| Standby         | Between captures | — | bridge in low-power mode |
+| Standby         | Between captures | — | camera in low-power sleep mode |
 
-### 5.5 GPIO and Electrical Interface
+### 5.6 GPIO and Electrical Interface
 
 | Signal        | GPIO   | Direction | Description |
 |---------------|--------|-----------|-------------|
-| SPI1 SCK      | GPIO10 | OUT       | Clock (≤ 10 MHz) — ⚠️ see note |
-| SPI1 MOSI     | GPIO11 | OUT       | Data to camera |
-| SPI1 MISO     | GPIO12 | IN        | Data from camera |
-| SPI1 CSn (CAM)| GPIO13 | OUT       | Active-low chip select |
+| SPI0 SCK      | GPIO18 | OUT       | Clock (≤ 10 MHz) |
+| SPI0 MOSI     | GPIO19 | OUT       | Data to camera |
+| SPI0 MISO     | GPIO17 | IN        | Data from camera |
+| SPI0 CSn (CAM)| GPIO23 | OUT       | Active-low chip select |
 | CAM_TRIGGER   | GPIO22 | OUT       | Active-high frame trigger |
+| CAM_RESET     | GPIO24 | OUT       | Hardware reset (active low) |
+| CAM_FIFO_RDY  | GPIO10 | IN        | FIFO ready interrupt (shared with RW1) |
 | PAYLOAD_ENABLE| GPIO21 | OUT       | 5V rail enable (shared all payload) |
 
-> ⚠️ **GPIO10 conflict**: GPIO10 is currently assigned to RW3 PWM (ICD-OBC-001 §9.1).
-> Phase 7 PCB design shall reassign **RW3 to GPIO3** (PWM slice 1B — available after
-> GPS descope). This frees GPIO10 for SPI1 SCK. No software change to RW control
-> is required beyond pin remapping in `config/pico_pins.h`.
+> **GPIO sharing notes**:
+> - **CAM_FIFO_RDY (GPIO10)** is shared with RW_MOTOR1_PWM. This is safe because
+>   GPIO10 functions as an **input** (interrupt) for the camera FIFO ready signal,
+>   while RW_MOTOR1 uses a separate PWM output slice. The RP2350 GPIO mux allows
+>   reading a digital input on a pin that also has a PWM output — they are
+>   independent functions.
+> - **No conflict with MTQ**: Magnetorquers now use GPIO14/15/16 (see pico_pins.h),
+>   leaving GPIO21/22 free for PAYLOAD_ENABLE and CAM_TRIGGER respectively.
 
 ---
 
@@ -401,7 +437,7 @@ voltage by a transimpedance amplifier and sampled by the RP2350 ADC.
 
 | Instrument | Interface  | Bus      | GPIO              | OBC Peripheral | Max Speed |
 |------------|------------|----------|-------------------|----------------|-----------|
-| CAM-001    | SPI        | SPI1     | GPIO10/11/12/13   | `spi1`         | 10 MHz    |
+| CAM-001    | SPI        | SPI0     | GPIO17/18/19/23   | `spi0`         | 10 MHz    |
 | MAG-001    | I2C        | I2C0     | GPIO4/5 (0x20)    | `i2c0`         | 400 kHz   |
 | RAD-001    | Analogue   | ADC1     | GPIO27            | ADC            | 500 kSPS  |
 
@@ -419,7 +455,7 @@ voltage by a transimpedance amplifier and sampled by the RP2350 ADC.
 
 | Transaction       | Duration   | Notes |
 |-------------------|-----------|-------|
-| SPI1 frame (300 KB JPEG at 10 MHz) | ~2.4 s | 300 KB × 8 bits / 10 Mbps |
+| SPI0 frame (200 KB JPEG at 10 MHz) | ~1.6 s | 200 KB × 8 bits / 10 Mbps |
 | I2C0 RM3100 single read (3 axes, 12 bytes) | ~300 µs | @400 kHz |
 | ADC single conversion | 2 µs | RP2350 ADC @ 500 kSPS |
 
@@ -581,10 +617,10 @@ PAYLOAD     │     ✓        —
 src/
   drivers/
     payload/
-      camera_driver.c         ← SPI1 frame readout + trigger
+      camera_driver.c         ← SPI0 frame readout + trigger
       rm3100.c                ← I2C RM3100 driver (read, init, CMM config)
       radiation_driver.c      ← ADC1 single-channel read + TIA reset
-      spi_payload.c           ← SPI1 bus init (shared: camera only in baseline)
+      spi_payload.c           ← SPI0 bus init (shared: camera + RM3100)
   tasks/
     payload_task.c            ← FreeRTOS payload task (10 Hz MAG, 1 Hz RAD, on-cmd CAM)
   services/
@@ -701,7 +737,7 @@ void payload_task(void *params) {
 | Requirement   | Verification Method          | Status |
 |---------------|------------------------------|--------|
 | PLD-R-001     | Power rail measurement on HW | ⏳ Phase 7 HW test |
-| PLD-R-002     | SPI1 loopback test (sw)      | ⏳ Phase 7 SW test |
+| PLD-R-002     | SPI0 loopback test (sw)      | ⏳ Phase 7 SW test |
 | PLD-R-003     | Storage capacity check (sw)  | ⏳ Phase 7 SW test |
 | PLD-R-004     | FMM transition test (T-PLD-INT-01) | ⏳ Phase 7 |
 | PLD-R-005     | Thermal model (BOM-OBC-001)  | ⏳ Phase 7 |
@@ -714,7 +750,7 @@ void payload_task(void *params) {
 |-----|-------------|----------|--------|
 | OI-1 | External storage selection: W25Q128 (16 MB SPI flash) vs. microSD — finalize in Phase 7 BOM | High | Open |
 | OI-2 | Camera SPI bridge selection: confirm Arducam IMX219 mini SPI module availability and SPI protocol specification | High | Open |
-| OI-3 | GPIO10 conflict resolution: confirm RW3 reassignment to GPIO3 is compatible with PWM slice timing requirements | High | Open |
+| OI-3 | Confirm CAM_FIFO_RDY (GPIO10 input) is compatible with RW_MOTOR1_PWM (GPIO10 output) — RP2350 GPIO mux supports this, but HW test required | Medium | Updated |
 | OI-4 | RM3100 procurement lead time: PNI Sensor typical 4–6 week lead; order early in Phase 7 | Medium | Open |
 | OI-5 | Payload data downlink protocol: define CSP service ID for payload file transfer (large file chunking) | Medium | Open |
 | OI-6 | Thermal analysis: 410 mW of payload in small board area; thermal interface to nadir panel TBD | Medium | Open |

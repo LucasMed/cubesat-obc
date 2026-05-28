@@ -596,7 +596,7 @@ void magnetorquer_init(magnetorquer_t *mq);
 void magnetorquer_set_moment(magnetorquer_t *mq, float mx, float my, float mz);
 ```
 
-Commands are in A·m². The DRV8833 driver translates to PWM duty cycle on GPIO14/15/16.
+Commands are in A·m². The DRV8833 driver translates to PWM duty cycle on GPIO14/15/16 (per pico_pins.h).
 
 ### 10.2 Phase 2 — Reaction Wheels (Planned)
 

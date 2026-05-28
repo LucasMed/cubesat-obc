@@ -22,15 +22,29 @@
  * GPIO allocation summary (ACTUAL):
  *   GPIO0   UART0 TX  → GPS RX
  *   GPIO1   UART0 RX  ← GPS TX
+ *   GPIO2   I2C1 SDA  → OV2640 Camera (register config)
+ *   GPIO3   I2C1 SCL  → OV2640 Camera (register config)
  *   GPIO4   I2C0 SDA  ← MPU-6050 SDA / QMC5883L SDA (shared bus)
  *   GPIO5   I2C0 SCL  ← MPU-6050 SCL / QMC5883L SCL (shared bus)
  *   GPIO6   SPI0 CS   → RM3100 (magnetometer SPI)
  *   GPIO7   SPI0 CS   → W25Q64 Flash (pending connection)
  *   GPIO8   UART1 TX  → HC-12 RX
  *   GPIO9   UART1 RX  ← HC-12 TX
- *   GPIO12  GPS PPS   ← GPS 1PPS (optional)
- *   GPIO14  SPI0 CS   → OV2640 Camera (pending connection)
+ *   GPIO10  PWM5A     → RW Motor 1 / CAM_FIFO_RDY ⚠️ shared
+ *   GPIO11  PWM5B     → RW Motor 2 / MAG_DRDY ⚠️ shared
+ *   GPIO12  PWM6A     → RW Motor 3 / GPS PPS ⚠️ shared
+ *   GPIO13  RAD_IRQ   ← Radiation detector interrupt
+ *   GPIO14  PWM7A     → Magnetorquer X (was SPI0 CS)
+ *   GPIO15  PWM7B     → Magnetorquer Y (was CAM_RESET)
+ *   GPIO16  PWM0A     → Magnetorquer Z (was SPI0 MISO)
+ *   GPIO17  SPI0 MISO ← Camera / Mag / Flash (was MAG_X)
+ *   GPIO18  SPI0 SCK  → Camera / Mag / Flash
+ *   GPIO19  SPI0 MOSI → Camera / Mag / Flash
  *   GPIO20  Watchdog kick (TPS3431)
+ *   GPIO21  PAYLOAD_ENABLE → 5V rail (was MAG_Y)
+ *   GPIO22  CAM_TRIGGER → OV2640 capture trigger (was MAG_Z)
+ *   GPIO23  SPI0 CS   → OV2640 Camera (was spare)
+ *   GPIO24  CAM_RESET → OV2640 hardware reset (was spare)
  *   GPIO25  LED       Onboard status LED
  */
 
@@ -65,12 +79,15 @@
  * ====================================================================== */
 
 /**
- * SPI0 is shared by RM3100 Magnetometer, OV2640 Camera, and microSD.
+ * SPI0 is shared by RM3100 Magnetometer, OV2640 Camera, and Flash.
  * Each device is activated by its individual Chip Select (active low).
  * Baud rate: 1 MHz at init; may be raised to 20 MHz for data transfers.
+ *
+ * NOTE: SPI0_MISO (GPIO16) and SPI_CS_CAM (GPIO14) were reassigned to
+ * Magnetorquer PWM outputs (MAG_Z, MAG_X). Camera SPI pins updated below.
  */
 #define SPI0_PORT     spi0
-#define SPI0_MISO_PIN 16
+#define SPI0_MISO_PIN 17   /**< CHANGED: was GPIO16 — now MAG_Z_PIN */
 #define SPI0_SCK_PIN  18
 #define SPI0_MOSI_PIN 19
 #define SPI0_BAUD_RATE_INIT 1000000   /* 1 MHz  — safe for all devices  */
@@ -79,7 +96,7 @@
 /** Chip Select pins (active low, GPIO-controlled) */
 #define SPI_CS_FLASH_PIN 7   /**< W25Q64 Flash chip select (replaces microSD) */
 #define SPI_CS_MAG_PIN 6     /**< RM3100 Magnetometer chip select */
-#define SPI_CS_CAM_PIN 14    /**< OV2640 Camera chip select        */
+#define SPI_CS_CAM_PIN 23    /**< CHANGED: was GPIO14 — now MAG_X_PIN */
 
 /* ======================================================================
  * UART Pin Definitions
@@ -116,7 +133,7 @@
  * Payload Control Signals
  * ====================================================================== */
 
-#define CAM_RESET_PIN      15  /**< OV2640 hardware reset (active low)        */
+#define CAM_RESET_PIN      24  /**< CHANGED: was GPIO15 — now MAG_Y_PIN        */
 #define CAM_TRIGGER_PIN    22  /**< OV2640 capture trigger (active high pulse) */
 #define PAYLOAD_ENABLE_PIN 21  /**< Payload power rail enable (active high)   */
 
@@ -138,11 +155,16 @@
 
 /**
  * Pico 2W: GPIO0-22, GPIO26-28 only.
- * Note: GPIO17 shares PWM slice with GPIO23, GPIO22 shares with GPIO23.
+ * Using GPIO14/15/16 — avoids conflict with PAYLOAD_ENABLE (GPIO21) and
+ * CAM_TRIGGER (GPIO22). SPI0 camera interface moved to alternative pins.
+ *
+ * NOTE: GPIO14-16 were previously allocated to SPI0 camera interface.
+ * The camera has been re-assigned to use SPI1 or alternative SPI0 pins
+ * (see SPI section below).
  */
-#define MAG_X_PIN 17 /**< PWM0B — Magnetorquer X-axis */
-#define MAG_Y_PIN 21 /**< PWM2B — Magnetorquer Y-axis */
-#define MAG_Z_PIN 22 /**< PWM3A — Magnetorquer Z-axis */
+#define MAG_X_PIN 14 /**< PWM7A — Magnetorquer X-axis */
+#define MAG_Y_PIN 15 /**< PWM7B — Magnetorquer Y-axis */
+#define MAG_Z_PIN 16 /**< PWM0A — Magnetorquer Z-axis */
 
 /* ======================================================================
  * Miscellaneous

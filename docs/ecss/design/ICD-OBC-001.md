@@ -370,9 +370,9 @@ SAW filter 433 MHz (TDK B39431) ← EMI isolation
 
 | Axis | PWM GPIO | PWM Slice/Ch | Pico 2W Pin | Notes |
 |------|---------|-------------|-------------|-------|-------|
-| MTQ X | GPIO17 | PWM0B | 22 | Slice shared with GPIO23 |
-| MTQ Y | GPIO21 | PWM2B | 27 | |
-| MTQ Z | GPIO22 | PWM3A | 29 | Slice shared with GPIO23 |
+| MTQ X | GPIO14 | PWM7A | 31 | Updated per pico_pins.h v1.1 |
+| MTQ Y | GPIO15 | PWM7B | 32 | |
+| MTQ Z | GPIO16 | PWM0A | 33 | |
 
 ---
 
@@ -519,7 +519,7 @@ Boot sequence → FM_BOOT → FM_SAFE
 | UART0 (GPS) | GPIO0/1 | `src/drivers/gps/neo7m.c` | Navigation | ✅ Integrated |
 | UART1 (TT&C) | GPIO8/9 | `src/drivers/uart/pico_usart.c` | `CommandTask`, `TelemetryTask` | ✅ Integrated |
 | PWM (RW 1-3) | GPIO10/11/12 | `src/actuators/reaction_wheel.c` | `AttitudeControlTask` | 🔄 HAL pending |
-| PWM (MTQ X/Y/Z) | GPIO17/21/22 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
+| PWM (MTQ X/Y/Z) | GPIO14/15/16 | `src/actuators/magnetorquer.c` | `AttitudeControlTask` | 🔄 HAL pending |
 | ADC0 (Vbatt) | GPIO26 | `src/services/eps/eps_monitor.c` | `HealthMonitorTask` | ✅ Integrated |
 | ADC1 (Sun Sensor X) | GPIO27 | `src/drivers/sun_sensor.c` | `SensorReadTask` | ✅ Integrated |
 | ADC2 (Sun Sensor Y) | GPIO28 | `src/drivers/sun_sensor.c` | `SensorReadTask` | ✅ Integrated |
@@ -616,6 +616,9 @@ Defined in PAYLOAD-SPEC-001. Summary of hardware interfaces added in Phase 7.
 | PAYLOAD_ENABLE | GPIO21 | OUT       | High   | `payload_manager.c` |
 | CAM_TRIGGER    | GPIO22 | OUT       | High   | `camera_driver.c`   |
 | RAD_RESET      | GPIO2  | OUT       | High   | `radiation_driver.c` — GPIO2 free (UART0 descoped) |
+
+> **GPIO note**: MTQ on GPIO14/15/16, PAYLOAD_ENABLE on GPIO21, CAM_TRIGGER on
+> GPIO22 — no conflict (MTQ was moved from GPIO17/21/22 to avoid sharing).
 
 ### 15.5 Interface Verification Methods (Payload)
 
