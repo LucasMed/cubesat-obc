@@ -17,6 +17,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(PICO_BUILD)
+  #include "pico/time.h"
+#endif
+
 #define PAYLOAD_PERIOD_MS 100
 void payload_task_init(void)
 {
@@ -46,26 +50,62 @@ void vPayloadTask_Step(void)
       printf("[PayloadTask] Capture command received\n");
       if (camera_init())
       {
+        static uint8_t s_img_buffer[128 * 1024]; /* 128KB — QVGA JPEG */
+        uint32_t read_len = sizeof(s_img_buffer);
+
         if (camera_capture(5000))
         {
-          uint32_t len = camera_get_fifo_length();
-          if (len > 0 && len < 200000) /* Safety limit 200KB */
+          if (camera_read_fifo_burst(s_img_buffer, read_len))
           {
-            /* Static buffer for image to avoid heap fragmentation */
-            static uint8_t s_img_buffer[128 * 1024]; /* 128KB max */
-            size_t read_len = (len > sizeof(s_img_buffer)) ? sizeof(s_img_buffer) : len;
+            /* Quick JPEG validation: check SOI+EOI markers */
+            bool has_soi = (s_img_buffer[0] == 0xFF && s_img_buffer[1] == 0xD8);
 
-            if (camera_read_fifo_burst(s_img_buffer, read_len))
+            uint32_t eoi_offset = 0;
+            for (uint32_t i = 2; i + 1 < read_len; i++)
             {
-              char filename[32];
-              snprintf(filename, sizeof(filename), "/IMAGES/img_%lu.jpg", (unsigned long)s_counter);
-              storage_write_image(filename, s_img_buffer, (uint32_t)read_len);
-              printf("[PayloadTask] Image saved: %s (%zu bytes)\n", filename, read_len);
+              if (s_img_buffer[i] == 0xFF && s_img_buffer[i + 1] == 0xD9)
+              {
+                eoi_offset = i;
+                break;
+              }
             }
+
+            uint32_t img_size = (eoi_offset > 0) ? eoi_offset + 2 : read_len;
+            printf("[PayloadTask] JPEG: SOI=%s EOI=%s size=%lu\n",
+                   has_soi ? "YES" : "NO",
+                   eoi_offset > 0 ? "YES" : "NO",
+                   (unsigned long)img_size);
+
+            char filename[32];
+            snprintf(filename, sizeof(filename), "/IMAGES/img_%lu.jpg",
+                     (unsigned long)s_counter);
+            storage_status_t st = storage_write_image(filename, s_img_buffer, read_len);
+            printf("[PayloadTask] Image saved: %s (%lu bytes)\n", filename,
+                   (unsigned long)read_len);
+            (void)st;
+          }
+          else
+          {
+            printf("[PayloadTask] FIFO burst read FAILED\n");
           }
         }
+        else
+        {
+          printf("[PayloadTask] camera_capture FAILED\n");
+        }
+      }
+      else
+      {
+        printf("[PayloadTask] camera_init FAILED\n");
       }
     }
+    else
+    {
+      printf("[PayloadTask] Unknown notify value: 0x%08lX\n", (unsigned long)notify_value);
+    }
+
+    /* Clear notification flags */
+    (void)notify_value;
   }
 
   /* Periodic Sampling: only active in FM_PAYLOAD */

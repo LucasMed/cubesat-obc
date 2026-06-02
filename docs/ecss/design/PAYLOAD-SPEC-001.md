@@ -134,18 +134,19 @@ mounted on the CubeSat's nadir-pointing face. All instruments share the 5V
 payload power rail and communicate with the OBC via standard digital interfaces.
 
 ```
-OBC (RP2350)
+OBC (RP2350) — Pico 2W (8-pin Arducam Mini, SPI+I2C only)
 │
 ├─ SPI0 ──────────────────┬──────────────────┐
-│                    CAM-001 (OV2640)   MAG-001 (RM3100)*
+│  ├─ GPIO14 (CS)         │                  │
+│  ├─ GPIO17 (MISO)    CAM-001 (OV2640)  MAG-001 (RM3100)*
+│  ├─ GPIO18 (SCK)         │                  │
+│  └─ GPIO19 (MOSI)       │                  │
 │
-├─ ADC1 (GPIO27) ──── RAD-001 (PIN diode)
+├─ I2C1 ───── CAM-001 registers (SCCB)
+│  ├─ GPIO2 (SDA)
+│  └─ GPIO3 (SCL)
 │
 ├─ GPIO21 (PAYLOAD_ENABLE) ──── 5 V rail switch
-│
-├─ GPIO22 (CAM_TRIGGER) ──── CAM-001 capture trigger
-│
-└─ GPIO24 (CAM_RESET)  ──── CAM-001 hardware reset
 ```
 *RM3100 default interface: I2C0 (GPIO4/5, address 0x20). SPI0 CS @ GPIO6 optional.
 
@@ -273,15 +274,15 @@ The lens (~8 mm protrusion) extends through the window cutout.
 | SPI0 SCK      | GPIO18 | OUT       | Clock (≤ 10 MHz) |
 | SPI0 MOSI     | GPIO19 | OUT       | Data to camera |
 | SPI0 MISO     | GPIO17 | IN        | Data from camera |
-| SPI0 CSn (CAM)| GPIO23 | OUT       | Active-low chip select |
-| CAM_TRIGGER   | GPIO22 | OUT       | Active-high frame trigger |
-| CAM_RESET     | GPIO24 | OUT       | Hardware reset (active low) |
-| CAM_FIFO_RDY  | GPIO10 | IN        | FIFO ready interrupt (shared with RW1) |
-| PAYLOAD_ENABLE| GPIO21 | OUT       | 5V rail enable (shared all payload) |
+| SPI0 CSn (CAM)| GPIO14 | OUT       | Active-low chip select |
+| CAM_SDA       | GPIO2  | I/O       | I2C1 data (SCCB register config) |
+| CAM_SCL       | GPIO3  | OUT       | I2C1 clock (SCCB register config) |
+| PAYLOAD_ENABLE| GPIO21 | OUT       | 5V rail enable |
 
-> **GPIO sharing notes**:
-> - **CAM_FIFO_RDY (GPIO10)** is shared with RW_MOTOR1_PWM. This is safe because
->   GPIO10 functions as an **input** (interrupt) for the camera FIFO ready signal,
+> **Note**: 8-pin Arducam Mini module — no RESET, TRIG, or FIFO_RDY pins.
+> - SW reset via SCCB register 0x12 = 0x80
+> - Capture trigger via SPI ARDUCHIP_FIFO register
+> - Completion polled via SPI ARDUCHIP_STATUS register (0x07, bit 0)
 >   while RW_MOTOR1 uses a separate PWM output slice. The RP2350 GPIO mux allows
 >   reading a digital input on a pin that also has a PWM output — they are
 >   independent functions.
