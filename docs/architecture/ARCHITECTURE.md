@@ -95,12 +95,13 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 | **Battery Monitor**     | +Vbat        | GPIO26         | 31                   | ADC0                |
 | **Temp. Board**         | -            | GPIO27         | 32                   | ADC1 (onboard)      |
 | **External Watchdog**   | Kick         | GPIO20         | 26                   | Digital output      |
-| **Reaction Wheel 1**    | PWM          | GPIO8          | 11                   | PWM4A               |
-| **Reaction Wheel 2**    | PWM          | GPIO9          | 12                   | PWM4B               |
-| **Reaction Wheel 3**    | PWM          | GPIO3          | 5                    | PWM1B               |
-| **Magnetorquer X**      | -            | GPIO17         | 22                   | Digital output      |
-| **Magnetorquer Y**      | -            | GPIO23         | 34                   | Digital output      |
-| **Magnetorquer Z**      | -            | GPIO24         | 35                   | Digital output      |
+| **Reaction Wheel 1**    | PWM          | GPIO10         | 14                   | PWM5A               |
+| **Reaction Wheel 2**    | PWM          | GPIO11         | 15                   | PWM5B               |
+| **Reaction Wheel 3**    | PWM          | GPIO12         | 16                   | PWM6A               |
+| **Camera CS**           | SPI select   | GPIO14         | 19                   | SPI chip select     |
+| **Magnetorquer Y**      | PWM          | GPIO15         | 20                   | PWM7B               |
+| **Magnetorquer Z**      | PWM          | GPIO16         | 21                   | PWM0A               |
+| **Magnetorquer X**      | PWM          | GPIO22         | 29                   | PWM3A (was CAM_TRIGGER — 8-pin Arducam module) |
 
 > **Note:** You can connect all modules to the same 3V3 and GND pin, as long as the total current does not exceed the Pico 2W's power supply capability. For sensors and small modules, this is safe.
 

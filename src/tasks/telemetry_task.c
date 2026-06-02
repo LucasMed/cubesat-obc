@@ -200,7 +200,7 @@ void vTelemetryTask_Step(void)
   bin.crc = tlm_crc8((const uint8_t *)&bin, sizeof(bin) - 1);
 
   /* Send sync word + packet */
-  uint8_t sync[2] = {TLM_SYNC_BYTE_1, TLM_SYNC_BYTE_2};
+  const uint8_t sync[2] = {TLM_SYNC_BYTE_1, TLM_SYNC_BYTE_2};
   uart1_write_buf(sync, 2);
   uart1_write_buf((const uint8_t *)&bin, sizeof(bin));
 #endif
