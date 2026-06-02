@@ -98,6 +98,7 @@ if(PICO_BUILD)
         hardware_adc
         hardware_spi
         hardware_uart
+        hardware_clocks
         FreeRTOS-Kernel
         csp
     )

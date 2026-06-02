@@ -10,8 +10,8 @@
  *   RP2040/RP2350 Pico : src/actuators/pwm_hal.c (hardware_pwm)
  *
  * Pin mapping (from pico_pins.h):
- *   Reaction Wheels: GPIO8 (PWM4A), GPIO9 (PWM4B), GPIO29 (PWM6B)
- *   Magnetorquers:  GPIO17, GPIO23, GPIO24
+ *   Reaction Wheels: GPIO10 (PWM5A), GPIO11 (PWM5B), GPIO12 (PWM6A)
+ *   Magnetorquers:  GPIO22 (MAG_X), GPIO15 (MAG_Y), GPIO16 (MAG_Z)
  */
 
 #ifndef PWM_HAL_H

@@ -30,21 +30,21 @@
  *   GPIO7   SPI0 CS   → W25Q64 Flash (pending connection)
  *   GPIO8   UART1 TX  → HC-12 RX
  *   GPIO9   UART1 RX  ← HC-12 TX
- *   GPIO10  PWM5A     → RW Motor 1 / CAM_FIFO_RDY ⚠️ shared
+ *   GPIO10  PWM5A     → RW Motor 1 / (was CAM_FIFO_RDY — unused, module has no FIFO_RDY pin)
  *   GPIO11  PWM5B     → RW Motor 2 / MAG_DRDY ⚠️ shared
  *   GPIO12  PWM6A     → RW Motor 3 / GPS PPS ⚠️ shared
  *   GPIO13  RAD_IRQ   ← Radiation detector interrupt
- *   GPIO14  PWM7A     → Magnetorquer X (was SPI0 CS)
+ *   GPIO14  SPI0 CS   → OV2640 Camera (was MAG_X)
  *   GPIO15  PWM7B     → Magnetorquer Y (was CAM_RESET)
- *   GPIO16  PWM0A     → Magnetorquer Z (was SPI0 MISO)
- *   GPIO17  SPI0 MISO ← Camera / Mag / Flash (was MAG_X)
+ *   GPIO16  SPI0 MISO ← Camera / Mag / Flash (valid SPI0 RX on RP2350)
+ *   GPIO17  PWM0B     → Magnetorquer Z (was SPI0 MISO — GPIO17 is SPI0_CSn, NOT MISO/RX on RP2350)
  *   GPIO18  SPI0 SCK  → Camera / Mag / Flash
  *   GPIO19  SPI0 MOSI → Camera / Mag / Flash
  *   GPIO20  Watchdog kick (TPS3431)
- *   GPIO21  PAYLOAD_ENABLE → 5V rail (was MAG_Y)
- *   GPIO22  CAM_TRIGGER → OV2640 capture trigger (was MAG_Z)
- *   GPIO23  SPI0 CS   → OV2640 Camera (was spare)
- *   GPIO24  CAM_RESET → OV2640 hardware reset (was spare)
+ *   GPIO21  PAYLOAD_ENABLE → 5V rail
+ *   GPIO22  PWM3A     → Magnetorquer X (was CAM_TRIGGER)
+ *   GPIO23  unavailable — CYW43 WL_REG_ON (not a GPIO on Pico 2W)
+ *   GPIO24  unavailable — CYW43 data I/O (not a GPIO on Pico 2W)
  *   GPIO25  LED       Onboard status LED
  */
 
@@ -60,6 +60,8 @@
  * RP2350 I2C1: GPIO2 (SDA), GPIO3 (SCL)
  */
 #define I2C1_PORT    i2c1
+#define I2C1_SDA_PIN 2     /**< OV2640 camera register config (SCCB) */
+#define I2C1_SCL_PIN 3     /**< OV2640 camera register config (SCCB) */
 /* ======================================================================
  * I2C Pin Definitions — MPU-6050 IMU
  * ====================================================================== */
@@ -83,11 +85,13 @@
  * Each device is activated by its individual Chip Select (active low).
  * Baud rate: 1 MHz at init; may be raised to 20 MHz for data transfers.
  *
- * NOTE: SPI0_MISO (GPIO16) and SPI_CS_CAM (GPIO14) were reassigned to
- * Magnetorquer PWM outputs (MAG_Z, MAG_X). Camera SPI pins updated below.
+ * NOTE: SPI0_MISO restored to GPIO16 (valid SPI0 RX on RP2350).
+ * GPIO17 was incorrectly used — it is SPI0_CSn, not MISO, on RP2350.
+ * MAG_Z moved to GPIO17 (PWM0B — same slice, different channel).
+ * SPI_CS_CAM returned to GPIO14 (was on unavailable GPIO23).
  */
 #define SPI0_PORT     spi0
-#define SPI0_MISO_PIN 17   /**< CHANGED: was GPIO16 — now MAG_Z_PIN */
+#define SPI0_MISO_PIN 16   /**< RESTORED: GPIO16 is valid SPI0 RX on RP2350. DO NOT CHANGE. */
 #define SPI0_SCK_PIN  18
 #define SPI0_MOSI_PIN 19
 #define SPI0_BAUD_RATE_INIT 1000000   /* 1 MHz  — safe for all devices  */
@@ -96,7 +100,7 @@
 /** Chip Select pins (active low, GPIO-controlled) */
 #define SPI_CS_FLASH_PIN 7   /**< W25Q64 Flash chip select (replaces microSD) */
 #define SPI_CS_MAG_PIN 6     /**< RM3100 Magnetometer chip select */
-#define SPI_CS_CAM_PIN 23    /**< CHANGED: was GPIO14 — now MAG_X_PIN */
+#define SPI_CS_CAM_PIN 14    /**< CHANGED: was GPIO23 (unavailable on Pico 2W) — back to original pin */
 
 /* ======================================================================
  * UART Pin Definitions
@@ -121,10 +125,9 @@
 #define UART1_BAUD_RATE 9600
 
 /* ======================================================================
- * Payload Interrupt & Timing Signals
+ * Sensor Interrupt & Timing Signals
  * ====================================================================== */
 
-#define CAM_FIFO_RDY_PIN 10  /**< Camera FIFO ready interrupt (active high) */
 #define MAG_DRDY_PIN     11  /**< RM3100 data-ready interrupt (active high)  */
 #define GPS_PPS_PIN      12  /**< GPS 1 Hz PPS timing reference              */
 #define RAD_IRQ_PIN      13  /**< Radiation comparator threshold interrupt    */
@@ -133,8 +136,6 @@
  * Payload Control Signals
  * ====================================================================== */
 
-#define CAM_RESET_PIN      24  /**< CHANGED: was GPIO15 — now MAG_Y_PIN        */
-#define CAM_TRIGGER_PIN    22  /**< OV2640 capture trigger (active high pulse) */
 #define PAYLOAD_ENABLE_PIN 21  /**< Payload power rail enable (active high)   */
 
 /* ======================================================================
@@ -144,6 +145,7 @@
 /**
  * RP2350/Pico 2W PWM pins.
  * RW1-3 use GPIO10/11/12.
+ * CAM_FIFO_RDY was also on GPIO10 — unused (8-pin Arducam module has no FIFO_RDY).
  */
 #define RW_MOTOR1_PIN 10  /**< PWM5A — Reaction Wheel 1 */
 #define RW_MOTOR2_PIN 11  /**< PWM5B — Reaction Wheel 2 */
@@ -154,17 +156,14 @@
  * ====================================================================== */
 
 /**
- * Pico 2W: GPIO0-22, GPIO26-28 only.
- * Using GPIO14/15/16 — avoids conflict with PAYLOAD_ENABLE (GPIO21) and
- * CAM_TRIGGER (GPIO22). SPI0 camera interface moved to alternative pins.
- *
- * NOTE: GPIO14-16 were previously allocated to SPI0 camera interface.
- * The camera has been re-assigned to use SPI1 or alternative SPI0 pins
- * (see SPI section below).
+ * NOTE: Magnetorquer X and Y reassigned from GPIO14/15 (now camera).
+ * MAG_X → GPIO22 (was CAM_TRIGGER — unused, 8-pin module)
+ * MAG_Y → GPIO15 (was CAM_RESET — unused, 8-pin module)
+ * MAG_Z → GPIO17 (was GPIO16 — freed for SPI0 MISO, valid RX on RP2350)
  */
-#define MAG_X_PIN 14 /**< PWM7A — Magnetorquer X-axis */
-#define MAG_Y_PIN 15 /**< PWM7B — Magnetorquer Y-axis */
-#define MAG_Z_PIN 16 /**< PWM0A — Magnetorquer Z-axis */
+#define MAG_X_PIN 22 /**< PWM?A — Magnetorquer X-axis (was CAM_TRIGGER) */
+#define MAG_Y_PIN 15 /**< PWM?B — Magnetorquer Y-axis (was CAM_RESET)   */
+#define MAG_Z_PIN 17 /**< PWM0B — Magnetorquer Z-axis (was GPIO16 — freed for SPI0 MISO) */
 
 /* ======================================================================
  * Miscellaneous

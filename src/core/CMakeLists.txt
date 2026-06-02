@@ -7,7 +7,9 @@ add_library(core_lib
     flash_backend.c
 )
 
-target_include_directories(core_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+target_include_directories(core_lib PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../config)
 
 if(PICO_BUILD)
     target_link_libraries(core_lib PUBLIC FreeRTOS-Kernel csp pico_stdlib hardware_flash)

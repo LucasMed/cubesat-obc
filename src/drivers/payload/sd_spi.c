@@ -100,18 +100,18 @@ bool sd_spi_init(void)
   s_card_type = SD_TYPE_UNKNOWN;
 
 #if defined(PICO_BUILD)
-  spi_payload_cs_deselect(SPI_CS_SD_PIN);
+  spi_payload_cs_deselect(SPI_CS_FLASH_PIN);
 
   /* 1. 80+ clock pulses with CS high to enter SPI mode */
   for (int i = 0; i < 10; i++)
     sd_spi_transfer_byte(0xFF);
 
-  spi_payload_cs_select(SPI_CS_SD_PIN);
+  spi_payload_cs_select(SPI_CS_FLASH_PIN);
 
   /* 2. Reset (CMD0) */
   if (sd_send_cmd(CMD0, 0) != R1_IDLE_STATE)
   {
-    spi_payload_cs_deselect(SPI_CS_SD_PIN);
+    spi_payload_cs_deselect(SPI_CS_FLASH_PIN);
     return false;
   }
 
@@ -138,7 +138,7 @@ bool sd_spi_init(void)
   s_card_type = SD_TYPE_SDV2;
 #endif
 
-  spi_payload_cs_deselect(SPI_CS_SD_PIN);
+  spi_payload_cs_deselect(SPI_CS_FLASH_PIN);
   return (s_card_type != SD_TYPE_UNKNOWN);
 }
 
@@ -151,14 +151,14 @@ bool sd_spi_read_sector(uint32_t sector, uint8_t *buffer)
   }
 
 #if defined(PICO_BUILD)
-  spi_payload_cs_select(SPI_CS_SD_PIN);
+  spi_payload_cs_select(SPI_CS_FLASH_PIN);
 
   /* Address is in bytes for SDv1, in blocks for SDHC */
   uint32_t addr = (s_card_type == SD_TYPE_SDHC) ? sector : (sector * 512);
 
   if (sd_send_cmd(CMD17, addr) != 0x00)
   {
-    spi_payload_cs_deselect(SPI_CS_SD_PIN);
+    spi_payload_cs_deselect(SPI_CS_FLASH_PIN);
     return false;
   }
 
@@ -183,7 +183,7 @@ bool sd_spi_read_sector(uint32_t sector, uint8_t *buffer)
   memset(buffer, 0x55, 512);
 #endif
 
-  spi_payload_cs_deselect(SPI_CS_SD_PIN);
+  spi_payload_cs_deselect(SPI_CS_FLASH_PIN);
   return true;
 }
 

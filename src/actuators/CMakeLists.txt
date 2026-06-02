@@ -4,7 +4,9 @@ add_library(actuators_lib
     pwm_hal.c
 )
 
-target_include_directories(actuators_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+target_include_directories(actuators_lib PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../config)
 
 # hardware libraries are only available on Pico
 if(PICO_BUILD)
