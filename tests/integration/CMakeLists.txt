@@ -66,6 +66,7 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_payload_integration PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
     )
     target_link_libraries(test_payload_integration wcet_lib m)
     add_test(NAME payload_integration_test COMMAND test_payload_integration)

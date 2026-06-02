@@ -6,6 +6,7 @@ if(NOT PICO_BUILD)
         )
         target_include_directories(test_rm3100 PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../config
             ${CMAKE_SOURCE_DIR}
         )
         add_test(NAME rm3100_test COMMAND test_rm3100)
@@ -16,6 +17,7 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_radiation_driver PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
     add_test(NAME radiation_driver_test COMMAND test_radiation_driver)
@@ -27,6 +29,7 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_camera_driver PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
     add_test(NAME camera_driver_test COMMAND test_camera_driver)
@@ -48,6 +51,7 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_w25q64 PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
     add_test(NAME w25q64_test COMMAND test_w25q64)
@@ -544,6 +548,7 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_gps_neo7m PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
     target_compile_definitions(test_gps_neo7m PRIVATE GPS_TEST)
@@ -560,6 +565,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_gps_integration PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
     target_compile_definitions(test_gps_integration PRIVATE GPS_TEST)
