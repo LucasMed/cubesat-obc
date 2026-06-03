@@ -82,3 +82,7 @@ docs/private/
 cov-analysis
 build_coverity
 artifacts/coverity
+
+# Auto-generated opencode/gentle-ai files
+.atl/skill-registry.md
+.atl/.skill-registry.cache.json

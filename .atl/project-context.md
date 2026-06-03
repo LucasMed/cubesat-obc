@@ -1,13 +1,9 @@
-# Skill Registry — cubesat-obc
+# Project Context — cubesat-obc
 
-Generated: 2026-04-08
-Mode: hybrid (openspec + engram)
+> Convenciones y referencia rápida del proyecto.
+> Este archivo es estable y trackeado. NO es auto-generado.
 
----
-
-## Project Standards
-
-### C Coding (MISRA C / ECSS-Q-ST-80C)
+## C Coding (MISRA C / ECSS-Q-ST-80C)
 
 | Rule | Standard |
 |------|----------|
@@ -23,7 +19,7 @@ Mode: hybrid (openspec + engram)
 | Compiler flags | `-Wall -Wextra -pedantic -Werror` |
 | C standard | C11 (`-std=c11`) |
 
-### Build System
+## Build System
 
 | Item | Value |
 |------|-------|
@@ -35,7 +31,7 @@ Mode: hybrid (openspec + engram)
 | Static analysis | `bash scripts/static_analysis.sh` |
 | Clean build | `rm -rf build && cmake -B build ...` |
 
-### Testing
+## Testing
 
 | Layer | Location | Framework |
 |-------|----------|-----------|
@@ -44,7 +40,7 @@ Mode: hybrid (openspec + engram)
 | Coverage target | ≥90% line, ≥90% function | gcovr |
 | Current coverage | 93.0% line, 92.4% function | ✅ |
 
-### Conventional Commits
+## Conventional Commits
 
 ```
 <type>: <subject>
@@ -63,7 +59,7 @@ Types: feat, fix, docs, test, refactor, chore, style, perf
 | style | Formatting (whitespace) |
 | perf | Performance improvements |
 
-### Branch Naming
+## Branch Naming
 
 ```
 feature/<description>     # New features
@@ -73,7 +69,7 @@ test/<description>        # Tests
 refactor/<description>    # Code reorganization
 ```
 
-### PR Checklist
+## PR Checklist
 
 - [ ] Tests pass: `ctest --output-on-failure`
 - [ ] No warnings: `cmake --build build`
@@ -81,21 +77,6 @@ refactor/<description>    # Code reorganization
 - [ ] Coverage maintained: ≥90%
 - [ ] CHANGELOG.md updated
 - [ ] Documentation updated (if applicable)
-
----
-
-## User Skills Triggers
-
-| Context | Skill to Load |
-|---------|---------------|
-| Writing Go tests | go-testing |
-| Creating new AI skills | skill-creator |
-| Running SDD phases | sdd-* (auto-resolved) |
-| CDR review, ecss-cdr, cdr checklist, CDR gate validation | ecss-cdr-review |
-| Traceability, ecss-trace, trace, requirements coverage, RTM validation | ecss-trace |
-| ECSS gate, GO/NO-GO, review gate readiness | ecss-gate |
-
----
 
 ## Code Patterns
 
@@ -136,8 +117,6 @@ if (flight_mode_get() == FM_SAFE) {
 }
 ```
 
----
-
 ## Documentation Standards
 
 | Document | Location | Standard |
@@ -147,8 +126,6 @@ if (flight_mode_get() == FM_SAFE) {
 | Design | `docs/ecss/design/DES-*.md` | ECSS |
 | Test Plans | `docs/ecss/test_plans/STP-*.md` | ECSS |
 | Safety | `docs/ecss/safety/FMEA-*.md` | ECSS |
-
----
 
 ## Relevant Files
 
@@ -160,8 +137,6 @@ if (flight_mode_get() == FM_SAFE) {
 | Drivers | `src/drivers/*.c` |
 | Config | `config/FreeRTOSConfig.h` |
 | Tests | `tests/unit/*.c` |
-
----
 
 ## SDD Workflow
 
