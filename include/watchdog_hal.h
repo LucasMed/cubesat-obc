@@ -56,4 +56,13 @@ void watchdog_hal_feed(void);
  */
 bool watchdog_hal_triggered(void);
 
+/**
+ * @brief Clear the watchdog-triggered flag.
+ *
+ * Call after watchdog_hal_triggered() to prevent re-triggering on
+ * subsequent health-monitor ticks.  On Pico this clears the hardware
+ * reason register; on host it clears an internal flag.
+ */
+void watchdog_hal_clear_triggered(void);
+
 #endif /* WATCHDOG_HAL_H */

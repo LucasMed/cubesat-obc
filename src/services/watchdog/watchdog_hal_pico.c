@@ -21,8 +21,30 @@
   #include <stdbool.h>
   #include <stdint.h>
 
+  /* Matches WATCHDOG_NON_REBOOT_MAGIC in pico-sdk's watchdog.c.
+   * Defined locally because it is not exposed in the public header. */
+  #define HAL_WDT_NON_REBOOT_MAGIC 0x6ab73121u
+
+/* Scratch[4] value captured BEFORE watchdog_enable() overwrites it.
+ *   watchdog_reboot(0,0,10) → scratch[4] = 0
+ *   actual WDT timeout      → scratch[4] = WATCHDOG_NON_REBOOT_MAGIC
+ * We read it in watchdog_hal_init() because watchdog_enable() writes the
+ * magic into scratch[4], making the two cases indistinguishable after init. */
+static uint32_t s_scratch4_at_boot = 0;
+static bool s_scratch4_saved = false;
+
+/* One-shot latch so watchdog_hal_triggered() returns true at most once
+ * per boot.  Without it the health monitor would re-raise FAULT_WDT_KICK_MISSED
+ * every tick (every 5 s). */
+static bool s_triggered_read = false;
+static bool s_triggered_result = false;
+
 void watchdog_hal_init(uint32_t timeout_ms)
 {
+  /* Capture the original scratch[4] before watchdog_enable() overwrites it. */
+  s_scratch4_at_boot = watchdog_hw->scratch[4];
+  s_scratch4_saved = true;
+
   /* Enable the hardware watchdog.  The second argument (pause_on_debug)
    * stops the countdown while a debugger is attached. */
   watchdog_enable((int)timeout_ms, /* pause_on_debug */ true);
@@ -35,7 +57,25 @@ void watchdog_hal_feed(void)
 
 bool watchdog_hal_triggered(void)
 {
-  return watchdog_caused_reboot();
+  if (!s_scratch4_saved)
+  {
+    return false;
+  }
+  if (!s_triggered_read)
+  {
+    s_triggered_read = true;
+    /* A watchdog-caused reboot is only a real WDT fault (not a deliberate
+     * REBOOT command) when scratch[4] contains WATCHDOG_NON_REBOOT_MAGIC,
+     * meaning the watchdog was enabled via watchdog_enable(), not via a
+     * watchdog_reboot() call which sets scratch[4]=0. */
+    s_triggered_result = watchdog_hw->reason && s_scratch4_at_boot == HAL_WDT_NON_REBOOT_MAGIC;
+  }
+  return s_triggered_result;
+}
+
+void watchdog_hal_clear_triggered(void)
+{
+  s_triggered_result = false;
 }
 
 #endif /* PICO_BUILD */

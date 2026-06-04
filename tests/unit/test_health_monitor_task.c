@@ -72,6 +72,7 @@ bool watchdog_hal_triggered(void)
 {
   return false;
 }
+void watchdog_hal_clear_triggered(void) {}
 
 /* fault_report is never reached (watchdog_hal_triggered returns false above),
  * but we need the symbol for the linker since health_monitor_task.c now

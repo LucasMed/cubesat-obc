@@ -20,9 +20,13 @@ void vHealthMonitorTask_Step(void)
 
   /* 2. Check if the previous reset was watchdog-induced.
    * If so raise a CRITICAL fault which immediately triggers the notification
-   * mechanism to transition to FM_SAFE. */
+   * mechanism to transition to FM_SAFE.
+   *
+   * Clear the triggered flag after reading so subsequent ticks do not
+   * re-raise the fault and keep forcing SAFE mode indefinitely. */
   if (watchdog_hal_triggered())
   {
+    watchdog_hal_clear_triggered();
     fault_report(FAULT_WDT_KICK_MISSED, FAULT_LEVEL_CRITICAL);
   }
 

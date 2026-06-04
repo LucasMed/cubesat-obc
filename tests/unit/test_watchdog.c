@@ -72,6 +72,7 @@ bool watchdog_hal_triggered(void)
   s_wdg_trigger_calls++;
   return s_wdg_trigger_ret;
 }
+void watchdog_hal_clear_triggered(void) {}
 
 /* ---- Service stubs (health_monitor_task.c dependencies) ---------------- */
 #include "eps.h"

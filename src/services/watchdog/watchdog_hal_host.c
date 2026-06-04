@@ -28,3 +28,8 @@ bool watchdog_hal_triggered(void)
    * On the host there is no watchdog, so we always report false. */
   return false;
 }
+
+void watchdog_hal_clear_triggered(void)
+{
+  /* no-op on host */
+}

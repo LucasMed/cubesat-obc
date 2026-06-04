@@ -71,39 +71,46 @@ bool sht31_init(uint8_t addr)
 {
   s_sht31_addr = addr;
 
-  /* Soft reset */
-  const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_SOFT_RESET >> 8),
-                          (uint8_t)(SHT31_CMD_SOFT_RESET & 0xFF)};
-
-  if (i2c_bus_write(s_sht31_addr, cmd, 2) < 0)
+  /* Try to detect the sensor first — after an MCU-only reset the sensor
+   * may still be alive and a soft reset is unnecessary (and sometimes
+   * glitches the I2C bus if the sensor was mid-measurement). */
+  if (sht31_is_present(s_sht31_addr))
   {
 #ifdef PICO_BUILD
-    printf("sht31: Failed to initialize (reset)\n");
+    printf("sht31: Initialized at 0x%02X (no reset needed)\n", s_sht31_addr);
 #endif
-    return false;
+    return true;
   }
 
-  /* Wait for reset to complete */
-#ifdef PICO_BUILD
-  sleep_ms(2);
-#else
-  /* Host: no delay needed */
-#endif
-
-  /* Verify sensor is present */
-  if (!sht31_is_present(s_sht31_addr))
+  /* Send a soft reset and wait for the sensor to restart.
+   * The SHT31 datasheet specifies typ 0.5 ms / max 1.5 ms for soft reset,
+   * but on an MCU watchdog-reboot the sensor may need extra time to settle.
+   * We use a generous 15 ms wait and retry once if the first check fails. */
+  for (int attempt = 0; attempt < 2; attempt++)
   {
+    const uint8_t cmd[2] = {(uint8_t)(SHT31_CMD_SOFT_RESET >> 8),
+                            (uint8_t)(SHT31_CMD_SOFT_RESET & 0xFF)};
+
+    int ret = i2c_bus_write(s_sht31_addr, cmd, 2);
+
+    /* Wait 15 ms for the sensor to complete the reset sequence */
 #ifdef PICO_BUILD
-    printf("sht31: Sensor not detected at 0x%02X\n", s_sht31_addr);
+    sleep_ms(15);
 #endif
-    return false;
+
+    if (ret == 0 && sht31_is_present(s_sht31_addr))
+    {
+#ifdef PICO_BUILD
+      printf("sht31: Initialized at 0x%02X\n", s_sht31_addr);
+#endif
+      return true;
+    }
   }
 
 #ifdef PICO_BUILD
-  printf("sht31: Initialized at 0x%02X\n", s_sht31_addr);
+  printf("sht31: Sensor not detected at 0x%02X\n", s_sht31_addr);
 #endif
-
-  return true;
+  return false;
 }
 
 bool sht31_is_present(uint8_t addr)
