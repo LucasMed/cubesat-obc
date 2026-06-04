@@ -474,6 +474,14 @@ w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
 
 #else /* HOST BUILD - stub implementations */
 
+/* Busy simulation for timeout testing */
+static bool s_host_busy = false;
+
+void w25q64_host_set_busy(bool busy)
+{
+  s_host_busy = busy;
+}
+
 w25q64_status_t w25q64_init(void)
 {
   return W25Q64_OK;
@@ -493,13 +501,27 @@ w25q64_status_t w25q64_read_id(w25q64_id_t *id)
 
 uint8_t w25q64_read_status(void)
 {
-  return 0;
+  /* Return BUSY bit when simulation is active */
+  return s_host_busy ? 0x01u : 0;
 }
 
 w25q64_status_t w25q64_wait_ready(uint32_t timeout_ms)
 {
-  (void)timeout_ms;
-  return W25Q64_OK;
+  if (!s_host_busy)
+  {
+    return W25Q64_OK;
+  }
+
+  /* Simulate timeout with iteration count (1 us per iteration) */
+  uint32_t timeout_us = timeout_ms * 1000u;
+  for (uint32_t elapsed = 0; elapsed < timeout_us; elapsed++)
+  {
+    if (!(w25q64_read_status() & 0x01u))
+    {
+      return W25Q64_OK;
+    }
+  }
+  return W25Q64_ERR_TIMEOUT;
 }
 
 w25q64_status_t w25q64_read(uint32_t addr, uint8_t *buf, uint32_t len)

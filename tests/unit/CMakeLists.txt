@@ -56,6 +56,32 @@ if(NOT PICO_BUILD)
     )
     add_test(NAME w25q64_test COMMAND test_w25q64)
 
+    # PR-gate: Flash layout — compile-time region assertions.
+    # If _Static_assert in flash_layout.h fires, this test does not compile.
+    add_executable(test_flash_layout
+        test_flash_layout.c
+    )
+    target_include_directories(test_flash_layout PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    add_test(NAME flash_layout_test COMMAND test_flash_layout)
+
+    # SC-4 gate: imu_calib save/load end-to-end through w25q64 host stubs.
+    # Provides its own mpu6050_write_gyro_offset stub; not linked to
+    # drivers_lib to avoid symbol conflicts.
+    add_executable(test_imu_calib_flash
+        test_imu_calib_flash.c
+        ../../src/drivers/imu/imu_calib.c
+        ../../src/drivers/payload/w25q64.c
+        ../../src/drivers/payload/spi_payload.c
+    )
+    target_include_directories(test_imu_calib_flash PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME imu_calib_flash_test COMMAND test_imu_calib_flash)
+
     add_executable(test_payload_manager
         test_payload_manager.c
         ../../src/drivers/payload/payload_manager.c

@@ -8,6 +8,9 @@
 #include "unity.h"
 #include <string.h>
 
+/* Host-only test helper declared extern (defined in w25q64.c host section) */
+extern void w25q64_host_set_busy(bool busy);
+
 void setUp(void)
 {
 }
@@ -118,6 +121,27 @@ void test_w25q64_wait_ready_zero_timeout(void)
     TEST_ASSERT_EQUAL_INT(W25Q64_OK, status);
 }
 
+void test_w25q64_wait_ready_timeout_expiry(void)
+{
+    /* Simulate busy device — wait_ready should time out */
+    w25q64_host_set_busy(true);
+
+    /* Very short timeout ensures timeout behaviour */
+    w25q64_status_t status = w25q64_wait_ready(1);
+    TEST_ASSERT_EQUAL_INT(W25Q64_ERR_TIMEOUT, status);
+
+    /* Reset for subsequent tests */
+    w25q64_host_set_busy(false);
+}
+
+void test_w25q64_wait_ready_success_after_busy_clears(void)
+{
+    /* Host stub can't simulate busy clearing mid-poll without threading,
+     * but verify that wait_ready succeeds when device is idle */
+    w25q64_host_set_busy(false);
+    TEST_ASSERT_EQUAL_INT(W25Q64_OK, w25q64_wait_ready(100));
+}
+
 void test_w25q64_imu_calib_write_read(void)
 {
     imu_calib_t cal_in;
@@ -221,6 +245,8 @@ int main(void)
     RUN_TEST(test_w25q64_status);
     RUN_TEST(test_w25q64_wait_ready);
     RUN_TEST(test_w25q64_wait_ready_zero_timeout);
+    RUN_TEST(test_w25q64_wait_ready_timeout_expiry);
+    RUN_TEST(test_w25q64_wait_ready_success_after_busy_clears);
     /* Read-empty and null-params must run BEFORE any write to verify uninitialized state */
     RUN_TEST(test_w25q64_imu_calib_read_empty);
     RUN_TEST(test_w25q64_imu_calib_null_params);
