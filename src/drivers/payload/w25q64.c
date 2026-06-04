@@ -599,9 +599,9 @@ bool w25q64_is_present(void)
 
   #include "flash_layout.h"
 
-  /* Buffer-backed IMU calib storage for host tests */
-  static uint8_t s_imu_calib_buf[W25Q64_IMU_CALIB_SIZE];
-  static bool s_imu_calib_valid = false;
+/* Buffer-backed IMU calib storage for host tests */
+static uint8_t s_imu_calib_buf[W25Q64_IMU_CALIB_SIZE];
+static bool s_imu_calib_valid = false;
 
 static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
 {

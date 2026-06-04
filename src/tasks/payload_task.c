@@ -71,14 +71,11 @@ void vPayloadTask_Step(void)
             }
 
             uint32_t img_size = (eoi_offset > 0) ? eoi_offset + 2 : read_len;
-            printf("[PayloadTask] JPEG: SOI=%s EOI=%s size=%lu\n",
-                   has_soi ? "YES" : "NO",
-                   eoi_offset > 0 ? "YES" : "NO",
-                   (unsigned long)img_size);
+            printf("[PayloadTask] JPEG: SOI=%s EOI=%s size=%lu\n", has_soi ? "YES" : "NO",
+                   eoi_offset > 0 ? "YES" : "NO", (unsigned long)img_size);
 
             char filename[32];
-            snprintf(filename, sizeof(filename), "/IMAGES/img_%lu.jpg",
-                     (unsigned long)s_counter);
+            snprintf(filename, sizeof(filename), "/IMAGES/img_%lu.jpg", (unsigned long)s_counter);
             storage_status_t st = storage_write_image(filename, s_img_buffer, read_len);
             printf("[PayloadTask] Image saved: %s (%lu bytes)\n", filename,
                    (unsigned long)read_len);

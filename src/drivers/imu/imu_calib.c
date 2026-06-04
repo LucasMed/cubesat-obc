@@ -10,8 +10,8 @@
 #include "drivers/imu/imu_calib.h"
 
 #include "drivers/imu/mpu6050.h"
-#include "w25q64.h"
 #include "ekf.h"
+#include "w25q64.h"
 
 #include <math.h>
 #include <stdio.h>

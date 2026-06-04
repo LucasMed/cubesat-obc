@@ -51,10 +51,10 @@ extern "C"
   /* Compile-time overlap assertions                                     */
   /* ------------------------------------------------------------------ */
 
-_Static_assert(FLASH_SECTOR_POST + 0x1000u <= FLASH_SECTOR_IMU_CALIB,
-               "flash_layout: POST region overlaps IMU calibration region");
-_Static_assert(FLASH_SECTOR_IMU_CALIB + 0x1000u <= FLASH_SIZE_BYTES,
-               "flash_layout: IMU calibration region exceeds flash size");
+  _Static_assert(FLASH_SECTOR_POST + 0x1000u <= FLASH_SECTOR_IMU_CALIB,
+                 "flash_layout: POST region overlaps IMU calibration region");
+  _Static_assert(FLASH_SECTOR_IMU_CALIB + 0x1000u <= FLASH_SIZE_BYTES,
+                 "flash_layout: IMU calibration region exceeds flash size");
 
 #ifdef __cplusplus
 }
