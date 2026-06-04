@@ -28,9 +28,13 @@
 #ifdef PICO_BUILD
   #include "hardware/gpio.h"
   #include "hardware/spi.h"
+  #include "pico/time.h"
 
   #include <stdio.h>
   #include <string.h>
+
+  /* Flash layout for region definitions */
+  #include "flash_layout.h"
 
   /* W25Q64 Flash Chip Select pin (GPIO7) */
   #define W25Q64_CS_PIN 7
@@ -66,6 +70,10 @@
 
   /* Timing */
   #define W25Q64_TIMEOUT_MS 500
+
+  /* IMU calibration layout */
+  #define W25Q64_IMU_CALIB_MAGIC 0xDEADBEEF
+  #define W25Q64_IMU_CALIB_SIZE 64u /* Padded to sector-friendly alignment */
 
 static bool s_initialized = false;
 
@@ -154,16 +162,16 @@ uint8_t w25q64_read_status(void)
 
 w25q64_status_t w25q64_wait_ready(uint32_t timeout_ms)
 {
-  uint32_t start = 0; /* Would use hardware timer in real impl */
-  (void)start;
+  absolute_time_t deadline = make_timeout_time_ms(timeout_ms);
 
   while (w25q64_read_status() & W25Q64_STATUS_BUSY)
   {
-    /* Simple polling - in production use hardware timer */
-    for (volatile uint32_t i = 0; i < 1000; i++)
-      ;
-    (void)timeout_ms; /* Simplified - always succeed */
-    break;            /* Avoid infinite loop in stub */
+    if (time_reached(deadline))
+    {
+      return W25Q64_ERR_TIMEOUT;
+    }
+    /* Small delay to avoid hammering the SPI bus */
+    busy_wait_us(10);
   }
 
   return W25Q64_OK;
@@ -330,7 +338,149 @@ bool w25q64_is_present(void)
   return w25q64_read_id(&id) == W25Q64_OK && id.valid;
 }
 
+/* ------------------------------------------------------------------ */
+/* IMU calibration persistence                                         */
+/* ------------------------------------------------------------------ */
+
+static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
+{
+  uint32_t crc = 0xFFFFFFFF;
+  for (uint32_t i = 0; i < len; i++)
+  {
+    crc ^= data[i];
+    for (int j = 0; j < 8; j++)
+    {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0xEDB88320;
+      else
+        crc >>= 1;
+    }
+  }
+  return ~crc;
+}
+
+w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
+{
+  if (!cal)
+  {
+    return W25Q64_ERR_INIT;
+  }
+
+  uint8_t buf[W25Q64_IMU_CALIB_SIZE];
+  memset(buf, 0, sizeof(buf));
+  uint32_t offset = 0;
+
+  /* Magic */
+  uint32_t magic = W25Q64_IMU_CALIB_MAGIC;
+  memcpy(&buf[offset], &magic, 4);
+  offset += 4;
+
+  /* accel_offset[3] (12 bytes) */
+  memcpy(&buf[offset], cal->accel_offset, 12);
+  offset += 12;
+
+  /* accel_scale[3] (12 bytes) */
+  memcpy(&buf[offset], cal->accel_scale, 12);
+  offset += 12;
+
+  /* gyro_offset_raw[3] (6 bytes) */
+  memcpy(&buf[offset], cal->gyro_offset_raw, 6);
+  offset += 6;
+
+  /* gyro_bias_rads[3] (12 bytes) */
+  memcpy(&buf[offset], cal->gyro_bias_rads, 12);
+  offset += 12;
+
+  /* calibrated flag (1 byte) */
+  buf[offset++] = cal->calibrated ? 1 : 0;
+
+  /* CRC32 over payload (4 bytes) */
+  uint32_t crc = imu_calib_crc32(buf, offset);
+  memcpy(&buf[offset], &crc, 4);
+  offset += 4;
+
+  /* Erase the IMU calibration sector before first write */
+  w25q64_status_t status = w25q64_erase_sector(FLASH_SECTOR_IMU_CALIB);
+  if (status != W25Q64_OK)
+  {
+    printf("[w25q64] IMU calib: sector erase failed\n");
+    return status;
+  }
+
+  /* Write serialised data (fits in one 256-byte page) */
+  return w25q64_write_page(FLASH_SECTOR_IMU_CALIB, buf, offset);
+}
+
+w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
+{
+  if (!cal)
+  {
+    return W25Q64_ERR_INIT;
+  }
+
+  uint8_t buf[W25Q64_IMU_CALIB_SIZE];
+  memset(buf, 0, sizeof(buf));
+
+  w25q64_status_t status = w25q64_read(FLASH_SECTOR_IMU_CALIB, buf, sizeof(buf));
+  if (status != W25Q64_OK)
+  {
+    return status;
+  }
+
+  uint32_t offset = 0;
+
+  /* Magic */
+  uint32_t magic;
+  memcpy(&magic, &buf[offset], 4);
+  offset += 4;
+  if (magic != W25Q64_IMU_CALIB_MAGIC)
+  {
+    printf("[w25q64] IMU calib: invalid magic 0x%08X (sector not written)\n", magic);
+    return W25Q64_ERR_INIT;
+  }
+
+  /* accel_offset[3] (12 bytes) */
+  memcpy(cal->accel_offset, &buf[offset], 12);
+  offset += 12;
+
+  /* accel_scale[3] (12 bytes) */
+  memcpy(cal->accel_scale, &buf[offset], 12);
+  offset += 12;
+
+  /* gyro_offset_raw[3] (6 bytes) */
+  memcpy(cal->gyro_offset_raw, &buf[offset], 6);
+  offset += 6;
+
+  /* gyro_bias_rads[3] (12 bytes) */
+  memcpy(cal->gyro_bias_rads, &buf[offset], 12);
+  offset += 12;
+
+  /* calibrated flag */
+  cal->calibrated = (buf[offset++] == 1);
+
+  /* CRC32 check */
+  uint32_t crc_stored;
+  memcpy(&crc_stored, &buf[offset], 4);
+  uint32_t crc_computed = imu_calib_crc32(buf, offset);
+  if (crc_stored != crc_computed)
+  {
+    printf("[w25q64] IMU calib: CRC mismatch (stored=0x%08X computed=0x%08X)\n", crc_stored,
+           crc_computed);
+    return W25Q64_ERR_INIT;
+  }
+
+  return W25Q64_OK;
+}
+
 #else /* HOST BUILD - stub implementations */
+
+/* Busy simulation for timeout testing */
+static bool s_host_busy = false;
+
+void w25q64_host_set_busy(bool busy)
+{
+  s_host_busy = busy;
+}
 
 w25q64_status_t w25q64_init(void)
 {
@@ -351,13 +501,27 @@ w25q64_status_t w25q64_read_id(w25q64_id_t *id)
 
 uint8_t w25q64_read_status(void)
 {
-  return 0;
+  /* Return BUSY bit when simulation is active */
+  return s_host_busy ? 0x01u : 0;
 }
 
 w25q64_status_t w25q64_wait_ready(uint32_t timeout_ms)
 {
-  (void)timeout_ms;
-  return W25Q64_OK;
+  if (!s_host_busy)
+  {
+    return W25Q64_OK;
+  }
+
+  /* Simulate timeout with iteration count (1 us per iteration) */
+  uint32_t timeout_us = timeout_ms * 1000u;
+  for (uint32_t elapsed = 0; elapsed < timeout_us; elapsed++)
+  {
+    if (!(w25q64_read_status() & 0x01u))
+    {
+      return W25Q64_OK;
+    }
+  }
+  return W25Q64_ERR_TIMEOUT;
 }
 
 w25q64_status_t w25q64_read(uint32_t addr, uint8_t *buf, uint32_t len)
@@ -429,8 +593,15 @@ bool w25q64_is_present(void)
 
   /* IMU Calibration Flash Layout (W25Q64) */
   #define IMU_CALIB_MAGIC 0xDEADBEEF
-  #define IMU_CALIB_OFFSET 0x000000
-  #define IMU_CALIB_SIZE 0x000034  // 4+12+12+6+12+1+4 = 51 bytes (padded to 52 for alignment)
+  /* IMU calibration layout — mirror PICO constants for host stubs */
+  #define W25Q64_IMU_CALIB_MAGIC 0xDEADBEEF
+  #define W25Q64_IMU_CALIB_SIZE 64u
+
+  #include "flash_layout.h"
+
+/* Buffer-backed IMU calib storage for host tests */
+static uint8_t s_imu_calib_buf[W25Q64_IMU_CALIB_SIZE];
+static bool s_imu_calib_valid = false;
 
 static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
 {
@@ -452,97 +623,93 @@ static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
 w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
 {
   if (!cal)
+  {
     return W25Q64_ERR_INIT;
+  }
 
-  uint8_t buf[IMU_CALIB_SIZE];
-  memset(buf, 0, sizeof(buf));
-
+  memset(s_imu_calib_buf, 0, sizeof(s_imu_calib_buf));
   uint32_t offset = 0;
 
   /* Magic */
-  uint32_t magic = IMU_CALIB_MAGIC;
-  memcpy(&buf[offset], &magic, 4);
+  uint32_t magic = W25Q64_IMU_CALIB_MAGIC;
+  memcpy(&s_imu_calib_buf[offset], &magic, 4);
   offset += 4;
 
   /* accel_offset[3] (12 bytes) */
-  memcpy(&buf[offset], cal->accel_offset, 12);
+  memcpy(&s_imu_calib_buf[offset], cal->accel_offset, 12);
   offset += 12;
 
   /* accel_scale[3] (12 bytes) */
-  memcpy(&buf[offset], cal->accel_scale, 12);
+  memcpy(&s_imu_calib_buf[offset], cal->accel_scale, 12);
   offset += 12;
 
   /* gyro_offset_raw[3] (6 bytes) */
-  memcpy(&buf[offset], cal->gyro_offset_raw, 6);
+  memcpy(&s_imu_calib_buf[offset], cal->gyro_offset_raw, 6);
   offset += 6;
 
   /* gyro_bias_rads[3] (12 bytes) */
-  memcpy(&buf[offset], cal->gyro_bias_rads, 12);
+  memcpy(&s_imu_calib_buf[offset], cal->gyro_bias_rads, 12);
   offset += 12;
 
   /* calibrated flag (1 byte) */
-  buf[offset++] = cal->calibrated ? 1 : 0;
+  s_imu_calib_buf[offset++] = cal->calibrated ? 1 : 0;
 
   /* CRC32 (4 bytes) */
-  uint32_t crc = imu_calib_crc32(buf, offset);
-  memcpy(&buf[offset], &crc, 4);
+  uint32_t crc = imu_calib_crc32(s_imu_calib_buf, offset);
+  memcpy(&s_imu_calib_buf[offset], &crc, 4);
 
-  /* Write to flash (TODO: implement actual flash write for Pico build) */
-  printf("[w25q64] TODO: write %d bytes to offset 0x%06X (Phase 7)\n", IMU_CALIB_SIZE,
-         IMU_CALIB_OFFSET);
+  s_imu_calib_valid = true;
   return W25Q64_OK;
 }
 
 w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
 {
   if (!cal)
+  {
     return W25Q64_ERR_INIT;
+  }
 
-  uint8_t buf[IMU_CALIB_SIZE];
-  memset(buf, 0, sizeof(buf));
-
-  /* Read from flash (TODO: implement actual flash read for Pico build) */
-  printf("[w25q64] TODO: read %d bytes from offset 0x%06X (Phase 7)\n", IMU_CALIB_SIZE,
-         IMU_CALIB_OFFSET);
+  if (!s_imu_calib_valid)
+  {
+    return W25Q64_ERR_INIT;
+  }
 
   uint32_t offset = 0;
 
   /* Magic */
   uint32_t magic;
-  memcpy(&magic, &buf[offset], 4);
+  memcpy(&magic, &s_imu_calib_buf[offset], 4);
   offset += 4;
-  if (magic != IMU_CALIB_MAGIC)
+  if (magic != W25Q64_IMU_CALIB_MAGIC)
   {
-    printf("[w25q64] IMU calib: invalid magic 0x%08X\n", magic);
     return W25Q64_ERR_INIT;
   }
 
   /* accel_offset[3] */
-  memcpy(cal->accel_offset, &buf[offset], 12);
+  memcpy(cal->accel_offset, &s_imu_calib_buf[offset], 12);
   offset += 12;
 
   /* accel_scale[3] */
-  memcpy(cal->accel_scale, &buf[offset], 12);
+  memcpy(cal->accel_scale, &s_imu_calib_buf[offset], 12);
   offset += 12;
 
   /* gyro_offset_raw[3] */
-  memcpy(cal->gyro_offset_raw, &buf[offset], 6);
+  memcpy(cal->gyro_offset_raw, &s_imu_calib_buf[offset], 6);
   offset += 6;
 
   /* gyro_bias_rads[3] */
-  memcpy(cal->gyro_bias_rads, &buf[offset], 12);
+  memcpy(cal->gyro_bias_rads, &s_imu_calib_buf[offset], 12);
   offset += 12;
 
   /* calibrated flag */
-  cal->calibrated = (buf[offset++] == 1);
+  cal->calibrated = (s_imu_calib_buf[offset++] == 1);
 
   /* CRC32 check */
   uint32_t crc_stored;
-  memcpy(&crc_stored, &buf[offset], 4);
-  uint32_t crc_computed = imu_calib_crc32(buf, offset);
+  memcpy(&crc_stored, &s_imu_calib_buf[offset], 4);
+  uint32_t crc_computed = imu_calib_crc32(s_imu_calib_buf, offset);
   if (crc_stored != crc_computed)
   {
-    printf("[w25q64] IMU calib: CRC mismatch\n");
     return W25Q64_ERR_INIT;
   }
 

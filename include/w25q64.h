@@ -20,6 +20,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* For imu_calib_t used in IMU calibration persistence API */
+#include "drivers/imu/imu_calib.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -145,6 +148,27 @@ extern "C"
    * @return true if flash responds to ID command
    */
   bool w25q64_is_present(void);
+
+  /**
+   * @brief Write IMU calibration data to flash.
+   *
+   * Serialises imu_calib_t to the dedicated IMU calibration sector
+   * with CRC32 verification. Erases sector before first write.
+   *
+   * @param cal Calibration data to persist
+   * @return W25Q64_OK on success, error code otherwise
+   */
+  w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal);
+
+  /**
+   * @brief Read IMU calibration data from flash.
+   *
+   * Reads and validates (magic + CRC32) calibration data.
+   *
+   * @param cal Output buffer for calibration data
+   * @return W25Q64_OK on success, W25Q64_ERR_INIT if invalid/missing
+   */
+  w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal);
 
 #ifdef __cplusplus
 }

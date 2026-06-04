@@ -11,6 +11,7 @@
 
 #include "drivers/imu/mpu6050.h"
 #include "ekf.h"
+#include "w25q64.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -213,12 +214,30 @@ void imu_calib_load(const imu_calib_t *in)
 
 void imu_calib_save_to_flash(void)
 {
-  /* TODO: Implement W25Q64 flash write using w25q64.c */
-  printf("[imu_calib] TODO: Save to W25Q64 flash (Phase 7)\n");
+  w25q64_status_t status = w25q64_write_imu_calib(&g_calib);
+  if (status == W25Q64_OK)
+  {
+    printf("[imu_calib] Calibration saved to W25Q64 flash\n");
+  }
+  else
+  {
+    printf("[imu_calib] ERROR: failed to save calibration to flash (%d)\n", (int)status);
+  }
 }
 
 void imu_calib_load_from_flash(void)
 {
-  /* TODO: Implement W25Q64 flash read using w25q64.c */
-  printf("[imu_calib] TODO: Load from W25Q64 flash (Phase 7)\n");
+  imu_calib_t loaded;
+  memset(&loaded, 0, sizeof(loaded));
+
+  w25q64_status_t status = w25q64_read_imu_calib(&loaded);
+  if (status == W25Q64_OK)
+  {
+    imu_calib_load(&loaded);
+    printf("[imu_calib] Calibration loaded from W25Q64 flash\n");
+  }
+  else
+  {
+    printf("[imu_calib] No valid calibration in flash (status=%d)\n", (int)status);
+  }
 }

@@ -42,7 +42,19 @@ extern "C"
   /* 0x700000 – 0x700FFF: POST ring buffer (4 KB)                       */
 #define FLASH_SECTOR_POST 0x700000u
 
-  /* 0x701000 – 0x7FFFFF: unallocated (reserved)                        */
+  /* 0x7F0000 – 0x7F0FFF: IMU calibration data (4 KB)                  */
+#define FLASH_SECTOR_IMU_CALIB 0x7F0000u
+
+  /* 0x7F1000 – 0x7FFFFF: unallocated (reserved)                        */
+
+  /* ------------------------------------------------------------------ */
+  /* Compile-time overlap assertions                                     */
+  /* ------------------------------------------------------------------ */
+
+  _Static_assert(FLASH_SECTOR_POST + 0x1000u <= FLASH_SECTOR_IMU_CALIB,
+                 "flash_layout: POST region overlaps IMU calibration region");
+  _Static_assert(FLASH_SECTOR_IMU_CALIB + 0x1000u <= FLASH_SIZE_BYTES,
+                 "flash_layout: IMU calibration region exceeds flash size");
 
 #ifdef __cplusplus
 }
