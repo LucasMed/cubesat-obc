@@ -7,6 +7,12 @@
 
 #include <string.h>
 
+/** @brief Last record captured by telemetry_storage_store() (test instrumentation) */
+telemetry_record_t g_telemetry_storage_last_record;
+
+/** @brief Set true on each telemetry_storage_store() call (test instrumentation) */
+bool g_telemetry_storage_store_called = false;
+
 bool telemetry_storage_init(void)
 {
   return true;
@@ -14,7 +20,11 @@ bool telemetry_storage_init(void)
 
 bool telemetry_storage_store(const telemetry_record_t *record)
 {
-  (void)record;
+  if (record != NULL)
+  {
+    g_telemetry_storage_last_record = *record;
+    g_telemetry_storage_store_called = true;
+  }
   return true;
 }
 

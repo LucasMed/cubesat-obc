@@ -26,11 +26,20 @@ typedef struct __attribute__((packed))
   int16_t battery_mv;      // Battery voltage [mV] (ADC0/GPIO26)
   int16_t current_ma;      // Current [mA] (INA219)
   int16_t power_mw;        // Power [mW] (INA219)
-  float sun_x;             // Sun sensor X intensity (0.0-1.0) or -1
-  float sun_y;             // Sun sensor Y intensity (0.0-1.0) or -1
-  uint8_t flags;  // Bit 0: imu_valid, Bit 1: temp_valid, Bit 2: humidity_valid, Bit 3: lux_valid,
-                  // Bit 4: rtc_valid, Bit 5: sun_valid, Bit 6: power_valid, Bits 7:5: energy_state
+  float sun_x;               // Sun sensor X intensity (0.0-1.0) or -1
+  float sun_y;               // Sun sensor Y intensity (0.0-1.0) or -1
+  float mag_field[3];        // [82] Magnetometer [µT]
+  float radiation_dose;      // [94] Radiation dose
+  uint16_t image_count;      // [98] Images on payload SD
+  uint8_t payload_rail_enabled; // [100] 1=rail on
+  uint8_t flags;             // [101] Bit 0: imu_valid, Bit 1: temp_valid,
+                             // Bit 2: humidity_valid, Bit 3: lux_valid,
+                             // Bit 4: rtc_valid, Bit 5: sun_valid,
+                             // Bit 6: power_valid, Bits 7:5: energy_state
 } csp_telemetry_packet_t;
+
+_Static_assert(sizeof(csp_telemetry_packet_t) == 98,
+               "csp_telemetry_packet_t must be 98 bytes (FR-17)");
 
 void vTelemetryTask(void *pvParameters);
 void vTelemetryTask_Step(void);

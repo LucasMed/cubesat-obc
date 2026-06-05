@@ -10,7 +10,7 @@
  *   0x100000 - 0x1FFFFF (1MB): Event log
  *   0x200000 - 0x7FFFFF (6MB): Reserved for future use
  *
- * Each telemetry record is 64 bytes:
+ * Each telemetry record is 76 bytes (see telemetry_record_t):
  *   [0..3]   timestamp (uint32_t, seconds since boot)
  *   [4..7]   sequence number
  *   [8..11]  roll (float)
@@ -25,8 +25,13 @@
  *   [44..47] mag_x (float)
  *   [48..51] mag_y (float)
  *   [52..55] mag_z (float)
- *   [56..59] battery_voltage (float)
- *   [60..63] flags (uint32_t)
+ *   [56..59] temperature (float)
+ *   [60..63] humidity (float)
+ *   [64..67] radiation_dose (float)
+ *   [68..69] image_count (uint16_t)
+ *   [70]     payload_rail_enabled (uint8_t)
+ *   [71]     _reserved (uint8_t)
+ *   [72..75] flags (uint32_t)
  */
 
 #ifndef TELEMETRY_STORAGE_H
@@ -59,12 +64,17 @@ extern "C"
     float mag_x;        /**< Magnetometer X in uT */
     float mag_y;        /**< Magnetometer Y in uT */
     float mag_z;        /**< Magnetometer Z in uT */
-    float temperature;  /**< Temperature in Celsius */
-    float humidity;     /**< Relative humidity in percent (-1 if N/A) */
-    uint32_t flags;     /**< Status flags */
+    float temperature;     /**< Temperature in Celsius */
+    float humidity;        /**< Relative humidity in percent (-1 if N/A) */
+    float radiation_dose;  /**< Radiation dose (FR-17) */
+    uint16_t image_count;  /**< Images on payload SD (FR-17) */
+    uint8_t payload_rail_enabled; /**< 1 = payload rail on (FR-17) */
+    uint8_t _reserved;     /**< Padding to 76 bytes */
+    uint32_t flags;        /**< Status flags */
   } telemetry_record_t;
 
-  _Static_assert(sizeof(telemetry_record_t) == 68, "Telemetry record must be 68 bytes");
+  _Static_assert(sizeof(telemetry_record_t) == 76,
+                 "telemetry_record_t must be 76 bytes (FR-17)");
 
   /**
    * @brief Storage statistics

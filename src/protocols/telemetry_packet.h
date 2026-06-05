@@ -12,10 +12,13 @@ extern "C"
  * Binary Telemetry Packet Protocol
  *
  * Sent over UART1 (HC-12) with 2-byte sync prefix:
- *   [0xAA] [0x55] [53 bytes telemetry_packet_t]
+ *   [0xAA] [0x55] [64 bytes telemetry_packet_t]
  *
- * Total over-the-air: 55 bytes per frame (~55ms @ 9600 baud)
- * Fits entirely in SoftwareSerial 64-byte buffer — no overflow.
+ * Total over-the-air: 66 bytes per frame (~69ms @ 9600 baud).
+ * The ground station reads byte-by-byte from the SoftwareSerial
+ * buffer in its main loop, so the 64-byte RX buffer never overflows
+ * despite the 66-byte frame — each byte is consumed before the next
+ * serial character arrives at 9600 baud.
  * ================================================================ */
 
 /* Sync word bytes */
@@ -23,10 +26,10 @@ extern "C"
 #define TLM_SYNC_BYTE_2 0x55
 
 /* Packet size (without sync) */
-#define TLM_PACKET_SIZE 53
+#define TLM_PACKET_SIZE 64
 
   /**
-   * telemetry_packet_t — Binary telemetry frame (packed, 53 bytes)
+   * telemetry_packet_t — Binary telemetry frame (packed, 64 bytes)
    *
    * All multi-byte values are little-endian (native for both
    * ARM Cortex-M0+ and AVR).
@@ -41,6 +44,7 @@ extern "C"
    *   current  : int16_t       →  mA
    *   power    : int16_t       →  mW
    *   sun_x/y  : int16_t ×100  →  -327.68 .. 327.67
+   *   mag_x/y/z: int16_t ×100  →  -327.68 .. 327.67 µT
    */
   typedef struct __attribute__((packed))
   {
@@ -85,13 +89,21 @@ extern "C"
     int16_t sun_x;  // [47]
     int16_t sun_y;  // [49]
 
+    /* Payload housekeeping (FR-17) */
+    int16_t mag_x;             // [51] Mag X ×100 [µT]
+    int16_t mag_y;             // [53] Mag Y ×100 [µT]
+    int16_t mag_z;             // [55] Mag Z ×100 [µT]
+    uint16_t radiation;        // [57] Radiation dose
+    uint16_t image_count;      // [59] Images on payload SD
+    uint8_t payload_rail_enabled; // [61] 1=rail on
+
     /* Status */
-    uint8_t flags;  // [51] Bitmask (see TLM_FLAG_*)
-    uint8_t crc;    // [52] CRC-8/MAXIM over bytes [0..51]
+    uint8_t flags;  // [62] Bitmask (see TLM_FLAG_*)
+    uint8_t crc;    // [63] CRC-8/MAXIM over bytes [0..62]
   } telemetry_packet_t;
 
   _Static_assert(sizeof(telemetry_packet_t) == TLM_PACKET_SIZE,
-                 "telemetry_packet_t must be exactly 53 bytes");
+                 "telemetry_packet_t must be exactly 64 bytes (FR-17)");
 
 /* Flag bits (matches telemetry_task.c) */
 #define TLM_FLAG_IMU_OK (1u << 0)

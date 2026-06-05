@@ -78,7 +78,13 @@ void csp_sendto(uint8_t prio, uint16_t dest, uint8_t dport, uint8_t sport, uint3
 #include "eps.h"
 #include "flight_mode.h"
 #include "system_state.h"
+#include "telemetry_storage.h"
 #include "telemetry_task.h"
+#include "../../src/protocols/telemetry_packet.h"
+
+/* ---- Stub globals (from telemetry_storage_stub.c) ---------------------- */
+extern telemetry_record_t g_telemetry_storage_last_record;
+extern bool g_telemetry_storage_store_called;
 
 /* ---- Helpers ------------------------------------------------------------ */
 static int g_failures = 0;
@@ -269,6 +275,150 @@ static void test_tlm_flags_imu_temp(void)
 }
 
 /* ========================================================================
+ * T-TLM-07  Payload HK in CSP packet — DLA fields match packet fields
+ * ======================================================================== */
+static void test_tlm_payload_hk_in_csp(void)
+{
+  /* Case 1: nominal values */
+  {
+    int failures_before = g_failures;
+    reset_all();
+
+    float mag[3] = {12.5f, -3.2f, 45.8f};
+    data_layer_write_mag(mag);
+    data_layer_write_radiation(0.05f);
+    data_layer_write_payload_status(true, 42);
+
+    set_state(FM_NOMINAL, ENERGY_NOMINAL, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 22.0f, 1, 1);
+    vTelemetryTask_Step();
+
+    csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+    CHECK(s_send_calls == 1, "csp_sendto called once");
+    CHECK(tl->mag_field[0] == 12.5f, "mag_field[0]");
+    CHECK(tl->mag_field[1] == -3.2f, "mag_field[1]");
+    CHECK(tl->mag_field[2] == 45.8f, "mag_field[2]");
+    CHECK(tl->radiation_dose == 0.05f, "radiation_dose");
+    CHECK(tl->image_count == 42, "image_count");
+    CHECK(tl->payload_rail_enabled == 1, "payload_rail_enabled");
+  }
+
+  /* Case 2: edge values — negative mag, zero image count, rail disabled */
+  {
+    int failures_before = g_failures;
+    reset_all();
+
+    float mag[3] = {-0.1f, 0.0f, 32768.0f};
+    data_layer_write_mag(mag);
+    data_layer_write_radiation(999.9f);
+    data_layer_write_payload_status(false, 0);
+
+    set_state(FM_NOMINAL, ENERGY_NOMINAL, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 0, 0);
+    vTelemetryTask_Step();
+
+    csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+    CHECK(tl->mag_field[0] == -0.1f, "mag_field[0] negative");
+    CHECK(tl->mag_field[2] == 32768.0f, "mag_field[2] large");
+    CHECK(tl->radiation_dose == 999.9f, "radiation_dose large");
+    CHECK(tl->image_count == 0, "image_count zero");
+    CHECK(tl->payload_rail_enabled == 0, "payload_rail_enabled disabled");
+  }
+
+  printf("[T-TLM-07] test_tlm_payload_hk_in_csp: %s\n",
+         g_failures == 0 ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
+ * T-TLM-09  Compile-time and runtime sizeof assertions for FR-17 structs
+ * ======================================================================== */
+/* Compile-time checks are at file scope above.  Runtime function reports. */
+static void test_tlm_sizeof_assertions(void)
+{
+  int failures_before = g_failures;
+
+  CHECK(sizeof(csp_telemetry_packet_t) == 98, "sizeof(csp_telemetry_packet_t) == 98");
+  CHECK(sizeof(telemetry_packet_t) == 64, "sizeof(telemetry_packet_t) == 64");
+  CHECK(sizeof(telemetry_record_t) == 76, "sizeof(telemetry_record_t) == 76");
+  CHECK(TLM_PACKET_SIZE == 64, "TLM_PACKET_SIZE == 64");
+
+  printf("[T-TLM-09] test_tlm_sizeof_assertions: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
+ * T-TLM-08  Defaults when DLA not set — payload HK fields zero
+ * ======================================================================== */
+static void test_tlm_payload_hk_defaults_zero(void)
+{
+  int failures_before = g_failures;
+  reset_all();
+
+  /* Do NOT write payload HK — DLA is zero-initialised by data_layer_init() */
+  set_state(FM_NOMINAL, ENERGY_NOMINAL, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 22.0f, 1, 1);
+
+  vTelemetryTask_Step();
+
+  csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+  CHECK(tl->mag_field[0] == 0.0f, "mag_field[0] defaults to 0");
+  CHECK(tl->mag_field[1] == 0.0f, "mag_field[1] defaults to 0");
+  CHECK(tl->mag_field[2] == 0.0f, "mag_field[2] defaults to 0");
+  CHECK(tl->radiation_dose == 0.0f, "radiation_dose defaults to 0");
+  CHECK(tl->image_count == 0, "image_count defaults to 0");
+  CHECK(tl->payload_rail_enabled == 0, "payload_rail_enabled defaults to 0");
+
+  printf("[T-TLM-08] test_tlm_payload_hk_defaults_zero: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
+ * T-TLM-10  Flash record populated — store captures payload HK from DLA
+ * ======================================================================== */
+static void test_tlm_flash_record_payload_hk(void)
+{
+  /* Case 1: nominal values */
+  {
+    int failures_before = g_failures;
+    reset_all();
+    g_telemetry_storage_store_called = false;
+
+    float mag[3] = {1.0f, 2.0f, 3.0f};
+    data_layer_write_mag(mag);
+    data_layer_write_radiation(0.99f);
+    data_layer_write_payload_status(true, 7);
+
+    set_state(FM_NOMINAL, ENERGY_NOMINAL, 10.0f, 20.0f, 30.0f, 0.1f, 0.2f, 0.3f, 25.0f, 1, 1);
+    vTelemetryTask_Step();
+
+    CHECK(g_telemetry_storage_store_called, "store called");
+    CHECK(g_telemetry_storage_last_record.radiation_dose == 0.99f, "radiation_dose");
+    CHECK(g_telemetry_storage_last_record.image_count == 7, "image_count");
+    CHECK(g_telemetry_storage_last_record.payload_rail_enabled == 1, "rail enabled");
+  }
+
+  /* Case 2: rail disabled, zero image count, zero radiation */
+  {
+    int failures_before = g_failures;
+    reset_all();
+    g_telemetry_storage_store_called = false;
+
+    float mag[3] = {0.0f, 0.0f, 0.0f};
+    data_layer_write_mag(mag);
+    data_layer_write_radiation(0.0f);
+    data_layer_write_payload_status(false, 0);
+
+    set_state(FM_NOMINAL, ENERGY_NOMINAL, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 0, 0);
+    vTelemetryTask_Step();
+
+    CHECK(g_telemetry_storage_store_called, "store called");
+    CHECK(g_telemetry_storage_last_record.radiation_dose == 0.0f, "no radiation");
+    CHECK(g_telemetry_storage_last_record.image_count == 0, "no images");
+    CHECK(g_telemetry_storage_last_record.payload_rail_enabled == 0, "rail disabled");
+  }
+
+  printf("[T-TLM-10] test_tlm_flash_record_payload_hk: %s\n",
+         g_failures == 0 ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
  * T-TLM-06  No csp_sendto when csp_buffer_get returns NULL
  * ======================================================================== */
 static void test_tlm_null_buffer(void)
@@ -285,6 +435,18 @@ static void test_tlm_null_buffer(void)
   printf("[T-TLM-06] test_tlm_null_buffer: %s\n", g_failures == failures_before ? "PASS" : "FAIL");
 }
 
+/* ========================================================================
+ * T-TLM-09  sizeof assertions for FR-17 payload HK structs
+ * ======================================================================== */
+_Static_assert(sizeof(csp_telemetry_packet_t) == 98,
+               "csp_telemetry_packet_t must be 98 bytes after FR-17");
+_Static_assert(sizeof(telemetry_packet_t) == 64,
+               "telemetry_packet_t must be 64 bytes after FR-17");
+_Static_assert(TLM_PACKET_SIZE == 64,
+               "TLM_PACKET_SIZE must be 64 after FR-17");
+_Static_assert(sizeof(telemetry_record_t) == 76,
+               "telemetry_record_t must be 76 bytes after FR-17");
+
 /* ======================================================================== */
 int main(void)
 {
@@ -295,6 +457,10 @@ int main(void)
   test_tlm_energy_state_in_flags();
   test_tlm_flags_imu_temp();
   test_tlm_null_buffer();
+  test_tlm_payload_hk_in_csp();
+  test_tlm_payload_hk_defaults_zero();
+  test_tlm_sizeof_assertions();
+  test_tlm_flash_record_payload_hk();
   printf("=================================\n");
   if (g_failures == 0)
   {

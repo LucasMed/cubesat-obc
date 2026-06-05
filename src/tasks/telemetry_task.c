@@ -154,6 +154,14 @@ void vTelemetryTask_Step(void)
   tlm->sun_x = snap.state.sun_x;
   tlm->sun_y = snap.state.sun_y;
 
+  /* Payload housekeeping (FR-17) */
+  tlm->mag_field[0] = snap.state.mag_field[0];
+  tlm->mag_field[1] = snap.state.mag_field[1];
+  tlm->mag_field[2] = snap.state.mag_field[2];
+  tlm->radiation_dose = snap.state.radiation_dose;
+  tlm->image_count = snap.state.image_count;
+  tlm->payload_rail_enabled = snap.state.payload_rail_enabled ? 1 : 0;
+
   packet->length = sizeof(csp_telemetry_packet_t);
 
   // 3. Send over CSP port connection-less
@@ -162,8 +170,9 @@ void vTelemetryTask_Step(void)
 #ifdef PICO_BUILD
   /* Send binary telemetry over UART1 (HC-12)
    *
-   * Format: [SYNC 0xAA 0x55] [53-byte telemetry_packet_t]
-   * Total: 55 bytes @ 9600 baud ≈ 55ms — fits in SoftwareSerial buffer.
+   * Format: [SYNC 0xAA 0x55] [64-byte telemetry_packet_t]
+   * Total: 66 bytes @ 9600 baud ≈ 69ms.
+   * Ground station reads byte-by-byte — no SoftwareSerial overflow.
    */
   telemetry_packet_t bin;
   memset(&bin, 0, sizeof(bin));
@@ -196,6 +205,15 @@ void vTelemetryTask_Step(void)
                                                 : (int16_t)(snap.state.solar_power_uw / 1000));
   bin.sun_x = (int16_t)(tlm->sun_x * 100.0f);
   bin.sun_y = (int16_t)(tlm->sun_y * 100.0f);
+
+  /* Payload housekeeping (FR-17) */
+  bin.mag_x = (int16_t)(tlm->mag_field[0] * 100.0f);
+  bin.mag_y = (int16_t)(tlm->mag_field[1] * 100.0f);
+  bin.mag_z = (int16_t)(tlm->mag_field[2] * 100.0f);
+  bin.radiation = (uint16_t)(tlm->radiation_dose);
+  bin.image_count = (uint16_t)(tlm->image_count);
+  bin.payload_rail_enabled = (uint8_t)(tlm->payload_rail_enabled);
+
   bin.flags = (uint8_t)tlm->flags;
   bin.crc = tlm_crc8((const uint8_t *)&bin, sizeof(bin) - 1);
 
@@ -224,11 +242,14 @@ void vTelemetryTask_Step(void)
   record.acc_x = 0.0f;  // Not in current telemetry packet
   record.acc_y = 0.0f;
   record.acc_z = 0.0f;
-  record.mag_x = 0.0f;  // Not in current telemetry packet
-  record.mag_y = 0.0f;
-  record.mag_z = 0.0f;
+  record.mag_x = snap.state.mag_field[0];
+  record.mag_y = snap.state.mag_field[1];
+  record.mag_z = snap.state.mag_field[2];
   record.temperature = tlm->temp;
   record.humidity = tlm->humidity;
+  record.radiation_dose = snap.state.radiation_dose;
+  record.image_count = snap.state.image_count;
+  record.payload_rail_enabled = snap.state.payload_rail_enabled ? 1 : 0;
   record.flags = tlm->flags;
 
   if (!telemetry_storage_store(&record))

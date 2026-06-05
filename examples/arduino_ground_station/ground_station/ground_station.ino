@@ -3,49 +3,60 @@
 /* =================================================================
  * Binary Telemetry Packet Protocol — Arduino Ground Station
  *
- * The OBC sends 55-byte frames interleaved with text command responses:
- *   Binary  : [0xAA] [0x55] [53-byte telemetry_packet_t]
+ * The OBC sends 66-byte frames interleaved with text command responses:
+ *   Binary  : [0xAA] [0x55] [64-byte telemetry_packet_t]
  *   Text    : Lines ending in \n, prefixed like [CMD], GPS:, etc.
  *
  * State machine detects binary frames by sync word, falls through
  * to line-based text processing for command responses.
+ *
+ * Note: The SoftwareSerial RX buffer is 64 bytes and the frame is 66
+ * bytes over the air. This works because the loop() reads byte-by-byte
+ * from HC12 — each byte is consumed before the next one arrives at
+ * 9600 baud. There is no risk of buffer overflow in practice.
  * ================================================================= */
 
 /* ---- Binary protocol constants (mirrors OBC) ---- */
 #define TLM_SYNC_BYTE_1  0xAA
 #define TLM_SYNC_BYTE_2  0x55
-#define TLM_PACKET_SIZE  53
+#define TLM_PACKET_SIZE  64
 
 /* State machine states */
 enum { ST_IDLE, ST_GOT_AA, ST_COLLECT, ST_VERIFY };
 
-/* ---- Binary telemetry packet (packed, 53 bytes) ---- */
+/* ---- Binary telemetry packet (packed, 64 bytes, FR-17) ---- */
 typedef struct __attribute__((packed)) {
-  uint32_t ts;            // [0]  FreeRTOS tick ms
-  uint32_t rtc;           // [4]  Unix epoch seconds
-  uint8_t  mode;          // [8]  OBC mode
-  int16_t  roll;          // [9]  ×10
-  int16_t  pitch;         // [11] ×10
-  int16_t  yaw;           // [13] ×10
-  int16_t  temp;          // [15] ×10 (0.1°C)
-  int16_t  humidity;      // [17] ×10 (0.1%)
-  uint16_t lux;           // [19] lux
-  int32_t  gps_lat;       // [21] ×1e7
-  int32_t  gps_lon;       // [25] ×1e7
-  int16_t  gps_alt;       // [29] meters
-  uint8_t  gps_valid;     // [31] 0=no fix
-  uint8_t  gps_sats;      // [32] satellites
-  int16_t  bus_mv;        // [33] bus voltage mV
-  int16_t  bus_ma;        // [35] bus current mA
-  int16_t  bus_mw;        // [37] bus power mW
-  int16_t  battery_mv;    // [39] battery mV
-  int16_t  solar_mv;      // [41] solar mV
-  int16_t  solar_ma;      // [43] solar mA
-  int16_t  solar_mw;      // [45] solar mW
-  int16_t  sun_x;         // [47] ×100
-  int16_t  sun_y;         // [49] ×100
-  uint8_t  flags;         // [51] bitmask
-  uint8_t  crc;           // [52] CRC-8/MAXIM over bytes 0..51
+  uint32_t ts;               // [0]  FreeRTOS tick ms
+  uint32_t rtc;              // [4]  Unix epoch seconds
+  uint8_t  mode;             // [8]  OBC mode
+  int16_t  roll;             // [9]  ×10
+  int16_t  pitch;            // [11] ×10
+  int16_t  yaw;              // [13] ×10
+  int16_t  temp;             // [15] ×10 (0.1°C)
+  int16_t  humidity;         // [17] ×10 (0.1%)
+  uint16_t lux;              // [19] lux
+  int32_t  gps_lat;          // [21] ×1e7
+  int32_t  gps_lon;          // [25] ×1e7
+  int16_t  gps_alt;          // [29] meters
+  uint8_t  gps_valid;        // [31] 0=no fix
+  uint8_t  gps_sats;         // [32] satellites
+  int16_t  bus_mv;           // [33] bus voltage mV
+  int16_t  bus_ma;           // [35] bus current mA
+  int16_t  bus_mw;           // [37] bus power mW
+  int16_t  battery_mv;       // [39] battery mV
+  int16_t  solar_mv;         // [41] solar mV
+  int16_t  solar_ma;         // [43] solar mA
+  int16_t  solar_mw;         // [45] solar mW
+  int16_t  sun_x;            // [47] ×100
+  int16_t  sun_y;            // [49] ×100
+  int16_t  mag_x;            // [51] ×100 µT (FR-17)
+  int16_t  mag_y;            // [53] ×100 µT
+  int16_t  mag_z;            // [55] ×100 µT
+  uint16_t radiation;        // [57] Radiation dose
+  uint16_t image_count;      // [59] Images on payload SD
+  uint8_t  payload_rail_enabled; // [61] 1=rail on
+  uint8_t  flags;            // [62] bitmask
+  uint8_t  crc;              // [63] CRC-8/MAXIM over bytes 0..62
 } telemetry_packet_t;
 
 /* ---- Pinout ---- */
@@ -105,6 +116,11 @@ void parseBinaryFrame(const telemetry_packet_t *pkt)
   float sun_x   = pkt->sun_x  / 100.0f;
   float sun_y   = pkt->sun_y  / 100.0f;
 
+  /* Payload HK (FR-17) */
+  float mag_x   = pkt->mag_x / 100.0f;
+  float mag_y   = pkt->mag_y / 100.0f;
+  float mag_z   = pkt->mag_z / 100.0f;
+
   /* Decode flags */
   bool imu_ok      = (pkt->flags & 0x01) != 0;
   bool temp_ok     = (pkt->flags & 0x02) != 0;
@@ -148,6 +164,20 @@ void parseBinaryFrame(const telemetry_packet_t *pkt)
   Serial.print(sun_y, 2);
   Serial.print("] Energy=");
   Serial.print(energy_state);
+
+  /* Payload HK (FR-17) */
+  Serial.print(" Mag=[");
+  Serial.print(mag_x, 2);
+  Serial.print(",");
+  Serial.print(mag_y, 2);
+  Serial.print(",");
+  Serial.print(mag_z, 2);
+  Serial.print("]uT Rad=");
+  Serial.print(pkt->radiation);
+  Serial.print(" Img=");
+  Serial.print(pkt->image_count);
+  Serial.print(" Rail=");
+  Serial.print(pkt->payload_rail_enabled ? "ON" : "OFF");
 
   /* GPS */
   Serial.print(" GPS=");
