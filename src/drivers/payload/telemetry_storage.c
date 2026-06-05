@@ -15,7 +15,10 @@
   /* Storage layout for 8MB W25Q64 */
   #define TELEMETRY_BASE_ADDR 0x000000 /**< Telemetry log: 0 - 1MB */
   #define TELEMETRY_MAX_ADDR 0x0FFFFF
-  enum { TELEMETRY_RECORD_SIZE = sizeof(telemetry_record_t) };        /**< Stride = sizeof(record) */
+enum
+{
+  TELEMETRY_RECORD_SIZE = sizeof(telemetry_record_t)
+}; /**< Stride = sizeof(record) */
   #define TELEMETRY_MAX_RECORDS (1024 * 1024 / TELEMETRY_RECORD_SIZE) /**< ~13797 records */
 
 static bool s_initialized = false;
@@ -64,7 +67,8 @@ bool telemetry_storage_init(void)
   /* Stride guard (FR-17): if record stride exceeds the telemetry region,
    * old records written with a different stride are unreadable — erase. */
   {
-    uint32_t end_addr = TELEMETRY_BASE_ADDR + TELEMETRY_MAX_RECORDS * (uint32_t)sizeof(telemetry_record_t);
+    uint32_t end_addr =
+        TELEMETRY_BASE_ADDR + TELEMETRY_MAX_RECORDS * (uint32_t)sizeof(telemetry_record_t);
     if (end_addr > TELEMETRY_MAX_ADDR)
     {
       printf("telemetry_storage: Stride mismatch detected, clearing storage\n");

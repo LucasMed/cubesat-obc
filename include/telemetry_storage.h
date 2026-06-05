@@ -50,31 +50,30 @@ extern "C"
    */
   typedef struct
   {
-    uint32_t timestamp; /**< Seconds since boot */
-    uint32_t sequence;  /**< Record sequence number */
-    float roll;         /**< Roll angle in degrees */
-    float pitch;        /**< Pitch angle in degrees */
-    float yaw;          /**< Yaw angle in degrees */
-    float gyro_x;       /**< Gyroscope X in deg/s */
-    float gyro_y;       /**< Gyroscope Y in deg/s */
-    float gyro_z;       /**< Gyroscope Z in deg/s */
-    float acc_x;        /**< Accelerometer X in g */
-    float acc_y;        /**< Accelerometer Y in g */
-    float acc_z;        /**< Accelerometer Z in g */
-    float mag_x;        /**< Magnetometer X in uT */
-    float mag_y;        /**< Magnetometer Y in uT */
-    float mag_z;        /**< Magnetometer Z in uT */
-    float temperature;     /**< Temperature in Celsius */
-    float humidity;        /**< Relative humidity in percent (-1 if N/A) */
-    float radiation_dose;  /**< Radiation dose (FR-17) */
-    uint16_t image_count;  /**< Images on payload SD (FR-17) */
+    uint32_t timestamp;           /**< Seconds since boot */
+    uint32_t sequence;            /**< Record sequence number */
+    float roll;                   /**< Roll angle in degrees */
+    float pitch;                  /**< Pitch angle in degrees */
+    float yaw;                    /**< Yaw angle in degrees */
+    float gyro_x;                 /**< Gyroscope X in deg/s */
+    float gyro_y;                 /**< Gyroscope Y in deg/s */
+    float gyro_z;                 /**< Gyroscope Z in deg/s */
+    float acc_x;                  /**< Accelerometer X in g */
+    float acc_y;                  /**< Accelerometer Y in g */
+    float acc_z;                  /**< Accelerometer Z in g */
+    float mag_x;                  /**< Magnetometer X in uT */
+    float mag_y;                  /**< Magnetometer Y in uT */
+    float mag_z;                  /**< Magnetometer Z in uT */
+    float temperature;            /**< Temperature in Celsius */
+    float humidity;               /**< Relative humidity in percent (-1 if N/A) */
+    float radiation_dose;         /**< Radiation dose (FR-17) */
+    uint16_t image_count;         /**< Images on payload SD (FR-17) */
     uint8_t payload_rail_enabled; /**< 1 = payload rail on (FR-17) */
-    uint8_t _reserved;     /**< Padding to 76 bytes */
-    uint32_t flags;        /**< Status flags */
+    uint8_t _reserved;            /**< Padding to 76 bytes */
+    uint32_t flags;               /**< Status flags */
   } telemetry_record_t;
 
-  _Static_assert(sizeof(telemetry_record_t) == 76,
-                 "telemetry_record_t must be 76 bytes (FR-17)");
+  _Static_assert(sizeof(telemetry_record_t) == 76, "telemetry_record_t must be 76 bytes (FR-17)");
 
   /**
    * @brief Storage statistics

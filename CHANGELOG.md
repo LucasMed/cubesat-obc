@@ -5,6 +5,32 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] — 2026-06-05 — Payload HK in Telemetry
+
+### Added
+- **Payload HK in all three telemetry paths**: CSP packet, UART binary packet, and flash storage record now include mag_field, radiation_dose, image_count, payload_rail_enabled
+  - CSP packet (`csp_telemetry_packet_t`): 77→98 B, populated from `dl_snapshot_t.state`
+  - Binary packet (`telemetry_packet_t`): TLM_PACKET_SIZE 53→64, float mag converted to int16 ×100
+  - Flash record (`telemetry_record_t`): 68→76 B, TELEMETRY_RECORD_SIZE fixed from hardcoded 64 to `sizeof(telemetry_record_t)`
+  - Stride mismatch guard clears flash region on incompatible record size
+- **New telemetry tests**: T-TLM-07 (CSP payload HK, 2 cases), T-TLM-08 (defaults zero), T-TLM-09 (sizeof assertions), T-TLM-10 (flash record, 2 cases)
+- **Ground station parser** updated for new binary and JSON telemetry fields
+
+### Fixed
+- **TELEMETRY_RECORD_SIZE mismatch**: Pre-existing bug where `TELEMETRY_RECORD_SIZE=64` didn't match `sizeof(telemetry_record_t)=68` — flags field was truncated on every flash write. Fixed to `enum { TELEMETRY_RECORD_SIZE = sizeof(telemetry_record_t) }`.
+
+### Documentation
+- Switched binary telemetry packet from SoftwareSerial to HC-12 UART1 (hardware UART)
+- Ground station parser updated in `examples/arduino_ground_station/`
+
+### Testing
+- Test suite: **55/55 passing** (was 53)
+- Changed: `test_telemetry.c` (4 new test cases)
+- Spec compliance: **14/14 scenarios compliant**
+- Build: Host + Pico firmware both clean
+
+---
+
 ## [0.31.0] — 2026-05-21 — Deploy Automation
 
 ### Added

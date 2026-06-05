@@ -94,3 +94,27 @@ The FreeRTOS port implementation had to match the physical architecture of the R
 
 ### Results
 After pointing the build system to the M33 architecture port and aligning the alias definitions, the FreeRTOS scheduler operates perfectly, ticking correctly with stable stack contexts.
+
+---
+
+# FR-17 Payload HK in Telemetry — Lessons Learned (2026-06-05)
+
+## Verify Documentation Fixes Separately
+
+**Problem**: During verify, the SoftwareSerial buffer comment in `telemetry_packet.h` flagged as WARNING — the apply-progress claimed it was fixed but the file still contained the old claim ("Fits entirely in SoftwareSerial 64-byte buffer — no overflow").
+
+**Root cause**: No dedicated verification step for post-implementation documentation cleanup. The comment fix was mentioned in a dev note but never actually applied.
+
+**Lesson**: When documentation cleanup is listed in apply-progress, create a subtask for it and verify the fix in the changed file before marking complete. A post-apply grep for known stale comments catches this.
+
+## PICO_BUILD Guards Are a Testability Debt
+
+**Problem**: Binary packet and flash storage assembly code is PICO_BUILD guarded and cannot run in host unit tests. T-TLM-10 captures call-site correctness via stubs but the real storage logic is only exercised on target hardware.
+
+**Lesson**: For future changes, extract pure data-transformation functions (e.g., float-to-int16 ×100 conversion) that are compilable on both host and target. Keep only the HAL/peripheral calls behind PICO_BUILD. This reduces the untested code surface at no firmware cost.
+
+## Design File Paths Drift from Real Paths
+
+**Problem**: The design document referenced `src/services/telemetry/telemetry_storage.c` but the actual path was `src/drivers/payload/telemetry_storage.c`. Implementation found and used the correct path.
+
+**Lesson**: Design documents should reference file paths from a known baseline (e.g., the `git ls-tree` listing at session start) rather than assumed paths. Alternatively, note paths as "illustrative" and state they will be resolved during apply.

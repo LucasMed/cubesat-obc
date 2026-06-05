@@ -90,12 +90,12 @@ extern "C"
     int16_t sun_y;  // [49]
 
     /* Payload housekeeping (FR-17) */
-    int16_t mag_x;             // [51] Mag X ×100 [µT]
-    int16_t mag_y;             // [53] Mag Y ×100 [µT]
-    int16_t mag_z;             // [55] Mag Z ×100 [µT]
-    uint16_t radiation;        // [57] Radiation dose
-    uint16_t image_count;      // [59] Images on payload SD
-    uint8_t payload_rail_enabled; // [61] 1=rail on
+    int16_t mag_x;                 // [51] Mag X ×100 [µT]
+    int16_t mag_y;                 // [53] Mag Y ×100 [µT]
+    int16_t mag_z;                 // [55] Mag Z ×100 [µT]
+    uint16_t radiation;            // [57] Radiation dose
+    uint16_t image_count;          // [59] Images on payload SD
+    uint8_t payload_rail_enabled;  // [61] 1=rail on
 
     /* Status */
     uint8_t flags;  // [62] Bitmask (see TLM_FLAG_*)
