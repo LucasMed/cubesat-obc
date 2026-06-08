@@ -22,13 +22,13 @@ This matrix maps functional and non-functional requirements to implementation mo
 | **FR-10** | Fault Aggregation | Centralised fault table (32 slots), levels INFO/WARNING/CRITICAL, anti-cascade | `services/fault/fault_manager.c`, `include/fault_manager.h`, `include/fault_ids.h` | `test_fault_manager` (T-FMS-02..04) | ✅ 12/12 PR-4 |
 | **FR-11** | EPS Monitoring | Battery voltage state machine (NOMINAL/LOW/CRITICAL/EMERGENCY) with hysteresis | `services/eps/eps_monitor.c`, `include/eps.h` | `test_eps_monitor` (T-EPS-03..05) | ✅ 12/12 PR-5 |
 | **FR-12** | Event Logging | 320-entry ring buffer, Class-A protection, newest-first read | `services/log/logger.c`, `include/logger.h`, `include/log_event_ids.h` | `test_logger` (T-LOG-01..03) | ✅ 12/12 PR-6 |
-| **FR-13** | Camera Image Capture | Acquire JPEG image from IMX219 via SPI1 on ground/internal command | `drivers/payload/camera_driver.c` | `test_camera_driver` | ⏳ Phase 7 — pending |
-| **FR-14** | Scientific Mag Sampling | Sample RM3100 magnetometer at ≥10 Hz during `FM_PAYLOAD`, store to flash | `drivers/mag/rm3100.c`, `tasks/payload_task.c` | `test_rm3100` | ⏳ Phase 7 — pending |
-| **FR-15** | Radiation Dosimetry | Sample PIN diode ADC1 at ≥1 Hz during `FM_PAYLOAD`, accumulate total dose | `drivers/radiation/radiation_driver.c`, `tasks/payload_task.c` | `test_radiation_driver` | ⏳ Phase 7 — pending |
-| **FR-16** | Payload Power Rail | Enable/disable 5V payload rail (GPIO21) on `FM_PAYLOAD` entry/exit | `drivers/power/payload_rail.c` | `test_payload_manager` (GPIO toggle) | ⏳ Phase 7 — pending |
-| **FR-17** | Payload HK in Telemetry | Include MAG/RAD/CAM housekeeping data in telemetry during `FM_PAYLOAD` | `tasks/telemetry_task.c`, `tasks/payload_task.c` | `test_telemetry` (HK fields) | ⏳ Phase 7 — pending |
+| **FR-13** | Camera Image Capture | Acquire JPEG image from IMX219 via SPI1 on ground/internal command | `drivers/payload/camera_driver.c` | `test_camera_driver` | ⚠️ Driver implemented (IMX219 full register init, 125+126 registers via SPI1); HW module damaged (proto HW — flight-unit replacement needed) |
+| **FR-14** | Scientific Mag Sampling | Sample RM3100 magnetometer at ≥10 Hz during `FM_PAYLOAD`, store to flash | `drivers/mag/rm3100.c`, `tasks/payload_task.c` | `test_rm3100` | ✅ Implemented |
+| **FR-15** | Radiation Dosimetry | Sample PIN diode ADC1 at ≥1 Hz during `FM_PAYLOAD`, accumulate total dose | `drivers/radiation/radiation_driver.c`, `tasks/payload_task.c` | `test_radiation_driver` | ✅ Implemented |
+| **FR-16** | Payload Power Rail | Enable/disable 5V payload rail (GPIO21) on `FM_PAYLOAD` entry/exit | `drivers/power/payload_rail.c` | `test_payload_manager` (GPIO toggle) | ✅ Implemented |
+| **FR-17** | Payload HK in Telemetry | Include MAG/RAD/CAM housekeeping data in telemetry during `FM_PAYLOAD` | `tasks/telemetry_task.c`, `tasks/payload_task.c` | `test_telemetry` (T-TLM-07..10) | ✅ FR-17 (T-TLM-07..10) — 10/10 tests passing |
 | **FR-18** | GPS NMEA Parsing | Parse `$GPGGA`/`$GPRMC` from NEO-7M via UART0 at ≥1 Hz; publish lat/lon/alt to DLA | `drivers/gps/neo7m.c`, `tasks/gps_task.c` | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | ✅ PR #46 |
-| **FR-19** | GPS UTC Synchronisation | Sync internal clock to GPS UTC within ±500 ms on valid fix | `drivers/gps/neo7m.c`, `drivers/rtc/ds3231.c` | `test_gps` (UTC field), `test_ds3231` (pending) | 🔄 Partial — GPRMC time extraction done; DS3231 sync pending |
+| **FR-19** | GPS UTC Synchronisation | Sync internal clock to GPS UTC within ±500 ms on valid fix | `drivers/gps/neo7m.c` (`nmea_parse_gprmc_and_sync_rtc`), `drivers/rtc/ds3231.c` | `test_gps` (UTC field), `test_gps_neo7m` (GPRMC parsing), `test_ds3231` (set_time) | ✅ Implemented (PICO_BUILD) — `nmea_parse_gprmc_and_sync_rtc()` calls `ds3231_set_time()` on valid $GPRMC; ⚠️ ±500 ms guard not implemented, no host-side test due to PICO_BUILD gate |
 
 ---
 
@@ -53,9 +53,9 @@ This matrix maps functional and non-functional requirements to implementation mo
 | ID | Requirement | Description | Module(s) | Test Case(s) | Status |
 |----|-------------|-------------|-----------|------------|--------|
 | **OR-1** | Power Bus Monitoring | Measure bus voltage (mV), current (µA), and power (µW) via INA219 high-side sensor at 1 Hz | `drivers/power/ina219.c`, `tasks/sensor_read_task.c` | `test_ina219` ✅ | ✅ PR #49 — Hardware verified |
-| **OR-2** | Real-Time Clock | Maintain accurate timekeeping via DS3231 RTC with ±2 ppm accuracy; battery-backed | `drivers/rtc/ds3231.c`, `tasks/sensor_read_task.c` | `test_ds3231` ❌ MISSING | 🔄 PR #48 — Test pending |
+| **OR-2** | Real-Time Clock | Maintain accurate timekeeping via DS3231 RTC with ±2 ppm accuracy; battery-backed | `drivers/rtc/ds3231.c`, `tasks/sensor_read_task.c` | `test_ds3231` ✅ | ✅ 12/12 test cases passing |
 | **OR-3** | Ambient Light Sensing | Measure illuminance (lux) via BH1750 digital light sensor for eclipse detection | `drivers/light/bh1750.c`, `tasks/sensor_read_task.c` | `test_bh1750` ✅ | ✅ PR #47 — Hardware verified |
-| **OR-4** | Temperature/Humidity Monitoring | Measure ambient temperature (°C) and relative humidity (%) via SHT31 sensor | `drivers/env/sht31.c`, `tasks/sensor_read_task.c` | `test_sht31` ❌ MISSING | 🔄 PR #45 — Test pending |
+| **OR-4** | Temperature/Humidity Monitoring | Measure ambient temperature (°C) and relative humidity (%) via SHT31 sensor | `drivers/env/sht31.c`, `tasks/sensor_read_task.c` | `test_sht31` ✅ | ✅ 18/18 test cases passing |
 
 ---
 
@@ -206,11 +206,11 @@ SYS-F-301..304 (Persistent Ring Logger): "All CRITICAL events shall be persisted
 - **Test IDs**: T-SDM-04..05 (partial coverage)
 - **Result**: **PASS** 8/8
 
-### Test: `test_telemetry` (PR-9)
-- **Scope**: DLA read path, FM guard (FM_SAFE → HK-only), energy state encoding in flags
-- **Requirements Covered**: FR-7 (Telemetry TX), SYS-F-403..405
-- **Test IDs**: T-TLM-01..06
-- **Result**: **PASS** 6/6
+### Test: `test_telemetry` (PR-9 + FR-17)
+- **Scope**: DLA read path, FM guard (FM_SAFE → HK-only), energy state encoding in flags, payload HK fields (MAG/RAD/CAM) in CSP and binary packets, flash record roundtrip
+- **Requirements Covered**: FR-7 (Telemetry TX), FR-17 (Payload HK in Telemetry), SYS-F-403..405
+- **Test IDs**: T-TLM-01..10
+- **Result**: **PASS** 10/10
 
 ### Test: `test_health_monitor_task` (PR-10)
 - **Scope**: Tick wiring — `fault_manager_tick()` and `eps_monitor_tick()` called on every Step
@@ -343,6 +343,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | **Phase 4** | Sensor Fusion Testing (Kalman) | FR-2, FR-3, FR-4 (enhanced) | Attitude error <5° RMS |
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
 | **CDR HIL (planned)** | Hardware-in-the-Loop / STP-OBC-001 §10 | FR-12 (watchdog), NFR-4 (power), SYS-NF-006 (stack) | T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01 — ⏳ CDR milestone |
+| **Phase 7** | Unit Testing (host build) | FR-13 (camera driver), FR-14 (RM3100 mag), FR-15 (radiation), FR-16 (payload rail), FR-17 (payload HK telemetry) | ✅ 55/55 all tests passing |
 
 ---
 
@@ -352,21 +353,21 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 |-----|--------|-----------|-------|
 | WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
 | T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
-| OR-2 (DS3231) missing unit test | Coverage gap for RTC driver | Create `test_ds3231.c` before TRR | SW Team |
-| OR-4 (SHT31) missing unit test | Coverage gap for env sensor driver | Create `test_sht31.c` before TRR | SW Team |
+| FR-19 ±500 ms guard missing | `nmea_parse_gprmc_and_sync_rtc()` syncs unconditionally on valid $GPRMC, no delta check | Add time-diff check before `ds3231_set_time()` | SW Team |
+| FR-19 no host-side test | Sync path is `#ifdef PICO_BUILD`, uncovered in host build | HIL test with real GPS + Pico, or extract sync logic to testable helper | SW Team |
+| Camera HW module damaged (proto HW) | FR-13 cannot be validated on HW | Flight-unit replacement needed; driver logic verified via test | SW / HW Team |
 | Operational requirements not in SRS | OR-1..OR-4 lack formal traceability | Promote OR-1..OR-4 to formal SRS requirements before TRR | Systems Lead |
-| FR-19 (GPS→RTC sync) integration pending | UTC time not yet synchronised to DS3231 | Implement `gps_sync_rtc()` integration in `sensor_read_task.c` | SW Team |
 
 ---
 
 ## Summary
 
 - **Total Requirements**: 31 (19 functional, 5 non-functional, 7 operational)
-- **Unit Test Coverage**: 42 unit tests + 4 integration test targets = **46 CTest executables** (46/46 passing)
+- **Unit Test Coverage**: **55 CTest executables** (55/55 passing)
 - **Integration Test Coverage**: 4 done (T-FMS-01, T-SAFE-01, T-GPS-01..04, T-PLD-INT-01..10)
-- **Code Line Coverage**: 91.8% (src/control/ + src/core/ + src/services/ combined)
+- **Code Line Coverage**: ~92% (src/control/ + src/core/ + src/services/ combined; measured via gcovr on host build)
 - **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/ecss/standards/MISRA_DEVIATIONS.md`
-- **Overall Readiness**: 94% (Phase 7 hardware monitors complete; payload Phase 7 pending)
+- **Overall Readiness**: 96% (Phase 7 payload sensors implemented; camera HW module damaged — flight-unit replacement pending)
 - **Risk Level**: LOW
 
 ---
@@ -397,7 +398,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | HW-01 | OBC: RP2350 / Pico 2W | §2 | FR-1..FR-12 (all tasks run on RP2350) | All 29/29 | ✅ |
 | HW-02 | IMU: MPU-6050 (I2C0, 0x69, AD0=VCC) | §3 | FR-1 (Attitude Sensing), FR-2 (EKF input) | T-SDM-01..03, T-EKF-01..06 | ✅ |
 | HW-03 | Magnetometer: QMC5883L (I2C0, 0x2C, AD0=VCC) — lab; LIS3MDL (0x1C) for flight | §3, §3.1 | FR-2 (EKF yaw update via `ekf_update_mag()`), FR-6 (momentum dump B×L) | T-MAG-01..04, T-EKFM-01..07 | ✅ Lab (QMC5883L at 0x2C); CDR: new LIS3MDL driver |
-| HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-18 (GPS NMEA parsing), FR-19 (UTC sync) — `neo7m.c` driver + NMEA parser | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | 🔄 Partial — NMEA/GPRMC done; UTC→DS3231 sync pending |
+| HW-04 | GPS: NEO-7M UART0 @ 9600 baud, NMEA 0183 | §4 | FR-18 (GPS NMEA parsing), FR-19 (UTC sync) — `neo7m.c` driver + NMEA parser | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | ✅ Implemented — NMEA/GPRMC parser + `ds3231_set_time()` on valid $GPRMC (PICO_BUILD); ⚠️ ±500 ms guard pending |
 | HW-05 | External watchdog: TPS3431, GPIO20, timeout=3 s | §10 #12 | FR-8 (Health Monitoring — `watchdog_hal_feed()` in `HealthMonitorTask`) | T-WDT-01..05, T-SAFE-01a..c | ✅ HAL ready |
 | HW-06 | TT&C: E22-400M30S UART1 @ 115200 baud | §6 | FR-7 (Telemetry TX via KISS/CSP), link margin +8.5 dB @ 2300 km | T-TLM-01..06 | ✅ |
 | HW-07 | SAW filter 433 MHz (TDK B39431) | §6e | Non-functional: EMI immunity; no firmware driver required | — | 🔄 Planned |
@@ -406,9 +407,9 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | HW-10 | Reaction wheels: TB6612FNG on GPIO6/7/8 | §8 | FR-5 (RW actuation), LQR torque output (Phase 2 ADCS) | test_actuators | ✅ HAL stub |
 | HW-11 | Power Monitor (Bus): INA219 (I2C0 0x40, 0.1Ω shunt) | — | OR-1 (bus voltage/current/power monitoring) | `test_ina219` ✅ | ✅ PR #49 — HW verified (V=5724mV, I=5mA, P=28mW) |
 | HW-11b | Power Monitor (Solar): INA219 (I2C0 0x41, A0=GND A1=VS) | — | OR-1 (solar panel monitoring) | — | ✅ I2C bus — device detected |
-| HW-12 | RTC: DS3231 (I2C0 0x68, ±2 ppm, battery backup) | — | OR-2 (timekeeping), FR-19 (GPS→RTC sync) | `test_ds3231` ❌ | 🔄 PR #48 — HW verified; test pending |
+| HW-12 | RTC: DS3231 (I2C0 0x68, ±2 ppm, battery backup) | — | OR-2 (timekeeping), FR-19 (GPS→RTC sync) | `test_ds3231` ✅ | ✅ 12/12 test cases passing |
 | HW-13 | Light Sensor: BH1750 (I2C0 0x23, 0.5 lux resolution) | — | OR-3 (eclipse detection, sun acquisition) | `test_bh1750` ✅ | ✅ PR #47 — HW verified (~150 lux indoor) |
-| HW-14 | Temp/Humidity: SHT31 (I2C0 0x44, CRC-8) | — | OR-4 (ambient thermal monitoring) | `test_sht31` ❌ | 🔄 PR #45 — HW verified; test pending |
+| HW-14 | Temp/Humidity: SHT31 (I2C0 0x44, CRC-8) | — | OR-4 (ambient thermal monitoring) | `test_sht31` ✅ | ✅ 18/18 test cases passing |
 
 ### Open Hardware Items (CDR scope)
 
@@ -423,6 +424,6 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 
 ---
 
-**Last Updated**: 2026-04-17
-**Matrix Version**: 2.5
+**Last Updated**: 2026-06-07
+**Matrix Version**: 2.6
 **Status**: Active (updated each phase)
