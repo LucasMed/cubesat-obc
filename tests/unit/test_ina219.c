@@ -332,11 +332,185 @@ void test_ina219_power_conversion(void)
   }
 }
 
+/* Test: Device-instance read power — NULL guards */
+void test_ina219_device_read_power_null_guards(void)
+{
+  /* NULL dev guard */
+  ina219_data_t data;
+  bool null_dev = ina219_device_read_power(NULL, &data);
+  assert(!null_dev);
+
+  /* NULL data guard */
+  ina219_t dev;
+  ina219_init_device(&dev, INA219_ADDR);
+  bool null_data = ina219_device_read_power(&dev, NULL);
+  assert(!null_data);
+
+  printf("  PASS T-INA-21 device_read_power NULL guards OK\n");
+}
+
+/* Test: Device-instance is_present */
+void test_ina219_device_is_present(void)
+{
+  bool result = ina219_device_is_present(NULL);
+  assert(result);
+  printf("  PASS T-INA-22 device_is_present() returns true\n");
+}
+
+/* Test: Device-instance reset */
+void test_ina219_device_reset(void)
+{
+  /* NULL guard */
+  bool null_ok = ina219_device_reset(NULL);
+  assert(!null_ok);
+  printf("  PASS T-INA-23 device_reset NULL guard OK\n");
+
+  /* Normal path: init, read, reset, verify state cleared */
+  ina219_t dev;
+  ina219_init_device(&dev, INA219_ADDR);
+  ina219_data_t d;
+  ina219_device_read_power(&dev, &d);
+  assert(dev.last_voltage_mv != 0);
+  assert(dev.last_reading_ms != 0);
+
+  bool reset_ok = ina219_device_reset(&dev);
+  assert(reset_ok);
+  assert(dev.last_voltage_mv == 0);
+  assert(dev.last_reading_ms == 0);
+  printf("  PASS T-INA-24 device_reset clears state\n");
+}
+
+/* Test: Device-instance get_last_reading_ms */
+void test_ina219_device_get_last_reading_ms(void)
+{
+  /* NULL guard */
+  uint32_t null_ms = ina219_device_get_last_reading_ms(NULL);
+  assert(null_ms == 0);
+  printf("  PASS T-INA-25 device_get_last_reading_ms NULL guard OK\n");
+
+  /* Normal path: init, read, then get */
+  ina219_t dev;
+  ina219_init_device(&dev, INA219_ADDR);
+  ina219_data_t d;
+  ina219_device_read_power(&dev, &d);
+  assert(ina219_device_get_last_reading_ms(&dev) > 0);
+  printf("  PASS T-INA-26 device_get_last_reading_ms returns value\n");
+}
+
+/* Test: Device-instance get_voltage_mv */
+void test_ina219_device_get_voltage_mv(void)
+{
+  /* NULL guard */
+  int16_t null_mv = ina219_device_get_voltage_mv(NULL);
+  assert(null_mv == 0);
+  printf("  PASS T-INA-27 device_get_voltage_mv NULL guard OK\n");
+
+  /* Normal path: init, read, then get */
+  ina219_t dev;
+  ina219_init_device(&dev, INA219_ADDR);
+  ina219_data_t d;
+  ina219_device_read_power(&dev, &d);
+  assert(ina219_device_get_voltage_mv(&dev) > 0);
+  printf("  PASS T-INA-28 device_get_voltage_mv returns value\n");
+}
+
+/* Test: Legacy singleton — auto-init path (read without prior init) */
+void test_ina219_read_power_auto_init(void)
+{
+  /* This test MUST be first in the sequence to ensure s_bus_initialised=false.
+   * Since assert() aborts, we guard by resetting via the test sequence.
+   * Run this before any init-based tests. */
+  ina219_data_t data;
+  bool result = ina219_read_power(&data);
+
+  assert(result);
+  assert(data.bus_voltage_mv > 0);
+  printf("  PASS T-INA-29 ina219_read_power auto-init OK\n");
+}
+
+/* Test: Legacy singleton — reset */
+void test_ina219_reset(void)
+{
+  /* Read first to set state, then reset */
+  ina219_data_t data;
+  ina219_read_power(&data);
+
+  bool reset_ok = ina219_reset();
+  assert(reset_ok);
+
+  /* After reset, last_reading_ms should be 0 */
+  assert(ina219_get_last_reading_ms() == 0);
+  assert(ina219_get_voltage_mv() == 0);
+  printf("  PASS T-INA-30 ina219_reset OK\n");
+}
+
+/* Test: Legacy singleton — get_last_reading_ms and get_voltage_mv */
+void test_ina219_singleton_getters(void)
+{
+  /* Read first to populate state */
+  ina219_data_t data;
+  ina219_read_power(&data);
+
+  uint32_t ms = ina219_get_last_reading_ms();
+  assert(ms > 0);
+
+  int16_t mv = ina219_get_voltage_mv();
+  assert(mv > 0);
+
+  printf("  PASS T-INA-31 singleton getters: last_ms=%lu, voltage_mv=%d\n",
+         (unsigned long)ms, mv);
+}
+
+/* Test: Solar — auto-init path */
+void test_ina219_solar_read_power_auto_init(void)
+{
+  ina219_data_t data;
+  bool result = ina219_solar_read_power(&data);
+
+  assert(result);
+  assert(data.bus_voltage_mv >= 6000);
+  printf("  PASS T-INA-32 ina219_solar_read_power auto-init OK\n");
+}
+
+/* Test: Solar — reset */
+void test_ina219_solar_reset(void)
+{
+  /* Read first to set state */
+  ina219_data_t data;
+  ina219_solar_read_power(&data);
+
+  bool reset_ok = ina219_solar_reset();
+  assert(reset_ok);
+
+  assert(ina219_solar_get_last_reading_ms() == 0);
+  assert(ina219_solar_get_voltage_mv() == 0);
+  printf("  PASS T-INA-33 ina219_solar_reset OK\n");
+}
+
+/* Test: Solar — getters */
+void test_ina219_solar_getters(void)
+{
+  ina219_data_t data;
+  ina219_solar_read_power(&data);
+
+  assert(ina219_solar_get_last_reading_ms() > 0);
+  assert(ina219_solar_get_voltage_mv() > 0);
+  printf("  PASS T-INA-34 solar getters return values\n");
+}
+
 /* ========== Main test runner ========== */
 
 int main(void)
 {
   printf("\n=== INA219 Driver Unit Tests ===\n");
+
+  /* ── Auto-init path tests ──
+   * These MUST run before init() is called for the first time,
+   * because the auto-init guard checks a static flag.
+   * The first read_power call triggers init() internally.        */
+  printf("\n--- Auto-Init Path (no prior init) ---\n");
+  test_ina219_read_power_auto_init();
+  test_ina219_solar_read_power_auto_init();
 
   printf("\n--- Basic Functionality ---\n");
   test_ina219_init_returns_ok();
@@ -353,11 +527,24 @@ int main(void)
   printf("\n--- Device Instance API ---\n");
   test_ina219_init_device();
   test_ina219_device_read_power();
+  test_ina219_device_read_power_null_guards();
+  test_ina219_device_is_present();
+  test_ina219_device_reset();
+  test_ina219_device_get_last_reading_ms();
+  test_ina219_device_get_voltage_mv();
+
+  printf("\n--- Legacy Singleton API ---\n");
+  test_ina219_reset();
+  test_ina219_singleton_getters();
 
   printf("\n--- Solar Panel INA219 ---\n");
   test_ina219_solar_init_ok();
   test_ina219_solar_is_present();
   test_ina219_solar_read_power();
+
+  printf("\n--- Solar API (reset, getters) ---\n");
+  test_ina219_solar_reset();
+  test_ina219_solar_getters();
 
   printf("\n--- Solar Data Layer Integration ---\n");
   test_ina219_solar_data_layer();
