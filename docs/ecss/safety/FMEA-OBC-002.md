@@ -198,7 +198,7 @@ Software Criticality Number (CR) = SVO × OCC
 | ID | Component | Failure Mode | Local Effect | System Effect | SVO | OCC | DET | CR | Mitigation |
 |----|-----------|-------------|--------------|---------------|-----|-----|-----|----|------------|
 | SW-FRTOS-001 | Scheduler | Task priority inversion | High-priority task delayed | Sensor/Control loop starvation; attitude drift | 4 | 2 | 1 | 8 | STD: Priority ceiling in CODING_STANDARDS; REV: Review all task priorities |
-| SW-FRTOS-002 | Scheduler | Stack overflow | Task crash; undefined behavior | System instability; potential watchdog reset | 3 | 2 | 2 | 12 | DES: 2048-word stacks; HWM monitoring in health task; UNT: Stack overflow tests |
+| SW-FRTOS-002 | Scheduler | Stack overflow | Task crash; undefined behavior | System instability; potential watchdog reset | 3 | 2 | 2 | 12 | DES: 2048-word stacks; HWM monitoring in health task; UNT: Stack overflow tests ✅ (Verified at CDR: 2048-word stacks per obc_main.c, configCHECK_FOR_STACK_OVERFLOW=2, T-HM-04 WDT path) |
 | SW-FRTOS-003 | Scheduler | Priority inversion on mutex | Task blocked indefinitely | Sensor or control task hangs; FM_SAFE transition | 4 | 1 | 1 | 4 | STD: Critical sections <1ms; DES: Priority inheritance when available |
 | SW-FRTOS-004 | Scheduler | Context switch corruption | CPU register state corrupted | Unpredictable task behavior; possible crash | 3 | 1 | 2 | 6 | DES: Single-core mode (configNUMBER_OF_CORES=1); FPU disabled (-mfloat-abi=soft) |
 | SW-FRTOS-005 | Scheduler | Timer tick starvation | All tasks blocked; system halt | Complete OBC failure; watchdog reset | 4 | 1 | 1 | 4 | DES: Watchdog timer (TPS3431) at 8s timeout; INT: Timer interrupt verification |
@@ -301,8 +301,8 @@ Software Criticality Number (CR) = SVO × OCC
 
 | ID | Component | Failure Mode | CR | Required Mitigation |
 |----|-----------|-------------|----|---------------------|
-| SW-FRTOS-002 | Scheduler | Stack overflow | 12 | HWM monitoring; unit tests |
-| SW-DRV-008 | Mag Driver | Clone IC detection | 12 | Hardware verification |
+| SW-FRTOS-002 | Scheduler | Stack overflow | 12 | HWM monitoring; unit tests ✅ (CDR-OK) |
+| SW-DRV-008 | Mag Driver | Clone IC detection | 12 | Hardware verification ⏳ (Pre-flight; CDR rationale accepted) |
 
 ### 8.3 Category III (Marginal) Items
 
@@ -410,7 +410,7 @@ All software components shall comply with CODING_STANDARDS.md requirements:
 
 | ID | Description | Category | Owner | Target |
 |----|-------------|----------|-------|--------|
-| OI-SW-1 | QMC5883L clone detection for HMC5883L — verify IC markings before procurement | II | Hardware Lead | Pre-flight |
+| OI-SW-1 | QMC5883L clone detection for HMC5883L — verify IC markings before procurement | II | Hardware Lead | Pre-flight — deferred to HW procurement; design reviewed at CDR, HW verification planned before flight |
 | OI-SW-2 | ISR-safe fmm_force_safe() path (FMM-DES-001 OI-5) | III | Software Lead | Phase 2 |
 | OI-SW-3 | FreeRTOS priority inheritance evaluation | III | Software Lead | ✅ Implemented (CDR-SAF-02) — `docs/ecss/safety/priority_inheritance.md` PI-OBC-001 |
 | OI-SW-4 | Coverity static analysis integration in CI pipeline | III | DevOps | ✅ Implemented (CDR-SAF-05) — `vapier/coverity-scan-action@v1` in CI; local script `scripts/coverity_scan.sh` |
