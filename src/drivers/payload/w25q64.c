@@ -25,6 +25,12 @@
 #define W25Q64_BLOCK32_SIZE 32768
 #define W25Q64_BLOCK64_SIZE 65536
 
+/* IMU calibration flash constants — shared to avoid duplication */
+#define W25Q64_IMU_CALIB_MAGIC 0xDEADBEEF
+#define W25Q64_IMU_CALIB_SIZE 64u /* Padded to sector-friendly alignment */
+
+#include "flash_layout.h"
+
 #ifdef PICO_BUILD
   #include "hardware/gpio.h"
   #include "hardware/spi.h"
@@ -70,10 +76,6 @@
 
   /* Timing */
   #define W25Q64_TIMEOUT_MS 500
-
-  /* IMU calibration layout */
-  #define W25Q64_IMU_CALIB_MAGIC 0xDEADBEEF
-  #define W25Q64_IMU_CALIB_SIZE 64u /* Padded to sector-friendly alignment */
 
 static bool s_initialized = false;
 
@@ -590,14 +592,6 @@ bool w25q64_is_present(void)
 {
   return true;
 }
-
-  /* IMU Calibration Flash Layout (W25Q64) */
-  #define IMU_CALIB_MAGIC 0xDEADBEEF
-  /* IMU calibration layout — mirror PICO constants for host stubs */
-  #define W25Q64_IMU_CALIB_MAGIC 0xDEADBEEF
-  #define W25Q64_IMU_CALIB_SIZE 64u
-
-  #include "flash_layout.h"
 
 /* Buffer-backed IMU calib storage for host tests */
 static uint8_t s_imu_calib_buf[W25Q64_IMU_CALIB_SIZE];
