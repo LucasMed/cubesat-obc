@@ -251,6 +251,56 @@ void test_humidity_ranges(void)
   }
 }
 
+/* Test: SHT31 start_periodic returns true */
+void test_sht31_start_periodic(void)
+{
+  assert(sht31_start_periodic(1) && "sht31_start_periodic() must return true");
+  printf("  PASS T-SHT31-12 sht31_start_periodic(1) returns true\n");
+}
+
+/* Test: SHT31 fetch default state (configurable globals) */
+void test_sht31_fetch_default(void)
+{
+  float temp = -999.0f;
+  float hum  = -999.0f;
+  bool ret   = sht31_fetch(&temp, &hum);
+
+  assert(!ret && "default sht31_fetch must return false");
+  assert(temp == 0.0f && "default fetch temp must be 0.0");
+  assert(hum  == 0.0f && "default fetch humidity must be 0.0");
+  printf("  PASS T-SHT31-13 sht31_fetch() default: ret=%d, temp=%.1f, hum=%.1f\n",
+         ret, temp, hum);
+}
+
+/* Test: SHT31 fetch with configured globals */
+void test_sht31_fetch_configured(void)
+{
+  /* Set configurable globals (extern, defined in sht31_stub.c) */
+  extern bool  s_sht31_fetch_ret;
+  extern float s_sht31_fetch_temp;
+  extern float s_sht31_fetch_humid;
+
+  s_sht31_fetch_ret   = true;
+  s_sht31_fetch_temp  = 42.0f;
+  s_sht31_fetch_humid = 55.5f;
+
+  float temp = -999.0f;
+  float hum  = -999.0f;
+  bool ret   = sht31_fetch(&temp, &hum);
+
+  assert(ret && "configured sht31_fetch must return true");
+  assert(temp == 42.0f && "configured fetch temp must be 42.0");
+  assert(hum  == 55.5f && "configured fetch humidity must be 55.5");
+
+  /* Restore defaults */
+  s_sht31_fetch_ret   = false;
+  s_sht31_fetch_temp  = 0.0f;
+  s_sht31_fetch_humid = 0.0f;
+
+  printf("  PASS T-SHT31-14 sht31_fetch() configured: ret=%d, temp=%.1f, hum=%.1f\n",
+         ret, temp, hum);
+}
+
 /* ========== Main test runner ========== */
 
 int main(void)
@@ -269,6 +319,11 @@ int main(void)
   test_data_layer_write_humidity();
   test_data_layer_humidity_invalid();
   test_data_layer_temp_seq_increment();
+
+  printf("\n--- Stub Configurability ---\n");
+  test_sht31_start_periodic();
+  test_sht31_fetch_default();
+  test_sht31_fetch_configured();
 
   printf("\n--- Range Validation ---\n");
   test_temperature_ranges();
