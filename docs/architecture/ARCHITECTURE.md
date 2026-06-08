@@ -76,8 +76,8 @@ The CubeSat On-Board Computer (OBC) is a modular, real-time flight software syst
 |                         | SCL          | GPIO5         | 7                    | I2C0 SCL (shared)   |
 |                         | VCC          | 3V3           | 36                   | Power               |
 |                         | GND          | GND           | 38                   | Ground              |
-|                         | Vin+         | -             | -                    | VSYS entrada (pin 39, antes de shunt) |
-|                         | Vin-         | -             | -                    | VSYS carga (después de shunt) |
+|                         | Vin+         | -             | -                    | VSYS Input          |
+|                         | Vin-         | -             | -                    | VSYS Charge         |
 | **GPS (NEO-7M)**       | TX           | GPIO1          | 7                    | UART0 RX (Pico)     |
 |                         | RX           | GPIO0          | 6                    | UART0 TX (Pico)     |
 |                         | VCC          | 3V3            | 36                   | Power               |
@@ -205,15 +205,15 @@ SensorRead (10 Hz):
   Mag ───(I2C)─▶ hmc5883l_read()      ──▶ EKF yaw corr ──▶ DLA     │
                                                                    │
 AttitudeControl (10 Hz):                              ╔═══════════╩═══════════╗
-  FM_DETUMBLE → momentum_dump_step() → magnetorquer                 ║ DLA (Data Layer) ║
-  FM_NOMINAL + EKF valid → LQR → torque                ║  (mutex-protected)  ║
-  FM_DIAGNOSTIC / pre-EKF → PID → torque               ║                   ║
-           │                                                       ║ Quaternion (EKF) ║
-           ▼                                                       ║ Euler angles     ║
-  RK2 Dynamics: attitude_dynamics_step()               ║ Gyro biases      ║
-           │                                                       ║ Rates, att_err  ║
-           ▼                                                       ║ GPS fix          ║
-  Actuators: RW torque / Magnetorquer dipole             ╚═════════════════════╝
+  FM_DETUMBLE → momentum_dump_step() → magnetorquer   ║.  DLA (Data Layer).   ║
+  FM_NOMINAL + EKF valid → LQR → torque               ║  (mutex-protected)    ║
+  FM_DIAGNOSTIC / pre-EKF → PID → torque              ║                       ║
+           │                                          ║ Quaternion (EKF).     ║
+           ▼                                          ║ Euler angles          ║
+  RK2 Dynamics: attitude_dynamics_step()              ║ Gyro biases           ║
+           │                                          ║ Rates, att_err        ║
+           ▼                                          ║ GPS fix               ║
+  Actuators: RW torque / Magnetorquer dipole          ╚═══════════════════════╝
 
 Telemetry (1 Hz):
   DLA snapshot ──▶ CSP packet ──▶ WiFi TX (CYW43) ──▶ Ground Station
