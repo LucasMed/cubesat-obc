@@ -681,14 +681,23 @@ if(NOT PICO_BUILD)
     # target_link_libraries(test_sun_sensor wcet_lib m)
     # add_test(NAME sun_sensor_test COMMAND test_sun_sensor)
 
-    # IMU calibration unit tests
-    # TODO: Enable when host test works (linker issues with mpu6050.c)
-    # add_executable(test_imu_calib
-    #     test_imu_calib.c
-    #     ../../src/drivers/imu/imu_calib.c
-    #     ../../src/drivers/imu/mpu6050.c
-    # )
-    # target_include_directories(test_imu_calib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    # target_link_libraries(test_imu_calib wcet_lib m)
-    # add_test(NAME imu_calib_test COMMAND test_imu_calib)
+    # IMU calibration core-math unit tests (start -> collect -> finish -> apply).
+    # Provides its own mpu6050_write_gyro_offset + w25q64 stubs; no hw deps.
+    add_executable(test_imu_calib
+        test_imu_calib.c
+        ../../src/drivers/imu/imu_calib.c
+    )
+    target_include_directories(test_imu_calib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_imu_calib m)
+    add_test(NAME imu_calib_test COMMAND test_imu_calib)
+
+    # Mag calibration core-math unit tests (start -> collect -> finish -> apply).
+    # Pure algorithm, no hardware dependencies.
+    add_executable(test_mag_calib
+        test_mag_calib.c
+        ../../src/drivers/mag/mag_calib.c
+    )
+    target_include_directories(test_mag_calib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_mag_calib m)
+    add_test(NAME mag_calib_test COMMAND test_mag_calib)
 endif()
