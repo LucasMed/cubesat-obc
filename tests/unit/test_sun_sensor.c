@@ -1,9 +1,13 @@
-/* test_sun_sensor.c — Unit tests for sun sensor data layer integration
+/* test_sun_sensor.c — Unit tests for sun sensor driver stub + data layer
  *
- * T-SUN-01  test_sun_write           – Write sun sensor to data layer
- * T-SUN-02  test_sun_valid_false     – Invalid when sun_x < 0
- * T-SUN-03  test_sun_avail         – Set sun availability
- * T-SUN-04  test_sun_seq_increment  – Sequence increments on write
+ * T-SUN-01  test_sun_write                – Write sun sensor to data layer
+ * T-SUN-02  test_sun_valid_false          – Invalid when sun_x < 0
+ * T-SUN-03  test_sun_avail                – Set sun availability
+ * T-SUN-04  test_sun_seq_increment        – Sequence increments on write
+ * T-SUN-05  test_sun_stub_init            – sun_sensor_init() returns true
+ * T-SUN-06  test_sun_stub_read_default    – sun_sensor_read() with defaults
+ * T-SUN-07  test_sun_stub_read_null       – sun_sensor_read(NULL) returns false
+ * T-SUN-08  test_sun_stub_is_sun_visible  – sun_sensor_is_sun_visible() configurable
  */
 
 #include <assert.h>
@@ -15,6 +19,7 @@
 #include "data_layer.h"
 #include "eps.h"
 #include "flight_mode.h"
+#include "sun_sensor.h"
 #include "system_state.h"
 
 static int g_failures = 0;
@@ -121,16 +126,82 @@ void test_sun_csp_packet(void)
   printf("  CSP packet size includes sun sensor fields\n");
 }
 
+/* ========== Sun sensor stub direct tests ========== */
+
+/* Test: sun_sensor_init returns true */
+void test_sun_stub_init(void)
+{
+  printf("[%s]\n", __func__);
+  CHECK(sun_sensor_init(), "sun_sensor_init() returns true");
+  printf("  PASS T-SUN-05 sun_sensor_init() -> true\n");
+}
+
+/* Test: sun_sensor_read with default configurable globals */
+void test_sun_stub_read_default(void)
+{
+  printf("[%s]\n", __func__);
+
+  sun_sensor_data_t data = {0, 0, 0.0f, 0.0f, false, false};
+  bool ret = sun_sensor_read(&data);
+
+  CHECK(ret == true, "default sun_sensor_read() returns true");
+  CHECK(data.adc_x == 100, "default adc_x = 100");
+  CHECK(data.adc_y == 100, "default adc_y = 100");
+  CHECK(data.intensity_x == 0.024f, "default intensity_x = 0.024");
+  CHECK(data.intensity_y == 0.024f, "default intensity_y = 0.024");
+  CHECK(data.sun_detected_x == false, "default sun_detected_x = false");
+  CHECK(data.sun_detected_y == false, "default sun_detected_y = false");
+
+  printf("  PASS T-SUN-06 sun_sensor_read() default\n");
+}
+
+/* Test: sun_sensor_read(NULL) returns false (NULL guard) */
+void test_sun_stub_read_null(void)
+{
+  printf("[%s]\n", __func__);
+  CHECK(sun_sensor_read(NULL) == false, "sun_sensor_read(NULL) returns false");
+  printf("  PASS T-SUN-07 sun_sensor_read(NULL) -> false\n");
+}
+
+/* Test: sun_sensor_is_sun_visible is configurable via extern globals */
+void test_sun_stub_is_sun_visible(void)
+{
+  printf("[%s]\n", __func__);
+
+  extern bool s_sun_sensor_visible;
+
+  /* Default: false */
+  CHECK(sun_sensor_is_sun_visible(100) == false, "default visibility false");
+  printf("    default: false\n");
+
+  /* Configure to true */
+  s_sun_sensor_visible = true;
+  CHECK(sun_sensor_is_sun_visible(200) == true, "configured visibility true");
+  printf("    configured true: PASS\n");
+
+  /* Restore default */
+  s_sun_sensor_visible = false;
+
+  printf("  PASS T-SUN-08 sun_sensor_is_sun_visible() configurable\n");
+}
+
 int main(void)
 {
-  printf("=== Sun Sensor Tests ===\n");
-  
+  printf("\n=== Sun Sensor Tests ===\n");
+
+  printf("\n--- Stub Direct Tests ---\n");
+  test_sun_stub_init();
+  test_sun_stub_read_default();
+  test_sun_stub_read_null();
+  test_sun_stub_is_sun_visible();
+
+  printf("\n--- Data Layer Integration ---\n");
   test_sun_write();
   test_sun_invalid_when_negative();
   test_sun_avail_set();
   test_sun_seq_increment();
   test_sun_csp_packet();
-  
+
   printf("\n=== Results: %d failures ===\n", g_failures);
   return g_failures > 0 ? 1 : 0;
 }
