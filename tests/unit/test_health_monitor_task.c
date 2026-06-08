@@ -1,8 +1,9 @@
 /* test_health_monitor_task.c — Unit tests for vHealthMonitorTask_Step() (PR-10)
  *
- * T-HM-01  test_hm_fault_tick_called    – fault_manager_tick() invoked once per Step
- * T-HM-02  test_hm_eps_tick_called      – eps_monitor_tick() invoked once per Step
+ * T-HM-01  test_hm_fault_tick_called     – fault_manager_tick() invoked once per Step
+ * T-HM-02  test_hm_eps_tick_called       – eps_monitor_tick() invoked once per Step
  * T-HM-03  test_hm_ticks_scale_with_steps – N Steps → N calls to each tick
+ * T-HM-04  test_hm_wdt_triggered_path    – WDT triggered → clear + fault_report(FAULT_WDT_KICK_MISSED)
  */
 
 #include <stdbool.h>
@@ -48,6 +49,7 @@ static void mock_vTaskDelayUntil(uint32_t *prev, uint32_t inc)
  * pulling in the full service stack. */
 
 #include "eps.h"
+#include "fault_ids.h"
 #include "fault_manager.h"
 #include "watchdog_hal.h"
 
@@ -62,7 +64,10 @@ void eps_monitor_tick(void)
 {
   s_eps_tick_calls++;
 }
-/* Watchdog is a no-op in this test; feed-per-step coverage is in test_watchdog. */
+/* Configurable watchdog triggers so T-HM-04 can exercise the WDT path. */
+static bool s_wdt_triggered = false;
+static int s_wdt_clear_calls = 0;
+
 void watchdog_hal_init(uint32_t timeout_ms)
 {
   (void)timeout_ms;
@@ -70,17 +75,23 @@ void watchdog_hal_init(uint32_t timeout_ms)
 void watchdog_hal_feed(void) {}
 bool watchdog_hal_triggered(void)
 {
-  return false;
+  return s_wdt_triggered;
 }
-void watchdog_hal_clear_triggered(void) {}
+void watchdog_hal_clear_triggered(void)
+{
+  s_wdt_clear_calls++;
+}
 
-/* fault_report is never reached (watchdog_hal_triggered returns false above),
- * but we need the symbol for the linker since health_monitor_task.c now
- * references it. */
+/* fault_report tracker for WDT path verification. */
+static int s_fault_report_calls = 0;
+static uint16_t s_last_fault_id = 0;
+static fault_level_t s_last_fault_level = 0;
+
 void fault_report(uint16_t id, fault_level_t level)
 {
-  (void)id;
-  (void)level;
+  s_fault_report_calls++;
+  s_last_fault_id = id;
+  s_last_fault_level = level;
 }
 
 /* ---- Unit under test --------------------------------------------------- */
@@ -103,6 +114,11 @@ static void reset_all(void)
 {
   s_fault_tick_calls = 0;
   s_eps_tick_calls = 0;
+  s_wdt_triggered = false;
+  s_wdt_clear_calls = 0;
+  s_fault_report_calls = 0;
+  s_last_fault_id = 0;
+  s_last_fault_level = 0;
   s_tick = 0;
 }
 
@@ -157,6 +173,30 @@ static void test_hm_ticks_scale_with_steps(void)
          g_failures == failures_before ? "PASS" : "FAIL");
 }
 
+/* ========================================================================
+ * T-HM-04  WDT triggered → clear + fault_report(FAULT_WDT_KICK_MISSED)
+ * ======================================================================== */
+static void test_hm_wdt_triggered_path(void)
+{
+  int failures_before = g_failures;
+  reset_all();
+
+  /* Arrange: simulate WDT reset */
+  s_wdt_triggered = true;
+
+  /* Act */
+  vHealthMonitorTask_Step();
+
+  /* Assert: clear was called, fault was reported correctly */
+  CHECK(s_wdt_clear_calls == 1, "watchdog_hal_clear_triggered called once");
+  CHECK(s_fault_report_calls == 1, "fault_report called exactly once");
+  CHECK(s_last_fault_id == FAULT_WDT_KICK_MISSED, "fault id is FAULT_WDT_KICK_MISSED");
+  CHECK(s_last_fault_level == FAULT_LEVEL_CRITICAL, "fault level is CRITICAL");
+
+  printf("[T-HM-04] test_hm_wdt_triggered_path: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
 /* ======================================================================== */
 int main(void)
 {
@@ -164,6 +204,7 @@ int main(void)
   test_hm_fault_tick_called();
   test_hm_eps_tick_called();
   test_hm_ticks_scale_with_steps();
+  test_hm_wdt_triggered_path();
   printf("======================================\n");
   if (g_failures == 0)
   {
