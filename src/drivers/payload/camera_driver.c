@@ -1060,9 +1060,12 @@ bool camera_init(void)
   /* Post-init verification: SENSOR bank registers only, no 0xFF writes */
   {
     uint8_t com7 = 0, out_ctrl = 0;
+    // cppcheck-suppress knownConditionTrueFalse
     bool r1 = cam_i2c_read(0x12, &com7);
+    // cppcheck-suppress knownConditionTrueFalse
     bool r2 = cam_i2c_read(0x04, &out_ctrl);
     printf("[camera_init] Post-init SENSOR regs: COM7=0x%02X(read=%s) OUT=0x%02X(read=%s)\n", com7,
+           // cppcheck-suppress knownConditionTrueFalse
            r1 ? "OK" : "FAIL", out_ctrl, r2 ? "OK" : "FAIL");
   }
 
