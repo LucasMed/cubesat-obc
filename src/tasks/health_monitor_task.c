@@ -36,6 +36,17 @@ void vHealthMonitorTask_Step(void)
   /* 4. EPS voltage classification, fault raise/clear, rail control */
   eps_monitor_tick();
 
+  /* 5. Print WCET report every ~20 cycles (~100 s) — no-op on host builds */
+  {
+    static uint32_t s_report_count = 0;
+    s_report_count++;
+    if (s_report_count % 20 == 0)
+    {
+      wcet_profiler_print_report(NULL);
+      wcet_profiler_reset();
+    }
+  }
+
   printf("[health_monitor_task] Health check\n");
 }
 

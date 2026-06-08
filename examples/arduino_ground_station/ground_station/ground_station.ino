@@ -85,16 +85,25 @@ byte rx_pos   = 0;
  * ================================================================ */
 static uint8_t crc8_maxim(const uint8_t *data, uint16_t len)
 {
+  /* LSB-first CRC-8/MAXIM (Dallas 1-Wire) — matches OBC tlm_crc8()
+   *
+   * Polynomial 0x31 reflected = 0x8C.
+   * RefIn=true, RefOut=true, Init=0x00, XorOut=0x00.
+   *
+   * An MSB-first implementation with poly 0x31 (no reflection) gives
+   * a DIFFERENT result — both sides MUST use the same algorithm.
+   */
   uint8_t crc = 0;
   for (uint16_t i = 0; i < len; i++)
   {
-    crc ^= data[i];
-    for (uint8_t j = 0; j < 8; j++)
+    uint8_t extract = data[i];
+    for (uint8_t j = 8; j; j--)
     {
-      if (crc & 0x80)
-        crc = (crc << 1) ^ 0x31;
-      else
-        crc <<= 1;
+      uint8_t sum = (crc ^ extract) & 0x01;
+      crc >>= 1;
+      if (sum)
+        crc ^= 0x8C;
+      extract >>= 1;
     }
   }
   return crc;
@@ -302,6 +311,25 @@ void tryParseFrame(void)
     Serial.print(pkt->crc, HEX);
     Serial.print(" len=");
     Serial.print(HC12.available());
+    Serial.print(" frame=");
+    for (uint8_t i = 0; i < 8; i++)
+    {
+      if (frame_buf[i] < 0x10) Serial.print("0");
+      Serial.print(frame_buf[i], HEX);
+    }
+    Serial.print("..");
+    for (uint8_t i = TLM_PACKET_SIZE - 4; i < TLM_PACKET_SIZE; i++)
+    {
+      if (frame_buf[i] < 0x10) Serial.print("0");
+      Serial.print(frame_buf[i], HEX);
+    }
+    Serial.print(" rtc=");
+    uint32_t rtc_val = ((uint32_t)frame_buf[4]) | ((uint32_t)frame_buf[5] << 8) |
+                       ((uint32_t)frame_buf[6] << 16) | ((uint32_t)frame_buf[7] << 24);
+    Serial.print(rtc_val);
+    int16_t temp_val = frame_buf[15] | ((int16_t)frame_buf[16] << 8);
+    Serial.print(" temp=");
+    Serial.print(temp_val);
     Serial.println();
   }
 }

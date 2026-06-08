@@ -164,11 +164,22 @@ void vTelemetryTask_Step(void)
 
   packet->length = sizeof(csp_telemetry_packet_t);
 
-  // 3. Send over CSP port connection-less
+  // 3. Send over CSP port connection-less (host build only)
+  // On PICO_BUILD, CSP KISS shares UART1 with the binary telemetry frame below.
+  // Sending both would corrupt the binary frame — the ground station state machine
+  // cannot distinguish CSP KISS data from binary frame sync bytes.
+  //
+  // IMPORTANT: tlm (= packet->data) is used below for the binary frame AND the
+  // debug printf.  Do NOT free the packet before both are done.
+#ifndef PICO_BUILD
   csp_sendto(CSP_PRIO_NORM, GN_ADDRESS, TELEMETRY_PORT, TELEMETRY_PORT, CSP_O_NONE, packet);
+#endif
 
 #ifdef PICO_BUILD
   /* Send binary telemetry over UART1 (HC-12)
+
+   * NOTE: CSP telemetry is NOT sent in this build — the binary frame is the
+   * sole protocol on UART1 for the Arduino ground station.
    *
    * Format: [SYNC 0xAA 0x55] [64-byte telemetry_packet_t]
    * Total: 66 bytes @ 9600 baud ≈ 69ms.
@@ -217,10 +228,21 @@ void vTelemetryTask_Step(void)
   bin.flags = (uint8_t)tlm->flags;
   bin.crc = tlm_crc8((const uint8_t *)&bin, sizeof(bin) - 1);
 
-  /* Send sync word + packet */
-  const uint8_t sync[2] = {TLM_SYNC_BYTE_1, TLM_SYNC_BYTE_2};
-  uart1_write_buf(sync, 2);
-  uart1_write_buf((const uint8_t *)&bin, sizeof(bin));
+  printf("[CRC] OBC crc=0x%02X ts=%lu rtc=%lu mode=%d flags=0x%02X bus_mv=%d batt_mv=%d temp=%d\n",
+         bin.crc, (unsigned long)bin.ts, (unsigned long)bin.rtc, bin.mode, bin.flags, bin.bus_mv,
+         bin.battery_mv, bin.temp);
+
+  /* Send sync word + packet in one atomic write
+   *
+   * IMPORTANT: sync[2] and bin[64] MUST be concatenated into a single buffer
+   * so the UART1 lock is acquired once.  Two separate uart1_write_buf calls
+   * would release the lock between them, allowing other tasks (CSP/KISS,
+   * command_task) to interleave data and corrupt the ground-station frame. */
+  uint8_t frame[2 + TLM_PACKET_SIZE];
+  frame[0] = TLM_SYNC_BYTE_1;
+  frame[1] = TLM_SYNC_BYTE_2;
+  memcpy(frame + 2, &bin, sizeof(bin));
+  uart1_write_buf(frame, sizeof(frame));
 #endif
 
   // Debug output to UART0
@@ -256,6 +278,12 @@ void vTelemetryTask_Step(void)
   {
     printf("[telemetry] Warning: Failed to store to flash\n");
   }
+
+  // On PICO, csp_sendto was not called so the packet buffer was never freed.
+  // Free it now — all tlm accesses are done.
+#ifdef PICO_BUILD
+  csp_buffer_free(packet);
+#endif
 }
 
 // Telemetry task: sends telemetry at 1 Hz

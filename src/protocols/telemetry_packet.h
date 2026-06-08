@@ -118,16 +118,23 @@ extern "C"
    * ================================================================ */
   static inline uint8_t tlm_crc8(const uint8_t *data, uint16_t len)
   {
-    uint8_t crc = 0;
+    /* LSB-first CRC-8/MAXIM (Dallas 1-Wire) — polynomial 0x31, reflected 0x8C
+     *
+     * This must match crc8_maxim() in the Arduino ground station.  An MSB-first
+     * implementation with poly 0x31 but NO bit-reflection gives a *different*
+     * result — CRC-8/MAXIM specifies RefIn=true + RefOut=true.
+     */
+    uint8_t crc = 0x00;
     for (uint16_t i = 0; i < len; i++)
     {
-      crc ^= data[i];
-      for (uint8_t j = 0; j < 8; j++)
+      uint8_t extract = data[i];
+      for (uint8_t j = 8; j; j--)
       {
-        if (crc & 0x80)
-          crc = (crc << 1) ^ 0x31;
-        else
-          crc <<= 1;
+        uint8_t sum = (crc ^ extract) & 0x01u;
+        crc >>= 1;
+        if (sum)
+          crc ^= 0x8C;
+        extract >>= 1;
       }
     }
     return crc;
