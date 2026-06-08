@@ -308,6 +308,35 @@ void test_gps_fix_roundtrip(void)
   PASS("T-DL-EXT-13: data_layer_set/get_gps_fix");
 }
 
+void test_set_rtc_avail(void)
+{
+  setup();
+
+  data_layer_set_rtc_avail(true);
+  dl_snapshot_t snap;
+  data_layer_read(&snap);
+  CHECK(snap.state.rtc_available == true, "rtc_avail set");
+
+  data_layer_set_rtc_avail(false);
+  data_layer_read(&snap);
+  CHECK(snap.state.rtc_available == false, "rtc_avail cleared");
+  PASS("T-DL-EXT-20: data_layer_set_rtc_avail");
+}
+
+void test_deploy_in_progress_roundtrip(void)
+{
+  setup();
+
+  uint32_t seq = data_layer_get_seq();
+  data_layer_set_deploy_in_progress(true);
+  CHECK(data_layer_get_deploy_in_progress() == true, "deploy_in_progress true");
+  CHECK(data_layer_get_seq() == seq + 1, "seq increments");
+
+  data_layer_set_deploy_in_progress(false);
+  CHECK(data_layer_get_deploy_in_progress() == false, "deploy_in_progress false");
+  PASS("T-DL-EXT-21: data_layer_set/get_deploy_in_progress");
+}
+
 void test_set_flight_mode_from_isr(void)
 {
   setup();
@@ -432,6 +461,8 @@ int main(void)
   test_set_mag_avail();
   test_write_rtc();
   test_write_lux();
+  test_set_rtc_avail();
+  test_deploy_in_progress_roundtrip();
   test_set_flight_mode_from_isr();
 
   printf("\n=== Summary ===\n");
