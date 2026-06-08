@@ -83,28 +83,46 @@ int hmc5883l_read(float field_uT[3])
   return 0;
 }
 
-/* BH1750 stub — returns false so lux_available is not set */
+/* Configurable BH1750 stub */
+static bool s_bh1750_ret = false;
+static float s_bh1750_lux = 0.0f;
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool bh1750_read(float *lux)
 {
-  (void)lux;
-  return false;
+  if (lux)
+    *lux = s_bh1750_lux;
+  return s_bh1750_ret;
 }
 
-/* INA219 stubs — return false so power_*_available is not set */
+/* Configurable INA219 stubs */
 #include "ina219.h"
+static bool s_ina219_ret = false;
+static ina219_data_t s_ina219_data = {5000, 100, 500};
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool ina219_read_power(ina219_data_t *data)
 {
-  (void)data;
-  return false;
+  if (data)
+    *data = s_ina219_data;
+  return s_ina219_ret;
 }
+static bool s_ina219_solar_ret = false;
+static ina219_data_t s_ina219_solar_data = {4200, 50, 210};
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool ina219_solar_read_power(ina219_data_t *data)
 {
-  (void)data;
-  return false;
+  if (data)
+    *data = s_ina219_solar_data;
+  return s_ina219_solar_ret;
 }
+
+/* Configurable sun sensor stub globals (defined in sun_sensor_stub.c) */
+extern bool     s_sun_sensor_read_ret;
+extern uint16_t s_sun_sensor_adc_x;
+extern uint16_t s_sun_sensor_adc_y;
+extern float    s_sun_sensor_intensity_x;
+extern float    s_sun_sensor_intensity_y;
+extern bool     s_sun_sensor_sun_detected_x;
+extern bool     s_sun_sensor_sun_detected_y;
 
 /* IMU calibration stubs — no-op for host tests */
 #include "drivers/imu/imu_calib.h"
@@ -155,6 +173,12 @@ static void reset(void)
   s_sht31_fetch_ret = false;
   s_sht31_fetch_temp = 0.0f;
   s_sht31_fetch_humid = 0.0f;
+  s_sun_sensor_read_ret = true;
+  s_sun_sensor_intensity_x = 0.024f;
+  s_sun_sensor_intensity_y = 0.024f;
+  s_bh1750_ret = false;
+  s_bh1750_lux = 0.0f;
+  s_ina219_ret = false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -354,6 +378,114 @@ static void test_ekf_valid_not_set_on_failure(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 11 (T-SRF-11): BH1750 light sensor data written to DLA       */
+/* ------------------------------------------------------------------ */
+
+static void test_light_available(void)
+{
+  reset();
+  s_bh1750_ret = true;
+  s_bh1750_lux = 1234.5f;
+  data_layer_set_sensor_avail(false, false);
+  data_layer_set_lux_avail(true);
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(snap.state.lux_valid, "lux_valid must be true after BH1750 read");
+  CHECK(RAD_EQ(snap.state.lux, 1234.5f), "lux must match stub value");
+  printf("test_light_available: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 12 (T-SRF-12): INA219 power data written to DLA (1Hz path)   */
+/* ------------------------------------------------------------------ */
+
+static void test_power_available(void)
+{
+  reset();
+  s_ina219_ret = true;
+  s_ina219_solar_ret = true;
+  data_layer_set_power_avail(true);
+  data_layer_set_solar_avail(true);
+
+  /* Need 10 iterations to wrap the 1Hz counter */
+  for (int i = 0; i < 10; i++)
+    vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(snap.state.power_valid, "power_valid must be true after INA219 read");
+  CHECK(snap.state.solar_valid, "solar_valid must be true after solar INA219 read");
+  printf("test_power_available: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 13 (T-SRF-13): DS3231 RTC data written to DLA (1Hz path)     */
+/* ------------------------------------------------------------------ */
+
+static void test_rtc_available(void)
+{
+  reset();
+  data_layer_set_rtc_avail(true);
+
+  /* Need 10 iterations to wrap the 1Hz counter */
+  for (int i = 0; i < 10; i++)
+    vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(snap.state.rtc_valid, "rtc_valid must be true after DS3231 read");
+  printf("test_rtc_available: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 14 (T-SRF-14): Sun sensor data written to DLA (1Hz path)     */
+/* ------------------------------------------------------------------ */
+
+static void test_sun_available(void)
+{
+  reset();
+  data_layer_set_sun_avail(true);
+  s_sun_sensor_read_ret = true;
+  s_sun_sensor_intensity_x = 0.75f;
+  s_sun_sensor_intensity_y = 0.32f;
+
+  /* Need 10 iterations to wrap the 1Hz counter */
+  for (int i = 0; i < 10; i++)
+    vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(snap.state.sun_valid, "sun_valid must be true after sun sensor read");
+  CHECK(RAD_EQ(snap.state.sun_x, 0.75f), "sun_x must match stub value");
+  CHECK(RAD_EQ(snap.state.sun_y, 0.32f), "sun_y must match stub value");
+  printf("test_sun_available: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 15 (T-SRF-15): Magnetometer + EKF mag update path             */
+/* ------------------------------------------------------------------ */
+
+static void test_mag_ekf_update(void)
+{
+  reset();
+
+  /* First, init the EKF via an IMU step */
+  data_layer_set_sensor_avail(true, false);
+  vSensorReadTask_Step();
+
+  /* Now enable mag and run another step */
+  data_layer_set_mag_avail(true);
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(snap.state.mag_valid, "mag_valid must be true after magnetometer read");
+  printf("test_mag_ekf_update: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -369,6 +501,11 @@ int main(void)
   test_ekf_valid_flag_set();
   test_ekf_outputs_finite();
   test_ekf_valid_not_set_on_failure();
+  test_light_available();
+  test_power_available();
+  test_rtc_available();
+  test_sun_available();
+  test_mag_ekf_update();
 
   if (g_failures == 0)
   {
