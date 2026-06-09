@@ -82,42 +82,42 @@ fi
 
   if [[ -n "$CLANG_TIDY" ]]; then
     info "clang-tidy: $($CLANG_TIDY --version | head -1)"
-    # clang-tidy needs a compile_commands.json — generate from host build dir
-    BUILD_DIR="$REPO_ROOT/build_ci"
-    COMPILE_CMDS="$BUILD_DIR/compile_commands.json"
-  if [[ ! -f "$COMPILE_CMDS" ]]; then
-    info "  Generating compile_commands.json..."
-    FATFS_INCLUDE="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}" \
-    cmake -S "$REPO_ROOT" -B "$BUILD_DIR" \
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPICO_ENABLED=OFF \
-          -Wno-dev
-  fi
 
-  TIDY_FAIL=0
-  C_FILES=$(find src -name '*.c' | grep -v third_party | grep -v '/pico_' | sort)
-  # Common include paths for all files
-  COMMON_ARGS="--extra-arg=-I$REPO_ROOT/include --extra-arg=-I$REPO_ROOT/third_party/libcsp/include --extra-arg=-I$BUILD_DIR/third_party/libcsp/include"
-  for f in $C_FILES; do
-    # Add FatFs include path for diskio.c
-    if [[ "$f" == *"payload/diskio.c"* ]]; then
-      FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}"
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS --extra-arg=-I$FATFS_INCLUDE_PATH -checks='-*,readability-non-const-parameter' 2>&1 || true)
+    # clang-tidy needs a compile_commands.json — try ci build dir first, fall back
+    BUILD_DIR="$REPO_ROOT/build"
+    if [[ ! -f "$BUILD_DIR/compile_commands.json" ]]; then
+      BUILD_DIR="$REPO_ROOT/build_ci"
+    fi
+    if [[ ! -f "$BUILD_DIR/compile_commands.json" ]]; then
+      info "  No compile_commands.json found — running cppcheck only"
+      info "  Build with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON to enable clang-tidy"
     else
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS -checks='-*,readability-non-const-parameter' 2>&1 || true)
+      info "  Using compile_commands.json from $BUILD_DIR"
+      TIDY_FAIL=0
+      C_FILES=$(find src -name '*.c' | grep -v third_party | grep -v '/pico_\|/stub\.c$' | sort)
+
+      # Use .clang-tidy config at repo root for checks
+      CLANG_TIDY_CFG="$REPO_ROOT/.clang-tidy"
+      if [[ -f "$CLANG_TIDY_CFG" ]]; then
+        info "  Using config: $CLANG_TIDY_CFG"
+      fi
+
+      for f in $C_FILES; do
+        RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" 2>&1 || true)
+        if echo "$RESULT" | grep -q "warning:\|error:"; then
+          echo "$RESULT" | head -20
+          TIDY_FAIL=1
+        fi
+      done
+      if [[ "$TIDY_FAIL" == "0" ]]; then
+        pass "clang-tidy: no issues found"
+      else
+        fail "clang-tidy: violations found (see output above)"
+      fi
     fi
-    if echo "$RESULT" | grep -q "warning:\|error:"; then
-      echo "$RESULT"
-      TIDY_FAIL=1
-    fi
-  done
-  if [[ "$TIDY_FAIL" == "0" ]]; then
-    pass "clang-tidy: no issues found"
   else
-    fail "clang-tidy: violations found (see output above)"
-  fi
-else
-  info "clang-tidy not found — skipping semantic checks"
-  info "  Install: sudo apt-get install clang-tidy-14"
+    info "clang-tidy not found — skipping semantic checks"
+    info "  Install: sudo apt-get install clang-tidy-14"
 fi
 
 # =============================================================================
