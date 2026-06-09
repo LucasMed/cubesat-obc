@@ -16,5 +16,8 @@ target_link_libraries(tasks_lib PRIVATE control_lib dynamics_lib drivers_lib act
 if(PICO_BUILD)
     target_link_libraries(tasks_lib PUBLIC FreeRTOS-Kernel csp hardware_watchdog)
 else()
+    # Host builds need service libraries for symbols used by shared lib.
+    # Without these, gcc + ASan fails with undefined references.
+    target_link_libraries(tasks_lib PRIVATE eps_lib fault_lib fmm_lib)
     target_link_libraries(tasks_lib PUBLIC csp watchdog_hal_lib)
 endif()

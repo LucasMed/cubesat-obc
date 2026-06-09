@@ -69,13 +69,20 @@ if(PICO_BUILD)
     message(STATUS "FreeRTOS kernel (RP2040 INTERFACE port) ready")
 endif()
 
-# Enable testing support (only for host builds)
+# Option to enable AddressSanitizer + UndefinedBehaviorSanitizer (host builds only)
+option(SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+# Enable testing and compiler flags for host builds
 if(NOT PICO_BUILD)
     enable_testing()
-  # Enable testing for host builds (unit tests)
-  enable_testing()
-    add_compile_options(--coverage -O0 -g)
-    add_link_options(--coverage)
+    if(SANITIZE)
+        message(STATUS "AddressSanitizer + UBSan enabled")
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all -g -O1)
+        add_link_options(-fsanitize=address,undefined)
+    else()
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+    endif()
 endif()
 
 # C standard and compiler flags
