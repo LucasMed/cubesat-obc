@@ -38,6 +38,12 @@
   #define csp_send mock_csp_send
   #define csp_buffer_free mock_csp_buffer_free
   #define csp_conn_src mock_csp_conn_src
+  #define csp_bind mock_csp_bind
+  #define csp_listen mock_csp_listen
+  #define csp_accept mock_csp_accept
+  #define csp_read mock_csp_read
+  #define csp_close mock_csp_close
+  #define csp_buffer_get mock_csp_buffer_get
 #endif
 
 #ifdef PICO_BUILD

@@ -352,6 +352,115 @@ static void test_energy_accessor(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 13: CRITICAL → LOW recovery (hysteresis band)                  */
+/* ------------------------------------------------------------------ */
+
+static void test_critical_to_low_recovery(void)
+{
+  /* Drive to CRITICAL */
+  reset_all();
+  s_vbatt = 3.15f;
+  eps_monitor_tick(); /* → CRITICAL */
+
+  /* Recover to 3.35 V: above 3.3 V base but below 3.4 V hysteresis */
+  s_vbatt = 3.35f;
+  eps_monitor_tick();
+
+  eps_snapshot_t snap = {0};
+  eps_snapshot_get(&snap);
+  CHECK(snap.state == ENERGY_CRITICAL,
+        "3.35 V from CRITICAL must stay CRITICAL (hysteresis band)");
+  CHECK(fault_is_active(FAULT_EPS_VBATT_CRITICAL),
+        "VBATT_CRITICAL must remain active within hysteresis band");
+
+  /* Recover to 3.45 V: above 3.3 + 0.1 = 3.4 V hysteresis → should go to LOW */
+  s_vbatt = 3.45f;
+  eps_monitor_tick();
+  eps_snapshot_get(&snap);
+  CHECK(snap.state == ENERGY_LOW,
+        "3.45 V from CRITICAL must recover to ENERGY_LOW (above hysteresis)");
+  CHECK(!fault_is_active(FAULT_EPS_VBATT_CRITICAL),
+        "VBATT_CRITICAL must be cleared on recovery to LOW");
+  CHECK(fault_is_active(FAULT_EPS_VBATT_LOW),
+        "VBATT_LOW must be active after recovery to LOW");
+  printf("test_critical_to_low_recovery: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 14: EMERGENCY → CRITICAL recovery (hysteresis band)           */
+/* ------------------------------------------------------------------ */
+
+static void test_emergency_to_critical_recovery(void)
+{
+  /* Drive to EMERGENCY */
+  reset_all();
+  s_vbatt = 2.8f;
+  eps_monitor_tick(); /* → EMERGENCY */
+
+  /* Recover to 3.05 V: above 3.0 V base but below 3.1 V hysteresis */
+  s_vbatt = 3.05f;
+  eps_monitor_tick();
+
+  eps_snapshot_t snap = {0};
+  eps_snapshot_get(&snap);
+  CHECK(snap.state == ENERGY_EMERGENCY,
+        "3.05 V from EMERGENCY must stay EMERGENCY (hysteresis band)");
+  CHECK(fault_is_active(FAULT_EPS_VBATT_EMERGENCY),
+        "VBATT_EMERGENCY must remain active within hysteresis band");
+
+  /* Recover to 3.15 V: above 3.0 + 0.1 = 3.1 V hysteresis → should go to CRITICAL */
+  s_vbatt = 3.15f;
+  eps_monitor_tick();
+  eps_snapshot_get(&snap);
+  CHECK(snap.state == ENERGY_CRITICAL,
+        "3.15 V from EMERGENCY must recover to ENERGY_CRITICAL (above hysteresis)");
+  /* NOTE: VBATT_EMERGENCY is NOT cleared on EMERGENCY→CRITICAL — only
+   * handle_state_change(ENERGY_LOW) with prev>LOW or ENERGY_NOMINAL clears it.
+   * This is by design: EMERGENCY leaves a forensic trace until LOW/NOMINAL. */
+  CHECK(fault_is_active(FAULT_EPS_VBATT_CRITICAL),
+        "VBATT_CRITICAL must be active after recovery to CRITICAL");
+  printf("test_emergency_to_critical_recovery: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 15: Voltage below plausibility floor forces NOMINAL            */
+/* ------------------------------------------------------------------ */
+
+static void test_plausibility_low(void)
+{
+  reset_all();
+  s_vbatt = 0.5f; /* below 2.5 V minimum */
+  eps_monitor_tick();
+
+  eps_snapshot_t snap = {0};
+  eps_snapshot_get(&snap);
+  CHECK(snap.state == ENERGY_NOMINAL,
+        "0.5 V (< 2.5 V plausible floor) must force NOMINAL");
+  CHECK(!fault_is_active(FAULT_EPS_VBATT_EMERGENCY),
+        "No VBATT_EMERGENCY fault for implausibly low voltage");
+  printf("test_plausibility_low: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 16: Voltage above plausibility ceiling forces NOMINAL          */
+/* ------------------------------------------------------------------ */
+
+static void test_plausibility_high(void)
+{
+  reset_all();
+  s_vbatt = 7.0f; /* above 6.0 V maximum */
+  eps_monitor_tick();
+
+  eps_snapshot_t snap = {0};
+  eps_snapshot_get(&snap);
+  CHECK(snap.state == ENERGY_NOMINAL,
+        "7.0 V (> 6.0 V plausible ceiling) must force NOMINAL");
+  CHECK(!fault_is_active(FAULT_EPS_VBATT_CRITICAL),
+        "No VBATT fault for implausibly high voltage");
+  printf("test_plausibility_high: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -372,6 +481,14 @@ int main(void)
   test_rail_control();
   test_obc_protected();
   test_energy_accessor();
+
+  /* Hysteresis recovery tests */
+  test_critical_to_low_recovery();
+  test_emergency_to_critical_recovery();
+
+  /* Plausibility bounds tests */
+  test_plausibility_low();
+  test_plausibility_high();
 
   if (g_failures == 0)
   {

@@ -419,6 +419,92 @@ static void test_tlm_flash_record_payload_hk(void)
 }
 
 /* ========================================================================
+ * T-TLM-11  Energy state overflow — values > 3 masked to 3 bits
+ * ======================================================================== */
+static void test_tlm_energy_overflow(void)
+{
+  int failures_before = g_failures;
+
+  /* Case: energy = 7 (max 3-bit value, beyond defined enum) */
+  reset_all();
+  data_layer_set_energy_state((energy_state_t)7);
+  set_state(FM_NOMINAL, (energy_state_t)7, 0, 0, 0, 0, 0, 0, 20.0f, 0, 0);
+  vTelemetryTask_Step();
+  csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+  uint8_t extracted = (tl->flags >> 5) & 0x07u;
+  CHECK(extracted == 7, "energy=7 must be preserved in flags[7:5] after mask");
+
+  /* Case: energy = 0 (NOMINAL) */
+  reset_all();
+  data_layer_set_energy_state(ENERGY_NOMINAL);
+  set_state(FM_NOMINAL, ENERGY_NOMINAL, 0, 0, 0, 0, 0, 0, 20.0f, 0, 0);
+  vTelemetryTask_Step();
+  tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+  extracted = (tl->flags >> 5) & 0x07u;
+  CHECK(extracted == 0, "ENERGY_NOMINAL=0 in flags[7:5]");
+
+  printf("[T-TLM-11] test_tlm_energy_overflow: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
+ * T-TLM-12  All flags bits — exercise all validity bits
+ * ======================================================================== */
+static void test_tlm_flags_all_bits(void)
+{
+  int failures_before = g_failures;
+
+  /* All valid, energy = EMERGENCY (3) = 0x60 in bits [7:5] */
+  reset_all();
+  data_layer_set_energy_state(ENERGY_EMERGENCY);
+
+  set_state(FM_NOMINAL, ENERGY_EMERGENCY, 1, 0, 0, 0, 0, 0, 25.0f, 1, 1);
+  /* Force all DLA validity flags via writes (humidity ≥0, lux ≥0, rtc any) */
+  data_layer_write_humidity(50.0f);
+  data_layer_write_lux(100.0f);
+  data_layer_write_rtc(12345);
+  /* Ensure temp_valid is set after set_state + writes */
+  data_layer_set_sensor_avail(true, true);
+
+  vTelemetryTask_Step();
+
+  csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+  CHECK(tl->flags & 0x01u, "bit0 (imu_valid) set");
+  CHECK(tl->flags & 0x02u, "bit1 (temp_valid) set");
+  CHECK(tl->flags & 0x04u, "bit2 (humidity_valid) set");
+  CHECK(tl->flags & 0x08u, "bit3 (lux_valid) set");
+  CHECK(tl->flags & 0x10u, "bit4 (rtc_valid) set");
+  CHECK(((tl->flags >> 5) & 0x07u) == 3, "bits[7:5] = ENERGY_EMERGENCY");
+
+  printf("[T-TLM-12] test_tlm_flags_all_bits: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
+ * T-TLM-13  Flags — all validity bits false, only energy in flags
+ * ======================================================================== */
+static void test_tlm_flags_no_validity(void)
+{
+  int failures_before = g_failures;
+
+  reset_all();
+  /* imu_valid, temp_valid, humidity_valid, lux_valid, rtc_valid all false */
+  data_layer_set_energy_state(ENERGY_LOW);
+  set_state(FM_NOMINAL, ENERGY_LOW, 0, 0, 0, 0, 0, 0, 20.0f, 0, 0);
+
+  vTelemetryTask_Step();
+
+  csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+  /* Lower 5 bits must be 0 */
+  CHECK((tl->flags & 0x1Fu) == 0x00u, "lower 5 flags bits are 0 when no sensors valid");
+  /* Energy must be in bits [7:5] */
+  CHECK(((tl->flags >> 5) & 0x07u) == ENERGY_LOW, "ENERGY_LOW in flags[7:5]");
+
+  printf("[T-TLM-13] test_tlm_flags_no_validity: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
  * T-TLM-06  No csp_sendto when csp_buffer_get returns NULL
  * ======================================================================== */
 static void test_tlm_null_buffer(void)
@@ -461,6 +547,9 @@ int main(void)
   test_tlm_payload_hk_defaults_zero();
   test_tlm_sizeof_assertions();
   test_tlm_flash_record_payload_hk();
+  test_tlm_energy_overflow();
+  test_tlm_flags_all_bits();
+  test_tlm_flags_no_validity();
   printf("=================================\n");
   if (g_failures == 0)
   {

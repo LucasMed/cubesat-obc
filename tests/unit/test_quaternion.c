@@ -165,6 +165,157 @@ static void test_singularity_free(void)
 }
 
 /* ========================================================================
+ * T-QAT-06  q_from_axis_angle — normal case: 90° about Z
+ * ======================================================================== */
+static void test_axis_angle_normal(void)
+{
+  /* 90° rotation about Z: [0,0,1], angle = π/2
+   * Expected quaternion: cos(45°), 0, 0, sin(45°) = [~0.707, 0, 0, ~0.707] */
+  quat_t q = q_from_axis_angle(0.0f, 0.0f, 1.0f, (float)(M_PI / 2.0));
+  float expected = sqrtf(2.0f) / 2.0f; /* ~0.7071 */
+  CHECK(FABS(q.w - expected) < 1e-5f, "axis-angle w = cos(45°)");
+  CHECK(FABS(q.x) < 1e-6f, "axis-angle x = 0 (no rotation about X)");
+  CHECK(FABS(q.y) < 1e-6f, "axis-angle y = 0 (no rotation about Y)");
+  CHECK(FABS(q.z - expected) < 1e-5f, "axis-angle z = sin(45°)");
+
+  /* Rotate [1,0,0] by this quaternion → [0,1,0] */
+  float v[3] = {1.0f, 0.0f, 0.0f};
+  float vr[3] = {0.0f, 0.0f, 0.0f};
+  q_rotate_vec(q, v, vr);
+  CHECK(FABS(vr[0] - 0.0f) < 1e-5f, "axis-angle: vx ~0 after 90° about Z");
+  CHECK(FABS(vr[1] - 1.0f) < 1e-5f, "axis-angle: vy ~1 after 90° about Z");
+  CHECK(FABS(vr[2] - 0.0f) < 1e-5f, "axis-angle: vz ~0 after 90° about Z");
+
+  printf("  PASS T-QAT-06 q_from_axis_angle normal (90° about Z)\n");
+}
+
+/* ========================================================================
+ * T-QAT-07  q_from_axis_angle — zero axis → identity (regardless of angle)
+ * ======================================================================== */
+static void test_axis_angle_zero_axis(void)
+{
+  quat_t q = q_from_axis_angle(0.0f, 0.0f, 0.0f, (float)M_PI);
+  quat_t id = q_identity();
+  CHECK(FABS(q.w - id.w) < 1e-6f, "zero-axis axis-angle: w = identity");
+  CHECK(FABS(q.x - id.x) < 1e-6f, "zero-axis axis-angle: x = identity");
+  CHECK(FABS(q.y - id.y) < 1e-6f, "zero-axis axis-angle: y = identity");
+  CHECK(FABS(q.z - id.z) < 1e-6f, "zero-axis axis-angle: z = identity");
+
+  /* Also test with angle = 0 on a valid axis */
+  quat_t q2 = q_from_axis_angle(1.0f, 0.0f, 0.0f, 0.0f);
+  CHECK(FABS(q2.w - 1.0f) < 1e-6f, "zero-angle axis-angle: w = 1");
+  CHECK(FABS(q2.x) < 1e-6f, "zero-angle axis-angle: x = 0");
+
+  printf("  PASS T-QAT-07 q_from_axis_angle degenerate (zero axis, zero angle)\n");
+}
+
+/* ========================================================================
+ * T-QAT-08  q_dot — dot product between quaternions
+ * ======================================================================== */
+static void test_q_dot(void)
+{
+  quat_t id = q_identity();
+  quat_t id2 = q_identity();
+  CHECK(FABS(q_dot(id, id2) - 1.0f) < 1e-6f, "identity ⊙ identity = 1");
+
+  /* q ⊙ q = 1 for any unit quaternion */
+  quat_t p = q_from_euler(DEG2RAD(30.0f), DEG2RAD(-20.0f), DEG2RAD(45.0f));
+  CHECK(FABS(q_dot(p, p) - 1.0f) < 1e-5f, "q ⊙ q = 1 for unit quaternion");
+
+  /* q ⊙ (-q) = -1 */
+  quat_t neg = {-p.w, -p.x, -p.y, -p.z};
+  CHECK(FABS(q_dot(p, neg) + 1.0f) < 1e-5f, "q ⊙ (-q) = -1");
+
+  printf("  PASS T-QAT-08 q_dot correct\n");
+}
+
+/* ========================================================================
+ * T-QAT-09  q_conj — conjugate properties
+ * ======================================================================== */
+static void test_q_conj(void)
+{
+  quat_t id = q_conj(q_identity());
+  CHECK(FABS(id.w - 1.0f) < 1e-6f, "conjugate of identity = identity");
+  CHECK(FABS(id.x) < 1e-6f && FABS(id.y) < 1e-6f && FABS(id.z) < 1e-6f, "conjugate of identity has zero vector part");
+
+  quat_t p = {1.0f, 2.0f, 3.0f, 4.0f};
+  quat_t cp = q_conj(p);
+  CHECK(FABS(cp.w - 1.0f) < 1e-6f, "conjugate preserves w");
+  CHECK(FABS(cp.x + 2.0f) < 1e-6f, "conjugate negates x");
+  CHECK(FABS(cp.y + 3.0f) < 1e-6f, "conjugate negates y");
+  CHECK(FABS(cp.z + 4.0f) < 1e-6f, "conjugate negates z");
+
+  /* Double-conjugate = original */
+  quat_t dcp = q_conj(cp);
+  CHECK(FABS(dcp.w - 1.0f) < 1e-6f && FABS(dcp.x - 2.0f) < 1e-6f
+         && FABS(dcp.y - 3.0f) < 1e-6f && FABS(dcp.z - 4.0f) < 1e-6f,
+         "double conjugate = original");
+
+  printf("  PASS T-QAT-09 q_conj correct\n");
+}
+
+/* ========================================================================
+ * T-QAT-10  q_rotate_vec — zero-vector input → zero output (no crash)
+ * ======================================================================== */
+static void test_rotate_vec_zero(void)
+{
+  quat_t q = q_from_euler(DEG2RAD(45.0f), DEG2RAD(-30.0f), DEG2RAD(60.0f));
+  float v[3] = {0.0f, 0.0f, 0.0f};
+  float vr[3] = {999.0f, 999.0f, 999.0f};
+  q_rotate_vec(q, v, vr);
+  CHECK(FABS(vr[0]) < 1e-6f, "zero vector rotated must stay zero (x)");
+  CHECK(FABS(vr[1]) < 1e-6f, "zero vector rotated must stay zero (y)");
+  CHECK(FABS(vr[2]) < 1e-6f, "zero vector rotated must stay zero (z)");
+
+  printf("  PASS T-QAT-10 q_rotate_vec zero-vector is idempotent\n");
+}
+
+/* ========================================================================
+ * T-QAT-11  q_rotate_vec — identity quaternion → vector unchanged
+ * ======================================================================== */
+static void test_rotate_vec_identity(void)
+{
+  quat_t q = q_identity();
+  float v[3] = {1.0f, -2.0f, 3.0f};
+  float vr[3] = {0.0f, 0.0f, 0.0f};
+  q_rotate_vec(q, v, vr);
+  CHECK(FABS(vr[0] - 1.0f) < 1e-6f, "identity quaternion: vx unchanged");
+  CHECK(FABS(vr[1] + 2.0f) < 1e-6f, "identity quaternion: vy unchanged");
+  CHECK(FABS(vr[2] - 3.0f) < 1e-6f, "identity quaternion: vz unchanged");
+
+  printf("  PASS T-QAT-11 q_rotate_vec identity leaves vector unchanged\n");
+}
+
+/* ========================================================================
+ * T-QAT-12  Euler round-trip — near-pole singularity (pitch = ±89.9°)
+ * ======================================================================== */
+static void test_euler_near_pole(void)
+{
+  const float near_pole[][3] = {
+      {DEG2RAD(10.0f), DEG2RAD(89.9f), DEG2RAD(20.0f)},
+      {DEG2RAD(-5.0f), DEG2RAD(-89.9f), DEG2RAD(45.0f)},
+  };
+  /* At gimbal-lock, pitch gets clamped to ±π/2 exactly, so exact agreement
+   * isn't possible for pitch ≈ ±89.9°.  Use 0.01 rad (~0.6°) tolerance. */
+  const float tol = 1e-2f;
+
+  for (int i = 0; i < 2; i++)
+  {
+    float r0 = near_pole[i][0], p0 = near_pole[i][1], y0 = near_pole[i][2];
+    quat_t q = q_from_euler(r0, p0, y0);
+    CHECK(isfinite(q.w) && isfinite(q.x) && isfinite(q.y) && isfinite(q.z),
+          "quaternion must be finite at near-pole pitch");
+
+    float r1, p1, y1;
+    q_to_euler(q, &r1, &p1, &y1);
+    CHECK(isfinite(r1) && isfinite(p1) && isfinite(y1),
+          "q_to_euler must return finite angles near pole");
+    CHECK(FABS(p1 - p0) < tol, "pitch near-pole round-trip must be within tolerance");
+  }
+  printf("  PASS T-QAT-12 Euler near-pole (pitch = ±89.9°) round-trip OK\n");
+}
+
+/* ========================================================================
  * main
  * ======================================================================== */
 int main(void)
@@ -176,6 +327,13 @@ int main(void)
   test_normalize_unit();
   test_rotate_vec_90_yaw();
   test_singularity_free();
+  test_axis_angle_normal();
+  test_axis_angle_zero_axis();
+  test_q_dot();
+  test_q_conj();
+  test_rotate_vec_zero();
+  test_rotate_vec_identity();
+  test_euler_near_pole();
 
   if (g_failures == 0)
   {

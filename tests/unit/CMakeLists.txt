@@ -217,10 +217,10 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_post m)
     add_test(NAME post_test COMMAND test_post)
 
-    # Deploy Monitor — init, flag reflection, macro validation
+    # Deploy Monitor — test includes deploy_monitor.c directly so FreeRTOS
+    # mocks (xTaskGetTickCount) apply to the tested logic.
     add_executable(test_deploy_monitor
         test_deploy_monitor.c
-        ../../src/services/fmm/deploy_monitor.c
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/services/post/post.c
         ../../src/core/data_layer.c
@@ -340,7 +340,6 @@ if(NOT PICO_BUILD)
     add_executable(test_health_monitor_task
         test_health_monitor_task.c
         ../../src/tasks/health_monitor_task.c
-        ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
@@ -554,6 +553,19 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME event_logger_test COMMAND test_event_logger)
+
+    # GPS task unit tests — task-level logic for timeout detection, recovery.
+    # Provides its own data_layer_set_gps_fix / fault_report / fault_clear stubs.
+    add_executable(test_gps_task
+        test_gps_task.c
+        ../../src/mocks/gps_stub.c
+    )
+    target_include_directories(test_gps_task PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    target_link_libraries(test_gps_task m)
+    add_test(NAME gps_task_test COMMAND test_gps_task)
 
     add_executable(test_gps
         test_gps.c
