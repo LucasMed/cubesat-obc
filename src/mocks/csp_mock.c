@@ -80,7 +80,9 @@ void mock_csp_send(csp_conn_t *conn, csp_packet_t *packet)
   {
     size_t copy_len = packet->length;
     if (copy_len > sizeof(csp_mock_last_send_data))
+    {
       copy_len = sizeof(csp_mock_last_send_data);
+    }
     memcpy(csp_mock_last_send_data, packet->data, copy_len);
     csp_mock_last_send_len = copy_len;
     free(packet);
@@ -131,7 +133,9 @@ void mock_csp_sendto(uint8_t prio, uint16_t dest, uint8_t dport, uint8_t sport, 
   {
     size_t copy_len = packet->length;
     if (copy_len > sizeof(csp_mock_last_send_data))
+    {
       copy_len = sizeof(csp_mock_last_send_data);
+    }
     memcpy(csp_mock_last_send_data, packet->data, copy_len);
     csp_mock_last_send_len = copy_len;
     free(packet);

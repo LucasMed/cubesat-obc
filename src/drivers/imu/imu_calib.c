@@ -99,9 +99,13 @@ void imu_calib_finish(void)
   {
     float offset_lsb = -gyro_bias_dps[i] * 32.8f;  // Negative because register subtracts offset
     if (offset_lsb > 32767.0f)
+    {
       offset_lsb = 32767.0f;
+    }
     if (offset_lsb < -32768.0f)
+    {
       offset_lsb = -32768.0f;
+    }
     g_calib.gyro_offset_raw[i] = (int16_t)offset_lsb;
   }
 

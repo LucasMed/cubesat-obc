@@ -80,8 +80,10 @@ static bool g_initialised = false;
  * into the SAME library (eps_lib).  No weak stub here — that would
  * prevent the linker from pulling in eps_hal.c.o from a static library.
  * Test files that compile eps_monitor.c directly supply their own
- * definition of eps_hal_read().                                         */
-bool eps_hal_read(float *vbatt, float *ibatt, float *temp);
+ * definition of eps_hal_read().
+ * NOTE: declared in include/eps.h — local forward is redundant for
+ * clang-tidy but kept for documentation; commented out to pass CI.     */
+/* bool eps_hal_read(float *vbatt, float *ibatt, float *temp); */
 
 /* ------------------------------------------------------------------ */
 /* Schmidt-trigger voltage → energy state                              */

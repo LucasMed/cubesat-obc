@@ -47,9 +47,13 @@ void mag_calib_collect(const float mag_raw[3])
   for (int i = 0; i < 3; i++)
   {
     if (mag_raw[i] < s_min[i])
+    {
       s_min[i] = mag_raw[i];
+    }
     if (mag_raw[i] > s_max[i])
+    {
       s_max[i] = mag_raw[i];
+    }
   }
   s_samples++;
 
@@ -109,7 +113,9 @@ bool mag_calib_is_valid(void)
 void mag_calib_get(mag_calib_t *out)
 {
   if (out)
+  {
     *out = g_calib;
+  }
 }
 
 void mag_calib_load(const mag_calib_t *in)

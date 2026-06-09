@@ -61,8 +61,12 @@ bool sht31_start_periodic(uint8_t hz)
 bool sht31_fetch(float *temperature, float *humidity)
 {
   if (temperature)
+  {
     *temperature = s_sht31_fetch_temp;
+  }
   if (humidity)
+  {
     *humidity = s_sht31_fetch_humid;
+  }
   return s_sht31_fetch_ret;
 }

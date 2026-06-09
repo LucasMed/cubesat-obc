@@ -353,9 +353,13 @@ static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
     for (int j = 0; j < 8; j++)
     {
       if (crc & 1)
+      {
         crc = (crc >> 1) ^ 0xEDB88320;
+      }
       else
+      {
         crc >>= 1;
+      }
     }
   }
   return ~crc;
@@ -606,9 +610,13 @@ static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
     for (int j = 0; j < 8; j++)
     {
       if (crc & 1)
+      {
         crc = (crc >> 1) ^ 0xEDB88320;
+      }
       else
+      {
         crc >>= 1;
+      }
     }
   }
   return ~crc;
