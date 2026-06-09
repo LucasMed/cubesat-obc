@@ -1,33 +1,39 @@
 /**
  * @file test_deploy_monitor.c
- * @brief Unit tests for the Deploy Monitor.
+ * @brief Unit tests for the Deploy Monitor — includes deploy_monitor.c
+ *        directly so FreeRTOS mocks via #define take effect.
  *
- * Tests the public API (init, is_in_progress) and verifies that the
- * deploy monitor module compiles and links correctly on host.
- *
- * Note: The core auto-transition logic lives inside
- * vDeployMonitorTask() which runs an infinite FreeRTOS loop.  Testing
- * the loop logic requires either (a) a thread-capable test harness or
- * (b) extracting decision functions into separate testable units.
- * That refactoring is deferred to a follow-up change.
+ * Tests public API (init, is_in_progress), compile-time macros, and
+ * auto-transition/timeout decision logic.
  *
  * Spec ref: FMM-SPEC-030–067, FMM-DES-001 §5
  */
 
-#include "../../include/deploy_monitor.h"
-#include "../../include/data_layer.h"
-#include "../../include/flight_mode.h"
-#include "../../include/logger.h"
-
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
-/* ------------------------------------------------------------------ */
-/* Mock stubs for external dependencies                                 */
-/* ------------------------------------------------------------------ */
+/* FreeRTOS mocks — must come before including deploy_monitor.c */
+#include "FreeRTOS.h"
+#include "task.h"
 
-/* flight_mode_manager.c calls log_event() after every transition.
- * Provide a no-op stub so this test can link. */
+static uint32_t s_tick = 0;
+
+static uint32_t mock_xTaskGetTickCount(void)
+{
+  return s_tick;
+}
+static void mock_vTaskDelayUntil(uint32_t *prev, uint32_t inc)
+{
+  (void)prev;
+  s_tick += inc;
+}
+
+#undef xTaskGetTickCount
+#define xTaskGetTickCount mock_xTaskGetTickCount
+
+/* log_event stub (flight_mode_manager calls it) */
+#include "logger.h"
 void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8_t data_len)
 {
   (void)event_id;
@@ -36,14 +42,18 @@ void log_event(uint16_t event_id, log_class_t log_class, const void *data, uint8
   (void)data_len;
 }
 
-/* post.c calls fault_report() on critical POST failure.
- * The real signature uses fault_level_t (uint8_t enum). */
+/* fault_report stub (post.c calls it) */
 #include "../../include/fault_manager.h"
 void fault_report(uint16_t fault_id, fault_level_t level)
 {
   (void)fault_id;
   (void)level;
 }
+
+/* Include the unit under test directly so FreeRTOS mocks apply */
+#include "../../src/services/fmm/deploy_monitor.c"
+#include "../../include/data_layer.h"
+#include "../../include/flight_mode.h"
 
 /* ------------------------------------------------------------------ */
 /* Test helpers                                                        */
@@ -115,6 +125,210 @@ static void test_macros(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Helpers for transition tests                                        */
+/* ------------------------------------------------------------------ */
+
+static void reset_transition_test(void)
+{
+  data_layer_init();
+  deploy_monitor_init();
+  s_tick = 0;
+  /* Set mode entry tick so elapsed time is controlled */
+  data_layer_set_mode_entry_tick(0);
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: Auto BOOT → DETUMBLE after settling time with valid POST    */
+/* ------------------------------------------------------------------ */
+
+static void test_auto_boot_to_detumble(void)
+{
+  int failures_before = g_failures;
+
+  /* Need POST to be valid: set magic + all critical POST bits passed
+   * (IMU=bit0, RTC=bit4, Flash=bit8), and IMU valid. */
+  post_record_t post_rec;
+  memset(&post_rec, 0, sizeof(post_rec));
+  post_rec.magic = POST_MAGIC;
+  post_rec.test_bitmap = (1u << 0) | (1u << 4) | (1u << 8); /* IMU+RTC+Flash */
+  post_rec.boot_count = 1;
+  data_layer_set_post_last(&post_rec);
+
+  data_layer_set_sensor_avail(true, false);
+  /* data_layer_write_imu sets imu_valid=true (checked by deploy_monitor_step) */
+  float att[3] = {0}, rates[3] = {0};
+  data_layer_write_imu(att, rates);
+  data_layer_set_flight_mode(FM_BOOT);
+  data_layer_set_deploy_in_progress(false);
+  data_layer_set_mode_entry_tick(0);
+  s_tick = pdMS_TO_TICKS(DEPLOY_BOOT_SETTLE_MS + 100); /* past settle time */
+
+  /* Run the step */
+  deploy_monitor_step();
+
+  /* After settling, should have transitioned to DETUMBLE and set deploy flag */
+  flight_mode_t mode = data_layer_get_flight_mode();
+  bool deploy = data_layer_get_deploy_in_progress();
+  CHECK(mode == FM_DETUMBLE, "auto BOOT → DETUMBLE transition must happen after settle time");
+  CHECK(deploy == true, "deploy_in_progress must be set after auto transition");
+
+  printf("test_auto_boot_to_detumble: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: No transition if POST has critical fail                      */
+/* ------------------------------------------------------------------ */
+
+static void test_no_transition_on_critical_post(void)
+{
+  int failures_before = g_failures;
+
+  /* Simulate critical POST failure */
+  post_record_t post_rec;
+  memset(&post_rec, 0, sizeof(post_rec));
+  post_rec.magic = POST_MAGIC;
+  post_rec.test_bitmap = 0; /* all tests failed */
+  post_rec.boot_reason = POST_BOOT_WATCHDOG;
+  data_layer_set_post_last(&post_rec);
+
+  data_layer_set_flight_mode(FM_BOOT);
+  data_layer_set_deploy_in_progress(false);
+  data_layer_set_sensor_avail(true, false);
+  data_layer_set_mode_entry_tick(0);
+  s_tick = pdMS_TO_TICKS(DEPLOY_BOOT_SETTLE_MS + 100);
+
+  deploy_monitor_step();
+
+  flight_mode_t mode = data_layer_get_flight_mode();
+  bool deploy = data_layer_get_deploy_in_progress();
+  CHECK(mode == FM_BOOT, "must NOT transition from BOOT with critical POST failure");
+  CHECK(deploy == false, "deploy flag must remain false");
+
+  printf("test_no_transition_on_critical_post: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: Mode timeout — BOOT exceeds DEPLOY_TIMEOUT_BOOT_MS → SAFE   */
+/* ------------------------------------------------------------------ */
+
+static void test_boot_timeout_to_safe(void)
+{
+  int failures_before = g_failures;
+
+  data_layer_set_flight_mode(FM_BOOT);
+  data_layer_set_deploy_in_progress(true);
+  data_layer_set_mode_entry_tick(0);
+  s_tick = pdMS_TO_TICKS(DEPLOY_TIMEOUT_BOOT_MS + 100);
+
+  deploy_monitor_step();
+
+  flight_mode_t mode = data_layer_get_flight_mode();
+  bool deploy = data_layer_get_deploy_in_progress();
+  CHECK(mode == FM_SAFE, "BOOT timeout must transition to FM_SAFE");
+  CHECK(deploy == false, "deploy flag must be cleared on timeout to SAFE");
+
+  printf("test_boot_timeout_to_safe: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DIAGNOSTIC timeout → NOMINAL (fallback, not SAFE)            */
+/* ------------------------------------------------------------------ */
+
+static void test_diagnostic_timeout_to_nominal(void)
+{
+  int failures_before = g_failures;
+
+  data_layer_set_flight_mode(FM_DIAGNOSTIC);
+  data_layer_set_deploy_in_progress(false);
+  data_layer_set_mode_entry_tick(0);
+  s_tick = pdMS_TO_TICKS(DEPLOY_TIMEOUT_DIAGNOSTIC_MS + 100);
+
+  deploy_monitor_step();
+
+  flight_mode_t mode = data_layer_get_flight_mode();
+  /* DIAGNOSTIC timeout → NOMINAL */
+  CHECK(mode == FM_NOMINAL, "DIAGNOSTIC timeout must transition to FM_NOMINAL");
+
+  printf("test_diagnostic_timeout_to_nominal: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DETUMBLE — high omega triggers hard reset                    */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_high_omega_hard_reset(void)
+{
+  int failures_before = g_failures;
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0;
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  float rates[3] = {0.15f, 0.0f, 0.0f}; /* omega = 0.15 > 0.10 */
+  data_layer_write_imu(att, rates);
+
+  /* Prime counter > 0 */
+  s_detumble_stable_count = 10;
+
+  deploy_monitor_step();
+  CHECK(s_detumble_stable_count == 0, "hard reset must zero the stable counter");
+
+  printf("test_detumble_high_omega_hard_reset: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DETUMBLE — medium omega triggers leaky decrement             */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_medium_omega_leaky_decrement(void)
+{
+  int failures_before = g_failures;
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0;
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  /* omega = 0.07 → between THRESHOLD (0.05) and HARD_RESET (0.10) */
+  float rates[3] = {0.07f, 0.0f, 0.0f};
+  data_layer_write_imu(att, rates);
+
+  s_detumble_stable_count = 10;
+
+  deploy_monitor_step();
+  /* Leaky decrement: 10 → 9 */
+  CHECK(s_detumble_stable_count == 9, "leaky decrement must reduce counter by 1");
+
+  printf("test_detumble_medium_omega_leaky_decrement: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DETUMBLE — stable omega → counter increments toward NOMINAL  */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_stable_counter_accumulates(void)
+{
+  int failures_before = g_failures;
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0; /* Reset counter from previous tests */
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  /* omega = 0.01 → below THRESHOLD → stable */
+  float rates[3] = {0.01f, 0.0f, 0.0f};
+  data_layer_write_imu(att, rates);
+
+  CHECK(s_detumble_stable_count == 0, "counter starts at 0");
+
+  deploy_monitor_step();
+  CHECK(s_detumble_stable_count == 1, "counter incremented to 1 after stable step");
+
+  printf("test_detumble_stable_counter_accumulates: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -123,6 +337,13 @@ int main(void)
   test_init();
   test_flag_reflection();
   test_macros();
+  test_auto_boot_to_detumble();
+  test_no_transition_on_critical_post();
+  test_boot_timeout_to_safe();
+  test_diagnostic_timeout_to_nominal();
+  test_detumble_high_omega_hard_reset();
+  test_detumble_medium_omega_leaky_decrement();
+  test_detumble_stable_counter_accumulates();
 
   if (g_failures == 0)
   {

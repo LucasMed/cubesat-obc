@@ -1,0 +1,31 @@
+# gcovr configuration for CubeSat OBC
+# gcovr reads .gcovr automatically when run from the repo root.
+# See https://gcovr.com/en/stable/configuration.html
+
+root     = .
+# Only include production source trees.
+filter   = src/control/
+filter   = src/core/
+filter   = src/services/
+
+# Exclude stub / mock / host-only files (not part of flight firmware).
+exclude  = src/drivers/sun_sensor_stub.c
+exclude  = src/drivers/payload/telemetry_storage_stub.c
+exclude  = src/drivers/power/ina219_stub.c
+exclude  = src/drivers/env/sht31_stub.c
+exclude  = src/drivers/rtc/ds3231_stub.c
+exclude  = src/drivers/light/bh1750_stub.c
+exclude  = src/drivers/csp_macos_stub.c
+exclude  = src/drivers/csp_linux_stub.c
+exclude  = src/drivers/payload/host_sd_spi_stubs.c
+exclude  = src/drivers/host_spi_gpio_stubs.c
+exclude  = src/drivers/i2c/host_i2c.c
+exclude  = src/drivers/temperature/host_temp.c
+exclude  = src/core/flash_backend_stub.c
+exclude  = src/mocks/.*
+exclude  = src/services/wcet/wcet_profiler_host.c
+
+# Output formats (default paths for CI).
+html-details = artifacts/coverage/index.html
+txt          = artifacts/coverage/summary.txt
+print-summary = yes

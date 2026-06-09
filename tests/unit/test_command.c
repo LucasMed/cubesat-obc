@@ -371,6 +371,151 @@ void test_command_payload_capture()
   printf("test_command_payload_capture PASS\n");
 }
 
+/* ---- Additional CSP mock functions for vCommandTask socket ops ---- */
+/* These allow the full CSP stack to be mocked when activated via CSP_MOCK.
+   vCommandTask() references these, even though the test only exercises
+   process_command_packet() directly. */
+
+/* Simple stubs — tests don't call vCommandTask() so these just need to exist */
+int mock_csp_bind(csp_socket_t *sock, uint16_t port) { (void)sock; (void)port; return 0; }
+int mock_csp_listen(csp_socket_t *sock, size_t backlog) { (void)sock; (void)backlog; return 0; }
+csp_conn_t *mock_csp_accept(csp_socket_t *sock, uint32_t timeout) { (void)sock; (void)timeout; return NULL; }
+csp_packet_t *mock_csp_read(csp_conn_t *conn, uint32_t timeout) { (void)conn; (void)timeout; return NULL; }
+void mock_csp_close(csp_conn_t *conn) { (void)conn; }
+
+/* ---- CSP CMD_GPS_STATUS ---- */
+
+void test_command_gps_status()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_GPS_STATUS;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* Should have sent a response */
+  assert(last_csp_sent != NULL);
+  printf("test_command_gps_status PASS\n");
+}
+
+/* ---- CSP CMD_FAULT_LIST ---- */
+
+void test_command_fault_list()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FAULT_LIST;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* Should have sent a response (even with no faults) */
+  assert(last_csp_sent != NULL);
+  printf("test_command_fault_list PASS\n");
+}
+
+/* ---- CSP CMD_SENSOR_RESET ---- */
+
+void test_command_sensor_reset()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_SENSOR_RESET;
+  cmd->payload[0] = 1; /* valid sensor ID */
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_sensor_reset PASS\n");
+}
+
+/* ---- CSP CMD_GPS_RESET_STATS ---- */
+
+void test_command_gps_reset_stats()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_GPS_RESET_STATS;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_gps_reset_stats PASS\n");
+}
+
+/* ---- CSP CMD_TELEMETRY_REQ ---- */
+
+void test_command_telemetry_req()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_TELEMETRY_REQ;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* Should send a response (csp_send called) */
+  assert(last_csp_sent != NULL);
+  printf("test_command_telemetry_req PASS\n");
+}
+
+/* ---- CSP CMD_LOG_DUMP ---- */
+
+void test_command_log_dump()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_LOG_DUMP;
+  cmd->payload[0] = 8;
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_log_dump PASS\n");
+}
+
+/* CSP send returns ownership: null packet after send (packet != NULL fallback) */
+
+void test_command_packet_not_freed_after_default()
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = 99; /* unknown — no csp_send, falls to free at end */
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* Default case: packet not sent, should be freed by csp_buffer_free */
+  assert(last_csp_sent == NULL);
+  assert(last_freed == 1);
+  printf("test_command_packet_not_freed_after_default PASS\n");
+}
+
 /* ---- CSP CMD_DEPLOY ---- */
 
 void test_command_csp_deploy()
@@ -530,6 +675,13 @@ int main()
   test_command_set_mode();
   test_command_payload_capture();
   test_command_csp_deploy();
+  test_command_gps_status();
+  test_command_fault_list();
+  test_command_sensor_reset();
+  test_command_gps_reset_stats();
+  test_command_telemetry_req();
+  test_command_log_dump();
+  test_command_packet_not_freed_after_default();
   test_text_deploy_from_boot();
   test_text_deploy_from_nominal();
   test_text_deploy_clear();

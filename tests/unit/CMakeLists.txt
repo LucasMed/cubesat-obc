@@ -100,6 +100,15 @@ if(NOT PICO_BUILD)
     target_include_directories(test_pid PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME pid_test COMMAND test_pid)
 
+    add_executable(test_attitude_control
+        test_attitude_control.c
+        ../../src/control/attitude_control.c
+        ../../src/control/pid_controller.c
+    )
+    target_include_directories(test_attitude_control PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_attitude_control m)
+    add_test(NAME attitude_control_test COMMAND test_attitude_control)
+
     add_executable(test_dynamics
         test_dynamics.c
         ../../src/dynamics/attitude_dynamics.c
@@ -191,6 +200,14 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_data_layer m)
     add_test(NAME data_layer_test COMMAND test_data_layer)
 
+    add_executable(test_system_state
+        test_system_state.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_system_state PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_system_state m)
+    add_test(NAME system_state_test COMMAND test_system_state)
+
     # PR-3 gate: Flight Mode Manager — state machine + fault-block behaviour.
     # Includes data_layer.c and system_state.c; fault_get_highest_level() is
     # overridden by a strong symbol in test_fmm.c (weak stub in FMM source).
@@ -217,10 +234,10 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_post m)
     add_test(NAME post_test COMMAND test_post)
 
-    # Deploy Monitor — init, flag reflection, macro validation
+    # Deploy Monitor — test includes deploy_monitor.c directly so FreeRTOS
+    # mocks (xTaskGetTickCount) apply to the tested logic.
     add_executable(test_deploy_monitor
         test_deploy_monitor.c
-        ../../src/services/fmm/deploy_monitor.c
         ../../src/services/fmm/flight_mode_manager.c
         ../../src/services/post/post.c
         ../../src/core/data_layer.c
@@ -340,7 +357,6 @@ if(NOT PICO_BUILD)
     add_executable(test_health_monitor_task
         test_health_monitor_task.c
         ../../src/tasks/health_monitor_task.c
-        ../../src/services/fmm/flight_mode_manager.c
         ../../src/core/data_layer.c
         ../../src/core/system_state.c
         ../../src/control/quaternion.c
@@ -554,6 +570,19 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME event_logger_test COMMAND test_event_logger)
+
+    # GPS task unit tests — task-level logic for timeout detection, recovery.
+    # Provides its own data_layer_set_gps_fix / fault_report / fault_clear stubs.
+    add_executable(test_gps_task
+        test_gps_task.c
+        ../../src/mocks/gps_stub.c
+    )
+    target_include_directories(test_gps_task PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    target_link_libraries(test_gps_task wcet_lib m)
+    add_test(NAME gps_task_test COMMAND test_gps_task)
 
     add_executable(test_gps
         test_gps.c

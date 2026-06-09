@@ -425,6 +425,67 @@ static void test_pid_in_fm_diagnostic_even_with_ekf(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 12 (T-ACT-12): FM_PAYLOAD → control skipped (not NOMINAL/DIAG) */
+/* ------------------------------------------------------------------ */
+
+static void test_skip_in_fm_payload(void)
+{
+  float att[3] = {0};
+  float rates[3] = {0};
+  reset_stubs();
+  set_dla_state(FM_PAYLOAD, true, att, rates);
+  vAttitudeControlTask_Step();
+  CHECK(s_ctrl_calls == 0, "ctrl_update must NOT be called in FM_PAYLOAD");
+  CHECK(s_dyn_calls == 0, "dyn_step must NOT be called in FM_PAYLOAD");
+  printf("test_skip_in_fm_payload: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 13 (T-ACT-13): FM_DETUMBLE + mag_valid → B from DLA          */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_with_mag_valid(void)
+{
+  float att[3] = {0};
+  float rates[3] = {0.1f, 0.0f, 0.0f};
+  reset_stubs();
+  data_layer_init();
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  data_layer_write_imu(att, rates);
+
+  /* Set mag field in DLA */
+  float mag[3] = {12.5f, -3.2f, 45.8f};
+  data_layer_write_mag(mag);
+
+  vAttitudeControlTask_Step();
+  CHECK(s_ctrl_calls == 0, "ctrl_update must NOT be called in FM_DETUMBLE");
+  CHECK(s_dump_calls == 1, "momentum_dump_step must be called once");
+  CHECK(s_mtq_set_calls == 1, "magnetorquer_set_moment must be called once");
+  printf("test_detumble_with_mag_valid: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 14 (T-ACT-14): FM_DETUMBLE + mag_valid == false → B=0        */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_with_mag_invalid(void)
+{
+  float att[3] = {0};
+  float rates[3] = {0.1f, 0.0f, 0.0f};
+  reset_stubs();
+  data_layer_init();
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  data_layer_write_imu(att, rates);
+  /* mag_valid is false by default after init */
+
+  vAttitudeControlTask_Step();
+  CHECK(s_ctrl_calls == 0, "ctrl_update must NOT be called in FM_DETUMBLE");
+  CHECK(s_dump_calls == 1, "momentum_dump_step must be called once (B=0)");
+  CHECK(s_mtq_set_calls == 1, "magnetorquer_set_moment must be called once (zero dipole)");
+  printf("test_detumble_with_mag_invalid: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -441,6 +502,9 @@ int main(void)
   test_lqr_used_in_fm_nominal_with_ekf();
   test_pid_fallback_when_ekf_not_ready();
   test_pid_in_fm_diagnostic_even_with_ekf();
+  test_skip_in_fm_payload();
+  test_detumble_with_mag_valid();
+  test_detumble_with_mag_invalid();
 
   if (g_failures == 0)
   {

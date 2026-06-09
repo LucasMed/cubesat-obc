@@ -486,6 +486,88 @@ static void test_mag_ekf_update(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 16 (T-SRF-16): SHT31 fetch failure — temp/humidity NOT written */
+/* ------------------------------------------------------------------ */
+
+static void test_sht31_fetch_failure(void)
+{
+  reset();
+  data_layer_set_sensor_avail(false, true);
+  s_sht31_fetch_ret = false; /* fetch fails */
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(!snap.state.temp_valid, "temp_valid must remain false when sht31_fetch fails");
+  CHECK(!snap.state.humidity_valid, "humidity_valid must remain false when sht31_fetch fails");
+  printf("test_sht31_fetch_failure: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 17 (T-SRF-17): BH1750 read failure — lux NOT written          */
+/* ------------------------------------------------------------------ */
+
+static void test_bh1750_read_failure(void)
+{
+  reset();
+  data_layer_set_lux_avail(true);
+  s_bh1750_ret = false; /* read fails */
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(!snap.state.lux_valid, "lux_valid must remain false when bh1750_read fails");
+  printf("test_bh1750_read_failure: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 18 (T-SRF-18): Deg/s → rad/s edge case — zero gyro           */
+/* ------------------------------------------------------------------ */
+
+static void test_gyro_deg_to_rad_zero(void)
+{
+  reset();
+  s_gyro_deg[0] = 0.0f;
+  s_gyro_deg[1] = 0.0f;
+  s_gyro_deg[2] = 0.0f;
+  data_layer_set_sensor_avail(true, false);
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+  CHECK(RAD_EQ(snap.state.rates[0], 0.0f), "rates[0] must be 0 for 0 deg/s");
+  CHECK(RAD_EQ(snap.state.rates[1], 0.0f), "rates[1] must be 0 for 0 deg/s");
+  CHECK(RAD_EQ(snap.state.rates[2], 0.0f), "rates[2] must be 0 for 0 deg/s");
+  printf("test_gyro_deg_to_rad_zero: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 19 (T-SRF-19): Deg/s → rad/s edge case — negative gyro       */
+/* ------------------------------------------------------------------ */
+
+static void test_gyro_deg_to_rad_negative(void)
+{
+  reset();
+  s_gyro_deg[0] = -90.0f;
+  s_gyro_deg[1] = -180.0f;
+  s_gyro_deg[2] = -360.0f;
+  data_layer_set_sensor_avail(true, false);
+  vSensorReadTask_Step();
+
+  dl_snapshot_t snap = {0};
+  data_layer_read(&snap);
+
+  float expected0 = -90.0f * (float)(M_PI / 180.0);
+  float expected1 = -180.0f * (float)(M_PI / 180.0);
+  float expected2 = -360.0f * (float)(M_PI / 180.0);
+
+  CHECK(RAD_EQ(snap.state.rates[0], expected0), "rates[0] must be -π/2 for -90 deg/s");
+  CHECK(RAD_EQ(snap.state.rates[1], expected1), "rates[1] must be -π for -180 deg/s");
+  CHECK(RAD_EQ(snap.state.rates[2], expected2), "rates[2] must be -2π for -360 deg/s");
+  printf("test_gyro_deg_to_rad_negative: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -506,6 +588,10 @@ int main(void)
   test_rtc_available();
   test_sun_available();
   test_mag_ekf_update();
+  test_sht31_fetch_failure();
+  test_bh1750_read_failure();
+  test_gyro_deg_to_rad_zero();
+  test_gyro_deg_to_rad_negative();
 
   if (g_failures == 0)
   {
