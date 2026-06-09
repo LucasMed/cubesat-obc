@@ -334,6 +334,42 @@ run_coverity() {
 }
 
 # =============================================================================
+# Stage 6b — AddressSanitizer + UBSan (host tests)
+# =============================================================================
+run_sanitize() {
+  stage "6b / sanitize — AddressSanitizer + UndefinedBehaviorSanitizer"
+  local sanitize_dir="${REPO_ROOT}/build_sanitize"
+
+  rm -rf "${sanitize_dir}"/*
+  mkdir -p "$sanitize_dir"
+
+  cmake -S "$REPO_ROOT" -B "$sanitize_dir" \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DPICO_ENABLED=OFF \
+        -DSANITIZE=ON \
+        2>&1 | tee -a "$ARTIFACTS/build.log" \
+  || { fail "Sanitize configure: FAIL"; record 1 "sanitize"; return 1; }
+
+  cmake --build "$sanitize_dir" --parallel "$(nproc)" \
+        2>&1 | tee -a "$ARTIFACTS/build.log" \
+  || { fail "Sanitize build: FAIL"; record 1 "sanitize"; return 1; }
+
+  mkdir -p "$ARTIFACTS/test_results"
+  ctest --test-dir "$sanitize_dir" \
+        --output-on-failure \
+        --output-junit "$ARTIFACTS/test_results/sanitize_tests.xml" \
+        2>&1 | tee "$ARTIFACTS/test_results/sanitize_tests.txt"
+
+  local rc=${PIPESTATUS[0]}
+  record "$rc" "sanitize"
+  [[ "$rc" == "0" ]] \
+    && pass "Sanitizer: PASS" \
+    || fail "Sanitizer: FAIL (memory bugs detected!)"
+  return "$rc"
+}
+
+# =============================================================================
 # Stage 6 — Coverage report
 # =============================================================================
 run_coverage() {
@@ -413,6 +449,7 @@ case "$COMMAND" in
     run_static     || true
     run_coverity   || true
     run_coverage   || true
+    run_sanitize   || true
     ;;
   host-test)   run_host_test ;;
   pico-build)  run_pico_build ;;
@@ -421,8 +458,9 @@ case "$COMMAND" in
   static)      run_static ;;
   coverity)    run_coverity ;;
   coverage)    run_coverage ;;
+  sanitize)    run_sanitize ;;
   *)
-    echo "Usage: $0 [all|host-test|pico-build|emu-build|emulate|static|coverity|coverage]"
+    echo "Usage: $0 [all|host-test|pico-build|emu-build|emulate|static|coverity|coverage|sanitize]"
     exit 2
     ;;
 esac

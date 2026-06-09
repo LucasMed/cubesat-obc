@@ -97,16 +97,23 @@ fi
   C_FILES=$(find src -name '*.c' | grep -v third_party | grep -v '/pico_' | sort)
   # Common include paths for all files
   COMMON_ARGS="--extra-arg=-I$REPO_ROOT/include --extra-arg=-I$REPO_ROOT/third_party/libcsp/include --extra-arg=-I$BUILD_DIR/third_party/libcsp/include"
+
+  # Checks equilibrados: bugs reales + estilo útil, sin ruido de third_party
+  # ni checks demasiado agresivos para embedded (memset/memcpy OK, etc.)
+  CHECKS="-*,clang-analyzer-core.*,clang-analyzer-deadcode.*,clang-analyzer-unix.*,bugprone-*,-bugprone-macro-parentheses,-bugprone-reserved-identifier,-bugprone-easily-swappable-parameters,-bugprone-narrowing-conversions,performance-*,-performance-no-int-to-ptr,readability-braces-around-statements,readability-non-const-parameter,readability-redundant-declaration,clang-diagnostic-newline-eof"
+
+  info "  Checks: bugprone + performance + readability-braces/non-const/redundant + clang-analyzer-core"
+
   for f in $C_FILES; do
     # Add FatFs include path for diskio.c
     if [[ "$f" == *"payload/diskio.c"* ]]; then
       FATFS_INCLUDE_PATH="${FATFS_INCLUDE:-$REPO_ROOT/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source}"
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS --extra-arg=-I$FATFS_INCLUDE_PATH -checks='-*,readability-non-const-parameter' 2>&1 || true)
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS --extra-arg=-I$FATFS_INCLUDE_PATH --checks="$CHECKS" 2>&1 || true)
     else
-      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS -checks='-*,readability-non-const-parameter' 2>&1 || true)
+      RESULT=$("$CLANG_TIDY" -p "$BUILD_DIR" "$f" $COMMON_ARGS --checks="$CHECKS" 2>&1 || true)
     fi
     if echo "$RESULT" | grep -q "warning:\|error:"; then
-      echo "$RESULT"
+      echo "$RESULT" | head -30
       TIDY_FAIL=1
     fi
   done

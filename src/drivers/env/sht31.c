@@ -205,9 +205,13 @@ bool sht31_read(float *temperature, float *humidity)
 
       /* Clamp to valid range */
       if (*humidity < 0.0f)
+      {
         *humidity = 0.0f;
+      }
       if (*humidity > 100.0f)
+      {
         *humidity = 100.0f;
+      }
     }
   }
 

@@ -133,7 +133,9 @@ extern "C"
         uint8_t sum = (crc ^ extract) & 0x01u;
         crc >>= 1;
         if (sum)
+        {
           crc ^= 0x8C;
+        }
         extract >>= 1;
       }
     }

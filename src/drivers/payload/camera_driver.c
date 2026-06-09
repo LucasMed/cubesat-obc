@@ -1224,7 +1224,9 @@ bool camera_write_sensor_reg(uint8_t reg, uint8_t val)
 bool camera_read_sensor_reg(uint8_t reg, uint8_t *val)
 {
   if (!val)
+  {
     return false;
+  }
 #if defined(PICO_BUILD)
   cam_i2c_write(0xFF, 0x01); /* ensure SENSOR bank */
   sleep_ms(2);
