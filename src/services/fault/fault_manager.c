@@ -88,10 +88,8 @@ static void fm_unlock(void)
 #endif
 }
 
-/* Weak forward declaration resolved by flight_mode_manager.c (PR-3).
- * NOTE: declared in include/flight_mode.h — local forward is redundant
- * for clang-tidy but kept for documentation; commented out to pass CI. */
-/* extern void fmm_force_safe(void); */
+/* fmm_force_safe is declared in include/flight_mode.h and implemented
+ * in flight_mode_manager.c (PR-3); no local forward declaration needed. */
 
 /* ------------------------------------------------------------------ */
 /* Internal helpers                                                    */
