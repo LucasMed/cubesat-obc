@@ -253,6 +253,82 @@ static void test_diagnostic_timeout_to_nominal(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test: DETUMBLE — high omega triggers hard reset                    */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_high_omega_hard_reset(void)
+{
+  int failures_before = g_failures;
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0;
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  float rates[3] = {0.15f, 0.0f, 0.0f}; /* omega = 0.15 > 0.10 */
+  data_layer_write_imu(att, rates);
+
+  /* Prime counter > 0 */
+  s_detumble_stable_count = 10;
+
+  deploy_monitor_step();
+  CHECK(s_detumble_stable_count == 0, "hard reset must zero the stable counter");
+
+  printf("test_detumble_high_omega_hard_reset: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DETUMBLE — medium omega triggers leaky decrement             */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_medium_omega_leaky_decrement(void)
+{
+  int failures_before = g_failures;
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0;
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  /* omega = 0.07 → between THRESHOLD (0.05) and HARD_RESET (0.10) */
+  float rates[3] = {0.07f, 0.0f, 0.0f};
+  data_layer_write_imu(att, rates);
+
+  s_detumble_stable_count = 10;
+
+  deploy_monitor_step();
+  /* Leaky decrement: 10 → 9 */
+  CHECK(s_detumble_stable_count == 9, "leaky decrement must reduce counter by 1");
+
+  printf("test_detumble_medium_omega_leaky_decrement: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DETUMBLE — stable omega → counter increments toward NOMINAL  */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_stable_counter_accumulates(void)
+{
+  int failures_before = g_failures;
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0; /* Reset counter from previous tests */
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  /* omega = 0.01 → below THRESHOLD → stable */
+  float rates[3] = {0.01f, 0.0f, 0.0f};
+  data_layer_write_imu(att, rates);
+
+  CHECK(s_detumble_stable_count == 0, "counter starts at 0");
+
+  deploy_monitor_step();
+  CHECK(s_detumble_stable_count == 1, "counter incremented to 1 after stable step");
+
+  printf("test_detumble_stable_counter_accumulates: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -265,6 +341,9 @@ int main(void)
   test_no_transition_on_critical_post();
   test_boot_timeout_to_safe();
   test_diagnostic_timeout_to_nominal();
+  test_detumble_high_omega_hard_reset();
+  test_detumble_medium_omega_leaky_decrement();
+  test_detumble_stable_counter_accumulates();
 
   if (g_failures == 0)
   {

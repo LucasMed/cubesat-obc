@@ -100,6 +100,15 @@ if(NOT PICO_BUILD)
     target_include_directories(test_pid PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME pid_test COMMAND test_pid)
 
+    add_executable(test_attitude_control
+        test_attitude_control.c
+        ../../src/control/attitude_control.c
+        ../../src/control/pid_controller.c
+    )
+    target_include_directories(test_attitude_control PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_attitude_control m)
+    add_test(NAME attitude_control_test COMMAND test_attitude_control)
+
     add_executable(test_dynamics
         test_dynamics.c
         ../../src/dynamics/attitude_dynamics.c
@@ -190,6 +199,14 @@ if(NOT PICO_BUILD)
     target_include_directories(test_data_layer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_data_layer m)
     add_test(NAME data_layer_test COMMAND test_data_layer)
+
+    add_executable(test_system_state
+        test_system_state.c
+        ../../src/core/system_state.c
+    )
+    target_include_directories(test_system_state PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    target_link_libraries(test_system_state m)
+    add_test(NAME system_state_test COMMAND test_system_state)
 
     # PR-3 gate: Flight Mode Manager — state machine + fault-block behaviour.
     # Includes data_layer.c and system_state.c; fault_get_highest_level() is
@@ -564,7 +581,7 @@ if(NOT PICO_BUILD)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
         ${CMAKE_SOURCE_DIR}
     )
-    target_link_libraries(test_gps_task m)
+    target_link_libraries(test_gps_task wcet_lib m)
     add_test(NAME gps_task_test COMMAND test_gps_task)
 
     add_executable(test_gps

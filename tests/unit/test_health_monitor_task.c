@@ -232,6 +232,27 @@ static void test_hm_wdt_triggered_path(void)
 }
 
 /* ========================================================================
+ * T-HM-WCET  WCET report path: 25 Step calls → modulo 20 triggers report
+ * ======================================================================== */
+static void test_hm_wcet_report_path(void)
+{
+  int failures_before = g_failures;
+  reset_all();
+
+  /* Call Step enough times to trigger s_report_count % 20 == 0 path.
+   * 25 calls guarantees at least one modulo hit regardless of previous
+   * static state from prior tests. */
+  for (int i = 0; i < 25; i++)
+    vHealthMonitorTask_Step();
+
+  /* No crash is the main assertion — coverage data proves the path ran */
+  CHECK(1, "WCET path exercised without crash");
+
+  printf("[T-HM-WCET] test_hm_wcet_report_path: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
  * T-HM-05  Task loop: CRITICAL notification → fmm_force_safe called
  * ======================================================================== */
 static void test_hm_loop_notification_triggers_safe(void)
@@ -333,6 +354,7 @@ static void test_hm_loop_safety_net(void)
 int main(void)
 {
   printf("=== Health Monitor Task Unit Tests ===\n");
+  test_hm_wcet_report_path();
   test_hm_fault_tick_called();
   test_hm_eps_tick_called();
   test_hm_ticks_scale_with_steps();

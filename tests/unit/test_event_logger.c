@@ -19,6 +19,7 @@
 #include "flash_backend.h"
 #include "logger.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -243,15 +244,94 @@ static void test_clear_info_removes_class_c(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* T-LOG-01e: log_event before init → early return (no-op)             */
+/* ------------------------------------------------------------------ */
+
+static void test_event_before_init_is_safe(void)
+{
+  /* Do NOT call logger_init() — deliberately test uninitialised path */
+  log_event(LOG_EVT_MODE_CHANGE, LOG_CLASS_OPERATIONAL, NULL, 0u);
+
+  /* Should not crash; after init, ring should be pristine */
+  logger_init();
+  log_event_t buf[2];
+  size_t n = log_read_recent(buf, 2u);
+  CHECK_EQ("T-LOG-01e log_event before init safe", n, 1u, "only boot after init + pre-init call");
+  PASS("T-LOG-01e log_event before init is safe");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-LOG-01f: log_event with data payload preserved                   */
+/* ------------------------------------------------------------------ */
+
+static void test_event_with_data_payload(void)
+{
+  reset_flush_counters();
+  logger_init();
+
+  uint8_t payload[] = {0xAA, 0xBB, 0xCC, 0xDD};
+  log_event(LOG_EVT_CMD_CLASS_B, LOG_CLASS_INFO, payload, (uint8_t)sizeof(payload));
+
+  log_event_t out = {0};
+  size_t n = log_read_recent(&out, 1u);
+  CHECK_EQ("T-LOG-01f read_recent returns 1", n, 1u, "n == 1 after event with data");
+
+  if (n >= 1u)
+  {
+    bool match = (out.data[0] == 0xAA && out.data[1] == 0xBB &&
+                  out.data[2] == 0xCC && out.data[3] == 0xDD);
+    CHECK_EQ("T-LOG-01f payload preserved", match, true, "data bytes must match");
+  }
+  PASS("T-LOG-01f log_event with data payload preserved");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-LOG-01g: log_read_recent with NULL → 0                           */
+/* ------------------------------------------------------------------ */
+
+static void test_read_recent_null(void)
+{
+  reset_flush_counters();
+  logger_init();
+
+  size_t n = log_read_recent(NULL, 5u);
+  CHECK_EQ("T-LOG-01g log_read_recent(NULL, 5)", n, 0u, "must return 0 for NULL");
+
+  /* Also test with count=0 */
+  log_event_t buf[2];
+  n = log_read_recent(buf, 0u);
+  CHECK_EQ("T-LOG-01g log_read_recent(buf, 0)", n, 0u, "must return 0 for count==0");
+
+  PASS("T-LOG-01g log_read_recent NULL/count==0 returns 0");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-LOG-01h: log_clear_info before init → safe no-op                 */
+/* ------------------------------------------------------------------ */
+
+static void test_clear_info_before_init(void)
+{
+  /* Do NOT call logger_init() */
+  log_clear_info();
+  /* Must not crash */
+  PASS("T-LOG-01h log_clear_info before init safe");
+}
+
+/* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 int main(void)
 {
   printf("=== Event logger unit tests (PR-26, T-LOG-01) ===\n");
 
+  test_event_before_init_is_safe();
+  test_clear_info_before_init();
+
   test_init_inserts_boot_event();
   test_flush_on_capacity();
+  test_event_with_data_payload();
   test_read_recent();
+  test_read_recent_null();
   test_clear_info_removes_class_c();
 
   if (g_failures == 0)
