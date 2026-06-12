@@ -4,8 +4,10 @@
 #include "pico_pins.h"
 
 #if defined(PICO_BUILD)
+  #include "FreeRTOS.h"
   #include "hardware/gpio.h"
   #include "hardware/spi.h"
+  #include "semphr.h"
 #endif
 
 /* Fallback definitions for pins if not in pico_pins.h */
@@ -18,6 +20,10 @@
 
 #include <stddef.h>
 static bool s_spi_initialized = false;
+
+#if defined(PICO_BUILD)
+static SemaphoreHandle_t s_spi_mutex = NULL;
+#endif
 
 bool spi_payload_init(void)
 {
@@ -39,6 +45,10 @@ bool spi_payload_init(void)
     gpio_set_dir(cs_pins[i], GPIO_OUT);
     gpio_put(cs_pins[i], 1);
   }
+
+  /* Create the SPI bus mutex (recursive not needed — single-core) */
+  s_spi_mutex = xSemaphoreCreateMutex();
+  configASSERT(s_spi_mutex != NULL);
 #else
   // Host stub: always succeed
 #endif
@@ -48,6 +58,8 @@ bool spi_payload_init(void)
 void spi_payload_cs_select(uint32_t cs_pin)
 {
 #if defined(PICO_BUILD)
+  /* Take the mutex before asserting CS — blocks until released */
+  xSemaphoreTake(s_spi_mutex, portMAX_DELAY);
   gpio_put(cs_pin, 0);
 #else
   (void)cs_pin;
@@ -58,7 +70,21 @@ void spi_payload_cs_deselect(uint32_t cs_pin)
 {
 #if defined(PICO_BUILD)
   gpio_put(cs_pin, 1);
+  /* Release the mutex so another task can use SPI0 */
+  xSemaphoreGive(s_spi_mutex);
 #else
   (void)cs_pin;
 #endif
 }
+
+#if defined(PICO_BUILD)
+void spi_payload_lock(void)
+{
+  xSemaphoreTake(s_spi_mutex, portMAX_DELAY);
+}
+
+void spi_payload_unlock(void)
+{
+  xSemaphoreGive(s_spi_mutex);
+}
+#endif

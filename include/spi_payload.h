@@ -50,6 +50,26 @@ extern "C"
    */
   void spi_payload_cs_deselect(uint32_t cs_pin);
 
+#if defined(PICO_BUILD)
+  /**
+   * @brief Manually lock the SPI0 bus for multi-transaction atomicity.
+   *
+   * Blocks the calling task until the bus is available.  Must be paired
+   * with spi_payload_unlock().  Not needed for single cs_select/cs_deselect
+   * pairs — the mutex is handled automatically.
+   *
+   * Only available on PICO_BUILD (FreeRTOS target).
+   */
+  void spi_payload_lock(void);
+
+  /**
+   * @brief Unlock the SPI0 bus after a manual lock.
+   *
+   * Only available on PICO_BUILD (FreeRTOS target).
+   */
+  void spi_payload_unlock(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
