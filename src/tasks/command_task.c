@@ -213,6 +213,16 @@ static void process_text_command(const char *cmd)
       xTaskNotify(h_payload, PAYLOAD_NOTIFY_CAPTURE_IMAGE, eSetBits);
     }
   }
+  else if (strncmp(cmd, "IMGDUMP", 7) == 0)
+  {
+    uart1_puts_safe("[CMD] IMGDUMP OK (capturing + hex dump on UART)\r\n");
+    printf("[command_task] Text command: IMGDUMP\r\n");
+    TaskHandle_t h_payload = xTaskGetHandle("PayloadTask");
+    if (h_payload != NULL)
+    {
+      xTaskNotify(h_payload, PAYLOAD_NOTIFY_DUMP_IMAGE, eSetBits);
+    }
+  }
   else if (strncmp(cmd, "MODE=", 5) == 0)
   {
     int mode = -1;
@@ -334,6 +344,7 @@ static void process_text_command(const char *cmd)
     uart1_puts_safe("[CMD] FAULTS              highest fault level\r\n");
     uart1_puts_safe("[CMD] ECHO                connectivity check\r\n");
     uart1_puts_safe("[CMD] CAPTURE             trigger payload camera\r\n");
+    uart1_puts_safe("[CMD] IMGDUMP             capture + hex dump JPEG on UART\r\n");
     uart1_puts_safe("[CMD] ── Mode ──\r\n");
     uart1_puts_safe("[CMD] MODE=<0-5|name>     BOOT|SAFE|DETUMBLE|NOMINAL|DIAGNOSTIC|PAYLOAD\r\n");
     uart1_puts_safe("[CMD] DEPLOY              BOOT/SAFE → DETUMBLE (deploy panels)\r\n");

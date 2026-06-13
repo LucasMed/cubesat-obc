@@ -96,6 +96,58 @@ void vPayloadTask_Step(void)
         printf("[PayloadTask] camera_init FAILED\n");
       }
     }
+    else if (notify_value & PAYLOAD_NOTIFY_DUMP_IMAGE)
+    {
+      printf("[PayloadTask] IMGDUMP command received\n");
+      if (camera_init())
+      {
+        static uint8_t dump_buf[128 * 1024];
+        uint32_t read_len = sizeof(dump_buf);
+
+        if (camera_capture(5000))
+        {
+          if (camera_read_fifo_burst(dump_buf, read_len))
+          {
+            /* Find actual JPEG size */
+            uint32_t eoi_offset = 0;
+            for (uint32_t i = 2; i + 1 < read_len; i++)
+            {
+              if (dump_buf[i] == 0xFF && dump_buf[i + 1] == 0xD9)
+              {
+                eoi_offset = i;
+                break;
+              }
+            }
+            uint32_t img_size = (eoi_offset > 0) ? eoi_offset + 2 : read_len;
+            printf("[PayloadTask] IMGDUMP: JPEG size=%lu, dumping %lu bytes as hex\n",
+                   (unsigned long)img_size, (unsigned long)img_size);
+
+            /* Hex dump: 16 bytes per line, lowercase hex */
+            for (uint32_t i = 0; i < img_size; i++)
+            {
+              if (i % 16 == 0)
+              {
+                printf("\n  ");
+              }
+              printf("%02x ", dump_buf[i]);
+            }
+            printf("\n[PayloadTask] IMGDUMP: end (%lu bytes)\n", (unsigned long)img_size);
+          }
+          else
+          {
+            printf("[PayloadTask] IMGDUMP: FIFO burst read FAILED\n");
+          }
+        }
+        else
+        {
+          printf("[PayloadTask] IMGDUMP: camera_capture FAILED\n");
+        }
+      }
+      else
+      {
+        printf("[PayloadTask] IMGDUMP: camera_init FAILED\n");
+      }
+    }
     else
     {
       printf("[PayloadTask] Unknown notify value: 0x%08lX\n", (unsigned long)notify_value);

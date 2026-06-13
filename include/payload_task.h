@@ -39,6 +39,7 @@ extern "C"
  */
 #define PAYLOAD_NOTIFY_CAPTURE_IMAGE (1 << 0)
 #define PAYLOAD_NOTIFY_HEARTBEAT (1 << 1)
+#define PAYLOAD_NOTIFY_DUMP_IMAGE (1 << 2)
 
 #ifdef __cplusplus
 }

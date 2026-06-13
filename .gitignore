@@ -5,6 +5,7 @@ build_target/
 build_ci/
 build_pico_ci/
 build_emu_ci/
+build_fix/
 build_pico/
 build_emu/
 build_sanitize/
