@@ -1110,22 +1110,46 @@ bool camera_capture(uint32_t timeout_ms)
   cam_spi_write(ARDUCHIP_FIFO, 0x01); /* Clear FIFO flag (SDK quirk) */
   cam_spi_write(ARDUCHIP_FIFO, 0x02); /* Start capture */
 
-  /* 2. Poll CAP_DONE */
+  /*
+   * 2. Enable continuous XCLK on GPIO18 during frame capture.
+   *
+   * GPIO18 is the SPI0 SCK in normal operation but also provides the
+   * OV2640 master clock (XCLK) through the CPLD bridge.  SPI SCK only
+   * runs during bus transactions, starving the sensor's pixel readout
+   * between writes.  By switching GPIO18 to the GPOUT0 clock generator,
+   * we provide a continuous ~10.6 MHz clock during frame capture so the
+   * JPEG engine can process pixels.
+   *
+   * We must briefly restore SCK for each CAP_DONE poll, then re-enable
+   * XCLK for the sensor between polls.
+   */
+  camera_enable_xclk();
+
+  /* 3. Poll CAP_DONE — briefly restore SCK for each SPI read */
   uint32_t start = to_ms_since_boot(get_absolute_time());
-  while (true)
+  bool done = false;
+  while ((to_ms_since_boot(get_absolute_time()) - start) < timeout_ms)
   {
-    uint32_t now = to_ms_since_boot(get_absolute_time());
+    camera_restore_sck();
     if (cam_spi_read(ARDUCHIP_TRIG) & CAP_DONE_MASK)
     {
+      done = true;
       break;
     }
-    if (now - start > timeout_ms)
-    {
-      printf("[camera_capture] TIMEOUT — TRIG=0x%02X FIFO_SIZE=%lu\n", cam_spi_read(ARDUCHIP_TRIG),
-             (unsigned long)camera_get_fifo_length());
-      return false;
-    }
+    /* Switch back to XCLK for sensor readout */
+    camera_enable_xclk();
     sleep_ms(5);
+  }
+
+  /* Final restore: SCK needed for subsequent FIFO burst read */
+  camera_restore_sck();
+
+  if (!done)
+  {
+    printf("[camera_capture] TIMEOUT — TRIG=0x%02X FIFO_SIZE=%lu\n",
+           cam_spi_read(ARDUCHIP_TRIG),
+           (unsigned long)camera_get_fifo_length());
+    return false;
   }
 #else
   (void)timeout_ms;
