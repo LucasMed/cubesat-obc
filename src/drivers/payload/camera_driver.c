@@ -598,6 +598,9 @@ static bool cam_i2c_read(uint8_t reg, uint8_t *val)
   return i2c_read_blocking(I2C1_PORT, OV2640_I2C_ADDR, val, 1, false) == 1;
 }
 
+/* Forward declaration — cam_sccb_write is defined after cam_spi_read */
+static bool cam_sccb_write(uint8_t reg, uint8_t val);
+
 /**
  * Write a table of {reg, val} pairs to the OV2640 via I2C1.
  * @param table  The register table (terminated by REG_END_PAIR).
@@ -612,7 +615,7 @@ static bool cam_write_reg_table(const ov2640_reg_t *table, size_t max_entries)
     {
       break; /* Stop after max_entries (excluding terminator) */
     }
-    if (!cam_i2c_write(p->reg, p->val))
+    if (!cam_sccb_write(p->reg, p->val))
     {
       return false;
     }
@@ -646,6 +649,31 @@ static uint8_t cam_spi_read(uint8_t addr)
   spi_read_blocking(SPI0_PORT, 0, &value, 1);
   spi_payload_cs_deselect(SPI_CS_CAM_PIN);
   return value;
+}
+
+/*
+ * SPI-driven SCCB write to OV2640 (matching official ArduCAM library).
+ *
+ * The official wrSensorReg8_8 does NOT use direct I2C.  It sends register
+ * writes through the CPLD's SCCB bridge using SPI registers:
+ *   0x01 — clear FIFO/status
+ *   0x20 — SCCB slave ID (0x30 = OV2640 address)
+ *   0x07 — bridge enable (bit 5)
+ *   0x03 — register address (ARDUCHIP_TIM alias)
+ *   0x02 — data (triggers SCCB write cycle)
+ *
+ * This differs from cam_i2c_write which writes directly to I2C1.
+ * Some CPLD revisions require the SPI-driven method for correct
+ * SCCB timing to the OV2640.
+ */
+static bool cam_sccb_write(uint8_t reg, uint8_t val)
+{
+  cam_spi_write(0x01, 0x00); /* Clear status */
+  cam_spi_write(0x20, 0x30); /* SCCB_ID = OV2640 (0x30) */
+  cam_spi_write(0x07, 0x20); /* Enable SCCB bridge bit 5 */
+  cam_spi_write(0x03, reg);  /* Register address */
+  cam_spi_write(0x02, val);  /* Data (triggers SCCB write) */
+  return true;
 }
 
 /*
@@ -749,343 +777,165 @@ bool camera_init(void)
   spi_payload_init();
 
 #if defined(PICO_BUILD)
-  /*
-   * I2C1 init on GPIO2 (SDA) / GPIO3 (SCL) — dedicated camera config bus.
-   * I2C1 is NOT shared with any other payload device.
-   */
-  i2c_init(I2C1_PORT, 100000); /* 100 kHz — safer for breadboard wiring */
+  i2c_init(I2C1_PORT, 100000);
   gpio_set_function(I2C1_SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(I2C1_SCL_PIN, GPIO_FUNC_I2C);
   gpio_pull_up(I2C1_SDA_PIN);
   gpio_pull_up(I2C1_SCL_PIN);
 
-  /*
-   * 1. CPLD reset (Arducam Mini 2MP Plus) — register 0x07, bit 7.
-   *    The CPLD is the programmable logic that bridges SPI ↔ FIFO/sensor.
-   *    Without this reset the SPI register map may be in an undefined state.
-   */
-  printf("[camera_init] Resetting CPLD (0x07 = 0x80)...\n");
+  /* CPLD reset + GPIO config (RST=1, PD=0, PWR_EN=1) */
   cam_spi_write(0x07, 0x80);
   sleep_ms(100);
   cam_spi_write(0x07, 0x00);
   sleep_ms(100);
-
-  /*
-   * 1.5 CPLD GPIO config — restore sensor control pins.
-   * After CPLD reset the GPIO direction and output registers default to 0x00,
-   * leaving the sensor without power or in reset.
-   * Writing the known-good ArduCAM SDK values restores sensor control.
-   */
-  cam_spi_write(0x05, 0x07); /* GPIO_DIR: RST+PD+PWR_EN as outputs */
+  cam_spi_write(0x05, 0x07);
   sleep_ms(5);
-  cam_spi_write(0x06, 0x05); /* GPIO_WR: RST=1, PD=0, PWR_EN=1 */
+  cam_spi_write(0x06, 0x05);
   sleep_ms(10);
-  printf("[camera_init] CPLD GPIO config: 0x05=0x07 0x06=0x05 (RST=1 PD=0 PWR_EN=1)\n");
 
-  /* 2. Verify SPI register access via ARDUCHIP_TEST1 (R/W test) */
-  printf("[camera_init] Verifying SPI (TEST1 = 0x55)...\n");
+  /* SPI register access check */
   cam_spi_write(ARDUCHIP_TEST1, 0x55);
   sleep_ms(1);
-  uint8_t test_val = cam_spi_read(ARDUCHIP_TEST1);
-  if (test_val != 0x55)
+  if (cam_spi_read(ARDUCHIP_TEST1) != 0x55)
   {
-    printf("[camera_init] FAIL: SPI test read 0x%02X, expected 0x55\n", test_val);
+    printf("[camera_init] FAIL: SPI TEST1 readback mismatch\n");
     return false;
   }
-  printf("[camera_init] SPI verification OK\n");
+  printf("[camera_init] SPI OK\n");
 
-  /*
-   * 2.5 CPLD SCCB bridge enable — exact ArduCAM SDK sequence
-   *
-   * The ArduChip CPLD has an internal SCCB bridge (SPI master → SCCB bus to
-   * the OV2640) that is DISABLED by default after CPLD reset (0x07 = 0x00).
-   *
-   * Key insight from ArduCAM SDK: the bridge needs THREE things before it
-   * forwards traffic:
-   *   1. FIFO clear          (0x01 = 0x00)
-   *   2. SCCB slave address  (0x20 = 0x30  — OV2640 7-bit addr << 1)
-   *   3. Bridge enable       (0x07 = 0x20  — bit 5 = SCCB_CTRL enable)
-   *   + 50 ms settle delay
-   *
-   * Some revisions use 0x24 instead of 0x20 for the SCCB_ID register.
-   * If neither works, brute-force scan 0x00-0x3F to find the SCCB_ID reg.
-   */
-
+  /* Enable CPLD SCCB bridge — try 0x20, fallback brute-force */
   bool sccb_bridge_found = false;
-
-  /*
-   * NOTE: On this CPLD revision, I2C reads through the SCCB bridge always
-   * return 0xFF even when writes succeed and the sensor is correctly
-   * configured. We detect bridge enable by reading back the STATUS register
-   * (0x07, bit 5 = SCCB enable) instead of verifying via I2C read.
-   *
-   * Try two known SCCB_ID candidates first (0x20 and 0x24), then
-   * brute-force 0x00-0x3F if neither works.
-   */
   const uint8_t sccb_id_candidates[] = {0x20, 0x24};
   for (size_t ci = 0; ci < sizeof(sccb_id_candidates) && !sccb_bridge_found; ci++)
   {
     uint8_t id_reg = sccb_id_candidates[ci];
-    printf("[camera_init] Trying SCCB enable (ID reg=0x%02X)...\n", id_reg);
-    cam_spi_write(0x01, 0x00); /* 1. Clear FIFO */
+    cam_spi_write(0x01, 0x00);
     sleep_ms(5);
-    cam_spi_write(id_reg, 0x30); /* 2. Set SCCB slave ID (OV2640 addr) */
+    cam_spi_write(id_reg, 0x30);
     sleep_ms(5);
-    cam_spi_write(0x07, 0x20);             /* 3. Enable SCCB bridge (bit 5) */
-    cam_spi_write(0x03, VSYNC_LEVEL_MASK); /* 4. Configure timing */
-    sleep_ms(50);                          /* 5. Critical settle delay */
+    cam_spi_write(0x07, 0x20);
+    cam_spi_write(0x03, VSYNC_LEVEL_MASK);
+    sleep_ms(50);
 
-    /* Verify: read STATUS register — bit 5 should be set */
     if (cam_spi_read(0x07) & 0x20)
     {
-      printf("  *** SCCB BRIDGE ENABLED via ID reg 0x%02X! STATUS=0x%02X\n", id_reg,
-             cam_spi_read(0x07));
       sccb_bridge_found = true;
       break;
     }
   }
 
-  /* If known candidates failed, brute-force scan 0x00-0x3F for SCCB_ID reg */
   if (!sccb_bridge_found)
   {
-    printf("[camera_init] Known SCCB_ID regs failed — brute-force scanning 0x00-0x3F...\n");
     for (uint8_t id_reg = 0x00; id_reg < 0x40 && !sccb_bridge_found; id_reg++)
     {
-      /* Skip STATUS register — it is not an SCCB_ID candidate */
       if (id_reg == 0x07)
         continue;
 
-      cam_spi_write(0x01, 0x00); /* Clear FIFO */
+      cam_spi_write(0x01, 0x00);
       sleep_ms(2);
-      cam_spi_write(id_reg, 0x30); /* Try this reg as SCCB_ID */
+      cam_spi_write(id_reg, 0x30);
       sleep_ms(2);
-      cam_spi_write(0x07, 0x20); /* Enable bridge */
-      sleep_ms(20);              /* Shorter settle for scan */
+      cam_spi_write(0x07, 0x20);
+      sleep_ms(20);
 
-      /* Verify via STATUS register */
       if (cam_spi_read(0x07) & 0x20)
       {
-        printf("  *** SCCB BRIDGE ENABLED via brute-force ID reg 0x%02X! STATUS=0x%02X\n", id_reg,
-               cam_spi_read(0x07));
         sccb_bridge_found = true;
         break;
       }
     }
   }
 
-  /*
-   * 2.6 Restore CPLD GPIO registers after brute-force scan
-   *
-   * The brute-force scan writes 0x30 to every register 0x00-0x3F as a
-   * candidate SCCB_ID, CORRUPTING GPIO_DIR (0x05) and GPIO_WR (0x06).
-   * Restore the known-good values so the OV2640 has power and is out of reset.
-   */
-  cam_spi_write(0x05, 0x07); /* GPIO_DIR: RST+PD+PWR_EN as outputs */
+  /* Restore GPIO registers after brute-force scan */
+  cam_spi_write(0x05, 0x07);
   sleep_ms(2);
-  cam_spi_write(0x06, 0x05); /* GPIO_WR: RST=1, PD=0, PWR_EN=1 */
+  cam_spi_write(0x06, 0x05);
   sleep_ms(10);
 
-  if (sccb_bridge_found)
-  {
-    printf("[camera_init] SCCB bridge: ENABLED\n");
-  }
-  else
-  {
-    printf("[camera_init] SCCB bridge: NOT FOUND — OV2640 module may need replacement\n");
-  }
+  printf("[camera_init] SCCB bridge: %s\n", sccb_bridge_found ? "ENABLED" : "NOT FOUND");
 
-  /* 3. Pre-reset Chip ID + COM7 read — verify initial state BEFORE any writes */
+  /* Pre-reset Chip ID */
   {
-    uint8_t pre_pidh = 0, pre_pidl = 0, pre_com7 = 0;
-    bool pr1 = cam_i2c_read(0x0A, &pre_pidh);
-    bool pr2 = cam_i2c_read(0x0B, &pre_pidl);
-    bool pr3 = cam_i2c_read(0x12, &pre_com7);
-    printf("[camera_init] Pre-reset: PIDH=0x%02X(%s) PIDL=0x%02X(%s) COM7=0x%02X(%s)\n", pre_pidh,
-           pr1 ? "OK" : "FAIL", pre_pidl, pr2 ? "OK" : "FAIL", pre_com7, pr3 ? "OK" : "FAIL");
+    uint8_t pidh = 0, pidl = 0, com7 = 0;
+    cam_i2c_read(0x0A, &pidh);
+    cam_i2c_read(0x0B, &pidl);
+    cam_i2c_read(0x12, &com7);
+    printf("[camera_init] Pre-reset: PIDH=0x%02X PIDL=0x%02X COM7=0x%02X\n", pidh, pidl, com7);
   }
 
-  /* 4. Software reset via SCCB COM7 bit 7 (no hardware RESET pin on module) */
-  printf("[camera_init] Sending SW reset (0x12=0x80)...\n");
-  bool reset_ok = cam_i2c_write(0x12, 0x80);
-  printf("[camera_init] SW reset: %s\n", reset_ok ? "OK" : "FAILED");
-  sleep_ms(100); /* OV2640 requires ~20ms after SW reset — match official SDK at 100ms */
+  /* SW reset */
+  cam_i2c_write(0x12, 0x80);
+  sleep_ms(100);
 
-  /* 5. Post-reset Chip ID + COM7 — did SW reset actually change anything? */
+  /* Post-reset Chip ID */
   {
-    uint8_t post_pidh = 0, post_pidl = 0, post_com7 = 0;
-    bool pr1 = cam_i2c_read(0x0A, &post_pidh);
-    bool pr2 = cam_i2c_read(0x0B, &post_pidl);
-    bool pr3 = cam_i2c_read(0x12, &post_com7);
-    printf("[camera_init] Post-reset: PIDH=0x%02X(%s) PIDL=0x%02X(%s) COM7=0x%02X(%s)\n", post_pidh,
-           pr1 ? "OK" : "FAIL", post_pidl, pr2 ? "OK" : "FAIL", post_com7, pr3 ? "OK" : "FAIL");
+    uint8_t pidh = 0, pidl = 0, com7 = 0;
+    cam_i2c_read(0x0A, &pidh);
+    cam_i2c_read(0x0B, &pidl);
+    cam_i2c_read(0x12, &com7);
+    printf("[camera_init] Post-reset: PIDH=0x%02X PIDL=0x%02X COM7=0x%02X\n", pidh, pidl, com7);
   }
 #else
   printf("[camera_init] Host build — skipping HW init\n");
 #endif
 
-  /* 6. Verify Chip ID — OV2640 should return 0x26 / 0x42 */
+  /* Verify Chip ID */
   uint8_t pidh = 0, pidl = 0;
-  // cppcheck-suppress knownConditionTrueFalse
   bool pidh_ok = cam_i2c_read(0x0A, &pidh);
-  // cppcheck-suppress knownConditionTrueFalse
-  const char *pidh_status = pidh_ok ? "OK" : "FAIL";
-  printf("[camera_init] PIDH read: %s, value=0x%02X (expected 0x%02X)\n", pidh_status, pidh,
-         OV2640_CHIPID_HIGH);
-  // cppcheck-suppress knownConditionTrueFalse
   if (!pidh_ok || pidh != OV2640_CHIPID_HIGH)
   {
-    printf("[camera_init] FAIL: Chip ID high mismatch\n");
+    printf("[camera_init] FAIL: Chip ID high — got 0x%02X, expected 0x%02X\n", pidh,
+           OV2640_CHIPID_HIGH);
     return false;
   }
-
-  // cppcheck-suppress knownConditionTrueFalse
   bool pidl_ok = cam_i2c_read(0x0B, &pidl);
-  // cppcheck-suppress knownConditionTrueFalse
-  const char *pidl_status = pidl_ok ? "OK" : "FAIL";
-  printf("[camera_init] PIDL read: %s, value=0x%02X (expected 0x%02X, alt 0x41)\n", pidl_status,
-         pidl, OV2640_CHIPID_LOW);
-  // cppcheck-suppress knownConditionTrueFalse
   if (!pidl_ok || (pidl != OV2640_CHIPID_LOW && pidl != 0x41))
   {
-    printf("[camera_init] FAIL: Chip ID low mismatch\n");
+    printf("[camera_init] FAIL: Chip ID low — got 0x%02X\n", pidl);
     return false;
   }
-
-  printf("[camera_init] Chip ID verified: 0x%02X/0x%02X\n", pidh, pidl);
-
-  /* SCCB bridge was probed in step 2.5 above (inside PICO_BUILD) */
+  printf("[camera_init] Chip ID: 0x%02X/0x%02X\n", pidh, pidl);
 
   /*
-   * PHASED WRITE STRATEGY
-   *
-   * After SW reset, the OV2640 is in DSP bank by default.  The CPLD SCCB
-   * bridge cannot handle a second {0xFF, 0x00} (bank switch to DSP) after
-   * leaving DSP bank.  The first {0xFF, 0x00} (entry 0 — no-op in DSP bank)
-   * works fine; {0xFF, 0x01} (switch to SENSOR) works; but the second
-   * {0xFF, 0x00} (entry 64 — back to DSP) kills I2C reads.
-   *
-   * Solution: write ALL DSP bank registers FIRST (while in DSP bank), THEN
-   * switch to SENSOR bank ONCE and write all SENSOR registers.  Never
-   * attempt to switch back to DSP.
+   * OV2640 register init sequence (ArduCAM SDK reference order):
+   *   JPEG_INIT → YUV422 → JPEG → 0xFF=0x01/0x15=0x00 → resolution table
    */
-  printf("[camera_init] PHASE 1: DSP bank registers\n");
-
-  /* DSP reserved init: entries 0-2 from JPEG_INIT */
-  printf("  Writing DSP reserved init (3 entries)...\n");
-  if (!cam_write_reg_table(OV2640_JPEG_INIT, 3))
+  printf("[camera_init] Writing register tables...\n");
+  if (!cam_write_reg_table(OV2640_JPEG_INIT, 0)
+      || !cam_write_reg_table(OV2640_YUV422, 0)
+      || !cam_write_reg_table(OV2640_JPEG, 0))
   {
-    printf("[camera_init] FAIL: DSP reserved init\n");
+    printf("[camera_init] FAIL: register table write\n");
     return false;
   }
 
-  /* DSP image processing: entries 65-189 from JPEG_INIT */
-  printf("  Writing DSP image processing (%zu entries)...\n",
-         sizeof(OV2640_JPEG_INIT) / sizeof(OV2640_JPEG_INIT[0]) - 1 - 65);
-  if (!cam_write_reg_table(OV2640_JPEG_INIT + 65, 125))
-  {
-    printf("[camera_init] FAIL: DSP image processing\n");
-    return false;
-  }
-
-  /* YUV422 DSP registers (skip bank switch at index 0) */
-  printf("  Writing YUV422 DSP registers...\n");
-  if (!cam_write_reg_table(OV2640_YUV422 + 1, 7))
-  {
-    printf("[camera_init] FAIL: YUV422 DSP regs\n");
-    return false;
-  }
-
-  /* Resolution DSP registers for QVGA (skip bank switch at index 23) */
-  printf("  Writing QVGA DSP scaler registers...\n");
-  if (!cam_write_reg_table(OV2640_320x240_JPEG + 24, 15))
-  {
-    printf("[camera_init] FAIL: QVGA DSP scaler\n");
-    return false;
-  }
-
-  /* Switch to SENSOR bank ({0xFF, 0x01} — confirmed working) */
-  printf("[camera_init] Switching to SENSOR bank...\n");
-  cam_i2c_write(0xFF, 0x01);
-
-  printf("[camera_init] PHASE 2: SENSOR bank registers\n");
-
-  /* SENSOR bank: entries 4-63 from JPEG_INIT */
-  printf("  Writing SENSOR bank registers (%zu entries)...\n",
-         sizeof(OV2640_JPEG_INIT) / sizeof(OV2640_JPEG_INIT[0]) - 1 - 64);
-  if (!cam_write_reg_table(OV2640_JPEG_INIT + 4, 60))
-  {
-    printf("[camera_init] FAIL: SENSOR bank\n");
-    return false;
-  }
-
-  /* Resolution SENSOR window registers (skip bank switch at index 0) */
-  printf("  Writing QVGA SENSOR window registers...\n");
-  if (!cam_write_reg_table(OV2640_320x240_JPEG + 1, 22))
-  {
-    printf("[camera_init] FAIL: QVGA SENSOR window\n");
-    return false;
-  }
-
+  /* SENSOR bank guard + 0x15 */
 #if defined(PICO_BUILD)
-  /*
-   * PHASE 3: Enable JPEG output with 0xE0 commit cycle.
-   *
-   * The OV2640 DSP pipeline uses 0xE0 as a "change enable → commit"
-   * register.  Without the 0xE0=0x14 / 0xE0=0x00 cycle, the DSP
-   * may ignore format changes (0xDA=0x10, JPEG mode).
-   *
-   * This requires a brief switch to DSP bank (0xFF=0x00).  Earlier
-   * attempts showed that repeated {0xFF, 0x00} bank switches after
-   * SENSOR bank kill I2C reads, but WRITES still go through (the
-   * CPLD bridge only blocks reads).  Since we don't rely on I2C
-   * reads for capture, this is safe.
-   */
-  printf("[camera_init] PHASE 3: JPEG output enable (with 0xE0 commit)\n");
-
-  /* Switch to DSP bank for output format + commit cycle */
-  cam_i2c_write(0xFF, 0x00);
+  cam_sccb_write(0xFF, 0x01);
   sleep_ms(2);
-  cam_i2c_write(0xE0, 0x14); /* Image mode: change enable */
+  cam_sccb_write(0x15, 0x00);
   sleep_ms(1);
-  cam_i2c_write(0xDA, 0x10); /* DSP output format: JPEG */
-  sleep_ms(1);
-  cam_i2c_write(0xD7, 0x03); /* Image quality */
-  sleep_ms(1);
-  cam_i2c_write(0xE1, 0x77); /* Image adjustment */
-  sleep_ms(1);
-  cam_i2c_write(0xE0, 0x00); /* Image mode: commit */
-  sleep_ms(2);
-
-  /* Switch to SENSOR bank for JPEG enable + COM7 */
+#else
   cam_i2c_write(0xFF, 0x01);
-  sleep_ms(2);
-  cam_i2c_write(0x04, 0x08); /* Output control: bit 3 = JPEG enable */
-  sleep_ms(1);
-  cam_i2c_write(0x12, 0x41); /* COM7: UXGA + JPEG format bit */
-  sleep_ms(1);
-  cam_i2c_write(0x70, 0x00); /* Test pattern: auto mode, disabled */
-  sleep_ms(1);
+  cam_i2c_write(0x15, 0x00);
 #endif
 
-  /* Post-init verification: SENSOR bank registers only */
-  /* NOTE: I2C reads through the CPLD SCCB bridge always return 0xFF on this
-   * module revision. Register writes are verified indirectly by successful
-   * JPEG capture. Values of 0xFF below are expected and NOT a failure of the
-   * write path. */
+  if (!cam_write_reg_table(OV2640_320x240_JPEG, 0))
   {
-    uint8_t com7 = 0, out_ctrl = 0;
-    // cppcheck-suppress knownConditionTrueFalse
-    bool r1 = cam_i2c_read(0x12, &com7);
-    // cppcheck-suppress knownConditionTrueFalse
-    bool r2 = cam_i2c_read(0x04, &out_ctrl);
-    printf("[camera_init] Post-init SENSOR regs: COM7=0x%02X(read=%s) OUT=0x%02X(read=%s)\n", com7,
-           // cppcheck-suppress knownConditionTrueFalse
-           r1 ? "OK" : "FAIL", out_ctrl, r2 ? "OK" : "FAIL");
+    printf("[camera_init] FAIL: resolution table write\n");
+    return false;
   }
 
-  /* Configure VSYNC polarity on the Arducam CPLD */
-  printf("[camera_init] Writing ARDUCHIP_TIM (0x03) = 0x%02X...\n", VSYNC_LEVEL_MASK);
+  /* SENSOR bank for any post-init I2C access */
+  cam_i2c_write(0xFF, 0x01);
+
+  /* Configure VSYNC polarity on the CPLD */
   cam_spi_write(ARDUCHIP_TIM, VSYNC_LEVEL_MASK);
+
+  /* Continuous XCLK for sensor timing generator */
+#if defined(PICO_BUILD)
+  camera_enable_xclk();
+#endif
 
   printf("[camera_init] Camera initialized OK\n");
   s_camera_inited = true;
@@ -1105,27 +955,19 @@ bool camera_set_resolution(camera_res_t res)
 bool camera_capture(uint32_t timeout_ms)
 {
 #if defined(PICO_BUILD)
-  /* 1. Clear FIFO + start capture (SDK sequence) */
+  /* Restore SCK for SPI (XCLK was left running after init) */
+  camera_restore_sck();
+  sleep_us(100);
+
+  /* Clear FIFO + start capture */
   camera_clear_fifo();
-  cam_spi_write(ARDUCHIP_FIFO, 0x01); /* Clear FIFO flag (SDK quirk) */
+  cam_spi_write(ARDUCHIP_FIFO, 0x01); /* Clear FIFO flag */
   cam_spi_write(ARDUCHIP_FIFO, 0x02); /* Start capture */
 
-  /*
-   * 2. Enable continuous XCLK on GPIO18 during frame capture.
-   *
-   * GPIO18 is the SPI0 SCK in normal operation but also provides the
-   * OV2640 master clock (XCLK) through the CPLD bridge.  SPI SCK only
-   * runs during bus transactions, starving the sensor's pixel readout
-   * between writes.  By switching GPIO18 to the GPOUT0 clock generator,
-   * we provide a continuous ~10.6 MHz clock during frame capture so the
-   * JPEG engine can process pixels.
-   *
-   * We must briefly restore SCK for each CAP_DONE poll, then re-enable
-   * XCLK for the sensor between polls.
-   */
+  /* Continuous XCLK for sensor during frame wait */
   camera_enable_xclk();
 
-  /* 3. Poll CAP_DONE — briefly restore SCK for each SPI read */
+  /* Poll CAP_DONE */
   uint32_t start = to_ms_since_boot(get_absolute_time());
   bool done = false;
   while ((to_ms_since_boot(get_absolute_time()) - start) < timeout_ms)
@@ -1144,10 +986,15 @@ bool camera_capture(uint32_t timeout_ms)
   /* Final restore: SCK needed for subsequent FIFO burst read */
   camera_restore_sck();
 
+  if (done)
+  {
+    printf("[camera_capture] CAP_DONE — FIFO_SIZE=%lu\n",
+           (unsigned long)camera_get_fifo_length());
+  }
+
   if (!done)
   {
-    printf("[camera_capture] TIMEOUT — TRIG=0x%02X FIFO_SIZE=%lu\n",
-           cam_spi_read(ARDUCHIP_TRIG),
+    printf("[camera_capture] TIMEOUT — TRIG=0x%02X FIFO_SIZE=%lu\n", cam_spi_read(ARDUCHIP_TRIG),
            (unsigned long)camera_get_fifo_length());
     return false;
   }
@@ -1211,38 +1058,6 @@ bool camera_read_fifo_burst(uint8_t *buffer, size_t length)
   return true;
 }
 
-bool camera_arduchip_diagnostic(void)
-{
-#if defined(PICO_BUILD)
-  printf("\n========== ARDUCHIP DIAGNOSTIC ==========\n");
-
-  /* Test 1: write 0x55, read back */
-  cam_spi_write(ARDUCHIP_TEST1, 0x55);
-  sleep_ms(1);
-  uint8_t rb1 = cam_spi_read(ARDUCHIP_TEST1);
-
-  /* Test 2: write 0xAA, read back */
-  cam_spi_write(ARDUCHIP_TEST1, 0xAA);
-  sleep_ms(1);
-  uint8_t rb2 = cam_spi_read(ARDUCHIP_TEST1);
-
-  /* Restore known value */
-  cam_spi_write(ARDUCHIP_TEST1, 0x55);
-
-  printf("  TEST1 write 0x55, readback: 0x%02X\n", rb1);
-  printf("  TEST1 write 0xAA, readback: 0x%02X\n", rb2);
-
-  bool genuine = (rb1 == 0x55 && rb2 == 0xAA);
-  printf("  Verdict: %s\n",
-         genuine ? "GENUINE ArduChip (R/W)" : "CLONE/FAKE CPLD (read-only or fixed)");
-  printf("=========================================\n\n");
-  return genuine;
-#else
-  printf("[camera_arduchip_diagnostic] Host build — skipping\n");
-  return false;
-#endif
-}
-
 void camera_clear_fifo(void)
 {
   cam_spi_write(ARDUCHIP_FIFO, 0x01);
@@ -1280,154 +1095,4 @@ bool camera_read_sensor_reg(uint8_t reg, uint8_t *val)
 #endif
 }
 
-void camera_diagnostic_readback(void)
-{
-#if defined(PICO_BUILD)
-  printf("\n========== SENSOR REGISTER READBACK DIAGNOSTIC ==========\n");
 
-  /*
-   * Test 1: Read current COM7 without writing.
-   * Expected: 0x41 (UXGA + JPEG) or 0x42 (after test pattern enable).
-   */
-  uint8_t cur_com7 = 0xFF;
-  bool r1 = camera_read_sensor_reg(0x12, &cur_com7);
-  printf("  Current COM7(0x12) = 0x%02X (read=%s)\n", cur_com7, r1 ? "OK" : "FAIL");
-
-  /*
-   * Test 2: Write known value to COM7, read back.
-   * Use 0x40 (gray mode, test pattern off) — safe to write.
-   */
-  bool w2 = camera_write_sensor_reg(0x12, 0x40);
-  sleep_ms(5);
-  uint8_t test_com7 = 0xFF;
-  bool r2 = camera_read_sensor_reg(0x12, &test_com7);
-  printf("  Write COM7=0x40 → readback=0x%02X (write=%s read=%s match=%s)\n", test_com7,
-         w2 ? "OK" : "FAIL", r2 ? "OK" : "FAIL", (r2 && test_com7 == 0x40) ? "YES" : "NO");
-
-  /*
-   * Test 3: Test 0x04 (output control) with 0x00 → 0x08 → restore.
-   */
-  uint8_t cur_out = 0xFF;
-  camera_read_sensor_reg(0x04, &cur_out);
-  printf("  Current 0x04(OUT) = 0x%02X\n", cur_out);
-
-  bool w3 = camera_write_sensor_reg(0x04, 0x00);
-  sleep_ms(3);
-  uint8_t test_out0 = 0xFF;
-  bool r3 = camera_read_sensor_reg(0x04, &test_out0);
-  printf("  Write OUT=0x00 → readback=0x%02X (write=%s read=%s match=%s)\n", test_out0,
-         w3 ? "OK" : "FAIL", r3 ? "OK" : "FAIL", (r3 && test_out0 == 0x00) ? "YES" : "NO");
-
-  bool w4 = camera_write_sensor_reg(0x04, 0x08);
-  sleep_ms(3);
-  uint8_t test_out8 = 0xFF;
-  bool r4 = camera_read_sensor_reg(0x04, &test_out8);
-  printf("  Write OUT=0x08 → readback=0x%02X (write=%s read=%s match=%s)\n", test_out8,
-         w4 ? "OK" : "FAIL", r4 ? "OK" : "FAIL", (r4 && test_out8 == 0x08) ? "YES" : "NO");
-
-  /*
-   * Restore critical registers to safe state for JPEG capture.
-   */
-  camera_write_sensor_reg(0x12, 0x41); /* COM7: UXGA + JPEG */
-  sleep_ms(3);
-  uint8_t final_com7 = 0xFF;
-  camera_read_sensor_reg(0x12, &final_com7);
-  printf("  FINAL COM7=%s restored to 0x%02X (target 0x41)\n",
-         (final_com7 == 0x41) ? "OK" : "MISMATCH", final_com7);
-
-  printf("==========================================================\n\n");
-#else
-  printf("[camera_diagnostic_readback] Host build — skipping\n");
-#endif
-}
-
-/**
- * @brief Enable OV2640 internal color bar test pattern.
- *
- * Writes COM7 (0x12) bit 1 = 1 on the SENSOR bank to enable the
- * on-chip test pattern generator.  The sensor outputs vertical color
- * bars / gray ramp instead of pixel data.
- *
- * This is a diagnostic that does NOT depend on I2C reads — only writes.
- * If the capture data changes from the usual "00 00 00 00 00 00 13 A2..."
- * pattern, we know the I2C write path works and JPEG config is the issue.
- * If data is unchanged, the writes may not be reaching the sensor.
- *
- * @param enable  true = set test pattern, false = restore to JPEG output
- */
-void camera_set_test_pattern(bool enable)
-{
-#if defined(PICO_BUILD)
-  if (enable)
-  {
-    printf("\n========== OV2640 TEST PATTERN EXPERIMENT ==========\n");
-    printf("  Setting 0xFF=0x01 (SENSOR bank)\n");
-    cam_i2c_write(0xFF, 0x01);
-    sleep_ms(2);
-    /* COM7 = 0x42 = bit 6 (gray output) + bit 1 (color bar test pattern)
-     * Rest of bits left default (no JPEG, no QVGA/UXGA toggle) */
-    printf("  Setting 0x12=0x42 (COM7: gray + test pattern)\n");
-    cam_i2c_write(0x12, 0x42);
-    sleep_ms(2);
-    printf("  Test pattern ENABLED\n");
-    printf("===================================================\n\n");
-  }
-  else
-  {
-    printf("[camera_set_test_pattern] Restoring normal output...\n");
-    /* Restore COM7 to the value set by JPEG init tables (0x40 = gray) */
-    cam_i2c_write(0xFF, 0x01);
-    sleep_ms(2);
-    cam_i2c_write(0x12, 0x40);
-    sleep_ms(2);
-    printf("[camera_set_test_pattern] Normal output restored\n");
-  }
-#else
-  (void)enable;
-  printf("[camera_set_test_pattern] Host build — skipping\n");
-#endif
-}
-
-void camera_verify_jpeg_config(void)
-{
-#if defined(PICO_BUILD)
-  printf("\n========== OV2640 JPEG CONFIG VERIFICATION ==========\n");
-
-  /*
-   * DIAG: Re-init I2C1 before read test.
-   * After ~200 I2C writes in camera_init(), the RP2350 I2C peripheral
-   * may be in a stale state where reads return 0xFF.  De-init + re-init
-   * tells us if the problem is the peripheral (transient) or the OV2640
-   * (not responding to reads after config).
-   */
-  printf("  [DIAG] Re-initializing I2C1 for read diagnostic...\n");
-  i2c_deinit(I2C1_PORT);
-  sleep_ms(1);
-  i2c_init(I2C1_PORT, 100000);
-  gpio_set_function(I2C1_SDA_PIN, GPIO_FUNC_I2C);
-  gpio_set_function(I2C1_SCL_PIN, GPIO_FUNC_I2C);
-  gpio_pull_up(I2C1_SDA_PIN);
-  gpio_pull_up(I2C1_SCL_PIN);
-  sleep_ms(5);
-  printf("  [DIAG] I2C1 re-init complete — reading SENSOR bank regs...\n");
-
-  /* Ensure SENSOR bank — DO NOT write {0xFF, 0x00} (DSP bank switch) as
-   * it may cause I2C bus failure on this hardware (CPLD SCCB bridge bug).
-   * Only read SENSOR bank registers to verify the write took effect. */
-  bool bank_ok = cam_i2c_write(0xFF, 0x01);
-  sleep_ms(5);
-
-  uint8_t com7 = 0, out_ctrl = 0;
-  bool com7_ok = cam_i2c_read(0x12, &com7);
-  bool out_ok = cam_i2c_read(0x04, &out_ctrl);
-  printf("  SENSOR bank: BANK select write=%s\n", bank_ok ? "OK" : "FAIL");
-  printf("    0x12 (COM7)        read=%s val=0x%02X (bit0=%d→%s)\n", com7_ok ? "OK" : "FAIL", com7,
-         (com7 & 1) ? 1 : 0, (com7 & 1) ? "RAW/JPEG" : "YUV/RGB");
-  printf("    0x04 (output ctrl) read=%s val=0x%02X (bit3=%d→%s)\n", out_ok ? "OK" : "FAIL",
-         out_ctrl, (out_ctrl & 0x08) ? 1 : 0, (out_ctrl & 0x08) ? "JPEG enable" : "JPEG DISABLED");
-
-  printf("====================================================\n\n");
-#else
-  printf("[camera_verify_jpeg_config] Host build — skipping\n");
-#endif
-}

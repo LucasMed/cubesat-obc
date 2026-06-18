@@ -143,32 +143,6 @@ extern "C"
   bool camera_read_fifo_burst(uint8_t *buffer, size_t length);
 
   /**
-   * @brief Read back key OV2640 registers to verify JPEG configuration.
-   *
-   * Reads DSP bank (0xDA, 0xE0) and SENSOR bank (0x12 COM7, 0x04) to
-   * confirm JPEG output mode is correctly configured after init.
-   */
-  void camera_verify_jpeg_config(void);
-
-  /**
-   * @brief Run ArduChip CPLD diagnostic via TEST1 register.
-   *
-   * Writes 0x55 then 0xAA to ARDUCHIP_TEST1 and reads back.
-   * A genuine ArduChip returns what was written (R/W register).
-   * A clone/fake returns a fixed value (read-only).
-   *
-   * @return true if both patterns read back correctly (CPLD is genuine).
-   */
-  bool camera_arduchip_diagnostic(void);
-
-  /**
-   * @brief Enable OV2640 internal test pattern (color bars) for diagnostics.
-   *
-   * @param enable  true to enable test pattern, false to restore normal output.
-   */
-  void camera_set_test_pattern(bool enable);
-
-  /**
    * @brief Clear the camera FIFO and reset for the next capture.
    */
   void camera_clear_fifo(void);
@@ -195,15 +169,6 @@ extern "C"
    * @return true if read succeeded.
    */
   bool camera_read_sensor_reg(uint8_t reg, uint8_t *val);
-
-  /**
-   * @brief Diagnostic: write then read back SENSOR bank registers.
-   *
-   * Tests COM7 (0x12) and output control (0x04) by writing known
-   * values, reading back, and restoring originals.  Prints results
-   * to stdout.  Does NOT modify camera state when it returns.
-   */
-  void camera_diagnostic_readback(void);
 
 #ifdef __cplusplus
 }
