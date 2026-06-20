@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-06-24
 **Current Phase**: v0.34.0 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon Fix)
-**Current Branch**: `feature/golden-image-mpu`
+**Current Branch**: `dev`
 
 ---
 

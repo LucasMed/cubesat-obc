@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.33.0] — 2026-06-20 — ISR-Safe fmm_force_safe & Test Coverage Expansion
+## [0.33.0] — 2026-06-20 — ISR-Safe fmm_force_safe & Test Coverage Expansion
 
 ### Added
 - **ISR-safe `mode_entry_tick` update**: `fmm_force_safe()` now records mode entry tick via `data_layer_set_mode_entry_tick_from_isr(xTaskGetTickCountFromISR())` — closes OI-6 gap for ISR-triggered safe mode entries

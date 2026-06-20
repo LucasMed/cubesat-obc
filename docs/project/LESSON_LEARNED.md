@@ -30,6 +30,7 @@
 
 **Solution (v0.33.0)**: Added `data_layer_set_mode_entry_tick_from_isr()` which uses `taskENTER_CRITICAL_FROM_ISR()` / `taskEXIT_CRITICAL_FROM_ISR()` instead of the mutex. `fmm_force_safe()` now calls `data_layer_set_mode_entry_tick_from_isr(xTaskGetTickCountFromISR())` — fully ISR-safe.
 
+
 **Bonus fix**: `dl_lock_from_isr()` was silently discarding the BASEPRI saved mask from `taskENTER_CRITICAL_FROM_ISR()` and passing 0 to `taskEXIT_CRITICAL_FROM_ISR()`. The lock/unlock pair now properly saves and restores the mask.
 
 ## Flash Layout Requires Centralized Management
