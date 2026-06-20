@@ -901,9 +901,8 @@ bool camera_init(void)
    *   JPEG_INIT → YUV422 → JPEG → 0xFF=0x01/0x15=0x00 → resolution table
    */
   printf("[camera_init] Writing register tables...\n");
-  if (!cam_write_reg_table(OV2640_JPEG_INIT, 0)
-      || !cam_write_reg_table(OV2640_YUV422, 0)
-      || !cam_write_reg_table(OV2640_JPEG, 0))
+  if (!cam_write_reg_table(OV2640_JPEG_INIT, 0) || !cam_write_reg_table(OV2640_YUV422, 0) ||
+      !cam_write_reg_table(OV2640_JPEG, 0))
   {
     printf("[camera_init] FAIL: register table write\n");
     return false;
@@ -988,8 +987,7 @@ bool camera_capture(uint32_t timeout_ms)
 
   if (done)
   {
-    printf("[camera_capture] CAP_DONE — FIFO_SIZE=%lu\n",
-           (unsigned long)camera_get_fifo_length());
+    printf("[camera_capture] CAP_DONE — FIFO_SIZE=%lu\n", (unsigned long)camera_get_fifo_length());
   }
 
   if (!done)
@@ -1094,5 +1092,3 @@ bool camera_read_sensor_reg(uint8_t reg, uint8_t *val)
   return true;
 #endif
 }
-
-
