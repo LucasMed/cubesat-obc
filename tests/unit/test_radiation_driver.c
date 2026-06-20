@@ -110,6 +110,37 @@ void test_T_PLD_RAD_02_accumulation_and_reset(void)
   TEST_ASSERT_FLOAT_WITHIN(1e-9f, 0.0f, acc.dose_Gy);
 }
 
+/* ================================================================== */
+/* T-PLD-RAD-03: radiation_driver_init delegates to radiation_init     */
+/* ================================================================== */
+
+void test_T_PLD_RAD_03_driver_init(void)
+{
+  /* Reset and verify init succeeds */
+  setUp();
+  TEST_ASSERT_TRUE(radiation_driver_init());
+}
+
+/* ================================================================== */
+/* T-PLD-RAD-04: radiation_driver_read_dose returns current dose       */
+/* ================================================================== */
+
+void test_T_PLD_RAD_04_read_dose(void)
+{
+  rad_sample_t s;
+
+  /* Accumulate a few events */
+  for (int i = 0; i < 5; i++)
+  {
+    g_mock_adc_value = 3500; /* above threshold */
+    radiation_read(&s);
+    radiation_accumulate(&s);
+  }
+
+  float dose = radiation_driver_read_dose();
+  TEST_ASSERT_TRUE(dose > 0.0f);
+}
+
 /* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
@@ -119,5 +150,7 @@ int main(void)
   UNITY_BEGIN();
   RUN_TEST(test_T_PLD_RAD_01_conversion_and_threshold);
   RUN_TEST(test_T_PLD_RAD_02_accumulation_and_reset);
+  RUN_TEST(test_T_PLD_RAD_03_driver_init);
+  RUN_TEST(test_T_PLD_RAD_04_read_dose);
   return UNITY_END();
 }

@@ -231,6 +231,12 @@ void test_w25q64_imu_calib_overwrite(void)
     TEST_ASSERT_TRUE(2.0f == cal_out.accel_offset[0]);
 }
 
+void test_w25q64_erase_chip(void)
+{
+    w25q64_status_t st = w25q64_erase_chip();
+    TEST_ASSERT_EQUAL_INT(W25Q64_OK, st);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -248,6 +254,7 @@ int main(void)
     RUN_TEST(test_w25q64_wait_ready_timeout_expiry);
     RUN_TEST(test_w25q64_wait_ready_success_after_busy_clears);
     /* Read-empty and null-params must run BEFORE any write to verify uninitialized state */
+    RUN_TEST(test_w25q64_erase_chip);
     RUN_TEST(test_w25q64_imu_calib_read_empty);
     RUN_TEST(test_w25q64_imu_calib_null_params);
     RUN_TEST(test_w25q64_imu_calib_write_read);

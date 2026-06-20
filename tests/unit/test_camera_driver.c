@@ -126,6 +126,30 @@ void test_camera_read_burst_zero_length(void)
   TEST_ASSERT_FALSE(camera_read_fifo_burst(buf, 0));
 }
 
+void test_camera_clear_fifo(void)
+{
+  /* Must not crash */
+  camera_clear_fifo();
+}
+
+void test_camera_write_sensor_reg(void)
+{
+  TEST_ASSERT_TRUE(camera_write_sensor_reg(0xFF, 0x00));
+  TEST_ASSERT_TRUE(camera_write_sensor_reg(0x12, 0x34));
+}
+
+void test_camera_read_sensor_reg(void)
+{
+  uint8_t val = 0;
+  TEST_ASSERT_TRUE(camera_read_sensor_reg(0x12, &val));
+  TEST_ASSERT_EQUAL_INT(0xFF, val); /* sentinel for host stubs */
+}
+
+void test_camera_read_sensor_reg_null_val(void)
+{
+  TEST_ASSERT_FALSE(camera_read_sensor_reg(0x12, NULL));
+}
+
 int main(void)
 {
   UNITY_BEGIN();
@@ -138,5 +162,9 @@ int main(void)
   RUN_TEST(test_camera_read_burst);
   RUN_TEST(test_camera_read_burst_null_buffer);
   RUN_TEST(test_camera_read_burst_zero_length);
+  RUN_TEST(test_camera_clear_fifo);
+  RUN_TEST(test_camera_write_sensor_reg);
+  RUN_TEST(test_camera_read_sensor_reg);
+  RUN_TEST(test_camera_read_sensor_reg_null_val);
   return UNITY_END();
 }
