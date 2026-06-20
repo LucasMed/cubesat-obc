@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.2  
-**Last Updated:** 2026-04-24  
+**Version:** 2.3  
+**Last Updated:** 2026-06-20  
 **Status:** Active
 
 ---
@@ -106,12 +106,15 @@
 | Camera Driver | Implement camera driver for payload capture | High | 16h | Camera hardware selection |
 | LIS3MDL Migration | Migrate from HMC5883L (discontinued) to LIS3MDL | High | 12h | PR-18 |
 | FM_PAYLOAD Mode | Payload mode state implementation | High | 8h | Camera driver |
-| W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | Hardware availability |
+| W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | ✅ Done (PR-39) |
 | PWM HAL (Wheels) | PWM HAL for reaction wheels (GPIO6/7/8) | Medium | 6h | ✅ Done |
 | PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | ✅ Done |
 | RP2350 Flash Backend | Full RP2350 flash backend implementation | High | 8h | flash_backend_stub.c |
 | MC/DC Coverage | MC/DC coverage analysis for certification | High | 20h | Test completion |
 | **Sun Sensor Driver** | Dual-axis photodiode sun sensor on GPIO27/28 | **Done** | **4h** | ✅ Implemented in feat/sun-sensor-driver |
+| ISR-safe mode_entry_tick | Add mode_entry_tick update in fmm_force_safe() from ISR context | High | 4h | ✅ Done (2c75ac6) |
+| Fix BASEPRI mask in dl_lock_from_isr | Pass saved BASEPRI mask through from_isr lock/unlock | High | 2h | ✅ Done (59ddcaa) |
+| Host test coverage expansion | diskio, eps_hal, spi_payload, watchdog_hal + camera/radiation/rm3100/w25q64 | Medium | 8h | ✅ Done (56c7eec) |
 
 ### 3.2 Phase 8 Effort Summary
 
@@ -340,6 +343,7 @@ OI-8 (Heap Sizing)
 | 2.0 | 2026-03-21 | System | FMEA-OBC-001 (Hardware FMEA) and FMEA-OBC-002 (Software FMEA) completed |
 | 2.1 | 2026-03-23 | System | ADCS-SIM-001, OPS-OBC-001, FRR-OBC-001 marked as done |
 | 2.2 | 2026-04-24 | System | Sun sensor driver implemented - dual-axis photodiode on GPIO27/28, feat/sun-sensor-driver branch |
+| 2.3 | 2026-06-20 | System | Added ISR-safe mode_entry_tick, BASEPRI fix, test coverage expansion tasks marked done |
 
 ---
 

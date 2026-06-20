@@ -1,11 +1,11 @@
 # Phase 8: Full Component Testing & Pending Tasks — Plan
 
 **Document ID**: PLAN-008  
-**Version**: 0.1  
-**Last Updated**: 2026-03-17  
-**Branch**: `feature/phase8-full-testing`  
-**Status**: Planning  
-**Depends on**: Phase 7 complete (`feature/phase7-payload` merged to `dev`)
+**Version**: 0.2  
+**Last Updated**: 2026-06-20  
+**Branch**: `dev`  
+**Status**: In Progress  
+**Depends on**: Phase 7 complete (merged to `dev`)
 
 ---
 
@@ -58,12 +58,15 @@ Phase 8 has two primary objectives:
 | Task | Phase | Description | Status |
 |------|-------|-------------|--------|
 | Camera Driver (OV2640) | 7 | SPI camera interface implementation | Deferred |
-| External Storage (SD/W25Q) | 7 | ≥1 GB non-volatile storage for payload data | Deferred |
+| External Storage (W25Q64) | 7 | W25Q64 SPI flash storage | ✅ Complete (PR-39) |
 | FM_PAYLOAD State | 7 | New flight mode for payload operations | Deferred |
 | Radiation Driver Test | 7 | Integration test disabled due to unsupported APIs | Deferred |
 | Hardware Validation | 7 | Live GPS, IMU, Magnetometer testing on Pico 2W | Pending |
 | PAYLOAD-SPEC-001 Compliance | 7 | §13 compliance matrix verification | Pending |
 | RTM-OBC-001 Update | 7 | Traceability for FR-13..19, PLD-R-001..005 | Pending |
+| ISR-safe mode_entry_tick | 8 | fmm_force_safe() now updates tick via ISR-safe function | ✅ Complete |
+| BASEPRI mask fix | 8 | dl_lock_from_isr/dl_unlock_from_isr mask save/restore | ✅ Complete |
+| Host test coverage expansion | 8 | diskio, eps_hal, spi_payload, watchdog_hal, camera, radiation, rm3100, w25q64 | ✅ Complete |
 
 ---
 
@@ -208,11 +211,11 @@ Phase 8 is **complete** when:
 - [ ] Function coverage >95%
 - [ ] All disabled tests re-enabled and passing
 - [ ] Camera driver implemented and tested
-- [ ] External storage implemented and tested
+- [x] External storage (W25Q64) implemented and tested (PR-39)
 - [ ] FM_PAYLOAD state fully operational
 - [ ] Hardware validation complete for GPS, IMU, Magnetometer
 - [ ] Documentation updated (RTM, PAYLOAD-SPEC, CHANGELOG, PROJECT_PROGRESS)
-- [ ] CI pipeline 6/6 stages green
+- [x] CI pipeline 6/6 stages green
 - [ ] Phase 8 PR reviewed and merged to `dev`
 
 ---

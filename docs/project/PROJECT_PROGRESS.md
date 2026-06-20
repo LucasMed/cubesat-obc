@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-05-15
-**Current Phase**: v0.29.0 Release — Solar Monitor + Hardware Documentation Alignment (merged to `main`)
-**Current Branch**: `main` (first stable release tag)
+**Last Updated**: 2026-06-20
+**Current Phase**: v0.33.0 — ISR-Safe fmm_force_safe & Test Coverage Expansion
+**Current Branch**: `dev`
 
 ---
 
@@ -218,10 +218,10 @@ Decoded:
 
 ---
 
-### Phase 8: Full Testing 🔄 PRs 32–xx (In Progress)
-- **Goal**: Expand coverage to >95%, complete deferred Phase 7 items, hardware validation.
-- **Branch**: `feature/phase8-full-testing`
-- **Outcomes (in progress)**:
+### Phase 8: Full Testing 🔄 (In Progress)
+- **Goal**: Expand coverage to >95%, complete deferred Phase 7 items, hardware validation, ISR-safety hardening.
+- **Branch**: `dev`
+- **Outcomes**:
 
 | PR | Commit | Description | Status |
 |----|--------|-------------|--------|
@@ -236,11 +236,14 @@ Decoded:
 | PR-40 | — | PWM HAL for reaction wheels/magnetorquers | 🔄 Pending |
 | PR-41 | — | Full flash backend implementation | 🔄 Pending |
 | PR-42 | — | MC/DC coverage analysis | 🔄 Pending |
+| | `56c7eec` | Test coverage expansion: diskio, eps_hal, spi_payload, watchdog_hal, camera, radiation, rm3100, w25q64 | ✅ Complete |
+| | `59ddcaa` | Fix BASEPRI mask in dl_lock_from_isr/dl_unlock_from_isr | ✅ Complete |
+| | `2c75ac6` | ISR-safe mode_entry_tick in fmm_force_safe() | ✅ Complete |
 
 - **Hardware validated**: ✅ IMU, GPS, HC-12 radio, temperature sensor, W25Q64 flash
-- **Software validated**: ✅ Telemetry (text), Commands (REBOOT/MODE/ECHO/CAPTURE)
-- **Current test status**: 44/44 tests passing
-- **Current coverage**: Line 93.0%, Function 92.4% (target: >95%)
+- **Software validated**: ✅ Telemetry (text + CSP), Commands (REBOOT/MODE/ECHO/CAPTURE/DEPLOY), ISR-safe safe-mode entry
+- **Current test status**: 65/65 tests passing
+- **Current coverage**: Line ~93%, Function ~92% (target: >95%)
 - **CI Pipeline**: 6/6 stages passing
 
 ---
@@ -282,10 +285,9 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 44/44 | 0 | 44 |
-| Integration Tests | 0 | 0 | 0 |
-| System Tests | 0 | 2 | 2 |
-| **Total** | **44** | **0** | **46** |
+| Unit Tests | 60/60 | 0 | 60 |
+| Integration Tests | 5/5 | 0 | 5 |
+| **Total** | **65/65** | **0** | **65** |
 
 **New test targets (Phase 7 — PRs 28–30)**:
 - `test_gps_integration` — validates GPS driver and telemetry integration
@@ -325,7 +327,7 @@ cd build && cmake .. && cmake --build . && ctest --output-on-failure
 | MISRA C | ✅ 0 required/mandatory violations; advisory deviations in `docs/standards/MISRA_DEVIATIONS.md` |
 | IEC 61508 | ✅ Task priorities, determinism |
 | NASA SWE-130 | ✅ Modular design, test automation |
-| gcovr Line Coverage | ✅ 93.0% line, 92.4% function (target ≥90%) |
+| gcovr Line Coverage | ✅ ~93% line, ~92% function (target ≥90%, in progress toward >95%) |
 
 ---
 

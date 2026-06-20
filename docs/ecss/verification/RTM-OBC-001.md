@@ -344,6 +344,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
 | **CDR HIL (planned)** | Hardware-in-the-Loop / STP-OBC-001 §10 | FR-12 (watchdog), NFR-4 (power), SYS-NF-006 (stack) | T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01 — ⏳ CDR milestone |
 | **Phase 7** | Unit Testing (host build) | FR-13 (camera driver), FR-14 (RM3100 mag), FR-15 (radiation), FR-16 (payload rail), FR-17 (payload HK telemetry) | ✅ 55/55 all tests passing |
+| **Phase 8** | Unit Testing (host build) | ISR-safety fixes, test coverage expansion (diskio, eps_hal, spi_payload, watchdog_hal, camera, rm3100, radiation, w25q64) | ✅ 65/65 all tests passing |
 
 ---
 
@@ -363,11 +364,11 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 ## Summary
 
 - **Total Requirements**: 31 (19 functional, 5 non-functional, 7 operational)
-- **Unit Test Coverage**: **55 CTest executables** (55/55 passing)
+- **Unit Test Coverage**: **65 CTest executables** (65/65 passing)
 - **Integration Test Coverage**: 4 done (T-FMS-01, T-SAFE-01, T-GPS-01..04, T-PLD-INT-01..10)
 - **Code Line Coverage**: ~92% (src/control/ + src/core/ + src/services/ combined; measured via gcovr on host build)
 - **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/ecss/standards/MISRA_DEVIATIONS.md`
-- **Overall Readiness**: 96% (Phase 7 payload sensors implemented; camera HW module damaged — flight-unit replacement pending)
+- **Overall Readiness**: 97% (Phase 7 payload sensors implemented; camera HW module damaged — flight-unit replacement pending; ISR-safety fixes and test coverage expansion done)
 - **Risk Level**: LOW
 
 ---
@@ -379,7 +380,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 
 | ID | Requirement | Description | Implementation | Status |
 |----|-------------|-------------|---------------|--------|
-| **CDR-SAF-01** | ISR-Safe Safe Mode | FMM force-safe callable from ISR context (priority ≥ configMAX_SYSCALL_INTERRUPT_PRIORITY) | `data_layer.c:dl_lock_from_isr()`, `fmm_force_safe()` in `flight_mode_manager.c` | ✅ Implemented |
+| **CDR-SAF-01** | ISR-Safe Safe Mode | FMM force-safe callable from ISR context (priority ≥ configMAX_SYSCALL_INTERRUPT_PRIORITY) | `data_layer.c:dl_lock_from_isr()` / `dl_unlock_from_isr(UBaseType_t)`, `data_layer_set_flight_mode_from_isr()`, `data_layer_set_mode_entry_tick_from_isr()`, `fmm_force_safe()` | ✅ Implemented (v0.33.0 — OI-5 closed) |
 | **CDR-SAF-02** | Priority Inheritance Evaluation | Document FreeRTOS priority inheritance for mutex-based synchronization | `docs/ecss/safety/priority_inheritance.md` | ✅ Implemented — PI-OBC-001 v1.0 |
 | **CDR-SAF-03** | WCET Measurement | Measure WCET of all 7 FreeRTOS tasks via DWT->CYCCNT on RP2350 | `include/wcet_profiler.h`, `src/services/wcet/wcet_profiler_pico.c` | ✅ Implemented |
 | **CDR-SAF-04** | Fault Injection Test Suite | Exercise all fault IDs under injection to verify safe-mode response | `tests/unit/test_fault_injection.c` (T-FI-01..08, 306 checks, 25/25 fault IDs, 10 subsystems) | ✅ Implemented — 49/49 test suite passing |
@@ -424,6 +425,6 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 
 ---
 
-**Last Updated**: 2026-06-07
-**Matrix Version**: 2.6
+**Last Updated**: 2026-06-20
+**Matrix Version**: 2.7
 **Status**: Active (updated each phase)

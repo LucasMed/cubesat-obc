@@ -5,6 +5,33 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] — 2026-06-20 — ISR-Safe fmm_force_safe & Test Coverage Expansion
+
+### Added
+- **ISR-safe `mode_entry_tick` update**: `fmm_force_safe()` now records mode entry tick via `data_layer_set_mode_entry_tick_from_isr(xTaskGetTickCountFromISR())` — closes OI-6 gap for ISR-triggered safe mode entries
+- **New host unit tests**: `test_diskio.c` (FatFs disk I/O bridge), `test_eps_hal.c` (EPS HAL host fallback), `test_spi_payload.c` (SPI payload bus), `test_watchdog_hal_host.c` (watchdog HAL host stubs)
+- **Camera driver test coverage**: `test_camera_clear_fifo`, `test_camera_write_sensor_reg`, `test_camera_read_sensor_reg`, `test_camera_read_sensor_reg_null_val`
+- **Radiation driver test coverage**: `test_T_PLD_RAD_03_driver_init`, `test_T_PLD_RAD_04_read_dose`
+- **RM3100 magnetometer test coverage**: `test_T_PLD_MAG_04_get_last`, `test_T_PLD_MAG_05_get_last_null_ptr`
+- **W25Q64 test coverage**: `test_w25q64_erase_chip`
+
+### Fixed
+- **BASEPRI mask mismatch in `dl_lock_from_isr`/`dl_unlock_from_isr`**: `dl_lock_from_isr()` now returns the saved BASEPRI mask from `taskENTER_CRITICAL_FROM_ISR()`, and `dl_unlock_from_isr(UBaseType_t)` passes it to `taskEXIT_CRITICAL_FROM_ISR()` instead of always passing 0
+
+### Documentation
+- FMM-DES-001, DL-DES-001, FAULT-DES-001: Updated ISR-safe claims, closed OI-5 (ISR-safe forced safe path) and OI-SW-2
+- FMEA-OBC-002: closed OI-SW-2 (ISR-safe fmm_force_safe)
+- RTM-OBC-001: Updated test counts and CDR-SAF-01 references
+- priority_inheritance.md: Fixed `dl_lock_from_isr` description
+- CHANGELOG, PROJECT_PROGRESS, PENDING_TASKS, LESSON_LEARNED, README: Updated to current state
+
+### Testing
+- Test suite: **65/65 passing** (was 55)
+- Changed: `test_fmm.c` (force_safe tick verification), `test_data_layer.c` (new from_isr function)
+- New: 5 new test files (diskio, eps_hal, spi_payload, watchdog_hal_host), expanded camera/radiation/rm3100/w25q64
+
+---
+
 ## [0.32.0] — 2026-06-05 — Payload HK in Telemetry
 
 ### Added

@@ -3,8 +3,8 @@
 | Field           | Value                                           |
 |-----------------|------------------------------------------------|
 | Document ID     | FMEA-OBC-002                                   |
-| Version         | 1.0                                            |
-| Date            | 2026-03-21                                     |
+| Version         | 1.1                                            |
+| Date            | 2026-06-20                                     |
 | Author          | OBC Systems Team                               |
 | Status          | Approved — CDR Baseline                        |
 | Classification  | Internal                                       |
@@ -16,6 +16,7 @@
 | Version | Date       | Author           | Description                                |
 |---------|------------|------------------|--------------------------------------------|
 | 1.0     | 2026-03-21 | OBC Systems Team | Initial release — software FMEA v1.0       |
+| 1.1     | 2026-06-20 | OBC Systems Team | SW-FMM-003 mitigation updated; OI-SW-2 closed (ISR-safe fmm_force_safe implemented) |
 
 ---
 
@@ -236,7 +237,7 @@ Software Criticality Number (CR) = SVO × OCC
 |----|-----------|-------------|--------------|---------------|-----|-----|-----|----|------------|
 | SW-FMM-001 | FMM | Invalid mode transition | Transition to disallowed mode | System in undefined state; FDIR confusion | 3 | 1 | 1 | 3 | DES: g_allowed[][] matrix enforcement; UNT: All transition combinations tested |
 | SW-FMM-002 | FMM | Mode state corruption | Current mode unknown | Incorrect subsystem behavior dispatch | 4 | 1 | 1 | 4 | DES: Single enum variable; mutex-protected access via DLA |
-| SW-FMM-003 | FMM | Forced safe blocked | fmm_force_safe() fails | CRITICAL fault not acted upon | 4 | 1 | 1 | 4 | DES: ISR-safe flag mechanism planned (OI-5); watchdog reset as fallback |
+| SW-FMM-003 | FMM | Forced safe blocked | fmm_force_safe() fails | CRITICAL fault not acted upon | 4 | 1 | 1 | 4 | DES (v0.33.0): fmm_force_safe() uses taskENTER_CRITICAL_FROM_ISR() — ISR-safe critical section; OI-5 closed. Watchdog reset remains as ultimate fallback |
 | SW-FMM-004 | FMM | Mode transition race | Concurrent transition requests | Unpredictable final mode | 3 | 1 | 1 | 3 | DES: FMM mutex serialization; UNT: Concurrent transition tests |
 | SW-FMM-005 | FMM | Event log failure | LOG_EVT_MODE_CHANGE not recorded | Loss of mode history; anomaly investigation harder | 1 | 2 | 2 | 4 | DES: Event logger with ring buffer; INT: Log integrity verification |
 
@@ -411,7 +412,7 @@ All software components shall comply with CODING_STANDARDS.md requirements:
 | ID | Description | Category | Owner | Target |
 |----|-------------|----------|-------|--------|
 | OI-SW-1 | QMC5883L clone detection for HMC5883L — verify IC markings before procurement | II | Hardware Lead | Pre-flight — deferred to HW procurement; design reviewed at CDR, HW verification planned before flight |
-| OI-SW-2 | ISR-safe fmm_force_safe() path (FMM-DES-001 OI-5) | III | Software Lead | Phase 2 |
+| OI-SW-2 (Closed) | ISR-safe fmm_force_safe() path (FMM-DES-001 OI-5) | III | Software Lead | ✅ Implemented in v0.33.0 — fmm_force_safe() now uses taskENTER_CRITICAL_FROM_ISR() via data_layer_set_flight_mode_from_isr(). No separate _from_isr variant needed. BASEPRI mask properly saved/restored. OI-5 / OI-SW-2 closed. |
 | OI-SW-3 | FreeRTOS priority inheritance evaluation | III | Software Lead | ✅ Implemented (CDR-SAF-02) — `docs/ecss/safety/priority_inheritance.md` PI-OBC-001 |
 | OI-SW-4 | Coverity static analysis integration in CI pipeline | III | DevOps | ✅ Implemented (CDR-SAF-05) — `vapier/coverity-scan-action@v1` in CI; local script `scripts/coverity_scan.sh` |
 | OI-SW-5 | Fault injection test suite for all 25 fault IDs | III | Software Lead | ✅ Implemented (CDR-SAF-04) — `tests/unit/test_fault_injection.c` T-FI-01..08: all 25 fault IDs injectable, WARNING/ERROR/CRITICAL levels, 10 subsystems, cross-subsystem multi-fault matrix |

@@ -97,7 +97,7 @@ All mutexes in the codebase use `xSemaphoreCreateMutex()` — they are
 | Holder | Any task calling `dl_lock()` |
 | Takers | SensorRead (P3), AttitudeCtrl (P3), Telemetry (P2), HealthMon (P1), Command (P2), GPS (P2) |
 | Timeout | `portMAX_DELAY` (blocking) |
-| ISR-safe path | `dl_lock_from_isr()` uses `xSemaphoreTakeFromISR()` — no inheritance needed in ISR |
+| ISR-safe path | `dl_lock_from_isr()` uses `taskENTER_CRITICAL_FROM_ISR()` — no mutex, no inheritance needed in ISR |
 
 **Analysis**: This is the most critical mutex. Multiple tasks at different
 priorities share vehicle state via the data layer. Without inheritance, a
