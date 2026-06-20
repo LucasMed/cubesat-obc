@@ -138,8 +138,10 @@ void fmm_force_safe(void)
    *   - The watchdog scratch register is the authoritative forensic record for safe-mode entry
    *   - LOG_EVT_SAFE_ENTRY (0x0001) is already emitted by fault_manager.c when fmm_force_safe() is
    *     called from the fault chain in task context
-   * mode_entry_tick is NOT updated — xTaskGetTickCount() is unsafe in ISR context. */
+   * mode_entry_tick IS updated via data_layer_set_mode_entry_tick_from_isr() using
+   * the ISR-safe xTaskGetTickCountFromISR() (OI-6, OI-SW-2). */
   data_layer_set_flight_mode_from_isr(FM_SAFE);
+  data_layer_set_mode_entry_tick_from_isr(xTaskGetTickCountFromISR());
 }
 
 const char *fmm_mode_name(flight_mode_t mode)

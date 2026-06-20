@@ -438,6 +438,22 @@ void data_layer_set_mode_entry_tick(uint32_t tick)
   dl_unlock();
 }
 
+void data_layer_set_mode_entry_tick_from_isr(uint32_t tick)
+{
+#ifdef PICO_BUILD
+  UBaseType_t mask = dl_lock_from_isr();
+  g_snapshot.mode_entry_tick = tick;
+  g_snapshot.seq++;
+  dl_unlock_from_isr(mask);
+#else
+  /* On host, mutex is a no-op — use standard lock for correct semantics. */
+  dl_lock();
+  g_snapshot.mode_entry_tick = tick;
+  g_snapshot.seq++;
+  dl_unlock();
+#endif
+}
+
 uint32_t data_layer_get_mode_entry_tick(void)
 {
   dl_lock();
