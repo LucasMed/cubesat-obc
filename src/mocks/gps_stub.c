@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 static GpsFix_t g_last_fix = {.lat = -34.6037f,
@@ -75,8 +74,6 @@ GpsFix_t *gps_read_fix(void)
     g_last_fix.satellites = 0;
     break;
   }
-  printf("[gps_read_fix] mode=%d, valid=%d, timestamp_ms=%u\n", g_mock_mode, g_last_fix.valid,
-         g_last_fix.timestamp_ms);
   return &g_last_fix;
 }
 
@@ -94,8 +91,6 @@ bool gps_get_last_fix(GpsFix_t *out)
 bool gps_is_fix_valid(void)
 {
   g_call_counts[4]++;
-  printf("[gps_is_fix_valid] valid=%d, timestamp_ms=%u\n", g_last_fix.valid,
-         g_last_fix.timestamp_ms);
   // Only stale if timestamp_ms >= 5000
   if (g_last_fix.timestamp_ms >= 5000)
   {
