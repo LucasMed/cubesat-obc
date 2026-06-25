@@ -5,6 +5,55 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] — 2026-06-24 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon)
+
+### Added
+- **Dual-slot golden image bootloader**: Chain-load Slot A → Slot B → golden restore from W25Q64. CRC32 validation of each slot before jump. Trust-on-first-boot path for freshly-flashed binaries. 64 KB footprint at flash base (0x10000000).
+  - `bootloader/bootloader.c` — main boot flow, slot validation, golden restore
+  - `bootloader/crc32.c` — hardware CRC32 implementation
+  - `bootloader/spi_flash.c` — W25Q64 read operations for golden restore
+  - `bootloader/bootloader_asm.S` — entry point, reset vector setup
+  - `bootloader/blink_test.S` / `io_access_test.S` — diagnostic test images
+- **CSP-driven OTA firmware upload**: 4-phase state machine (START → CHUNK → VERIFY → COMMIT). 256 B chunk packets via CSP commands 20-25.
+  - `src/core/fw_upload.c` — upload state machine, staging buffer management, slot programming
+  - `include/fw_upload.h` — public API and state enum
+  - CSP commands: `CMD_FW_UPLOAD_START` (20), `CMD_FW_UPLOAD_CHUNK` (21), `CMD_FW_UPLOAD_VERIFY` (22), `CMD_FW_UPLOAD_COMMIT` (23), `CMD_FW_UPLOAD_ABORT` (24), `CMD_FW_BOOT_INFO` (25)
+- **MPU memory protection**: 3-region config (Flash RO/exec/WBWA, SRAM RW/exec/WBWA, Peripherals priv-only/no-exec/Device). Verified on RP2350 hardware.
+  - `src/core/mpu_init.c` — table-based MPU config
+  - `include/mpu_init.h` — public API
+  - Activated in `vStartupTask` (post-scheduler, bare-metal — FreeRTOS does not manage MPU)
+- **Boot info structure**: `include/boot_info.h` + `src/core/boot_info.c` — cross-reset boot communication (slot ID, boot count, golden validity)
+- **Internal flash layout**: `include/internal_flash_layout.h` — single source of truth for the 4 MB flash map with `_Static_assert` guards
+- **Custom linker scripts**: `linker/memmap_golden.ld` (firmware at 0x10010000), `linker/memmap_bootloader.ld` (bootloader at 0x10000000)
+- **Combined UF2 generation**: `scripts/combine_uf2.py` — merges bootloader + firmware UF2 into a single flashable image
+- **Boot reason codes**: POST_BOOT_SLOT_FAIL, POST_BOOT_GOLDEN_RESTORE, POST_BOOT_GOLDEN_CRC_FAIL
+- **FMM metadata integration**: `freertos_hooks.c` writes failure marker to boot info region on malloc fail / stack overflow
+- **CI pipeline split**: `scripts/pico_ci.sh` now has separate `pico-build` (firmware) and `bootloader-build` (bootloader + combined UF2) stages
+- **New host tests**: `test_crc32.c` (CRC32 known vectors, incremental, consistency), `test_fw_upload.c` (state machine transitions, full cycle)
+
+### Changed
+- **EPS HAL**: `eps_hal_read()` now reads INA219 (0x40) cached bus voltage instead of GPIO26 ADC0 resistor divider. Fixes spurious SAFE mode on dev board without battery. (src/drivers/eps_hal.c)
+- **Flash backend**: `FLASH_TOTAL_BYTES` uses `PICO_FLASH_SIZE_BYTES` (4 MB W25Q32) instead of hardcoded 2 MB
+- **POST**: Extended boot reason codes for bootloader-originated events
+- **Camera driver**: Simplified chip ID verification (removed unused `bool` return from `cam_i2c_read()`)
+- **Test types**: Zero-initialize `fault_event_t` in struct test to satisfy static analysis
+- **Build system**: Bootloader sub-build in root CMakeLists.txt, custom linker script for firmware
+
+### Fixed
+- **MPU MemManage fault on RP2350**: Set XN=0 on SRAM region. Cortex-M33 prefetcher / FreeRTOS SMP code path requires executable SRAM. (src/core/mpu_init.c)
+- **HealthMonitor spurious SAFE mode**: EPS battery voltage now reads from INA219 (4.4V USB) instead of floating ADC0 GPIO26 pin
+
+### Documentation
+- PROJECT_PROGRESS, PENDING_TASKS, LESSON_LEARNED, CHANGELOG: Updated for v0.34.0
+- LESSON_LEARNED: Added entries for RP2350 SRAM XN=0 requirement, ADC0 floating issue, bootloader↔FSW protocol gap, trust-on-first-boot, flash size, CI isolation
+
+### Testing
+- Test suite: **72/72 passing** (was 65)
+- New: `test_crc32.c` (5 cases: known vectors, empty, single-byte, incremental, consistency)
+- New: `test_fw_upload.c` (17 cases: state transitions, sequencing, error handling, full cycle)
+
+---
+
 ## [0.33.0] — 2026-06-20 — ISR-Safe fmm_force_safe & Test Coverage Expansion
 
 ### Added
