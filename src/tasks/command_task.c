@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "bh1750.h"
+#include "boot_info.h"
 #include "data_layer.h"
 #include "drivers/imu/imu_calib.h"
 #include "drivers/imu/mpu6050.h"
@@ -11,6 +12,7 @@
 #include "ekf.h"
 #include "fault_manager.h"
 #include "flight_mode.h"
+#include "fw_upload.h"
 #include "gps_driver.h"
 #include "ina219.h"
 #include "mag_calib.h"
@@ -915,6 +917,119 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
       data_layer_set_deploy_in_progress(true);
     }
     /* Always send a success response (even for no-op) */
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  /* ── Firmware upload ─────────────────────────────────────────────── */
+  case CMD_FW_UPLOAD_START:
+  {
+    printf("[command_task] Executing FW_UPLOAD_START\n");
+
+    /* Read request from packet->data (payload[32] too small) */
+    const fw_upload_start_req_t *req = (const fw_upload_start_req_t *)packet->data;
+    uint32_t total_size = req->total_size;
+    uint32_t expected_crc = req->expected_crc;
+    uint8_t target_slot = req->target_slot;
+
+    int ret = fw_upload_start(total_size, expected_crc, target_slot);
+    packet->length = 2; /* cmd_id + result byte */
+    packet->data[1] = (ret == 0) ? 0 : (uint8_t)(-ret);
+
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_FW_UPLOAD_CHUNK:
+  {
+    /* Chunk data is in packet->data (larger than payload[32]) */
+    const fw_upload_chunk_req_t *chunk = (const fw_upload_chunk_req_t *)packet->data;
+    uint32_t seq = chunk->seq;
+    uint32_t len = packet->length - sizeof(uint32_t) - 1; /* minus seq + cmd_id */
+    if (len > FW_UPLOAD_CHUNK_SIZE)
+    {
+      len = FW_UPLOAD_CHUNK_SIZE;
+    }
+
+    int ret = fw_upload_write_chunk(seq, chunk->data, len);
+    packet->length = 2;
+    packet->data[1] = (ret == 0) ? 0 : (uint8_t)(-ret);
+
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_FW_UPLOAD_VERIFY:
+  {
+    printf("[command_task] Executing FW_UPLOAD_VERIFY\n");
+    int ret = fw_upload_verify();
+    packet->length = 2;
+    packet->data[1] = (ret == 0) ? 0 : (uint8_t)(-ret);
+
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_FW_UPLOAD_COMMIT:
+  {
+    printf("[command_task] Executing FW_UPLOAD_COMMIT\n");
+    int ret = fw_upload_commit();
+    packet->length = 2;
+    packet->data[1] = (ret == 0) ? 0 : (uint8_t)(-ret);
+
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_FW_UPLOAD_ABORT:
+  {
+    printf("[command_task] Executing FW_UPLOAD_ABORT\n");
+    fw_upload_abort();
+    packet->length = 2;
+    packet->data[1] = 0;
+
+    csp_send(conn, packet);
+    packet = NULL;
+    break;
+  }
+
+  case CMD_FW_BOOT_INFO:
+  {
+    printf("[command_task] Executing FW_BOOT_INFO\n");
+
+    fw_boot_info_response_t resp;
+    memset(&resp, 0, sizeof(resp));
+
+    /* Read boot info from bootloader-reserved SRAM */
+    boot_info_t bi = {0};
+    if (boot_info_read(&bi))
+    {
+      resp.current_slot = bi.current_slot;
+      resp.boot_count = bi.boot_count;
+      resp.golden_valid = bi.golden_valid;
+    }
+
+    /* Upload status */
+    fw_upload_status_t us;
+    fw_upload_get_status(&us);
+    resp.upload_state = (uint8_t)us.state;
+    if (us.state == FW_STATE_RECEIVING && us.total_size > 0)
+    {
+      resp.upload_pct = (uint8_t)(us.received * 100u / us.total_size);
+    }
+    else if (us.state == FW_STATE_COMPLETE || us.state == FW_STATE_VERIFIED)
+    {
+      resp.upload_pct = 100;
+    }
+
+    memcpy(packet->data, &resp, sizeof(resp));
+    packet->length = (uint8_t)(sizeof(resp) + 1);
+
     csp_send(conn, packet);
     packet = NULL;
     break;

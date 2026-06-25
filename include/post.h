@@ -34,10 +34,13 @@ extern "C"
   /* Boot reason codes                                                   */
   /* ------------------------------------------------------------------ */
 
-#define POST_BOOT_POWER_ON 0u       /**< Normal power-on reset         */
-#define POST_BOOT_WATCHDOG 1u       /**< Watchdog-triggered reset      */
-#define POST_BOOT_STACK_OVERFLOW 2u /**< Stack overflow detected       */
-#define POST_BOOT_BROWNOUT 3u       /**< Brownout / voltage dip        */
+#define POST_BOOT_POWER_ON 0u        /**< Normal power-on reset          */
+#define POST_BOOT_WATCHDOG 1u        /**< Watchdog-triggered reset       */
+#define POST_BOOT_STACK_OVERFLOW 2u  /**< Stack overflow detected        */
+#define POST_BOOT_BROWNOUT 3u        /**< Brownout / voltage dip         */
+#define POST_BOOT_SLOT_FAIL 4u       /**< Active slot CRC32 mismatch     */
+#define POST_BOOT_GOLDEN_RESTORE 5u  /**< Golden image restored from W25Q64 */
+#define POST_BOOT_GOLDEN_CRC_FAIL 6u /**< Golden image CRC32 mismatch    */
 
   /* ------------------------------------------------------------------ */
   /* POST test bitmap positions                                          */

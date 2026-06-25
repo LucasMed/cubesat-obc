@@ -61,8 +61,16 @@
   /* Flash log region layout                                             */
   /* ------------------------------------------------------------------ */
 
-  /** Total flash size on Pico 2W (RP2350 + W25Q16JV = 2 MB). */
-  #define FLASH_TOTAL_BYTES (2u * 1024u * 1024u)
+  /**
+   * Total XIP flash size on Pico 2W.
+   * Board header defines PICO_FLASH_SIZE_BYTES = 4 MB (W25Q32).
+   * Use SDK define when available, fallback to known constant for host builds.
+   */
+  #ifdef PICO_FLASH_SIZE_BYTES
+    #define FLASH_TOTAL_BYTES ((uint32_t)PICO_FLASH_SIZE_BYTES)
+  #else
+    #define FLASH_TOTAL_BYTES (4u * 1024u * 1024u)
+  #endif
 
   /** Number of flash sectors reserved for the persistent log. */
   #define FLASH_LOG_SECTORS 4u
@@ -72,7 +80,7 @@
 
   /**
    * Offset of the log region from the start of flash (not XIP base).
-   * Placed at the very top of the 2 MB device.
+   * Placed near the top of flash. FLASH_TOTAL_BYTES covers the whole XIP region.
    */
   #define FLASH_LOG_OFFSET (FLASH_TOTAL_BYTES - FLASH_LOG_SIZE)
 

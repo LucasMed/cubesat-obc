@@ -149,7 +149,7 @@ if(NOT PICO_BUILD)
     # The command test exercises vCommandTask which uses various CSP
     # socket functions.  Link the CSP library so those symbols are
     # satisfied.  Mocks are declared static so they won't collide.
-    target_link_libraries(test_command wcet_lib csp)
+    target_link_libraries(test_command wcet_lib csp core_lib)
     add_test(NAME command_test COMMAND test_command)
 
     add_executable(test_comm_init
@@ -697,6 +697,29 @@ if(NOT PICO_BUILD)
     )
     target_link_libraries(test_crc8 m)
     add_test(NAME crc8_test COMMAND test_crc8)
+
+    # CRC32 Checksum Tests
+    # T-CRC32-01..05: Known vector, empty, single-byte, incremental, consistency
+    add_executable(test_crc32
+        test_crc32.c
+    )
+    target_include_directories(test_crc32 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bootloader
+    )
+    add_test(NAME crc32_test COMMAND test_crc32)
+
+    # Firmware Upload State Machine Tests
+    # T-FWU-01..17: State transitions, sequencing, error handling, full cycle
+    add_executable(test_fw_upload
+        test_fw_upload.c
+    )
+    target_include_directories(test_fw_upload PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
+        ${CMAKE_BINARY_DIR}/third_party/libcsp/include
+    )
+    target_link_libraries(test_fw_upload m)
+    add_test(NAME fw_upload_test COMMAND test_fw_upload)
 
     add_executable(test_sun_sensor
         test_sun_sensor.c

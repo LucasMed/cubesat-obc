@@ -5,6 +5,9 @@ add_library(core_lib
     event_logger.c
     flash_backend_stub.c
     flash_backend.c
+    mpu_init.c
+    boot_info.c
+    fw_upload.c
 )
 
 target_include_directories(core_lib PRIVATE

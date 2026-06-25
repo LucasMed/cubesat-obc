@@ -61,6 +61,9 @@ if(PICO_BUILD)
         -Wl,--end-group
     )
 
+    # Use custom linker script for dual-slot boot (Slot A at 0x10010000)
+    pico_set_linker_script(cubesat_obc_pico ${CMAKE_SOURCE_DIR}/linker/memmap_golden.ld)
+
     # Route all printf/puts to USB CDC (primary) + UART0 (secondary)
     pico_enable_stdio_usb(cubesat_obc_pico 1)
     pico_enable_stdio_uart(cubesat_obc_pico 1)
