@@ -129,8 +129,8 @@ void test_fwu_auto_complete(void)
   /* Single chunk fills the entire 256-byte image */
   int ret = fw_upload_write_chunk(0, chunk, 128);
   CHECK(ret == 0, "Chunk 0 accepted (partial)");
-  fw_upload_status_t st; fw_upload_get_status(&st);
-  CHECK(st.state == FW_STATE_RECEIVING, "Still RECEIVING after partial");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_RECEIVING, "Still RECEIVING after partial"); }
 
   ret = fw_upload_write_chunk(1, chunk, 128);
   CHECK(ret == 0, "Chunk 1 accepted");
