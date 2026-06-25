@@ -881,15 +881,15 @@ bool camera_init(void)
 
   /* Verify Chip ID */
   uint8_t pidh = 0, pidl = 0;
-  bool pidh_ok = cam_i2c_read(0x0A, &pidh);
-  if (!pidh_ok || pidh != OV2640_CHIPID_HIGH)
+  cam_i2c_read(0x0A, &pidh);
+  if (pidh != OV2640_CHIPID_HIGH)
   {
     printf("[camera_init] FAIL: Chip ID high — got 0x%02X, expected 0x%02X\n", pidh,
            OV2640_CHIPID_HIGH);
     return false;
   }
-  bool pidl_ok = cam_i2c_read(0x0B, &pidl);
-  if (!pidl_ok || (pidl != OV2640_CHIPID_LOW && pidl != 0x41))
+  cam_i2c_read(0x0B, &pidl);
+  if (pidl != OV2640_CHIPID_LOW && pidl != 0x41)
   {
     printf("[camera_init] FAIL: Chip ID low — got 0x%02X\n", pidl);
     return false;
