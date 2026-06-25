@@ -32,9 +32,9 @@
 
 **Bonus fix**: `dl_lock_from_isr()` was silently discarding the BASEPRI saved mask from `taskENTER_CRITICAL_FROM_ISR()` and passing 0 to `taskEXIT_CRITICAL_FROM_ISR()`. The lock/unlock pair now properly saves and restores the mask.
 
-## Flash Layout Requires Centralised Management
+## Flash Layout Requires Centralized Management
 
-**Problem**: Multiple subsystems (POST, telemetry storage, fault logs, config) write to W25Q64 flash. Without a centralised `flash_layout.h`, sector collisions are inevitable.
+**Problem**: Multiple subsystems (POST, telemetry storage, fault logs, config) write to W25Q64 flash. Without a centralized `flash_layout.h`, sector collisions are inevitable.
 
 **Solution**: Created `include/flash_layout.h` as single source of truth with `static_assert` guards for non-overlapping regions.
 
@@ -135,7 +135,7 @@ After pointing the build system to the M33 architecture port and aligning the al
 
 **Solution**: Set XN=0 on the SRAM region. Accept the security trade-off (SRAM executable) because PRIVDEFENA restricts execution to privileged mode only (the application runs in privileged mode).
 
-**Lesson learned**: RP2350 Cortex-M33 requires SRAM to be executable when MPU is enabled. This is a documented ARMv8-M behaviour but is easily missed because the XN bit is the default recommendation for SRAM on other architectures (M4, M7). Always verify MPU regions on real hardware — emulation/stubs do not catch this.
+**Lesson learned**: RP2350 Cortex-M33 requires SRAM to be executable when MPU is enabled. This is a documented ARMv8-M behavior but is easily missed because the XN bit is the default recommendation for SRAM on other architectures (M4, M7). Always verify MPU regions on real hardware — emulation/stubs do not catch this.
 
 ## ADC0 Divider Floats on Dev Board Without Battery
 
@@ -144,7 +144,7 @@ After pointing the build system to the M33 architecture port and aligning the al
 **Investigation**: `eps_hal_read()` read GPIO26 (ADC0) through a resistor divider (R1+R2). On the dev board, no battery is connected, so GPIO26 floated. The ADC read a garbage voltage (~3.2V) that fell within the plausibility range (2.5-6.0V) but registered as CRITICAL, triggering `fmm_force_safe()`.
 
 **Solution**: Replaced ADC0 with the INA219 (0x40) bus voltage monitor. The INA219 is:
-- Already initialised during POST and read at 100 Hz by the sensor task
+- Already initialized during POST and read at 100 Hz by the sensor task
 - Connected to the system bus (4.4V USB on dev board, battery voltage on flight)
 - Accessed via `ina219_get_voltage_mv()` which returns the cached value (no I2C transaction needed)
 
@@ -172,7 +172,7 @@ After pointing the build system to the M33 architecture port and aligning the al
 
 **Problem**: When flashing the combined UF2 (bootloader + firmware), the bootloader showed no visible output. The FSW booted as if no bootloader existed.
 
-**Investigation**: The bootloader does not initialise UART or print any messages. It communicates only via SRAM POST codes and flash boot metadata. When no slot metadata exists (first flash), the trust-on-first-boot path validates the vector table (SP in SRAM, PC in flash) and jumps directly — silently.
+**Investigation**: The bootloader does not initialize UART or print any messages. It communicates only via SRAM POST codes and flash boot metadata. When no slot metadata exists (first flash), the trust-on-first-boot path validates the vector table (SP in SRAM, PC in flash) and jumps directly — silently.
 
 **Evidence the bootloader ran**:
 1. RP2350 BootROM always jumps to the reset vector at flash base (0x10000000)

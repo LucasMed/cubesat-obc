@@ -415,7 +415,7 @@ The bootloader must arm the hardware watchdog before jumping to the FSW. If the 
 
 **Priority**: HIGH | **Effort**: M (~2 h) | **Status**: ❌ Not implemented
 
-The FSW must mark a boot as successful in the Boot Config Block after completing its initialisation. The bootloader resets the slot failure counter when it sees `fsw_confirmed == 1` on the next boot.
+The FSW must mark a boot as successful in the Boot Config Block after completing its initialization. The bootloader resets the slot failure counter when it sees `fsw_confirmed == 1` on the next boot.
 
 **Current state**:
 - ✅ Failure counters exist (`slot_a_failures`, `slot_b_failures`, `MAX_FAILURES = 3`)
