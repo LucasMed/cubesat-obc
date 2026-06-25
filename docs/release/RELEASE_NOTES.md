@@ -293,6 +293,35 @@ pinning is gated on HW stability and is tracked for v1.0.0.
 
 ---
 
+## v0.33.0 — ISR-Safe fmm_force_safe & Test Coverage Expansion (2026-06-20)
+
+**Status**: ✅ In Development  
+**Branch**: `dev`
+
+### Highlights
+- `fmm_force_safe()` now fully ISR-safe: uses `taskENTER_CRITICAL_FROM_ISR()` for mode + tick updates
+- BASEPRI mask properly saved/restored in `dl_lock_from_isr`/`dl_unlock_from_isr`
+- Fixed bug: `taskEXIT_CRITICAL_FROM_ISR(0)` → `taskEXIT_CRITICAL_FROM_ISR(saved_mask)`
+- 10 new host test suites: diskio, eps_hal, spi_payload, watchdog_hal, camera expansion, radiation expansion, rm3100 expansion, w25q64 expansion
+- **65/65 tests passing** (was 55)
+- OI-5 (ISR-safe forced safe path) and OI-SW-2 (ISR-safe fmm_force_safe) closed
+
+### Bug Fixes
+- `dl_lock_from_isr()` now returns `UBaseType_t` (saved BASEPRI mask from `taskENTER_CRITICAL_FROM_ISR()`) instead of `BaseType_t`
+- `dl_unlock_from_isr()` now takes `UBaseType_t saved_mask` and passes it to `taskEXIT_CRITICAL_FROM_ISR(saved_mask)` instead of 0
+- Host FreeRTOS stub: added `xTaskGetTickCountFromISR()` (was missing, causing host build errors)
+
+### Components
+| Component | Status |
+|-----------|--------|
+| ISR-safe fmm_force_safe | ✅ `data_layer_set_flight_mode_from_isr()`, `data_layer_set_mode_entry_tick_from_isr()` + `xTaskGetTickCountFromISR()` |
+| BASEPRI mask fix | ✅ dl_lock_from_isr / dl_unlock_from_isr properly save/restore mask |
+| Host test expansion | ✅ diskio, eps_hal, spi_payload, watchdog_hal, camera, radiation, rm3100, w25q64 |
+| Test count | ✅ 65/65 passing |
+| Documentation | ✅ CHANGELOG, README, PROJECT_PROGRESS, ECSS design/safety docs updated; OI-5, OI-SW-2, OI-1 closed |
+
+---
+
 ## v1.0.0 — Flight Ready (TBD)
 
 **Status**: ⏳ Planned — SMP enablement + flight qualification  

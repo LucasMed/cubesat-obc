@@ -881,15 +881,15 @@ bool camera_init(void)
 
   /* Verify Chip ID */
   uint8_t pidh = 0, pidl = 0;
-  bool pidh_ok = cam_i2c_read(0x0A, &pidh);
-  if (!pidh_ok || pidh != OV2640_CHIPID_HIGH)
+  cam_i2c_read(0x0A, &pidh);
+  if (pidh != OV2640_CHIPID_HIGH)
   {
     printf("[camera_init] FAIL: Chip ID high — got 0x%02X, expected 0x%02X\n", pidh,
            OV2640_CHIPID_HIGH);
     return false;
   }
-  bool pidl_ok = cam_i2c_read(0x0B, &pidl);
-  if (!pidl_ok || (pidl != OV2640_CHIPID_LOW && pidl != 0x41))
+  cam_i2c_read(0x0B, &pidl);
+  if (pidl != OV2640_CHIPID_LOW && pidl != 0x41)
   {
     printf("[camera_init] FAIL: Chip ID low — got 0x%02X\n", pidl);
     return false;
@@ -901,9 +901,8 @@ bool camera_init(void)
    *   JPEG_INIT → YUV422 → JPEG → 0xFF=0x01/0x15=0x00 → resolution table
    */
   printf("[camera_init] Writing register tables...\n");
-  if (!cam_write_reg_table(OV2640_JPEG_INIT, 0)
-      || !cam_write_reg_table(OV2640_YUV422, 0)
-      || !cam_write_reg_table(OV2640_JPEG, 0))
+  if (!cam_write_reg_table(OV2640_JPEG_INIT, 0) || !cam_write_reg_table(OV2640_YUV422, 0) ||
+      !cam_write_reg_table(OV2640_JPEG, 0))
   {
     printf("[camera_init] FAIL: register table write\n");
     return false;
@@ -988,8 +987,7 @@ bool camera_capture(uint32_t timeout_ms)
 
   if (done)
   {
-    printf("[camera_capture] CAP_DONE — FIFO_SIZE=%lu\n",
-           (unsigned long)camera_get_fifo_length());
+    printf("[camera_capture] CAP_DONE — FIFO_SIZE=%lu\n", (unsigned long)camera_get_fifo_length());
   }
 
   if (!done)
@@ -1094,5 +1092,3 @@ bool camera_read_sensor_reg(uint8_t reg, uint8_t *val)
   return true;
 #endif
 }
-
-

@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.2  
-**Last Updated:** 2026-04-24  
+**Version:** 2.4  
+**Last Updated:** 2026-06-24  
 **Status:** Active
 
 ---
@@ -106,12 +106,15 @@
 | Camera Driver | Implement camera driver for payload capture | High | 16h | Camera hardware selection |
 | LIS3MDL Migration | Migrate from HMC5883L (discontinued) to LIS3MDL | High | 12h | PR-18 |
 | FM_PAYLOAD Mode | Payload mode state implementation | High | 8h | Camera driver |
-| W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | Hardware availability |
+| W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | ✅ Done (PR-39) |
 | PWM HAL (Wheels) | PWM HAL for reaction wheels (GPIO6/7/8) | Medium | 6h | ✅ Done |
 | PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | ✅ Done |
 | RP2350 Flash Backend | Full RP2350 flash backend implementation | High | 8h | flash_backend_stub.c |
 | MC/DC Coverage | MC/DC coverage analysis for certification | High | 20h | Test completion |
 | **Sun Sensor Driver** | Dual-axis photodiode sun sensor on GPIO27/28 | **Done** | **4h** | ✅ Implemented in feat/sun-sensor-driver |
+| ISR-safe mode_entry_tick | Add mode_entry_tick update in fmm_force_safe() from ISR context | High | 4h | ✅ Done (2c75ac6) |
+| Fix BASEPRI mask in dl_lock_from_isr | Pass saved BASEPRI mask through from_isr lock/unlock | High | 2h | ✅ Done (59ddcaa) |
+| Host test coverage expansion | diskio, eps_hal, spi_payload, watchdog_hal + camera/radiation/rm3100/w25q64 | Medium | 8h | ✅ Done (56c7eec) |
 
 ### 3.2 Phase 8 Effort Summary
 
@@ -340,6 +343,8 @@ OI-8 (Heap Sizing)
 | 2.0 | 2026-03-21 | System | FMEA-OBC-001 (Hardware FMEA) and FMEA-OBC-002 (Software FMEA) completed |
 | 2.1 | 2026-03-23 | System | ADCS-SIM-001, OPS-OBC-001, FRR-OBC-001 marked as done |
 | 2.2 | 2026-04-24 | System | Sun sensor driver implemented - dual-axis photodiode on GPIO27/28, feat/sun-sensor-driver branch |
+| 2.3 | 2026-06-20 | System | Added ISR-safe mode_entry_tick, BASEPRI fix, test coverage expansion tasks marked done |
+| 2.4 | 2026-06-24 | System | Added Section 9: Bootloader Improvements (watchdog, fsw_confirmed, reset cause, boot status RAM, boot log, UART debug) |
 
 ---
 
@@ -384,6 +389,143 @@ if (g_snapshot.state != ENERGY_NOMINAL) {
 ```
 
 *Note: If connected via USB (VBUS active), this check could be bypassed for laboratory development.*
+
+---
+
+## 9. Bootloader Improvements (Golden Image MPU)
+
+The dual-slot golden image bootloader (`feature/golden-image-mpu`) implements the core chain-load and CRC32 validation. The following tasks extend it to full flight-readiness per CubeSat bootloader best practices.
+
+### 9.1 Supervised Watchdog Before Jump
+
+**Priority**: HIGH | **Effort**: XS (~30 min) | **Status**: ❌ Not implemented
+
+The bootloader must arm the hardware watchdog before jumping to the FSW. If the FSW fails to kick the watchdog within the timeout, the MCU resets and the bootloader increments the failure counter for that slot.
+
+**Files**:
+- `bootloader/bootloader.c` — add `watchdog_enable()` before `jump_to_image()`
+- `src/services/watchdog/watchdog_hal_pico.c` — FSW watchdog kick in `vStartupTask` (already exists)
+
+**Acceptance**:
+- Bootloader arms WDT with 30 s timeout
+- FSW kicks WDT in `vStartupTask` before timeout expiry
+- If FSW hangs, WDT fires → bootloader sees slot failure counter increment
+
+### 9.2 FSW Boot Confirmation (`fsw_confirmed`)
+
+**Priority**: HIGH | **Effort**: M (~2 h) | **Status**: ❌ Not implemented
+
+The FSW must mark a boot as successful in the Boot Config Block after completing its initialization. The bootloader resets the slot failure counter when it sees `fsw_confirmed == 1` on the next boot.
+
+**Current state**:
+- ✅ Failure counters exist (`slot_a_failures`, `slot_b_failures`, `MAX_FAILURES = 3`)
+- ❌ FSW never writes `fsw_confirmed`
+- ❌ Failure counters never reset → all slots eventually exhaust retries after `MAX_FAILURES × number_of_slots` boot cycles
+
+**Files**:
+- `bootloader/bootloader.c` — read `fsw_confirmed` from `boot_meta_t`, reset failure counters when set
+- `include/internal_flash_layout.h` — extend `boot_meta_t` with `fsw_confirmed` field
+- `src/obc_main.c` — write `fsw_confirmed = 1` after successful POST + task creation
+
+**Acceptance**:
+- After first successful boot, `fsw_confirmed = 1` persists in flash
+- On subsequent boots, the bootloader resets `slot_a_failures = 0` when `fsw_confirmed == 1`
+- A slot with simulated CRC failure exhausts `MAX_FAILURES` attempts before fallback
+
+### 9.3 Reset Cause Detection
+
+**Priority**: MEDIUM | **Effort**: S (~30 min) | **Status**: ❌ Not implemented
+
+The bootloader must read the RP2350 reset cause registers (`watchdog_hw->reason`, PSM registers) to distinguish POR, WDT, Software, Pin reset, and brownout. This information is critical for the FSW to classify anomalies (e.g., WDT in orbit = anomaly, not normal boot).
+
+**Current state**:
+- ✅ FSW has `post_detect_boot_reason()` reading `watchdog_hw->scratch[0]`
+- ❌ Bootloader does not read or propagate reset cause
+
+**Implementation**:
+- Read `watchdog_hw->reason` and PSM registers in `bootloader_main()`
+- Propagate via `BootStatus_t` in SRAM (see 9.4) or via `boot_meta_t`
+
+### 9.4 Unified Boot Status RAM Region
+
+**Priority**: MEDIUM | **Effort**: M (~1 h) | **Status**: ❌ Not implemented — address mismatch
+
+The bootloader writes to `POST_CODE_ADDR` (0x20040000) and `BOOT_META_BASE` (0x10221000, flash). The FSW reads from `BOOT_INFO_ADDR` (0x2007FF00) via `boot_info_read()`. These are **different addresses with different structs** — the bootloader and FSW speak different protocols.
+
+**Fix**: Define a single `BootStatus_t` struct in a reserved SRAM region:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `magic` | `uint32_t` | `0xB007B007` — validates BL wrote this |
+| `boot_count` | `uint32_t` | Total boot attempts |
+| `active_image` | `uint8_t` | `0=A, 1=B` |
+| `reset_cause` | `uint8_t` | POR / WDT / SW / PIN |
+| `boot_attempts` | `uint8_t` | Attempts for this image |
+| `flags` | `uint8_t` | Bits: crc_ok, wdt_armed, fallback_used |
+| `fsw_crc_computed` | `uint32_t` | CRC computed by bootloader |
+| `fsw_crc_expected` | `uint32_t` | CRC from slot metadata |
+| `timestamp_ms` | `uint32_t` | Bootloader execution time |
+| `crc_self` | `uint32_t` | CRC32 of this struct |
+
+**Files**:
+- `bootloader/bootloader.c` — replace `post_code()` with `BootStatus_t` write
+- `include/boot_info.h` — replace `boot_info_t` with `BootStatus_t` (or alias)
+- `src/core/boot_info.c` — update read to use new struct and address
+- `include/internal_flash_layout.h` — add `BOOT_STATUS_ADDR` constant
+
+### 9.5 Boot Log Ring Buffer in Flash
+
+**Priority**: LOW | **Effort**: L (~4-8 h) | **Status**: ❌ Not implemented
+
+A ring buffer in a dedicated flash sector (4 KB) stores timestamped boot events. The FSW can download the log via telemetry for post-mortem analysis of anomalies (long eclipses, SEU, etc.).
+
+**Structure** (per entry, 32 bytes):
+
+```c
+typedef struct {
+    uint32_t sequence;
+    uint32_t boot_count;
+    uint32_t reset_cause;
+    uint8_t  image_used;
+    uint8_t  crc_ok;
+    uint8_t  fallback_used;
+    uint8_t  pad;
+    uint32_t bl_duration_ms;
+    uint32_t crc_computed;
+    uint32_t crc_expected;
+    uint32_t crc_entry;
+} __attribute__((packed)) BootLogEntry_t;
+```
+
+### 9.6 Bootloader UART Debug Output
+
+**Priority**: LOW | **Effort**: XS (~15 min) | **Status**: ❌ Not implemented
+
+Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot flow: CRC result, slot selected, golden restore trigger, etc. Helps development debugging with zero flight cost (UART can be left disconnected).
+
+### 9.7 Effort Summary
+
+| Task | Priority | Effort | Hours |
+|------|----------|--------|-------|
+| 9.1 Supervised Watchdog | HIGH | XS | ~30 min |
+| 9.2 FSW Boot Confirmation | HIGH | M | ~2 h |
+| 9.3 Reset Cause Detection | MEDIUM | S | ~30 min |
+| 9.4 Unified Boot Status RAM | MEDIUM | M | ~1 h |
+| 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h |
+| 9.6 Bootloader UART Output | LOW | XS | ~15 min |
+| **Total** | | | **~8.5-12.5 h** |
+
+### 9.8 Dependency Graph
+
+```
+9.1 (Watchdog)
+  └── 9.2 (fsw_confirmed) — WDT counter needs fsw_confirmed to reset
+          └── 9.4 (Boot Status RAM) — preferred channel for fsw_confirmed
+                  └── 9.5 (Boot Log) — depends on unified status RAM
+9.3 (Reset Cause)
+  └── 9.4 (Boot Status RAM) — reset cause propagated via BootStatus_t
+9.6 (UART) — independent, purely dev convenience
+```
 
 ---
 

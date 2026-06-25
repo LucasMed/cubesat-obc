@@ -1,31 +1,47 @@
-# Flashing Pico 2W with Blink Test
+# Flashing Guide — Combined UF2 (Bootloader + Firmware)
 
-## Problem Fixed ✅
+## Overview
 
-The LED on **Pico 2W** is controlled through the **CYW43 WiFi chip**, not direct GPIO. The original `blink_test.c` tried to use direct GPIO, which doesn't work.
+The **combined UF2** (`cubesat_obc_combined.uf2`) contains both the bootloader
+(at `0x10000000`) and the Slot A firmware (at `0x10010000`) in a single flash
+operation. This is the recommended deployment artifact.
 
-**Solution**: Use the correct API:
-- `cyw43_arch_init()` — Initialize CYW43 architecture
-- `cyw43_arch_gpio_put()` — Control LED via CYW43
-- `CYW43_WL_GPIO_LED_PIN` — Use WiFi chip LED pin
+See [MEMORY_MAP.md](MEMORY_MAP.md) for the full flash layout.
 
 ---
 
-## Build Instructions
+## Build the Combined UF2
 
-### Prerequisites
-- Pico SDK installed at `/home/pico-sdk`
-- Pico 2W board (with USB cable)
+### Via CI pipeline
 
-### Step 1: Build
 ```bash
-cd cubesat-obc
-rm -rf build && mkdir build && cd build
-cmake ..
-cmake --build . -- -j$(nproc)
+bash scripts/pico_ci.sh pico-build       # cubesat_obc_pico.uf2
+bash scripts/pico_ci.sh bootloader-build # bootloader + combined UF2
 ```
 
-**Output**: `build/examples/blink_test.uf2` (536 KB)
+Output goes to `artifacts/`:
+
+```
+artifacts/cubesat_obc_combined.uf2   ← Flash this
+```
+
+### Manual build
+
+```bash
+# 1. Configure (once)
+cmake -B build_pico -G Ninja -DCMAKE_BUILD_TYPE=Release \
+      -DPICO_ENABLED=ON -DPICO_SDK_PATH=$PICO_SDK_PATH -DPICO_BOARD=pico2_w
+
+# 2. Build firmware + bootloader
+cmake --build build_pico --target cubesat_obc_pico -j$(nproc)
+cmake --build build_pico --target cubesat_obc_bootloader -j$(nproc)
+
+# 3. Combine into single UF2
+python3 scripts/combine_uf2.py \
+  build_pico/bootloader/cubesat_obc_bootloader.uf2 \
+  build_pico/src/cubesat_obc_pico.uf2 \
+  cubesat_obc_combined.uf2
+```
 
 ---
 
@@ -35,71 +51,110 @@ cmake --build . -- -j$(nproc)
 
 1. **Hold BOOTSEL button** on Pico 2W
 2. **Connect Pico 2W to USB** (while holding BOOTSEL)
-   - Pico will appear as **RPI-RP2** drive
-3. **Copy the .uf2 file**:
+   - Pico will appear as **RPI-RP2** mass storage
+3. **Copy the combined UF2**:
    ```bash
-   cp build/examples/blink_test.uf2 /mnt/pico/
+   cp cubesat_obc_combined.uf2 /media/$USER/RPI-RP2/
    ```
-   OR drag-and-drop in file manager
-4. **Pico will reboot automatically** ✅
+4. **Pico reboots automatically** ✅
+   - Bootloader runs CRC32 validation on Slot A
+   - If Slot A is valid → jumps to firmware
+   - First boot uses **trust-on-first-boot** (valid ARM vector table → jump)
 
-### Method B: picotool (Alternative)
+### Method B: picotool
 
-If you have `picotool` installed:
 ```bash
-picotool load -x build/examples/blink_test.uf2
+picotool load -x cubesat_obc_combined.uf2
 ```
+
+### Method C: Flash only the bootloader
+
+```bash
+picotool load -x build_pico/bootloader/cubesat_obc_bootloader.uf2
+```
+
+> Use this when updating the bootloader independently. The bootloader will
+> detect the existing firmware in Slot A via its vector table check.
 
 ---
 
-## Verification
+## Verifying the Boot Flow
 
-1. Once flashed, the **LED should blink** (250ms on/off cycle for 10 iterations)
-2. **Serial output** (via USB):
-   - May appear on your terminal if connected
-   - Expected messages about CYW43 initialization and blink pattern
+### Serial console
+
+Connect at 115200 baud (the bootloader emits no serial output by default).
+Once the firmware starts, you should see FreeRTOS startup messages:
+
+```bash
+minicom -D /dev/ttyACM0 -b 115200
+# or
+screen /dev/ttyACM0 115200
+```
+
+### POST code readback (SRAM diagnostics)
+
+If the board does not boot, read the POST code from SRAM (retained across soft
+reset). Use a debugger or a small RAM-read helper:
+
+| Address | Content |
+|---------|---------|
+| `0x20040000` | POST code (see below) |
+| `0x20040004` | Valid marker = `0x504F5354` ("POST") |
+
+**POST code values** (`bootloader/bootloader.c`):
+
+| Code | Meaning |
+|------|---------|
+| `0` | Booted from Slot A OK |
+| `1` | Booted from Slot B OK |
+| `2` | Booted from golden restore OK |
+| `3` | Slot A CRC32 FAIL |
+| `4` | Slot B CRC32 FAIL |
+| `5` | Golden restore FAIL (SPI/erase error) |
+| `6` | Golden restore CRC32 FAIL (halt) |
+
+### Boot metadata (FMM sector, `0x10310000`)
+
+Read back the boot metadata to see failure counts and last boot reason:
+
+```bash
+# Using picotool (needs debug build)
+picotool info -b
+```
 
 ---
 
 ## Troubleshooting
 
-### LED Not Blinking
-- **Check USB power**: Pico 2W may need adequate power
-- **Verify BOOTSEL**: Sometimes the button needs to be held longer
-- **Re-flash**: Try flashing again, ensuring the file fully copies
+### Board does not boot (no serial output)
 
-### LED Faint or Blinking Slowly
-- Could be board revision issue; try faster blink (reduce `sleep_ms()` values)
+1. Re-flash the combined UF2 via BOOTSEL mode
+2. If it still fails, flash the bootloader alone, then the firmware alone
+3. Read POST code from `0x20040000` (see above)
 
-### Serial Console Not Showing
-- USB stdio is enabled; open serial monitor on `/dev/ttyACM?` (on Linux)
-- Or check dmesg: `dmesg | tail`
+### Bootloader not running
 
----
+- Ensure you flashed the **combined UF2**, not just the firmware UF2
+- The firmware alone at `0x10010000` has no bootloader — the chip would try to
+  boot from `0x10000000` (unprogrammed = garbage)
+- Check that the combined UF2 covers `0x10000000` – `0x1000FFFF` (bootloader region)
 
-## File Locations
+### "No USB serial device" (`/dev/ttyACM*` not appearing)
 
-- **Source**: `examples/blink_test.c`
-- **Build Config**: `examples/CMakeLists.txt`
-- **Compiled UF2**: `build/examples/blink_test.uf2`
-- **Other formats**: 
-  - ELF: `build/examples/blink_test.elf`
-  - HEX: `build/examples/blink_test.hex`
-  - BIN: `build/examples/blink_test.bin`
+- Ensure USB stdio is enabled in the firmware build
+- Try a different USB cable (some are charge-only)
+- Check `dmesg | tail` for USB enumeration messages
 
 ---
 
-## Next Steps (After Validation)
+## Related Documentation
 
-Once blink_test works on Pico 2W:
-
-1. ✅ **Task 2.1 Complete**: SDK integration validated
-2. **Task 2.2**: Integrate real FreeRTOS kernel
-3. **Task 2.3**: Implement I2C drivers (MPU6050, temp sensor)
-4. **Task 2.4**: System integration and control loop
-5. **Task 2.5**: Hardware validation on Pico 2W
+- [BUILD_GUIDE.md](BUILD_GUIDE.md) — Build instructions (CI pipeline, individual targets)
+- [MEMORY_MAP.md](MEMORY_MAP.md) — Complete flash and SRAM layout
+- [`bootloader/bootloader.c`](../../bootloader/bootloader.c) — Boot flow source
+- [`scripts/combine_uf2.py`](../../scripts/combine_uf2.py) — UF2 combiner tool
 
 ---
 
-**Last Updated**: 2026-02-16  
+**Last Updated**: 2026-06-24  
 **Status**: Ready for flashing ✅

@@ -1,8 +1,8 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-05-15
-**Current Phase**: v0.29.0 Release — Solar Monitor + Hardware Documentation Alignment (merged to `main`)
-**Current Branch**: `main` (first stable release tag)
+**Last Updated**: 2026-06-24
+**Current Phase**: v0.34.0 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon Fix)
+**Current Branch**: `feature/golden-image-mpu`
 
 ---
 
@@ -218,10 +218,10 @@ Decoded:
 
 ---
 
-### Phase 8: Full Testing 🔄 PRs 32–xx (In Progress)
-- **Goal**: Expand coverage to >95%, complete deferred Phase 7 items, hardware validation.
-- **Branch**: `feature/phase8-full-testing`
-- **Outcomes (in progress)**:
+### Phase 8: Full Testing 🔄 (In Progress)
+- **Goal**: Expand coverage to >95%, complete deferred Phase 7 items, hardware validation, ISR-safety hardening.
+- **Branch**: `dev`
+- **Outcomes**:
 
 | PR | Commit | Description | Status |
 |----|--------|-------------|--------|
@@ -236,12 +236,38 @@ Decoded:
 | PR-40 | — | PWM HAL for reaction wheels/magnetorquers | 🔄 Pending |
 | PR-41 | — | Full flash backend implementation | 🔄 Pending |
 | PR-42 | — | MC/DC coverage analysis | 🔄 Pending |
+| | `56c7eec` | Test coverage expansion: diskio, eps_hal, spi_payload, watchdog_hal, camera, radiation, rm3100, w25q64 | ✅ Complete |
+| | `59ddcaa` | Fix BASEPRI mask in dl_lock_from_isr/dl_unlock_from_isr | ✅ Complete |
+| | `2c75ac6` | ISR-safe mode_entry_tick in fmm_force_safe() | ✅ Complete |
 
 - **Hardware validated**: ✅ IMU, GPS, HC-12 radio, temperature sensor, W25Q64 flash
-- **Software validated**: ✅ Telemetry (text), Commands (REBOOT/MODE/ECHO/CAPTURE)
-- **Current test status**: 44/44 tests passing
-- **Current coverage**: Line 93.0%, Function 92.4% (target: >95%)
+- **Software validated**: ✅ Telemetry (text + CSP), Commands (REBOOT/MODE/ECHO/CAPTURE/DEPLOY), ISR-safe safe-mode entry
+- **Current test status**: 65/65 tests passing
+- **Current coverage**: Line ~93%, Function ~92% (target: >95%)
 - **CI Pipeline**: 6/6 stages passing
+
+---
+
+### Golden Image MPU — v0.34.0 ✅ (2026-06-24, branch `feature/golden-image-mpu`)
+
+- **Goal**: Implement dual-slot golden image bootloader, CSP-driven OTA firmware upload, MPU memory protection, and fix HealthMonitor battery voltage reading.
+- **Outcomes (3 commits, 67/67 tests passing)**:
+
+| Commit | Description | Tests |
+|--------|-------------|-------|
+| `3118819` | MPU init (3 regions, XN=0 on SRAM for RP2350) + EPS HAL INA219 fix | Hardware verified |
+| `b617f4f` | Dual-slot bootloader with CRC32, golden restore, FMM metadata + FW Upload OTA (CSP state machine) + boot_info | 67/67 ✅ |
+| `184d7e0` | Camera chip ID cleanup, zero-init test struct | 67/67 ✅ |
+
+**Key deliverables**:
+- **Bootloader**: Chain-load Slot A → Slot B → golden restore from W25Q64. CRC32 validation of each slot before jump. Trust-on-first-boot for freshly-flashed binaries. 64 KB footprint at flash base (0x10000000).
+- **FW Upload**: 4-phase CSP state machine (START → CHUNK → VERIFY → COMMIT). 256 B chunk packets. CSP commands 20-25.
+- **MPU**: 3-region config (Flash RO/exec/WBWA, SRAM RW/exec/WBWA, Peripherals priv-only/no-exec/Device). XN=0 on SRAM required by RP2350 Cortex-M33. Verified on hardware without crash.
+- **HealthMon fix**: `eps_hal_read()` now reads INA219 (0x40) instead of GPIO26 ADC0. No more spurious SAFE mode on dev board (USB-only without battery).
+- **CI**: `pico_ci.sh` split into `pico-build` and `bootloader-build` stages. Combined UF2 generation via `combine_uf2.py`.
+- **Combined UF2**: 854 KB, merges bootloader (0x10000000) + firmware (0x10010000) into single flashable UF2.
+
+**Hardware verified**: MPU (3 regions, no MemManage fault), INA219 battery voltage (4.4V stable), all sensors/tasks operational, heap stable at 39376 bytes.
 
 ---
 
@@ -258,6 +284,7 @@ Decoded:
 | 6 — Closed-Loop Stability | Q1 2026 | Quaternion lib, gain scheduling, closed-loop sim, integration tests, coverage ≥90%, MISRA audit | ✅ Complete (7/7 PRs) |
 | 7 — Scientific Payload | Mar 2026 | GPS, IMU, Magnetometer integration, integration tests, coverage 93% | ✅ Complete |
 | 8 — Full Testing | Q2 2026 | Coverage expansion (>95%), pending tasks, camera, storage, FM_PAYLOAD, hardware validation | 🔄 In Progress |
+| **Golden Image MPU** | **Q2 2026** | **Bootloader, FW Upload, MPU, CRC32, HealthMon fix, CI split** | **✅ Complete (v0.34.0)** |
 | HW BOM / PDR | Mar 2026 | Full hardware BOM; PDR review; LIS3MDL, TPS3431 watchdog, SAW filter, MTQ-first ADCS strategy, GS design | ✅ Complete (BOM v1.0, PDR PASS) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
@@ -282,10 +309,9 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 44/44 | 0 | 44 |
-| Integration Tests | 0 | 0 | 0 |
-| System Tests | 0 | 2 | 2 |
-| **Total** | **44** | **0** | **46** |
+| Unit Tests | 67/67 | 0 | 67 |
+| Integration Tests | 5/5 | 0 | 5 |
+| **Total** | **72/72** | **0** | **72** |
 
 **New test targets (Phase 7 — PRs 28–30)**:
 - `test_gps_integration` — validates GPS driver and telemetry integration
@@ -325,7 +351,7 @@ cd build && cmake .. && cmake --build . && ctest --output-on-failure
 | MISRA C | ✅ 0 required/mandatory violations; advisory deviations in `docs/standards/MISRA_DEVIATIONS.md` |
 | IEC 61508 | ✅ Task priorities, determinism |
 | NASA SWE-130 | ✅ Modular design, test automation |
-| gcovr Line Coverage | ✅ 93.0% line, 92.4% function (target ≥90%) |
+| gcovr Line Coverage | ✅ ~93% line, ~92% function (target ≥90%, in progress toward >95%) |
 
 ---
 

@@ -40,6 +40,7 @@
 
 #ifdef PICO_BUILD
   #include "hardware/watchdog.h"
+  #include "mpu_init.h"
   #include "pico/cyw43_arch.h"
   #include "pico/stdlib.h"
 
@@ -101,6 +102,12 @@ static void vStartupTask(void *pvParameters)
   fflush(stdout);
 
 #ifdef PICO_BUILD
+  /* Activate MPU now — scheduler is running, SMP spinlocks and stacks are stable.
+   * (configENABLE_MPU=0 means FreeRTOS leaves MPU management to us.) */
+  mpu_init();
+  printf("  MPU enabled: flash=RO, SRAM=RW, peri=priv\r\n");
+  fflush(stdout);
+
   printf("  cyw43_arch_init...\r\n");
   fflush(stdout);
   if (cyw43_arch_init())

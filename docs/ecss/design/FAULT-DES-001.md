@@ -3,9 +3,9 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | FAULT-DES-001                                 |
-| Version     | 0.2                                           |
+| Version     | 0.3                                           |
 | Status      | Draft                                         |
-| Date        | 2026-03-07                                    |
+| Date        | 2026-06-20                                    |
 | Author      | CubeSat OBC Team                              |
 | Reviewed by | —                                             |
 | Approved by | —                                             |
@@ -463,22 +463,24 @@ if (level >= FAULT_LEVEL_CRITICAL) {
 }
 ```
 
-Rationale: `fmm_force_safe()` acquires the FMM mutex (`xSemaphoreTake`).
-Calling it inside a `taskENTER_CRITICAL()` section would disable interrupts
-while blocking on a mutex — illegal in FreeRTOS.
+Rationale: `fmm_force_safe()` now uses `data_layer_set_flight_mode_from_isr()`
+with `taskENTER_CRITICAL_FROM_ISR()`. Calling it outside the FM lock is the
+correct pattern — no nested critical sections, and the function is fully
+ISR-safe regardless of caller context.
 
-> **Note**: `fmm_force_safe()` uses `xSemaphoreTake` (mutex, NOT ISR-safe —
-> see FMM-DES-001 §8.4, OI-5). The FM calling it outside the lock is the
-> correct pattern.
+> **Note (updated v0.33.0)**: `fmm_force_safe()` no longer uses `xSemaphoreTake`.
+> It uses `taskENTER_CRITICAL_FROM_ISR()` — **ISR-safe**. See FMM-DES-001 §8.4.
 
 ### 12.4 Comparison with DLA Locking
 
-| Component     | Primitive                   | ISR-safe |
-|---------------|-----------------------------|:--------:|
-| Fault Manager | `taskENTER_CRITICAL`        | Yes      |
-| Data Layer    | `xSemaphoreCreateMutex`     | No       |
-| FMM           | `xSemaphoreTake` (mutex)    | No       |
-| EPS Monitor   | `taskENTER_CRITICAL`        | Yes      |
+| Component     | Primitive                                | ISR-safe |
+|---------------|------------------------------------------|:--------:|
+| Fault Manager | `taskENTER_CRITICAL`                     | Yes      |
+| Data Layer    | `xSemaphoreCreateMutex` (standard paths) | No       |
+| FMM           | `taskENTER_CRITICAL_FROM_ISR()`\*        | **Yes** ✓ |
+| EPS Monitor   | `taskENTER_CRITICAL`                     | Yes      |
+
+\* `fmm_force_safe()` only; `fmm_request_transition()` remains task-context.
 
 ---
 

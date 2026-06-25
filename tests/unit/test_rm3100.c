@@ -127,6 +127,32 @@ void test_T_PLD_MAG_03_drdy_gating(void)
   TEST_ASSERT_TRUE(ok);
 }
 
+/* ================================================================== */
+/* T-PLD-MAG-04: rm3100_get_last returns last read vector              */
+/* ================================================================== */
+
+void test_T_PLD_MAG_04_get_last(void)
+{
+  rm3100_vector_t vec, last;
+
+  /* First read a vector (DRDY=1, timeout=0 → immediate read) */
+  g_drdy_state = 1;
+  bool ok = rm3100_read_vector(&vec, 0);
+  TEST_ASSERT_TRUE(ok);
+
+  /* get_last should return the same values */
+  rm3100_get_last(&last);
+  TEST_ASSERT_FLOAT_WITHIN(0.001f, vec.x_nT, last.x_nT);
+  TEST_ASSERT_FLOAT_WITHIN(0.001f, vec.y_nT, last.y_nT);
+  TEST_ASSERT_FLOAT_WITHIN(0.001f, vec.z_nT, last.z_nT);
+}
+
+void test_T_PLD_MAG_05_get_last_null_ptr(void)
+{
+  /* Must not crash */
+  rm3100_get_last(NULL);
+}
+
 /* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
@@ -137,5 +163,7 @@ int main(void)
   RUN_TEST(test_T_PLD_MAG_01_init_and_cmm);
   RUN_TEST(test_T_PLD_MAG_02_vector_conversion);
   RUN_TEST(test_T_PLD_MAG_03_drdy_gating);
+  RUN_TEST(test_T_PLD_MAG_04_get_last);
+  RUN_TEST(test_T_PLD_MAG_05_get_last_null_ptr);
   return UNITY_END();
 }

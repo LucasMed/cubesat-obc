@@ -7,18 +7,19 @@
 # locally if the required tools are on PATH.
 #
 # Stages:
-#   1  host-test   — Build host binary + run 29/29 CTest suite
-#   2  pico-build  — Cross-compile cubesat_obc_pico.uf2 (RP2350, pico2_w)
-#   3  emu-build   — Cross-compile cubesat_obc_emu.elf  (RP2040,  pico_w)
-#   4  emulate     — rp2040js boot smoke-test on the RP2040 ELF
+#   1  host-test       — Build host binary + run 29/29 CTest suite
+#   2a pico-build      — Cross-compile cubesat_obc_pico.uf2 (RP2350, pico2_w)
+#   2b bootloader-build — Cross-compile cubesat_obc_bootloader.uf2 + combined
+#   3  emu-build       — Cross-compile cubesat_obc_emu.elf  (RP2040,  pico_w)
+#   4  emulate         — rp2040js boot smoke-test on the RP2040 ELF
 #   (optional)
 #   5  static      — clang-format, clang-tidy, cppcheck
 #   5b coverity    — Coverity Scan static analysis (optional, tool required)
 #   6  coverage    — gcovr HTML + text summary
 #
 # Usage:
-#   bash scripts/pico_ci.sh [all|host-test|pico-build|emu-build|emulate|
-#                            static|coverity|coverage]
+#   bash scripts/pico_ci.sh [all|host-test|pico-build|bootloader-build|
+#                            emu-build|emulate|static|coverity|coverage|sanitize]
 #   Default: all
 #
 # On success the /artifacts (or ./artifacts) directory contains:
@@ -105,11 +106,43 @@ run_host_test() {
   return "$rc"
 }
 
+# ------------------------------------------------------------------
+# Shared CMake configure for RP2350 builds
+# ------------------------------------------------------------------
+_ensure_pico_build_dir() {
+  if [[ -f "$BUILD_PICO/build.ninja" ]]; then
+    return 0  # already configured
+  fi
+  mkdir -p "$BUILD_PICO"
+  cmake -S "$REPO_ROOT" -B "$BUILD_PICO" \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DPICO_ENABLED=ON \
+        -DPICO_SDK_PATH="${PICO_SDK_PATH}" \
+        -DPICO_BOARD=pico2_w \
+        2>&1 | tee -a "$ARTIFACTS/build.log"
+}
+
+# ------------------------------------------------------------------
+# Soft-fail for known GCC 15 + Pico SDK 2.2.0 incompatibility
+# See: https://github.com/raspberrypi/pico-sdk/issues/2718
+# ------------------------------------------------------------------
+_gcc15_softfail() {
+  local rc=$1
+  if [[ "$rc" != "0" ]] && grep -qE "(nvic_hw->icpr|subscripted value|hardware/irq.h:453)" "$ARTIFACTS/build.log" 2>/dev/null; then
+    info "Known GCC 15 + Pico SDK 2.2.0 incompatibility detected"
+    info "See: https://github.com/raspberrypi/pico-sdk/issues/2718"
+    info "Consider using GCC 14 or older, or Pico SDK 2.1.x"
+    return 0
+  fi
+  return "$rc"
+}
+
 # =============================================================================
-# Stage 2 — Pico 2W (RP2350) firmware build → .uf2
+# Stage 2a — Pico 2W (RP2350) firmware build → .uf2
 # =============================================================================
 run_pico_build() {
-  stage "2 / pico-build — RP2350 (pico2_w) → .uf2"
+  stage "2a / pico-build — cubesat_obc_pico"
 
   if [[ ! -f "${PICO_SDK_PATH}/external/pico_sdk_import.cmake" ]]; then
     fail "Pico SDK not found at ${PICO_SDK_PATH}"
@@ -118,51 +151,81 @@ run_pico_build() {
     return 1
   fi
 
-  # Clean build directory to avoid CMake cache path issues
-  rm -rf "$BUILD_PICO"
-  mkdir -p "$BUILD_PICO"
-  cmake -S "$REPO_ROOT" -B "$BUILD_PICO" \
-        -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DPICO_ENABLED=ON \
-        -DPICO_SDK_PATH="${PICO_SDK_PATH}" \
-        -DPICO_BOARD=pico2_w \
-        2>&1 | tee -a "$ARTIFACTS/build.log" \
-  || { fail "Pico CMake configure: FAIL (see artifacts/build.log)"; record 1 "pico-build"; return 1; }
+  rm -rf "$BUILD_PICO"  # fresh configure
+  _ensure_pico_build_dir || { fail "CMake configure: FAIL"; record 1 "pico-build"; return 1; }
 
-  # GCC 15 + Pico SDK 2.2.0 known incompatibility - build may fail
-  # See: https://github.com/raspberrypi/pico-sdk/issues/2718
   cmake --build "$BUILD_PICO" \
         --target cubesat_obc_pico \
         --parallel "$(nproc)" \
         2>&1 | tee -a "$ARTIFACTS/build.log"
 
   local rc=$?
-
-  # Check for known GCC 15 + Pico SDK 2.2.0 incompatibility
-  # See: https://github.com/raspberrypi/pico-sdk/issues/2718
-  if [[ "$rc" != "0" ]] && grep -qE "(nvic_hw->icpr|subscripted value|hardware/irq.h:453)" "$ARTIFACTS/build.log" 2>/dev/null; then
-    info "Known GCC 15 + Pico SDK 2.2.0 incompatibility detected"
-    info "See: https://github.com/raspberrypi/pico-sdk/issues/2718"
-    info "Consider using GCC 14 or older, or Pico SDK 2.1.x"
-    rc=0  # Soft-fail for known issue
-  fi
-
+  _gcc15_softfail "$rc"; rc=$?
   record "$rc" "pico-build"
 
   if [[ "$rc" == "0" ]]; then
-    # Copy artefacts
     for ext in uf2 bin hex elf map; do
       src="${BUILD_PICO}/src/cubesat_obc_pico.${ext}"
       [[ -f "$src" ]] && cp "$src" "$ARTIFACTS/"
     done
-    local uf2_size
-    uf2_size=$(stat -c%s "${ARTIFACTS}/cubesat_obc_pico.uf2" 2>/dev/null || echo "?")
-    pass "Pico (RP2350) build: PASS — .uf2 size: ${uf2_size} bytes"
-    arm-none-eabi-size "${BUILD_PICO}/src/cubesat_obc_pico.elf" \
-        2>/dev/null || true
+    local sz
+    sz=$(stat -c%s "${ARTIFACTS}/cubesat_obc_pico.uf2" 2>/dev/null || echo "?")
+    pass "Pico firmware: PASS — .uf2 size: ${sz} bytes"
+    arm-none-eabi-size "${BUILD_PICO}/src/cubesat_obc_pico.elf" 2>/dev/null || true
   else
-    fail "Pico (RP2350) build: FAIL"
+    fail "Pico firmware: FAIL"
+  fi
+  return "$rc"
+}
+
+# =============================================================================
+# Stage 2b — Pico 2W bootloader build → .uf2 + combined UF2
+# =============================================================================
+run_bootloader_build() {
+  stage "2b / bootloader-build — cubesat_obc_bootloader"
+
+  if [[ ! -f "${PICO_SDK_PATH}/external/pico_sdk_import.cmake" ]]; then
+    fail "Pico SDK not found at ${PICO_SDK_PATH}"
+    record "1" "bootloader-build"
+    return 1
+  fi
+
+  # Reuse existing build dir if firmware was already built; configure if not
+  _ensure_pico_build_dir || { fail "CMake configure: FAIL"; record "1" "bootloader-build"; return 1; }
+
+  cmake --build "$BUILD_PICO" \
+        --target cubesat_obc_bootloader \
+        --parallel "$(nproc)" \
+        2>&1 | tee -a "$ARTIFACTS/build.log"
+
+  local rc=$?
+  _gcc15_softfail "$rc"; rc=$?
+  record "$rc" "bootloader-build"
+
+  if [[ "$rc" == "0" ]]; then
+    for ext in uf2 bin hex elf map; do
+      src="${BUILD_PICO}/bootloader/cubesat_obc_bootloader.${ext}"
+      [[ -f "$src" ]] && cp "$src" "$ARTIFACTS/cubesat_obc_bootloader.${ext}"
+    done
+    local sz
+    sz=$(stat -c%s "${ARTIFACTS}/cubesat_obc_bootloader.uf2" 2>/dev/null || echo "?")
+    pass "Bootloader: PASS — .uf2 size: ${sz} bytes"
+    arm-none-eabi-size "${BUILD_PICO}/bootloader/cubesat_obc_bootloader.elf" 2>/dev/null || true
+
+    # Generate combined firmware + bootloader UF2 (dual-slot boot)
+    if [[ -f "${ARTIFACTS}/cubesat_obc_bootloader.uf2" && \
+          -f "${ARTIFACTS}/cubesat_obc_pico.uf2" ]]; then
+      local combine="${REPO_ROOT}/scripts/combine_uf2.py"
+      if [[ -f "$combine" ]]; then
+        python3 "$combine" \
+          "${ARTIFACTS}/cubesat_obc_bootloader.uf2" \
+          "${ARTIFACTS}/cubesat_obc_pico.uf2" \
+          "${ARTIFACTS}/cubesat_obc_combined.uf2" \
+          2>&1 | tee -a "$ARTIFACTS/build.log"
+      fi
+    fi
+  else
+    fail "Bootloader: FAIL"
   fi
   return "$rc"
 }
@@ -440,27 +503,27 @@ COMMAND="${1:-all}"
 
 case "$COMMAND" in
   all)
-    # Run all stages; failures are recorded per-stage so the pipeline always
-    # reaches print_summary and shows the full pass/fail picture.
-    run_host_test  || true
-    run_pico_build || true
-    run_emu_build  || true
-    run_emulate    || true
-    run_static     || true
-    run_coverity   || true
-    run_coverage   || true
-    run_sanitize   || true
+    run_host_test        || true
+    run_pico_build       || true
+    run_bootloader_build || true
+    run_emu_build        || true
+    run_emulate          || true
+    run_static           || true
+    run_coverity         || true
+    run_coverage         || true
+    run_sanitize         || true
     ;;
-  host-test)   run_host_test ;;
-  pico-build)  run_pico_build ;;
-  emu-build)   run_emu_build ;;
-  emulate)     run_emulate ;;
-  static)      run_static ;;
-  coverity)    run_coverity ;;
-  coverage)    run_coverage ;;
-  sanitize)    run_sanitize ;;
+  host-test)       run_host_test ;;
+  pico-build)      run_pico_build ;;
+  bootloader-build) run_bootloader_build ;;
+  emu-build)       run_emu_build ;;
+  emulate)         run_emulate ;;
+  static)          run_static ;;
+  coverity)        run_coverity ;;
+  coverage)        run_coverage ;;
+  sanitize)        run_sanitize ;;
   *)
-    echo "Usage: $0 [all|host-test|pico-build|emu-build|emulate|static|coverity|coverage|sanitize]"
+    echo "Usage: $0 [all|host-test|pico-build|bootloader-build|emu-build|emulate|static|coverity|coverage|sanitize]"
     exit 2
     ;;
 esac

@@ -3,9 +3,9 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | DL-DES-001                                    |
-| Version     | 0.1                                           |
+| Version     | 0.2                                           |
 | Status      | Draft                                         |
-| Date        | 2026-03-07                                    |
+| Date        | 2026-06-20                                    |
 | Author      | CubeSat OBC Team                              |
 | Reviewed by | —                                             |
 | Approved by | —                                             |
@@ -15,6 +15,7 @@
 | Version | Date       | Author           | Description                           |
 |---------|------------|------------------|---------------------------------------|
 | 0.1     | 2026-03-07 | CubeSat OBC Team | Initial draft — CDR                   |
+| 0.2     | 2026-06-20 | CubeSat OBC Team | ISR-safe write paths: `_from_isr()` functions, §5.3, §7.4, §8.3, §16 updated; test counts; OI-1 resolved |
 
 ---
 
@@ -156,12 +157,15 @@ infrequent mode writes both contend on the same mutex. On the RP2350 with a
 16 MHz FreeRTOS tick and priority-based scheduling, worst-case critical section
 duration has been measured below 2 µs, within the budget of all consumers.
 
-### 5.3 Not ISR-Safe
+### 5.3 ISR-Safe Write Path
 
 `xSemaphoreTake` / `xSemaphoreGive` cannot be called from an ISR context.
-No write path in the DLA is callable from an ISR. Any future ISR-originated
-data must be dequeued via a FreeRTOS notification to a task before calling
-the DLA API.
+Two DLA write paths are ISR-safe using `taskENTER_CRITICAL_FROM_ISR()`:
+
+- `data_layer_set_flight_mode_from_isr(flight_mode_t mode)` — used by `fmm_force_safe()`
+- `data_layer_set_mode_entry_tick_from_isr(uint32_t tick)` — used by `fmm_force_safe()`
+
+All other DLA write paths remain task-context-only via `xSemaphoreTake`.
 
 ### 5.4 Host Build No-Op
 
@@ -252,15 +256,23 @@ represent static hardware configuration, not ongoing measurements.
 
 ### 7.4 Flight-Level State Write Functions
 
-| Function                                        | Increments `seq` |
-|-------------------------------------------------|:----------------:|
-| `data_layer_set_flight_mode(flight_mode_t)`     | Yes              |
-| `data_layer_set_energy_state(energy_state_t)`   | Yes              |
+| Function                                        | Locking method                | ISR-safe | Increments `seq` |
+|-------------------------------------------------|-------------------------------|:--------:|:----------------:|
+| `data_layer_set_flight_mode(flight_mode_t)`     | `xSemaphoreTake` (mutex)      | No       | Yes              |
+| `data_layer_set_flight_mode_from_isr(flight_mode_t)` | `taskENTER_CRITICAL_FROM_ISR()` | **Yes ✓** | Yes              |
+| `data_layer_set_energy_state(energy_state_t)`   | `xSemaphoreTake` (mutex)      | No       | Yes              |
+| `data_layer_set_mode_entry_tick(uint32_t)`       | `xSemaphoreTake` (mutex)      | No       | Yes              |
+| `data_layer_set_mode_entry_tick_from_isr(uint32_t)` | `taskENTER_CRITICAL_FROM_ISR()` | **Yes ✓** | Yes              |
 
 **Write authority:**
 
-- `data_layer_set_flight_mode()` — called exclusively by the FMM after a
-  successful `fmm_request_transition()` or `fmm_force_safe()`.
+- `data_layer_set_flight_mode()` — called by the FMM after a successful
+  `fmm_request_transition()` (task context).
+- `data_layer_set_flight_mode_from_isr()` — called by `fmm_force_safe()` from any
+  context (task or ISR).
+- `data_layer_set_mode_entry_tick()` — task context (called by FMM on transition).
+- `data_layer_set_mode_entry_tick_from_isr()` — called by `fmm_force_safe()` from
+  any context.
 - `data_layer_set_energy_state()` — called exclusively by the EPS monitor task
   after a confirmed energy-state transition.
 
@@ -308,14 +320,24 @@ static void dl_unlock(void) {
 perform only a `memcpy` or a float assignment, the critical section is bounded
 and the wait is effectively instantaneous.
 
-### 8.3 Not ISR-Safe
+### 8.3 ISR-Safe Write Path
 
-`xSemaphoreTake` must not be called from an ISR. The DLA provides no ISR-safe
-write path. Any hardware interrupt that produces data (e.g., ADC completion) must
-defer its DLA write to a task via a FreeRTOS task notification or queue.
+The DLA provides two ISR-safe write paths using `taskENTER_CRITICAL_FROM_ISR()`
+instead of `xSemaphoreTake`:
 
-> **OI-1** (Low / Phase 1): Confirm that no ISR context calls any DLA write
-> function directly. Document the deferred-to-task pattern in `config/FreeRTOSConfig.h` comments.
+| Function | ISR-safe | Notes |
+|---|---|---|
+| `data_layer_set_flight_mode(flight_mode_t)` | No — uses mutex | Task context only |
+| `data_layer_set_flight_mode_from_isr(flight_mode_t)` | **Yes ✓** | Critical section; used by `fmm_force_safe()` |
+| `data_layer_set_mode_entry_tick(uint32_t)` | No — uses mutex | Task context only |
+| `data_layer_set_mode_entry_tick_from_isr(uint32_t)` | **Yes ✓** | Critical section; used by `fmm_force_safe()` |
+| All other DLA write functions | No — use mutex | Task context only |
+
+Any other hardware interrupt that produces data must defer its DLA write to a
+task via a FreeRTOS task notification or queue.
+
+> **OI-1** (Resolved): ISR-safe write paths `_from_isr()` now exist. Confirmed
+> that `fmm_force_safe()` uses them. No other ISR context calls DLA write functions.
 
 ### 8.4 Guard Against Pre-Init Calls
 
@@ -575,8 +597,10 @@ between two consecutive HK frames, the Sensor Read Task has stalled.
 
 ## 16. Test Coverage
 
-Tests are in `tests/unit/test_data_layer.c`. All 9 tests pass. Coverage of
-`src/core/data_layer.c` ≥ 90 % line coverage (CI gate).
+Tests are in `tests/unit/test_data_layer.c`. The data layer test suite has
+expanded to 21+ test functions covering flight mode write/read (task and ISR),
+energy state, mode entry tick, snapshot copy, seq increment, and host build.
+Coverage of `src/core/data_layer.c` ≥ 90 % line coverage (CI gate).
 
 | Test ID   | Test Name                      | DLA Function Under Test                          | Requirement |
 |-----------|--------------------------------|--------------------------------------------------|-------------|
@@ -590,7 +614,8 @@ Tests are in `tests/unit/test_data_layer.c`. All 9 tests pass. Coverage of
 | T-DL-08   | `test_seq_counter`             | `data_layer_get_seq()` — all write/read ops      | §9          |
 | T-DL-09   | `test_system_state_shim`       | `system_state_set_*()` ↔ `data_layer_read()` consistency | §10   |
 
-Total: **9 / 9 tests passing**.
+Total: **21+ / 21+ tests passing** (—:: Data Layer-specific).
+Total project-wide: **65 / 65 tests passing** (all host + Pico).
 
 ---
 
@@ -598,7 +623,7 @@ Total: **9 / 9 tests passing**.
 
 | OI  | Severity       | Phase   | Description                                                  |
 |-----|----------------|---------|--------------------------------------------------------------|
-| OI-1 | Low          | Phase 1 | Confirm no ISR context calls any DLA write function directly. Document deferred-to-task pattern in `config/FreeRTOSConfig.h` comments. |
+| OI-1 (Resolved) | Low          | Phase 1 | ISR-safe `_from_isr()` write paths implemented. Confirmed no ISR-context code calls standard DLA write functions. OI-1 closed. |
 | OI-2 | Low          | Post-CDR | Add `configASSERT(g_dl_mutex != NULL)` inside `dl_lock()` to catch pre-init callers in development builds. |
 | OI-3 | Low          | Phase 3 | Audit all `system_state_set_*` call sites and migrate to `data_layer_write_*`. Remove shim once all callers updated. |
 | OI-4 | Low          | Phase 2 | Add `data_layer_write_battery_v()` to expose raw ADC battery voltage in `dl_snapshot_t.state.battery_v`; currently only `energy_state_t` (classified) is stored. |

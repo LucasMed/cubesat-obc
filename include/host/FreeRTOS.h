@@ -40,6 +40,9 @@ typedef void *TaskHandle_t;
 #ifndef xTaskGetTickCount
   #define xTaskGetTickCount() 0
 #endif
+#ifndef xTaskGetTickCountFromISR
+  #define xTaskGetTickCountFromISR() 0
+#endif
 
 #define vTaskStartScheduler()                                                                      \
   do                                                                                               \

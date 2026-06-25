@@ -94,7 +94,7 @@ static void test_fault_manager(void)
   CHECK(FAULT_LEVEL_CRITICAL == 3, "FAULT_LEVEL_CRITICAL must be 3");
 
   /* fault_event_t must have all required fields */
-  fault_event_t ev;
+  fault_event_t ev = {0};
   (void)ev.id;
   (void)ev.level;
   (void)ev.timestamp_ms;

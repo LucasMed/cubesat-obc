@@ -5,6 +5,92 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Memory map documentation**: `docs/dev/MEMORY_MAP.md` — complete RP2350 flash (4 MB XIP) and SRAM (520 KB) layout, boot metadata format (`boot_meta_t`, `slot_metadata_t`), FreeRTOS heap/stack config, boot flow diagram with POST codes
+- **POST code diagnostic table**: Documented SRAM-based POST codes (`0x20040000`) for boot failure diagnosis without serial console
+
+### Changed
+- **Build guide**: Updated for CI pipeline (`pico_ci.sh` with 9 stages), bootloader build, combined UF2 generation, AddressSanitizer/UBSan, emulation smoke-test, GCC 15 known issue; test count corrected to 29
+- **Flashing guide**: Rewritten from blink_test to combined UF2 deployment, trust-on-first-boot, three flashing methods, boot verification and troubleshooting
+
+## [0.34.0] — 2026-06-24 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon)
+
+### Added
+- **Dual-slot golden image bootloader**: Chain-load Slot A → Slot B → golden restore from W25Q64. CRC32 validation of each slot before jump. Trust-on-first-boot path for freshly-flashed binaries. 64 KB footprint at flash base (0x10000000).
+  - `bootloader/bootloader.c` — main boot flow, slot validation, golden restore
+  - `bootloader/crc32.c` — hardware CRC32 implementation
+  - `bootloader/spi_flash.c` — W25Q64 read operations for golden restore
+  - `bootloader/bootloader_asm.S` — entry point, reset vector setup
+  - `bootloader/blink_test.S` / `io_access_test.S` — diagnostic test images
+- **CSP-driven OTA firmware upload**: 4-phase state machine (START → CHUNK → VERIFY → COMMIT). 256 B chunk packets via CSP commands 20-25.
+  - `src/core/fw_upload.c` — upload state machine, staging buffer management, slot programming
+  - `include/fw_upload.h` — public API and state enum
+  - CSP commands: `CMD_FW_UPLOAD_START` (20), `CMD_FW_UPLOAD_CHUNK` (21), `CMD_FW_UPLOAD_VERIFY` (22), `CMD_FW_UPLOAD_COMMIT` (23), `CMD_FW_UPLOAD_ABORT` (24), `CMD_FW_BOOT_INFO` (25)
+- **MPU memory protection**: 3-region config (Flash RO/exec/WBWA, SRAM RW/exec/WBWA, Peripherals priv-only/no-exec/Device). Verified on RP2350 hardware.
+  - `src/core/mpu_init.c` — table-based MPU config
+  - `include/mpu_init.h` — public API
+  - Activated in `vStartupTask` (post-scheduler, bare-metal — FreeRTOS does not manage MPU)
+- **Boot info structure**: `include/boot_info.h` + `src/core/boot_info.c` — cross-reset boot communication (slot ID, boot count, golden validity)
+- **Internal flash layout**: `include/internal_flash_layout.h` — single source of truth for the 4 MB flash map with `_Static_assert` guards
+- **Custom linker scripts**: `linker/memmap_golden.ld` (firmware at 0x10010000), `linker/memmap_bootloader.ld` (bootloader at 0x10000000)
+- **Combined UF2 generation**: `scripts/combine_uf2.py` — merges bootloader + firmware UF2 into a single flashable image
+- **Boot reason codes**: POST_BOOT_SLOT_FAIL, POST_BOOT_GOLDEN_RESTORE, POST_BOOT_GOLDEN_CRC_FAIL
+- **FMM metadata integration**: `freertos_hooks.c` writes failure marker to boot info region on malloc fail / stack overflow
+- **CI pipeline split**: `scripts/pico_ci.sh` now has separate `pico-build` (firmware) and `bootloader-build` (bootloader + combined UF2) stages
+- **New host tests**: `test_crc32.c` (CRC32 known vectors, incremental, consistency), `test_fw_upload.c` (state machine transitions, full cycle)
+
+### Changed
+- **EPS HAL**: `eps_hal_read()` now reads INA219 (0x40) cached bus voltage instead of GPIO26 ADC0 resistor divider. Fixes spurious SAFE mode on dev board without battery. (src/drivers/eps_hal.c)
+- **Flash backend**: `FLASH_TOTAL_BYTES` uses `PICO_FLASH_SIZE_BYTES` (4 MB W25Q32) instead of hardcoded 2 MB
+- **POST**: Extended boot reason codes for bootloader-originated events
+- **Camera driver**: Simplified chip ID verification (removed unused `bool` return from `cam_i2c_read()`)
+- **Test types**: Zero-initialize `fault_event_t` in struct test to satisfy static analysis
+- **Build system**: Bootloader sub-build in root CMakeLists.txt, custom linker script for firmware
+
+### Fixed
+- **MPU MemManage fault on RP2350**: Set XN=0 on SRAM region. Cortex-M33 prefetcher / FreeRTOS SMP code path requires executable SRAM. (src/core/mpu_init.c)
+- **HealthMonitor spurious SAFE mode**: EPS battery voltage now reads from INA219 (4.4V USB) instead of floating ADC0 GPIO26 pin
+
+### Documentation
+- PROJECT_PROGRESS, PENDING_TASKS, LESSON_LEARNED, CHANGELOG: Updated for v0.34.0
+- LESSON_LEARNED: Added entries for RP2350 SRAM XN=0 requirement, ADC0 floating issue, bootloader↔FSW protocol gap, trust-on-first-boot, flash size, CI isolation
+
+### Testing
+- Test suite: **72/72 passing** (was 65)
+- New: `test_crc32.c` (5 cases: known vectors, empty, single-byte, incremental, consistency)
+- New: `test_fw_upload.c` (17 cases: state transitions, sequencing, error handling, full cycle)
+
+---
+
+## [0.33.0] — 2026-06-20 — ISR-Safe fmm_force_safe & Test Coverage Expansion
+
+### Added
+- **ISR-safe `mode_entry_tick` update**: `fmm_force_safe()` now records mode entry tick via `data_layer_set_mode_entry_tick_from_isr(xTaskGetTickCountFromISR())` — closes OI-6 gap for ISR-triggered safe mode entries
+- **New host unit tests**: `test_diskio.c` (FatFs disk I/O bridge), `test_eps_hal.c` (EPS HAL host fallback), `test_spi_payload.c` (SPI payload bus), `test_watchdog_hal_host.c` (watchdog HAL host stubs)
+- **Camera driver test coverage**: `test_camera_clear_fifo`, `test_camera_write_sensor_reg`, `test_camera_read_sensor_reg`, `test_camera_read_sensor_reg_null_val`
+- **Radiation driver test coverage**: `test_T_PLD_RAD_03_driver_init`, `test_T_PLD_RAD_04_read_dose`
+- **RM3100 magnetometer test coverage**: `test_T_PLD_MAG_04_get_last`, `test_T_PLD_MAG_05_get_last_null_ptr`
+- **W25Q64 test coverage**: `test_w25q64_erase_chip`
+
+### Fixed
+- **BASEPRI mask mismatch in `dl_lock_from_isr`/`dl_unlock_from_isr`**: `dl_lock_from_isr()` now returns the saved BASEPRI mask from `taskENTER_CRITICAL_FROM_ISR()`, and `dl_unlock_from_isr(UBaseType_t)` passes it to `taskEXIT_CRITICAL_FROM_ISR()` instead of always passing 0
+
+### Documentation
+- FMM-DES-001, DL-DES-001, FAULT-DES-001: Updated ISR-safe claims, closed OI-5 (ISR-safe forced safe path) and OI-SW-2
+- FMEA-OBC-002: closed OI-SW-2 (ISR-safe fmm_force_safe)
+- RTM-OBC-001: Updated test counts and CDR-SAF-01 references
+- priority_inheritance.md: Fixed `dl_lock_from_isr` description
+- CHANGELOG, PROJECT_PROGRESS, PENDING_TASKS, LESSON_LEARNED, README: Updated to current state
+
+### Testing
+- Test suite: **65/65 passing** (was 55)
+- Changed: `test_fmm.c` (force_safe tick verification), `test_data_layer.c` (new from_isr function)
+- New: 5 new test files (diskio, eps_hal, spi_payload, watchdog_hal_host), expanded camera/radiation/rm3100/w25q64
+
+---
+
 ## [0.32.0] — 2026-06-05 — Payload HK in Telemetry
 
 ### Added

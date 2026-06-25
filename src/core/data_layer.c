@@ -22,23 +22,24 @@
 static SemaphoreHandle_t g_dl_mutex = NULL;
 
 /* ISR-safe lock: uses critical section instead of mutex.
- * Safe to call from ISR context (unlike dl_lock which uses xSemaphoreTake). */
-static void dl_lock_from_isr(void)
+ * Safe to call from ISR context (unlike dl_lock which uses xSemaphoreTake).
+ *
+ * @return  The BASEPRI mask saved before entering the critical section;
+ *          must be passed to dl_unlock_from_isr(). */
+static UBaseType_t dl_lock_from_isr(void)
 {
   if (g_dl_mutex)
   {
-    /* taskENTER_CRITICAL_FROM_ISR returns the base priority mask before entering
-     * critical section. FreeRTOS uses this to correctly restore state on exit. */
-    (void)taskENTER_CRITICAL_FROM_ISR();
+    return taskENTER_CRITICAL_FROM_ISR();
   }
+  return 0;
 }
 
-static void dl_unlock_from_isr(void)
+static void dl_unlock_from_isr(UBaseType_t saved_mask)
 {
   if (g_dl_mutex)
   {
-    /* Pass the saved base priority mask from dl_lock_from_isr to restore it. */
-    taskEXIT_CRITICAL_FROM_ISR(0);
+    taskEXIT_CRITICAL_FROM_ISR(saved_mask);
   }
 }
 #endif
@@ -337,10 +338,10 @@ void data_layer_set_flight_mode(flight_mode_t mode)
 void data_layer_set_flight_mode_from_isr(flight_mode_t mode)
 {
 #ifdef PICO_BUILD
-  dl_lock_from_isr();
+  UBaseType_t mask = dl_lock_from_isr();
   g_snapshot.mode = mode;
   g_snapshot.seq++;
-  dl_unlock_from_isr();
+  dl_unlock_from_isr(mask);
 #else
   /* On host, mutex is a no-op — call the standard function for correct semantics. */
   dl_lock();
@@ -435,6 +436,22 @@ void data_layer_set_mode_entry_tick(uint32_t tick)
   g_snapshot.mode_entry_tick = tick;
   g_snapshot.seq++;
   dl_unlock();
+}
+
+void data_layer_set_mode_entry_tick_from_isr(uint32_t tick)
+{
+#ifdef PICO_BUILD
+  UBaseType_t mask = dl_lock_from_isr();
+  g_snapshot.mode_entry_tick = tick;
+  g_snapshot.seq++;
+  dl_unlock_from_isr(mask);
+#else
+  /* On host, mutex is a no-op — use standard lock for correct semantics. */
+  dl_lock();
+  g_snapshot.mode_entry_tick = tick;
+  g_snapshot.seq++;
+  dl_unlock();
+#endif
 }
 
 uint32_t data_layer_get_mode_entry_tick(void)

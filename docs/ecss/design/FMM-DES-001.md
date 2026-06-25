@@ -3,9 +3,9 @@
 | Field       | Value                                         |
 |-------------|-----------------------------------------------|
 | Document ID | FMM-DES-001                                   |
-| Version     | 0.4                                           |
+| Version     | 0.5                                           |
 | Status      | Draft                                         |
-| Date        | 2026-03-10                                    |
+| Date        | 2026-06-20                                    |
 | Author      | CubeSat OBC Team                              |
 | Reviewed by | —                                             |
 | Approved by | —                                             |
@@ -18,6 +18,7 @@
 | 0.2     | 2026-03-07 | CubeSat OBC Team | CDR review: ISR safety correction (§8.4, §13), FM_BOOT exit clarification (§5.1), mode change event (§8.6, §15), OI-5 added |
 | 0.3     | 2026-03-07 | CubeSat OBC Team | CDR review v0.2: authorized requesters table (§7.1), transition priority (§7.2), HK telemetry field (§11), mode timeout OI-6 |
 | 0.4     | 2026-03-10 | CubeSat OBC Team | Phase 7 payload baseline: add FM_PAYLOAD (§5), update transition matrix (§6, §7), update subsystem table (§11), update HK encoding table (§11.1); new authorized requester (§7.1) |
+| 0.5     | 2026-06-20 | CubeSat OBC Team | ISR-safe fmm_force_safe: updated §6 (rule 3 ISR-safe), §7 (Watchdog ISR-safe), §8.4 (ISR-safe path implemented), §13 (ISR-safe table), §16 (OI-5 closed) |
 
 ---
 
@@ -180,8 +181,9 @@ PAYLOAD    │  ✗     ✓      ✗         ✓         ✗           —
 2. **FAULT_LEVEL_CRITICAL blocks all non-SAFE transitions** — `fmm_request_transition()`
    returns `FMM_ERR_FAULT_BLOCK` if a CRITICAL fault is active and the target is
    not FM_SAFE.
-3. **`fmm_force_safe()`** additionally bypasses the fault-level check but is
-   **not ISR-safe** (uses mutex via Data Layer). See OI-5.
+3. **`fmm_force_safe()`** additionally bypasses the fault-level check and is
+   **ISR-safe** — uses `data_layer_set_flight_mode_from_isr()` with
+   `taskENTER_CRITICAL_FROM_ISR()` instead of the mutex. See §13 ISR-safe table.
 4. **FM_PAYLOAD** is reachable only from `FM_NOMINAL`. Transitioning to
    `FM_PAYLOAD` while in any other mode returns `FMM_ERR_NOT_ALLOWED`.
 
@@ -228,7 +230,7 @@ static const uint8_t g_allowed[FM_COUNT][FM_COUNT] = {
 |--------------------------|------------------------------------- |----------------------------------------------|
 | Ground command (CSP)     | `fmm_request_transition(target)`     | Telemetry task                               |
 | Fault Manager (CRITICAL) | `fmm_force_safe()`                   | Fault Manager task                           |
-| Watchdog timeout         | `fmm_force_safe()`                   | Health Monitor task (⚠️ not ISR — see OI-5)   |
+| Watchdog timeout         | `fmm_force_safe()`                   | Any task or ISR context — ISR-safe ✓          |
 | EPS CRITICAL energy      | `fmm_force_safe()` via fault         | EPS Monitor task                             |
 | Automatic (rate < thr.)  | `fmm_request_transition(FM_NOMINAL)` | ADCS task (Phase 2)                          |
 
@@ -323,10 +325,10 @@ void fmm_force_safe(void);
 Writes `FM_SAFE` directly to the Data Layer. Bypasses both the matrix and the
 fault-level check.
 
-> ⚠️ **Not ISR-safe.** Despite the comment in the source code, `data_layer_set_flight_mode()`
-> uses `xSemaphoreTake()` (a FreeRTOS mutex), which **cannot be called from ISR context**.
-> All current callers (`fault_manager.c`, `health_monitor_task.c`) run in task context.
-> See OI-5 for the planned ISR-safe path.
+> ✓ **ISR-safe** — `fmm_force_safe()` uses `data_layer_set_flight_mode_from_isr()` and
+> `data_layer_set_mode_entry_tick_from_isr()`, both of which leverage
+> `taskENTER_CRITICAL_FROM_ISR()` instead of the mutex. Safe to call from any ISR
+> context, including HardFault, PendSV, and SysTick.
 
 Logging: a `LOG_EVT_SAFE_ENTRY` (0x0001, Class A) event is emitted by the Fault
 Manager after calling `fmm_force_safe()`.
@@ -355,10 +357,10 @@ This event is the primary input for:
 - Post-pass telemetry review
 - Anomaly investigation (mode thrashing, unexpected SAFE entries)
 
-> **Implementation note (OI-5 dependency):** The event emission is currently
+> **Implementation note:** The event emission is currently
 > handled by `fault_manager.c` only for `FM_SAFE` entry. A dedicated
 > `LOG_EVT_MODE_CHANGE` call inside `fmm_request_transition()` is planned as
-> part of OI-5 / Phase 2 hardening.
+> part of Phase 2 hardening.
 
 ---
 
@@ -473,8 +475,10 @@ flight_mode_t data_layer_get_flight_mode(void);
 
 The mode field lives in `obc_snapshot_t.mode` (`include/data_layer.h:54`).
 `data_layer_set_flight_mode()` uses `xSemaphoreTake()` (a FreeRTOS mutex) and is
-therefore safe from **task context only**. It must not be called from ISR context.
-See OI-5 for the planned ISR-safe write path.
+therefore safe from **task context only**. The ISR-safe variant
+`data_layer_set_flight_mode_from_isr()` exists and uses
+`taskENTER_CRITICAL_FROM_ISR()`. `fmm_force_safe()` uses the ISR-safe variant.
+See also `data_layer_set_mode_entry_tick_from_isr()` for ISR-safe tick recording.
 
 ---
 
@@ -488,12 +492,10 @@ re-entrant-safe:
 | `flight_mode_manager_init()`| None (called before scheduler)    | No       |
 | `fmm_get_mode()`            | `xSemaphoreTake` mutex (via DL)   | No       |
 | `fmm_request_transition()`  | `xSemaphoreTake` mutex (via DL)   | No       |
-| `fmm_force_safe()`          | `xSemaphoreTake` mutex (via DL)   | **No** ⚠️ |
+| `fmm_force_safe()`          | `taskENTER_CRITICAL_FROM_ISR()` (via DL)\*  | **Yes** ✓ |
 | `fmm_mode_name()`           | None (read-only constant table)   | Yes      |
 
-> ⚠️ **ISR-safe path not yet implemented.** The Data Layer uses `xSemaphoreTake()`
-> (FreeRTOS mutex) for all writes. None of the FMM write functions may be called
-> from interrupt context. See OI-5.
+\* `fmm_force_safe()` uses `data_layer_set_flight_mode_from_isr()` (critical section, not mutex). `fmm_request_transition()` remains task-context mutex-based.
 
 ---
 
@@ -551,7 +553,7 @@ FM_SAFE but are logged to the event ring buffer.
 | OI-2 | Automatic FM_DETUMBLE → FM_NOMINAL transition (ω < threshold sustained over N samples) — Phase 2 | Medium |
 | OI-3 | FM_SAFE timeout/recovery path (e.g. after successful fault clear) | Low |
 | OI-4 | `fmm_request_transition()` ISR-safety evaluation if fault_manager uses mutex | Low |
-| OI-5 | **ISR-safe forced safe path**: implement `fmm_force_safe_from_isr()` using `xSemaphoreGiveFromISR()` or a dedicated atomic flag polled by a task. Required before any hardware watchdog or timer ISR needs to trigger FM_SAFE directly. | High |
+| OI-5 (Closed) | **ISR-safe forced safe path** — `fmm_force_safe()` now uses `data_layer_set_flight_mode_from_isr()` (critical section, not mutex) and `data_layer_set_mode_entry_tick_from_isr()`. Fully ISR-safe without a separate `_from_isr` variant. BASEPRI mask properly saved/restored. Implemented in v0.33.0. | Closed |
 | OI-6 | **Mode timeout**: define maximum dwell time per mode (e.g. FM_DETUMBLE ≤ 20 min, FM_BOOT ≤ 5 min). On timeout, transition to FM_SAFE. Required for fully autonomous FDIR; Phase 2 scope. | Medium |
 
 ---

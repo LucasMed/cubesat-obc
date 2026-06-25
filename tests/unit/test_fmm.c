@@ -316,9 +316,15 @@ static void test_force_safe(void)
   for (int i = 0; i < (int)(sizeof(modes) / sizeof(modes[0])); i++)
   {
     force_mode(modes[i]);
+    /* Force a non-zero tick so we can verify the ISR path writes it back to 0
+     * (the host stub returns 0). If the write doesn't happen, the value stays
+     * at UINT32_MAX. */
+    data_layer_set_mode_entry_tick(UINT32_MAX);
     fmm_force_safe();
     CHECK(fmm_get_mode() == FM_SAFE, "force_safe must set FM_SAFE from any mode");
     CHECK(data_layer_get_flight_mode() == FM_SAFE, "DLA must reflect FM_SAFE after force_safe");
+    CHECK(data_layer_get_mode_entry_tick() == 0u,
+          "fmm_force_safe must update mode_entry_tick via ISR-safe path");
   }
   printf("test_force_safe: OK\n");
 }

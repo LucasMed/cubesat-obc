@@ -381,6 +381,16 @@ extern "C"
   void data_layer_set_mode_entry_tick(uint32_t tick);
 
   /**
+   * @brief Set the mode-entry tick count from ISR context.
+   *
+   * ISR-safe variant using critical section instead of mutex.
+   * Safe to call from HardFault, PendSV, or any hardware ISR.
+   *
+   * @param tick  Value of xTaskGetTickCountFromISR() at mode entry.
+   */
+  void data_layer_set_mode_entry_tick_from_isr(uint32_t tick);
+
+  /**
    * @brief Get the mode-entry tick count.
    * @return The tick count recorded at the last mode transition.
    */

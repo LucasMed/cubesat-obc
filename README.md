@@ -4,7 +4,7 @@
 
 Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace software standards. Designed for Pico 2W with extensibility to flight-ready systems.
 
-**Status:** v0.29.0 — Solar Monitor + Hardware Documentation Alignment
+**Status:** v0.33.0 — ISR-Safe fmm_force_safe & Test Coverage Expansion
 **Platform:** Linux (native, Docker, or VS Code Dev Container)
 **License:** MIT  
 **Maintainers:** ExArsultre
@@ -52,7 +52,7 @@ Implements a FreeRTOS-based control system following **ECSS-Q-ST-80C** aerospace
 - **Sun Sensor Integration** — dual-axis photodiode telemetry
 
 ### Development Quality
-- ✅ **Unit Tests**: 50 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, closed-loop simulation, fault-to-safe integration, fault injection matrix, CRC8, sun sensor …) — **50/50 passing**
+- ✅ **Unit Tests**: 65 tests (PID, dynamics, actuators, EKF, LQR, watchdog, momentum dump, magnetometer, telemetry, commands, tasks, DS3231 RTC, SHT31, INA219, BH1750, closed-loop simulation, fault-to-safe integration, fault injection matrix, CRC8, sun sensor, deploy monitor, POST, diskio, eps_hal, spi_payload, watchdog_hal, camera, radiation, rm3100, w25q64 …) — **65/65 passing**
 - ✅ **CI/CD**: GitHub Actions with automated build + test (7 stages)
 - ✅ **Static Analysis**: cppcheck + clang-tidy + clang-format-14 + Coverity Scan
 - [![Coverity Scan Build Status](https://scan.coverity.com/projects/33049/badge.svg)](https://scan.coverity.com/projects/cubesat-obc)
@@ -107,8 +107,8 @@ bash scripts/apply_patches.sh          # patches libcsp for Linux
 cmake -B build -DPICO_ENABLED=OFF
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
-    # Expected: 100% tests passed, 0 tests failed out of 49
-```
+    # Expected: 100% tests passed, 0 tests failed out of 65
+    ```
 
 ### Flash to Pico 2W (When SDK Ready)
 
@@ -136,7 +136,7 @@ cubesat-obc/
 │   │   └── wcet/              # WCET profiler (DWT CYCCNT on RP2350)
 │   └── tasks/                  # FreeRTOS tasks (7 tasks: SensorRead, AttitudeCtrl, Telemetry, Command, HealthMon, GpsTask, PayloadTask)
 ├── include/                    # Public APIs
-├── tests/unit/                 # Unit tests (49 tests)
+├── tests/unit/                 # Unit tests (60 tests)
 ├── tests/integration/           # Integration tests (fault-to-safe, trigger)
 ├── config/                     # FreeRTOS configuration
 ├── docs/                       # Architecture, guides, standards, safety, design
@@ -168,7 +168,7 @@ cubesat-obc/
 ### Run All Tests
 ```bash
 ctest --test-dir build --output-on-failure
-# Expected: 100% tests passed, 0 tests failed out of 49
+# Expected: 100% tests passed, 0 tests failed out of 65
 ```
 
 ### Run Specific Test
@@ -189,7 +189,7 @@ The project uses a 7-stage CI pipeline (`scripts/pico_ci.sh all`):
 
 | Stage | Description |
 |-------|-------------|
-| host-test | CMake build + ctest (49 tests) |
+| host-test | CMake build + ctest (65 tests) |
 | pico-build | Cross-compile firmware for RP2350 |
 | emu-build | Build with QEMU ARM emulation |
 | emulate | Run tests under QEMU |
@@ -316,7 +316,7 @@ cmake --build build --verbose
 | Data Layer (DLA) | ✅ Complete | Mutex-protected state store |
 | FMM / Fault / EPS | ✅ Complete | 6-mode FSM, Schmidt-trigger EPS |
 | Telemetry | ✅ Complete | libcsp, 1 Hz packets, FM guard |
-| Tests | ✅ Complete | **49/49** unit tests passing (100%) |
+| Tests | ✅ Complete | **65/65** tests passing (100%) |
 | Documentation | ✅ Complete | Design, requirements, traceability, test plans |
 | I2C Drivers | ✅ Complete | MPU6050, TMP102, HMC5883L |
 | WiFi/Telemetry | ✅ Complete | Phase 3 (libcsp) successfully integrated |
@@ -376,7 +376,7 @@ Built with:
 
 ---
 
-**Last Updated:** 2026-04-17  
-**Version:** 0.6.0 (Phase 5 — Flight Readiness Completed)
+**Last Updated:** 2026-06-20  
+**Version:** 0.33.0 (ISR-Safe fmm_force_safe & Test Coverage Expansion)
 
 ⭐ If you find this project useful, please star us on GitHub!

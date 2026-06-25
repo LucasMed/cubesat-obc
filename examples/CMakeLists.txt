@@ -26,7 +26,7 @@ if(PICO_BUILD)
     pico_add_extra_outputs(blink_test)
     
     message(STATUS "Blink test will be built: build/examples/blink_test.uf2")
-    
+
     # ========================================================================
     # OBC Firmware with Real FreeRTOS (Phase 2.2)
     # ========================================================================

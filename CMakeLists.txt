@@ -181,6 +181,12 @@ else()
     message(WARNING "libcsp not found in third_party/libcsp. Run 'git submodule update --init' if needed.")
 endif()
 
+# Add bootloader (dual-slot boot)
+if(PICO_BUILD AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bootloader/CMakeLists.txt")
+    add_subdirectory(bootloader)
+    message(STATUS "Bootloader sub-build enabled")
+endif()
+
 # Add main sources
 add_subdirectory(src)
 

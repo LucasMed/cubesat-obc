@@ -149,7 +149,7 @@ if(NOT PICO_BUILD)
     # The command test exercises vCommandTask which uses various CSP
     # socket functions.  Link the CSP library so those symbols are
     # satisfied.  Mocks are declared static so they won't collide.
-    target_link_libraries(test_command wcet_lib csp)
+    target_link_libraries(test_command wcet_lib csp core_lib)
     add_test(NAME command_test COMMAND test_command)
 
     add_executable(test_comm_init
@@ -698,6 +698,31 @@ if(NOT PICO_BUILD)
     target_link_libraries(test_crc8 m)
     add_test(NAME crc8_test COMMAND test_crc8)
 
+    # CRC32 Checksum Tests
+    # T-CRC32-01..05: Known vector, empty, single-byte, incremental, consistency
+    add_executable(test_crc32
+        test_crc32.c
+        ../../bootloader/crc32.c
+    )
+    target_include_directories(test_crc32 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bootloader
+    )
+    add_test(NAME crc32_test COMMAND test_crc32)
+
+    # Firmware Upload State Machine Tests
+    # T-FWU-01..17: State transitions, sequencing, error handling, full cycle
+    add_executable(test_fw_upload
+        test_fw_upload.c
+        ../../src/core/fw_upload.c
+    )
+    target_include_directories(test_fw_upload PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
+        ${CMAKE_BINARY_DIR}/third_party/libcsp/include
+    )
+    target_link_libraries(test_fw_upload csp m)
+    add_test(NAME fw_upload_test COMMAND test_fw_upload)
+
     add_executable(test_sun_sensor
         test_sun_sensor.c
         ../../src/drivers/sun_sensor_stub.c
@@ -730,4 +755,50 @@ if(NOT PICO_BUILD)
     target_include_directories(test_mag_calib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     target_link_libraries(test_mag_calib m)
     add_test(NAME mag_calib_test COMMAND test_mag_calib)
+
+    # PR-coverage gate: FatFs disk I/O bridge — status, init, read, write,
+    # ioctl, get_fattime.  Test provides its own sd_spi_* mock symbols so
+    # drivers_lib (which includes host_sd_spi_stubs.c) is NOT linked.
+    add_executable(test_diskio
+        test_diskio.c
+        ../../src/drivers/payload/diskio.c
+    )
+    target_include_directories(test_diskio PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}/third_party/pico-sdk/lib/tinyusb/lib/fatfs/source
+    )
+    add_test(NAME diskio_test COMMAND test_diskio)
+
+    # PR-coverage gate: EPS HAL host fallback — eps_hal_read() returns
+    # fixed values (7.6 V, 0.5 A, 25 °C) on host.  The test compiles
+    # eps_hal.c directly so the real function is tested; it does NOT
+    # link eps_lib (which contains a weak eps_hal_read in eps_monitor.c).
+    add_executable(test_eps_hal
+        test_eps_hal.c
+        ../../src/drivers/eps_hal.c
+    )
+    target_include_directories(test_eps_hal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME eps_hal_test COMMAND test_eps_hal)
+
+    # PR-coverage gate: Watchdog HAL host stubs — verify all four
+    # no-op functions exist and can be called without crash.
+    add_executable(test_watchdog_hal_host
+        test_watchdog_hal_host.c
+        ../../src/services/watchdog/watchdog_hal_host.c
+    )
+    target_include_directories(test_watchdog_hal_host PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    add_test(NAME watchdog_hal_host_test COMMAND test_watchdog_hal_host)
+
+    # PR-coverage gate: SPI payload bus — cs_select and cs_deselect are
+    # compiled on host but never exercised by driver tests that provide
+    # their own SPI mocks.
+    add_executable(test_spi_payload
+        test_spi_payload.c
+        ../../src/drivers/payload/spi_payload.c
+    )
+    target_include_directories(test_spi_payload PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+    )
+    add_test(NAME spi_payload_test COMMAND test_spi_payload)
 endif()
