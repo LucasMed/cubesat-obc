@@ -30,11 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Include the actual fw_upload implementation.
- * On host builds, W25Q64 paths are #ifdef PICO_BUILD guarded. */
-#include "../src/core/fw_upload.c"
-
-/* We also need the boot_info slot constants */
+/* fw_upload public API — compiled as separate translation unit (fw_upload.c linked). */
+#include "fw_upload.h"
 #include "boot_info.h"
 
 static int g_failures = 0;
@@ -132,11 +129,13 @@ void test_fwu_auto_complete(void)
   /* Single chunk fills the entire 256-byte image */
   int ret = fw_upload_write_chunk(0, chunk, 128);
   CHECK(ret == 0, "Chunk 0 accepted (partial)");
-  CHECK(s_upload.state == FW_STATE_RECEIVING, "Still RECEIVING after partial");
+  fw_upload_status_t st; fw_upload_get_status(&st);
+  CHECK(st.state == FW_STATE_RECEIVING, "Still RECEIVING after partial");
 
   ret = fw_upload_write_chunk(1, chunk, 128);
   CHECK(ret == 0, "Chunk 1 accepted");
-  CHECK(s_upload.state == FW_STATE_COMPLETE, "COMPLETE after full image");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_COMPLETE, "COMPLETE after full image"); }
 }
 
 /* ================================================================
@@ -166,7 +165,8 @@ void test_fwu_chunk_wrong_seq(void)
   /* Send seq 5 first (should be seq 0) */
   int ret = fw_upload_write_chunk(5, chunk, 256);
   CHECK(ret == -2, "Wrong seq returns -2");
-  CHECK(s_upload.state == FW_STATE_RECEIVING, "Still RECEIVING after bad seq");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_RECEIVING, "Still RECEIVING after bad seq"); }
   check_status(1024, 0, BOOT_SLOT_A, 0, 0, FW_STATE_RECEIVING);
 }
 
@@ -198,7 +198,8 @@ void test_fwu_chunk_too_large(void)
   memset(oversized, 0, sizeof(oversized));
   int ret = fw_upload_write_chunk(0, oversized, 300);
   CHECK(ret == -2, "Oversized chunk returns -2");
-  CHECK(s_upload.state == FW_STATE_RECEIVING, "Still RECEIVING after bad chunk");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_RECEIVING, "Still RECEIVING after bad chunk"); }
 }
 
 /* ================================================================
@@ -229,11 +230,13 @@ void test_fwu_verify_ok(void)
   uint8_t chunk[256];
   memset(chunk, 0xFF, sizeof(chunk));
   fw_upload_write_chunk(0, chunk, 256);
-  CHECK(s_upload.state == FW_STATE_COMPLETE, "COMPLETE after full image");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_COMPLETE, "COMPLETE after full image"); }
 
   int ret = fw_upload_verify();
   CHECK(ret == 0, "Verify returns 0 on host (auto-pass)");
-  CHECK(s_upload.state == FW_STATE_VERIFIED, "VERIFIED after verify");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_VERIFIED, "VERIFIED after verify"); }
 }
 
 /* ================================================================
@@ -267,7 +270,8 @@ void test_fwu_commit_ok(void)
 
   int ret = fw_upload_commit();
   CHECK(ret == 0, "Commit returns 0 on host (auto-pass)");
-  CHECK(s_upload.state == FW_STATE_IDLE, "IDLE after commit");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_IDLE, "IDLE after commit"); }
 }
 
 /* ================================================================
@@ -282,7 +286,8 @@ void test_fwu_abort(void)
   uint8_t chunk[256];
   memset(chunk, 0, sizeof(chunk));
   fw_upload_write_chunk(0, chunk, 256);
-  CHECK(s_upload.state == FW_STATE_RECEIVING, "RECEIVING before abort");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_RECEIVING, "RECEIVING before abort"); }
 
   fw_upload_abort();
   check_status(0, 0, 0, 0, 0, FW_STATE_IDLE);
@@ -376,15 +381,18 @@ void test_fwu_full_cycle(void)
   CHECK(ret == 0, "Chunk 0");
   ret = fw_upload_write_chunk(1, chunk, 256);
   CHECK(ret == 0, "Chunk 1");
-  CHECK(s_upload.state == FW_STATE_COMPLETE, "COMPLETE");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_COMPLETE, "COMPLETE"); }
 
   ret = fw_upload_verify();
   CHECK(ret == 0, "Verify");
-  CHECK(s_upload.state == FW_STATE_VERIFIED, "VERIFIED");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_VERIFIED, "VERIFIED"); }
 
   ret = fw_upload_commit();
   CHECK(ret == 0, "Commit");
-  CHECK(s_upload.state == FW_STATE_IDLE, "IDLE after commit");
+  { fw_upload_status_t st; fw_upload_get_status(&st);
+    CHECK(st.state == FW_STATE_IDLE, "IDLE after commit"); }
   CHECK(!fw_upload_is_busy(), "Not busy after commit");
 }
 

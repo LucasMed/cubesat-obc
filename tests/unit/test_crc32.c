@@ -17,9 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Include the actual bootloader CRC32 implementation.
- * This is pure C with no PICO dependencies.                    */
-#include "../bootloader/crc32.c"
+/* CRC32 public API — compiled as separate translation unit (crc32.c linked). */
+#include "crc32.h"
 
 static int g_failures = 0;
 

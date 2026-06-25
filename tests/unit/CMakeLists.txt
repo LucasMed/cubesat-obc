@@ -702,6 +702,7 @@ if(NOT PICO_BUILD)
     # T-CRC32-01..05: Known vector, empty, single-byte, incremental, consistency
     add_executable(test_crc32
         test_crc32.c
+        ../../bootloader/crc32.c
     )
     target_include_directories(test_crc32 PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../bootloader
@@ -712,13 +713,14 @@ if(NOT PICO_BUILD)
     # T-FWU-01..17: State transitions, sequencing, error handling, full cycle
     add_executable(test_fw_upload
         test_fw_upload.c
+        ../../src/core/fw_upload.c
     )
     target_include_directories(test_fw_upload PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
         ${CMAKE_BINARY_DIR}/third_party/libcsp/include
     )
-    target_link_libraries(test_fw_upload m)
+    target_link_libraries(test_fw_upload csp m)
     add_test(NAME fw_upload_test COMMAND test_fw_upload)
 
     add_executable(test_sun_sensor
