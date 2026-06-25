@@ -5,6 +5,16 @@ All notable changes to the CubeSat OBC project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Memory map documentation**: `docs/dev/MEMORY_MAP.md` — complete RP2350 flash (4 MB XIP) and SRAM (520 KB) layout, boot metadata format (`boot_meta_t`, `slot_metadata_t`), FreeRTOS heap/stack config, boot flow diagram with POST codes
+- **POST code diagnostic table**: Documented SRAM-based POST codes (`0x20040000`) for boot failure diagnosis without serial console
+
+### Changed
+- **Build guide**: Updated for CI pipeline (`pico_ci.sh` with 9 stages), bootloader build, combined UF2 generation, AddressSanitizer/UBSan, emulation smoke-test, GCC 15 known issue; test count corrected to 29
+- **Flashing guide**: Rewritten from blink_test to combined UF2 deployment, trust-on-first-boot, three flashing methods, boot verification and troubleshooting
+
 ## [0.34.0] — 2026-06-24 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon)
 
 ### Added
