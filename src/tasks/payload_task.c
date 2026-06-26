@@ -76,9 +76,9 @@ void vPayloadTask_Step(void)
 
             char filename[32];
             snprintf(filename, sizeof(filename), "/IMAGES/img_%lu.jpg", (unsigned long)s_counter);
-            storage_status_t st = storage_write_image(filename, s_img_buffer, read_len);
+            storage_status_t st = storage_write_image(filename, s_img_buffer, img_size);
             printf("[PayloadTask] Image saved: %s (%lu bytes)\n", filename,
-                   (unsigned long)read_len);
+                   (unsigned long)img_size);
             (void)st;
           }
           else

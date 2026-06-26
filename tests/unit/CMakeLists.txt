@@ -571,6 +571,19 @@ if(NOT PICO_BUILD)
     target_include_directories(test_event_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
     add_test(NAME event_logger_test COMMAND test_event_logger)
 
+    # PR-xx: Payload task JPEG size regression test.
+    # Compiles payload_task.c directly with strong-symbol stubs for all
+    # hardware dependencies (camera, storage, flight mode, etc.)
+    add_executable(test_payload_task
+        test_payload_task.c
+        ../../src/tasks/payload_task.c
+    )
+    target_include_directories(test_payload_task PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_SOURCE_DIR}
+    )
+    add_test(NAME payload_task_test COMMAND test_payload_task)
+
     # GPS task unit tests — task-level logic for timeout detection, recovery.
     # Provides its own data_layer_set_gps_fix / fault_report / fault_clear stubs.
     add_executable(test_gps_task
