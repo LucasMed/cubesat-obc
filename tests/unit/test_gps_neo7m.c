@@ -129,6 +129,41 @@ void test_gps_get_last_fix_returns_false_when_no_fix(void) {
     gps_deinit();
 }
 
+void test_malformed_nmea_empty_hemisphere_fields(void) {
+    /* GGA with empty hemisphere fields (consecutive commas after lat/lon).
+     * fields[3] and fields[5] will be "" (empty strings, not NULL).
+     * Must not crash when accessing fields[3][0] / fields[5][0];
+     * the fix must be rejected (not valid). */
+    gps_init();
+    gps_reset_stats();
+    const char *malformed = "$GPGGA,123519,4807.038,,01131.000,,1,08,0.9,545.4,M,46.9,M,,*4C\r\n";
+    inject_sentence(malformed);
+    GpsFix_t *fix = gps_read_fix();
+    assert(fix != NULL);
+    /* Without fix: fields[3][0] and fields[5][0] are '\0' but the condition
+     * (which checks non-NULL only) passes, making fix->valid = true.  With
+     * the fix the condition also checks the first char is non-null, so the
+     * fix is rejected and valid stays false. */
+    assert(!fix->valid);
+    gps_deinit();
+    printf("test_malformed_nmea_empty_hemisphere_fields PASS\n");
+}
+
+void test_malformed_nmea_truncated_early(void) {
+    /* GGA that ends before all required fields (no altitude).
+     * After strsep returns NULL, the loop breaks.  Must not crash
+     * when the parser checks fields[] entries that are NULL. */
+    gps_init();
+    gps_reset_stats();
+    const char *truncated = "$GPGGA,123519,4807.038,N,01131.000,E,1*53\r\n";
+    inject_sentence(truncated);
+    GpsFix_t *fix = gps_read_fix();
+    assert(fix != NULL);
+    assert(!fix->valid);
+    gps_deinit();
+    printf("test_malformed_nmea_truncated_early PASS\n");
+}
+
 int main(void) {
     printf("Testing real NEO-7M GPS NMEA parser...\n");
     test_parse_valid_gpgga();
@@ -148,6 +183,10 @@ int main(void) {
     test_gps_get_last_fix_by_value();
     gps_deinit();
     test_gps_get_last_fix_returns_false_when_no_fix();
+    gps_deinit();
+    test_malformed_nmea_empty_hemisphere_fields();
+    gps_deinit();
+    test_malformed_nmea_truncated_early();
     gps_deinit();
     printf("All NMEA parser tests passed.\n");
     return 0;
