@@ -448,7 +448,7 @@ static void nmea_parse_gga(const char *sentence)
   // Altitude (meters): fields[9]
 
   GpsFix_t fix = {0};
-  if (fields[2] && fields[3] && fields[4] && fields[5] && fields[6] && fields[7] && fields[9])
+  if (fields[2] && fields[3] && fields[3][0] && fields[4] && fields[5] && fields[5][0] && fields[6] && fields[7] && fields[9])
   {
     fix.lat = (float)nmea_deg_min_to_dec(fields[2], fields[3][0]);
     fix.lon = (float)nmea_deg_min_to_dec(fields[4], fields[5][0]);
