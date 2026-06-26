@@ -151,7 +151,7 @@ int mpu6050_read_raw(float accel[3], float gyro[3])
 {
   if (accel == NULL && gyro == NULL)
   {
-    return 0;
+    return -1;
   }
 
   uint8_t buffer[14];
