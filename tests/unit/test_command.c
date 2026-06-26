@@ -665,6 +665,33 @@ void test_text_deploy_from_safe()
   printf("test_text_deploy_from_safe PASS\n");
 }
 
+/* ---- Regression: atoi("abc") must NOT be treated as FM_BOOT ---- */
+
+void test_text_mode_atoi_non_numeric_rejected(void)
+{
+  reset_mocks();
+  last_requested_mode = FM_DIAGNOSTIC; /* sentinel — non-default */
+
+  test_run_text_command("MODE=abc"); /* non-numeric, should reject */
+
+  /* If atoi("abc") returned 0 (FM_BOOT), last_requested_mode would
+     be FM_BOOT. After strtol fix, it stays at the sentinel. */
+  assert(last_requested_mode == FM_DIAGNOSTIC);
+  printf("test_text_mode_atoi_non_numeric_rejected PASS\n");
+}
+
+void test_text_mode_numeric_zero_parsed_correctly(void)
+{
+  reset_mocks();
+  last_requested_mode = FM_DIAGNOSTIC; /* sentinel */
+
+  test_run_text_command("MODE=0"); /* FM_BOOT = 0, must parse correctly */
+
+  /* Valid numeric "0" must transition to FM_BOOT, not be rejected */
+  assert(last_requested_mode == FM_BOOT);
+  printf("test_text_mode_numeric_zero_parsed_correctly PASS\n");
+}
+
 int main()
 {
   printf("Running Command Task tests...\n");
@@ -689,6 +716,8 @@ int main()
   test_text_mode_range();
   test_command_status_post();
   test_text_deploy_from_safe();
+  test_text_mode_atoi_non_numeric_rejected();
+  test_text_mode_numeric_zero_parsed_correctly();
   printf("All tests passed!\n");
   return 0;
 }
