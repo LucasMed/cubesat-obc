@@ -44,21 +44,25 @@
 #define TLM_FLAG_RTC_VALID (1u << 4)
 #define TLM_FLAG_ENERGY_SHIFT 5u
 
-// Core logic for telemetry (independent of FreeRTOS task loop)
-void vTelemetryTask_Step(void)
+/**
+ * Build a CSP telemetry packet from the current DLA snapshot.
+ *
+ * Allocates a CSP buffer and populates it with sensor, GPS, power, and
+ * payload housekeeping data from the snapshot.  In FM_SAFE the attitude
+ * and rate fields are zeroed (HK-only mode).
+ *
+ * @param snap  Current data-layer snapshot
+ * @return      Populated CSP packet, or NULL if buffer allocation failed
+ */
+static csp_packet_t *telemetry_build_packet(const dl_snapshot_t *snap)
 {
-  dl_snapshot_t snap;
-  data_layer_read(&snap);
-
-  // 1. Allocate CSP packet
   csp_packet_t *packet = csp_buffer_get(sizeof(csp_telemetry_packet_t));
   if (packet == NULL)
   {
     printf("[telemetry] Warning: No free CSP buffers\n");
-    return;
+    return NULL;
   }
 
-  // 2. Populate packet
   csp_telemetry_packet_t *tlm = (csp_telemetry_packet_t *)packet->data;
 #ifdef PICO_BUILD
   tlm->timestamp_ms = to_ms_since_boot(get_absolute_time());
@@ -68,43 +72,43 @@ void vTelemetryTask_Step(void)
 
   /* Flags: validity bits + energy state */
   tlm->flags = 0;
-  if (snap.state.imu_valid)
+  if (snap->state.imu_valid)
   {
     tlm->flags |= TLM_FLAG_IMU_VALID;
   }
-  if (snap.state.temp_valid)
+  if (snap->state.temp_valid)
   {
     tlm->flags |= TLM_FLAG_TEMP_VALID;
   }
-  if (snap.state.humidity_valid)
+  if (snap->state.humidity_valid)
   {
     tlm->flags |= TLM_FLAG_HUMIDITY_VALID;
   }
-  if (snap.state.lux_valid)
+  if (snap->state.lux_valid)
   {
     tlm->flags |= TLM_FLAG_LUX_VALID;
   }
-  if (snap.state.rtc_valid)
+  if (snap->state.rtc_valid)
   {
     tlm->flags |= TLM_FLAG_RTC_VALID;
   }
   /* Note: sun_valid and power_valid are always true at runtime
    * (checked once at init), so we don't waste flag bits on them.
    * The ground station always displays sun and power data. */
-  tlm->flags |= (uint8_t)((snap.energy & 0x07u) << TLM_FLAG_ENERGY_SHIFT);
+  tlm->flags |= (uint8_t)((snap->energy & 0x07u) << TLM_FLAG_ENERGY_SHIFT);
 
   /* Full ADCS telemetry only when not in FM_SAFE.
    * In FM_SAFE send minimal HK: temperature retained, attitude/rates zeroed. */
-  if (snap.mode != FM_SAFE)
+  if (snap->mode != FM_SAFE)
   {
-    tlm->attitude[0] = snap.state.attitude[0];
-    tlm->attitude[1] = snap.state.attitude[1];
-    tlm->attitude[2] = snap.state.attitude[2];
-    tlm->rates[0] = snap.state.rates[0];
-    tlm->rates[1] = snap.state.rates[1];
-    tlm->rates[2] = snap.state.rates[2];
-    tlm->temp = snap.state.temp;
-    tlm->humidity = snap.state.humidity;
+    tlm->attitude[0] = snap->state.attitude[0];
+    tlm->attitude[1] = snap->state.attitude[1];
+    tlm->attitude[2] = snap->state.attitude[2];
+    tlm->rates[0] = snap->state.rates[0];
+    tlm->rates[1] = snap->state.rates[1];
+    tlm->rates[2] = snap->state.rates[2];
+    tlm->temp = snap->state.temp;
+    tlm->humidity = snap->state.humidity;
   }
   else
   {
@@ -114,28 +118,28 @@ void vTelemetryTask_Step(void)
     tlm->rates[0] = 0.0f;
     tlm->rates[1] = 0.0f;
     tlm->rates[2] = 0.0f;
-    tlm->temp = snap.state.temp;         /* preserve HK temperature */
-    tlm->humidity = snap.state.humidity; /* preserve HK humidity */
+    tlm->temp = snap->state.temp;         /* preserve HK temperature */
+    tlm->humidity = snap->state.humidity; /* preserve HK humidity */
   }
 
   /* GPS fields */
-  tlm->gps_lat = snap.gps_fix.lat;
-  tlm->gps_lon = snap.gps_fix.lon;
-  tlm->gps_alt_m = snap.gps_fix.alt_m;
-  tlm->gps_utc_s = snap.gps_fix.utc_time;
-  tlm->gps_valid = snap.gps_fix.valid ? 1 : 0;
-  tlm->gps_satellites = snap.gps_fix.satellites;
+  tlm->gps_lat = snap->gps_fix.lat;
+  tlm->gps_lon = snap->gps_fix.lon;
+  tlm->gps_alt_m = snap->gps_fix.alt_m;
+  tlm->gps_utc_s = snap->gps_fix.utc_time;
+  tlm->gps_valid = snap->gps_fix.valid ? 1 : 0;
+  tlm->gps_satellites = snap->gps_fix.satellites;
 
   /* Light sensor */
-  tlm->lux = snap.state.lux;
+  tlm->lux = snap->state.lux;
 
   /* RTC timestamp */
-  tlm->rtc_timestamp = snap.state.rtc_timestamp;
+  tlm->rtc_timestamp = snap->state.rtc_timestamp;
 
   /* Power monitoring (INA219) */
-  tlm->bus_voltage_mv = snap.state.bus_voltage_mv;
-  tlm->current_ma = (int16_t)(snap.state.current_ua / 1000);
-  tlm->power_mw = (int16_t)(snap.state.power_uw / 1000);
+  tlm->bus_voltage_mv = snap->state.bus_voltage_mv;
+  tlm->current_ma = (int16_t)(snap->state.current_ua / 1000);
+  tlm->power_mw = (int16_t)(snap->state.power_uw / 1000);
 
   /* Battery voltage via ADC (raw battery, not regulated bus) */
   {
@@ -151,47 +155,41 @@ void vTelemetryTask_Step(void)
   }
 
   /* Sun sensor */
-  tlm->sun_x = snap.state.sun_x;
-  tlm->sun_y = snap.state.sun_y;
+  tlm->sun_x = snap->state.sun_x;
+  tlm->sun_y = snap->state.sun_y;
 
   /* Payload housekeeping (FR-17) */
-  tlm->mag_field[0] = snap.state.mag_field[0];
-  tlm->mag_field[1] = snap.state.mag_field[1];
-  tlm->mag_field[2] = snap.state.mag_field[2];
-  tlm->radiation_dose = snap.state.radiation_dose;
-  tlm->image_count = snap.state.image_count;
-  tlm->payload_rail_enabled = snap.state.payload_rail_enabled ? 1 : 0;
+  tlm->mag_field[0] = snap->state.mag_field[0];
+  tlm->mag_field[1] = snap->state.mag_field[1];
+  tlm->mag_field[2] = snap->state.mag_field[2];
+  tlm->radiation_dose = snap->state.radiation_dose;
+  tlm->image_count = snap->state.image_count;
+  tlm->payload_rail_enabled = snap->state.payload_rail_enabled ? 1 : 0;
 
   packet->length = sizeof(csp_telemetry_packet_t);
+  return packet;
+}
 
-  // 3. Send over CSP port connection-less (host build only)
-  // On PICO_BUILD, CSP KISS shares UART1 with the binary telemetry frame below.
-  // Sending both would corrupt the binary frame — the ground station state machine
-  // cannot distinguish CSP KISS data from binary frame sync bytes.
-  //
-  // IMPORTANT: tlm (= packet->data) is used below for the binary frame AND the
-  // debug printf.  Do NOT free the packet before both are done.
-#ifndef PICO_BUILD
-  csp_sendto(CSP_PRIO_NORM, GN_ADDRESS, TELEMETRY_PORT, TELEMETRY_PORT, CSP_O_NONE, packet);
-#endif
-
+/**
+ * Build and transmit a binary telemetry frame over UART1 (HC-12).
+ *
+ * PICO_BUILD only.  Converts the CSP telemetry fields to fixed-point
+ * representation and sends with a 2-byte sync prefix.
+ *
+ * Format: [SYNC 0xAA 0x55] [64-byte telemetry_packet_t]
+ * Total: 66 bytes @ 9600 baud ≈ 69ms.
+ */
 #ifdef PICO_BUILD
-  /* Send binary telemetry over UART1 (HC-12)
-
-   * NOTE: CSP telemetry is NOT sent in this build — the binary frame is the
-   * sole protocol on UART1 for the Arduino ground station.
-   *
-   * Format: [SYNC 0xAA 0x55] [64-byte telemetry_packet_t]
-   * Total: 66 bytes @ 9600 baud ≈ 69ms.
-   * Ground station reads byte-by-byte — no SoftwareSerial overflow.
-   */
+static void telemetry_build_binary_frame(const dl_snapshot_t *snap,
+                                         const csp_telemetry_packet_t *tlm)
+{
   telemetry_packet_t bin;
   memset(&bin, 0, sizeof(bin));
 
   /* Convert float/int fields to fixed-point */
   bin.ts = (uint32_t)tlm->timestamp_ms;
   bin.rtc = (uint32_t)tlm->rtc_timestamp;
-  bin.mode = (uint8_t)snap.mode;
+  bin.mode = (uint8_t)snap->mode;
   bin.roll = (int16_t)(tlm->attitude[0] * 10.0f);
   bin.pitch = (int16_t)(tlm->attitude[1] * 10.0f);
   bin.yaw = (int16_t)(tlm->attitude[2] * 10.0f);
@@ -207,13 +205,13 @@ void vTelemetryTask_Step(void)
   bin.bus_ma = (int16_t)((tlm->current_ma < 0) ? -tlm->current_ma : tlm->current_ma);
   bin.bus_mw = (int16_t)((tlm->power_mw < 0) ? -tlm->power_mw : tlm->power_mw);
   bin.battery_mv = (int16_t)(tlm->battery_mv);
-  bin.solar_mv = (int16_t)(snap.state.solar_voltage_mv);
-  bin.solar_ma =
-      (int16_t)((snap.state.solar_current_ua < 0) ? (int16_t)(-(snap.state.solar_current_ua / 1000))
-                                                  : (int16_t)(snap.state.solar_current_ua / 1000));
-  bin.solar_mw =
-      (int16_t)((snap.state.solar_power_uw < 0) ? (int16_t)(-(snap.state.solar_power_uw / 1000))
-                                                : (int16_t)(snap.state.solar_power_uw / 1000));
+  bin.solar_mv = (int16_t)(snap->state.solar_voltage_mv);
+  bin.solar_ma = (int16_t)((snap->state.solar_current_ua < 0)
+                               ? (int16_t)(-(snap->state.solar_current_ua / 1000))
+                               : (int16_t)(snap->state.solar_current_ua / 1000));
+  bin.solar_mw = (int16_t)((snap->state.solar_power_uw < 0)
+                               ? (int16_t)(-(snap->state.solar_power_uw / 1000))
+                               : (int16_t)(snap->state.solar_power_uw / 1000));
   bin.sun_x = (int16_t)(tlm->sun_x * 100.0f);
   bin.sun_y = (int16_t)(tlm->sun_y * 100.0f);
 
@@ -243,15 +241,15 @@ void vTelemetryTask_Step(void)
   frame[1] = TLM_SYNC_BYTE_2;
   memcpy(frame + 2, &bin, sizeof(bin));
   uart1_write_buf(frame, sizeof(frame));
-#endif
+}
+#endif  // PICO_BUILD
 
-  // Debug output to UART0
-  printf(
-      "[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f batt=%dmV bus=%dmV flags=0x%02X\n",
-      snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux,
-      tlm->battery_mv, tlm->bus_voltage_mv, tlm->flags);
-
-  // Store telemetry to W25Q64 flash for later recovery
+/**
+ * Store the current telemetry record to W25Q64 flash for later recovery.
+ */
+static void telemetry_store_record(const dl_snapshot_t *snap,
+                                   const csp_telemetry_packet_t *tlm)
+{
   telemetry_record_t record;
   record.timestamp = tlm->timestamp_ms / 1000;  // Convert ms to seconds
   record.sequence = 0;                          // Will be auto-incremented by storage
@@ -264,20 +262,55 @@ void vTelemetryTask_Step(void)
   record.acc_x = 0.0f;  // Not in current telemetry packet
   record.acc_y = 0.0f;
   record.acc_z = 0.0f;
-  record.mag_x = snap.state.mag_field[0];
-  record.mag_y = snap.state.mag_field[1];
-  record.mag_z = snap.state.mag_field[2];
+  record.mag_x = snap->state.mag_field[0];
+  record.mag_y = snap->state.mag_field[1];
+  record.mag_z = snap->state.mag_field[2];
   record.temperature = tlm->temp;
   record.humidity = tlm->humidity;
-  record.radiation_dose = snap.state.radiation_dose;
-  record.image_count = snap.state.image_count;
-  record.payload_rail_enabled = snap.state.payload_rail_enabled ? 1 : 0;
+  record.radiation_dose = snap->state.radiation_dose;
+  record.image_count = snap->state.image_count;
+  record.payload_rail_enabled = snap->state.payload_rail_enabled ? 1 : 0;
   record.flags = tlm->flags;
 
   if (!telemetry_storage_store(&record))
   {
     printf("[telemetry] Warning: Failed to store to flash\n");
   }
+}
+
+// Core logic for telemetry (independent of FreeRTOS task loop)
+void vTelemetryTask_Step(void)
+{
+  dl_snapshot_t snap;
+  data_layer_read(&snap);
+
+  csp_packet_t *packet = telemetry_build_packet(&snap);
+  if (packet == NULL)
+  {
+    return;
+  }
+
+  csp_telemetry_packet_t *tlm = (csp_telemetry_packet_t *)packet->data;
+
+  // Send over CSP port connection-less (host build only).
+  // On PICO_BUILD, CSP KISS shares UART1 with the binary telemetry frame.
+  // Sending both would corrupt the binary frame — the ground station state
+  // machine cannot distinguish CSP KISS data from binary frame sync bytes.
+#ifndef PICO_BUILD
+  csp_sendto(CSP_PRIO_NORM, GN_ADDRESS, TELEMETRY_PORT, TELEMETRY_PORT, CSP_O_NONE, packet);
+#endif
+
+#ifdef PICO_BUILD
+  telemetry_build_binary_frame(&snap, tlm);
+#endif
+
+  // Debug output to UART0
+  printf(
+      "[telemetry] Tx mode=%d att=[%.1f,%.1f,%.1f] temp=%.1f lux=%.1f batt=%dmV bus=%dmV flags=0x%02X\n",
+      snap.mode, tlm->attitude[0], tlm->attitude[1], tlm->attitude[2], tlm->temp, tlm->lux,
+      tlm->battery_mv, tlm->bus_voltage_mv, tlm->flags);
+
+  telemetry_store_record(&snap, tlm);
 
   // On PICO, csp_sendto was not called so the packet buffer was never freed.
   // Free it now — all tlm accesses are done.
