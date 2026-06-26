@@ -318,6 +318,52 @@ static void test_clear_info_before_init(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* T-LOG-01i: overflow event written safely after flush at capacity    */
+/* ------------------------------------------------------------------ */
+static void test_overflow_event_after_flush(void)
+{
+  reset_flush_counters();
+  (void)logger_init(); /* s_count = 1 (SYSTEM_BOOT) */
+
+  /* Fill ring to capacity — need LOG_RING_CAPACITY - 1 more events */
+  const size_t fill_count = (size_t)(LOG_RING_CAPACITY - 1u);
+  for (size_t i = 0u; i < fill_count; i++)
+  {
+    log_event(LOG_EVT_CMD_CLASS_B, LOG_CLASS_INFO, NULL, 0u);
+  }
+
+  /* Trigger flush by adding one more event */
+  log_event(LOG_EVT_MODE_CHANGE, LOG_CLASS_OPERATIONAL, NULL, 0u);
+
+  /* After flush: ring holds overflow (idx 0) + MODE_CHANGE (idx 1) = 2 */
+  log_event_t recent[4];
+  size_t n = log_read_recent(recent, 4u);
+
+  CHECK_EQ("T-LOG-01i overflow event count", n, 2u,
+           "expected exactly 2 events after flush");
+
+  if (n >= 2u)
+  {
+    if (recent[0].event_id == LOG_EVT_LOG_OVERFLOW)
+    {
+      PASS("T-LOG-01i first event after flush is LOG_OVERFLOW");
+    }
+    else
+    {
+      FAIL("T-LOG-01i", "first event after flush is not LOG_EVT_LOG_OVERFLOW");
+    }
+    if (recent[1].event_id == LOG_EVT_MODE_CHANGE)
+    {
+      PASS("T-LOG-01i second event after flush is MODE_CHANGE");
+    }
+    else
+    {
+      FAIL("T-LOG-01i", "second event after flush is not LOG_EVT_MODE_CHANGE");
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 int main(void)
@@ -329,6 +375,7 @@ int main(void)
 
   test_init_inserts_boot_event();
   test_flush_on_capacity();
+  test_overflow_event_after_flush();
   test_event_with_data_payload();
   test_read_recent();
   test_read_recent_null();

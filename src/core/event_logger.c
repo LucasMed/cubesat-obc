@@ -67,8 +67,11 @@ static void flush_and_reset(void)
   overflow_ev.event_id = LOG_EVT_LOG_OVERFLOW;
   overflow_ev.severity = (uint8_t)LOG_CLASS_INFO;
   overflow_ev.subsystem = 0x00u;
-  s_ring[s_count] = overflow_ev;
-  s_count++;
+  if (s_count < LOG_RING_CAPACITY)
+  {
+    s_ring[s_count] = overflow_ev;
+    s_count++;
+  }
 }
 
 /* ------------------------------------------------------------------ */
