@@ -165,6 +165,26 @@ void uart1_acquire_lock(void) {}
 void uart1_release_lock(void) {}
 void uart1_write_unsafe(const char *str) { (void)str; }
 
+// Mock DS3231 RTC (for SETTIME tests)
+static bool s_ds3231_set_time_ret = true;
+static bool s_ds3231_set_time_called = false;
+static uint16_t s_last_set_year = 0;
+static uint8_t s_last_set_month = 0;
+static uint8_t s_last_set_day = 0;
+
+#include <stdbool.h>
+#include "ds3231.h"
+bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day,
+                     uint8_t hour, uint8_t minute, uint8_t second)
+{
+    (void)hour; (void)minute; (void)second;
+    s_ds3231_set_time_called = true;
+    s_last_set_year = year;
+    s_last_set_month = month;
+    s_last_set_day = day;
+    return s_ds3231_set_time_ret;
+}
+
 // Mock POST
 #include "post.h"
 #include <string.h>
@@ -265,6 +285,11 @@ void reset_mocks()
   mock_current_mode = FM_NOMINAL;
   last_deploy_flag = false;
   memset(&mock_post_rec, 0, sizeof(mock_post_rec));
+  s_ds3231_set_time_ret = true;
+  s_ds3231_set_time_called = false;
+  s_last_set_year = 0;
+  s_last_set_month = 0;
+  s_last_set_day = 0;
 }
 
 void test_command_echo()
@@ -692,6 +717,107 @@ void test_text_mode_numeric_zero_parsed_correctly(void)
   printf("test_text_mode_numeric_zero_parsed_correctly PASS\n");
 }
 
+/* ---- SETTIME range validation tests ---- */
+
+void test_settime_valid(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 06 15 12 30 45");
+
+  assert(s_ds3231_set_time_called == true);
+  assert(s_last_set_year == 2024);
+  assert(s_last_set_month == 6);
+  assert(s_last_set_day == 15);
+  printf("test_settime_valid PASS\n");
+}
+
+void test_settime_year_out_of_range(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 1999 06 15 12 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  reset_mocks();
+  test_run_text_command("SETTIME 2101 06 15 12 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_year_out_of_range PASS\n");
+}
+
+void test_settime_month_out_of_range(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 00 15 12 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  reset_mocks();
+  test_run_text_command("SETTIME 2024 13 15 12 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_month_out_of_range PASS\n");
+}
+
+void test_settime_day_out_of_range(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 06 00 12 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  reset_mocks();
+  test_run_text_command("SETTIME 2024 06 32 12 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_day_out_of_range PASS\n");
+}
+
+void test_settime_hour_out_of_range(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 06 15 24 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  reset_mocks();
+  test_run_text_command("SETTIME 2024 06 15 255 30 45");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_hour_out_of_range PASS\n");
+}
+
+void test_settime_minute_out_of_range(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 06 15 12 60 45");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_minute_out_of_range PASS\n");
+}
+
+void test_settime_second_out_of_range(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 06 15 12 30 60");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_second_out_of_range PASS\n");
+}
+
+void test_settime_too_few_fields(void)
+{
+  reset_mocks();
+
+  test_run_text_command("SETTIME 2024 06 15");
+  assert(s_ds3231_set_time_called == false);
+
+  printf("test_settime_too_few_fields PASS\n");
+}
+
 int main()
 {
   printf("Running Command Task tests...\n");
@@ -718,6 +844,14 @@ int main()
   test_text_deploy_from_safe();
   test_text_mode_atoi_non_numeric_rejected();
   test_text_mode_numeric_zero_parsed_correctly();
+  test_settime_valid();
+  test_settime_year_out_of_range();
+  test_settime_month_out_of_range();
+  test_settime_day_out_of_range();
+  test_settime_hour_out_of_range();
+  test_settime_minute_out_of_range();
+  test_settime_second_out_of_range();
+  test_settime_too_few_fields();
   printf("All tests passed!\n");
   return 0;
 }

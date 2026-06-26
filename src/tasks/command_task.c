@@ -495,8 +495,33 @@ static void process_text_command(const char *cmd)
     int n = sscanf(cmd + 8, "%d %d %d %d %d %d", &year, &month, &day, &hour, &minute, &second);
     if (n == 6)
     {
-      if (ds3231_set_time((uint16_t)year, (uint8_t)month, (uint8_t)day, (uint8_t)hour,
-                          (uint8_t)minute, (uint8_t)second))
+      /* Range validation before calling RTC */
+      if (year < 2000 || year > 2100)
+      {
+        uart1_puts_safe("[CMD] SETTIME ERROR: year out of range (2000-2100)\r\n");
+      }
+      else if (month < 1 || month > 12)
+      {
+        uart1_puts_safe("[CMD] SETTIME ERROR: month out of range (1-12)\r\n");
+      }
+      else if (day < 1 || day > 31)
+      {
+        uart1_puts_safe("[CMD] SETTIME ERROR: day out of range (1-31)\r\n");
+      }
+      else if (hour < 0 || hour > 23)
+      {
+        uart1_puts_safe("[CMD] SETTIME ERROR: hour out of range (0-23)\r\n");
+      }
+      else if (minute < 0 || minute > 59)
+      {
+        uart1_puts_safe("[CMD] SETTIME ERROR: minute out of range (0-59)\r\n");
+      }
+      else if (second < 0 || second > 59)
+      {
+        uart1_puts_safe("[CMD] SETTIME ERROR: second out of range (0-59)\r\n");
+      }
+      else if (ds3231_set_time((uint16_t)year, (uint8_t)month, (uint8_t)day, (uint8_t)hour,
+                               (uint8_t)minute, (uint8_t)second))
       {
         uart1_puts_safe("[CMD] SETTIME OK\r\n");
       }
