@@ -112,6 +112,7 @@ void camera_clear_fifo(void) {}
 static int s_storage_write_calls = 0;
 static uint32_t s_last_write_size = 0;
 static char s_last_write_filename[64];
+static storage_status_t s_storage_write_ret = STORAGE_OK;
 
 storage_status_t storage_write_image(const char *filename, const uint8_t *data, uint32_t size)
 {
@@ -119,7 +120,7 @@ storage_status_t storage_write_image(const char *filename, const uint8_t *data, 
   s_storage_write_calls++;
   s_last_write_size = size;
   (void)snprintf(s_last_write_filename, sizeof(s_last_write_filename), "%s", filename);
-  return STORAGE_OK;
+  return s_storage_write_ret;
 }
 
 /* Unused in capture path but required at link time */
@@ -224,6 +225,7 @@ static void reset_all(void)
 
   s_storage_write_calls = 0;
   s_last_write_size = 0;
+  s_storage_write_ret = STORAGE_OK;
   (void)memset(s_last_write_filename, 0, sizeof(s_last_write_filename));
 
   payload_task_reset();
@@ -368,6 +370,37 @@ static void test_no_storage_on_fifo_read_fail(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* T-PAYLOAD-04: storage_write_image failure is handled gracefully     */
+/* ------------------------------------------------------------------ */
+
+static void test_storage_failure_does_not_crash(void)
+{
+  reset_all();
+
+  /* Build a valid JPEG */
+  build_test_jpeg(64);
+  s_camera_init_ret = true;
+  s_camera_capture_ret = true;
+  s_camera_fifo_read_ret = true;
+  s_storage_write_ret = STORAGE_ERR_WRITE; /* Simulate write failure */
+
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = PAYLOAD_NOTIFY_CAPTURE_IMAGE;
+
+  vPayloadTask_Step();
+
+  /* Should have attempted the write */
+  if (s_storage_write_calls == 1)
+  {
+    PASS("T-PAYLOAD-04 storage failure does not crash, write was attempted");
+  }
+  else
+  {
+    FAIL("T-PAYLOAD-04", "storage_write_image was not called on failure path");
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -378,6 +411,7 @@ int main(void)
   test_storage_uses_actual_jpeg_size();
   test_no_storage_on_init_fail();
   test_no_storage_on_fifo_read_fail();
+  test_storage_failure_does_not_crash();
 
   if (g_failures == 0)
   {
