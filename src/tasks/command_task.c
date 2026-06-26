@@ -25,6 +25,7 @@
 #include "wcet_profiler.h"
 
 #include <csp/csp.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,7 +251,17 @@ static void process_text_command(const char *cmd)
     }
     else
     {
-      mode = atoi(arg);
+      char *endptr = NULL;
+      errno = 0;
+      long val = strtol(arg, &endptr, 10);
+      if (endptr == arg || *endptr != '\0' || errno == ERANGE)
+      {
+        mode = -1;
+      }
+      else
+      {
+        mode = (int)val;
+      }
     }
 
     if (mode >= 0 && mode < FM_COUNT)
@@ -307,7 +318,17 @@ static void process_text_command(const char *cmd)
     }
     else
     {
-      mode = atoi(arg);
+      char *endptr = NULL;
+      errno = 0;
+      long val = strtol(arg, &endptr, 10);
+      if (endptr == arg || *endptr != '\0' || errno == ERANGE)
+      {
+        mode = -1;
+      }
+      else
+      {
+        mode = (int)val;
+      }
     }
 
     if (mode >= 0 && mode < FM_COUNT)

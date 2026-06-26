@@ -92,7 +92,16 @@ void test_run_text_command(const char *cmd)
     }
     else
     {
-      mode = atoi(arg);
+      char *endptr = NULL;
+      long val = strtol(arg, &endptr, 10);
+      if (endptr == arg || *endptr != '\0')
+      {
+        mode = -1;
+      }
+      else
+      {
+        mode = (int)val;
+      }
     }
     if (mode >= 0 && mode < FM_COUNT)
     {
