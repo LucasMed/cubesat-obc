@@ -9,13 +9,21 @@
  *  T-EKF-04  Bias estimation — roll/pitch gyro bias converges in 10 s
  *  T-EKF-05  Degenerate accel — update skipped when |accel| ≈ 0
  *  T-EKF-06  Covariance symmetry — P stays symmetric after 50 steps
+ *  T-EKF-07  mat33_inverse identity — I⁻¹ = I
+ *  T-EKF-08  mat33_inverse diagonal — diag(a,b,c)⁻¹ = diag(1/a, 1/b, 1/c)
+ *  T-EKF-09  mat33_inverse singular — zero matrix returns false
+ *  T-EKF-10  mat33_inverse round-trip — S × S⁻¹ ≈ I for known matrix
  */
 
 #include "../../include/ekf.h"
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
+/* Forward declaration of internal EKF helper (not in public header). */
+bool mat33_inverse(const float S[3][3], float Si[3][3]);
 
 #define DEG2RAD(d) ((d) * (3.14159265358979f / 180.0f))
 #define RAD2DEG(r) ((r) * (180.0f / 3.14159265358979f))
@@ -318,6 +326,153 @@ static int test_covariance_symmetry(void)
 }
 
 /* ================================================================== */
+/* Helper: check that two 3×3 matrices are approximately equal         */
+/* ================================================================== */
+static int mat33_approx_eq(const float A[3][3], const float B[3][3], float tol)
+{
+  for (int i = 0; i < 3; i++)
+  {
+    for (int j = 0; j < 3; j++)
+    {
+      if (fabsf(A[i][j] - B[i][j]) > tol)
+      {
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+/* ================================================================== */
+/* Helper: multiply two 3×3 matrices: C = A * B                         */
+/* ================================================================== */
+static void mat33_mul(const float A[3][3], const float B[3][3], float C[3][3])
+{
+  for (int i = 0; i < 3; i++)
+  {
+    for (int j = 0; j < 3; j++)
+    {
+      C[i][j] = 0.0f;
+      for (int k = 0; k < 3; k++)
+      {
+        C[i][j] += A[i][k] * B[k][j];
+      }
+    }
+  }
+}
+
+/* ================================================================== */
+/* T-EKF-07: Identity matrix inverse                                   */
+/* ================================================================== */
+static int test_mat33_inverse_identity(void)
+{
+  const float I[3][3] = {{1.0f, 0.0f, 0.0f},
+                         {0.0f, 1.0f, 0.0f},
+                         {0.0f, 0.0f, 1.0f}};
+  float Si[3][3];
+  float expected[3][3];
+  memcpy(expected, I, sizeof(expected));
+
+  if (!mat33_inverse(I, Si))
+  {
+    FAIL("T-EKF-07: mat33_inverse(I) returned false");
+  }
+  if (!mat33_approx_eq(Si, expected, 1e-6f))
+  {
+    printf("  I⁻¹ deviates from identity\n");
+    FAIL("T-EKF-07: identity inverse not identity");
+  }
+
+  PASS("T-EKF-07: mat33_inverse — identity");
+  return 0;
+}
+
+/* ================================================================== */
+/* T-EKF-08: Diagonal matrix inverse                                   */
+/* ================================================================== */
+static int test_mat33_inverse_diagonal(void)
+{
+  const float D[3][3] = {{2.0f, 0.0f, 0.0f},
+                         {0.0f, 4.0f, 0.0f},
+                         {0.0f, 0.0f, 5.0f}};
+  const float expected[3][3] = {{0.5f, 0.0f, 0.0f},
+                                {0.0f, 0.25f, 0.0f},
+                                {0.0f, 0.0f, 0.2f}};
+  float Si[3][3];
+
+  if (!mat33_inverse(D, Si))
+  {
+    FAIL("T-EKF-08: mat33_inverse(diag) returned false");
+  }
+  if (!mat33_approx_eq(Si, expected, 1e-6f))
+  {
+    printf("  diag(2,4,5)⁻¹:\n");
+    printf("    [0][0]=%f (expected 0.5)\n", (double)Si[0][0]);
+    printf("    [1][1]=%f (expected 0.25)\n", (double)Si[1][1]);
+    printf("    [2][2]=%f (expected 0.2)\n", (double)Si[2][2]);
+    FAIL("T-EKF-08: diagonal inverse incorrect");
+  }
+
+  PASS("T-EKF-08: mat33_inverse — diagonal");
+  return 0;
+}
+
+/* ================================================================== */
+/* T-EKF-09: Singular matrix returns false                             */
+/* ================================================================== */
+static int test_mat33_inverse_singular(void)
+{
+  const float zero[3][3] = {{0.0f, 0.0f, 0.0f},
+                            {0.0f, 0.0f, 0.0f},
+                            {0.0f, 0.0f, 0.0f}};
+  float Si[3][3];
+
+  if (mat33_inverse(zero, Si))
+  {
+    FAIL("T-EKF-09: mat33_inverse(zero) should return false");
+  }
+
+  PASS("T-EKF-09: mat33_inverse — singular detected");
+  return 0;
+}
+
+/* ================================================================== */
+/* T-EKF-10: Known matrix round-trip — S × S⁻¹ ≈ I                    */
+/* ================================================================== */
+static int test_mat33_inverse_roundtrip(void)
+{
+  /* A non-singular, non-diagonal 3×3 matrix */
+  const float S[3][3] = {{3.0f, 1.0f, 2.0f},
+                         {1.0f, 4.0f, 0.0f},
+                         {2.0f, 0.0f, 5.0f}};
+  float Si[3][3], prod[3][3];
+  const float I[3][3] = {{1.0f, 0.0f, 0.0f},
+                         {0.0f, 1.0f, 0.0f},
+                         {0.0f, 0.0f, 1.0f}};
+
+  if (!mat33_inverse(S, Si))
+  {
+    FAIL("T-EKF-10: mat33_inverse(known) returned false");
+  }
+
+  mat33_mul(S, Si, prod);
+
+  if (!mat33_approx_eq(prod, I, 1e-5f))
+  {
+    printf("  S × S⁻¹:\n");
+    for (int i = 0; i < 3; i++)
+    {
+      printf("    [%d]  %8.5f  %8.5f  %8.5f\n", i,
+             (double)prod[i][0], (double)prod[i][1], (double)prod[i][2]);
+    }
+    FAIL("T-EKF-10: S × S⁻¹ not close to identity");
+  }
+
+  PASS("T-EKF-10: mat33_inverse — round-trip S × S⁻¹ ≈ I");
+  return 0;
+}
+
+/* ================================================================== */
 int main(void)
 {
   int result = 0;
@@ -327,6 +482,10 @@ int main(void)
   result |= test_bias_estimation();
   result |= test_degenerate_accel();
   result |= test_covariance_symmetry();
+  result |= test_mat33_inverse_identity();
+  result |= test_mat33_inverse_diagonal();
+  result |= test_mat33_inverse_singular();
+  result |= test_mat33_inverse_roundtrip();
 
   if (result == 0)
   {

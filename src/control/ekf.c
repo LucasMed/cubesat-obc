@@ -13,6 +13,7 @@
 #include "quaternion.h"
 
 #include <math.h>
+#include <stdbool.h>
 #include <string.h>
 
 /* =========================================================================
@@ -221,6 +222,37 @@ void ekf_predict(ekf_t *ekf, const float gyro[3], float dt)
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* 3×3 matrix inverse (cofactor / adjugate method)                    */
+/*                                                                     */
+/* Returns true  on success (det above threshold).                     */
+/* Returns false if the matrix is numerically singular.                */
+/* ------------------------------------------------------------------ */
+bool mat33_inverse(const float S[3][3], float Si[3][3])
+{
+  float det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) -
+              S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
+              S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
+
+  if (fabsf(det) < 1e-12f)
+  {
+    return false;
+  }
+  const float inv_det = 1.0f / det;
+
+  Si[0][0] = (S[1][1] * S[2][2] - S[1][2] * S[2][1]) * inv_det;
+  Si[0][1] = (S[0][2] * S[2][1] - S[0][1] * S[2][2]) * inv_det;
+  Si[0][2] = (S[0][1] * S[1][2] - S[0][2] * S[1][1]) * inv_det;
+  Si[1][0] = (S[1][2] * S[2][0] - S[1][0] * S[2][2]) * inv_det;
+  Si[1][1] = (S[0][0] * S[2][2] - S[0][2] * S[2][0]) * inv_det;
+  Si[1][2] = (S[1][0] * S[0][2] - S[0][0] * S[1][2]) * inv_det;
+  Si[2][0] = (S[1][0] * S[2][1] - S[1][1] * S[2][0]) * inv_det;
+  Si[2][1] = (S[2][0] * S[0][1] - S[0][0] * S[2][1]) * inv_det;
+  Si[2][2] = (S[0][0] * S[1][1] - S[1][0] * S[0][1]) * inv_det;
+
+  return true;
+}
+
 void ekf_update(ekf_t *ekf, const float accel[3])
 {
   float ax = accel[0];
@@ -298,25 +330,11 @@ void ekf_update(ekf_t *ekf, const float accel[3])
   }
 
   /* ---- S^{-1} (3x3 manual inverse) ------------------------------------ */
-  float det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) -
-              S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
-              S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
-
-  if (fabsf(det) < 1e-12f)
+  float Si[3][3];
+  if (!mat33_inverse(S, Si))
   {
     return;
   }
-  float inv_det = 1.0f / det;
-  float Si[3][3];
-  Si[0][0] = (S[1][1] * S[2][2] - S[1][2] * S[2][1]) * inv_det;
-  Si[0][1] = (S[0][2] * S[2][1] - S[0][1] * S[2][2]) * inv_det;
-  Si[0][2] = (S[0][1] * S[1][2] - S[0][2] * S[1][1]) * inv_det;
-  Si[1][0] = (S[1][2] * S[2][0] - S[1][0] * S[2][2]) * inv_det;
-  Si[1][1] = (S[0][0] * S[2][2] - S[0][2] * S[2][0]) * inv_det;
-  Si[1][2] = (S[1][0] * S[0][2] - S[0][0] * S[1][2]) * inv_det;
-  Si[2][0] = (S[1][0] * S[2][1] - S[1][1] * S[2][0]) * inv_det;
-  Si[2][1] = (S[2][0] * S[0][1] - S[0][0] * S[2][1]) * inv_det;
-  Si[2][2] = (S[0][0] * S[1][1] - S[1][0] * S[0][1]) * inv_det;
 
   /* ---- Kalman gain: K = P * H^T * S^{-1} (7x3) ------------------------ */
   float K[7][3];
@@ -500,25 +518,12 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
     }
   }
 
-  /* Inversion and Gain calculation follow the same 3x3 pattern as accel update. */
-  float det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) -
-              S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
-              S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
-  if (fabsf(det) < 1e-12f)
+  /* ---- S^{-1} (3x3 manual inverse) ------------------------------------ */
+  float Si[3][3];
+  if (!mat33_inverse(S, Si))
   {
     return;
   }
-  float inv_det = 1.0f / det;
-  float Si[3][3];
-  Si[0][0] = (S[1][1] * S[2][2] - S[1][2] * S[2][1]) * inv_det;
-  Si[0][1] = (S[0][2] * S[2][1] - S[0][1] * S[2][2]) * inv_det;
-  Si[0][2] = (S[0][1] * S[1][2] - S[0][2] * S[1][1]) * inv_det;
-  Si[1][0] = (S[1][2] * S[2][0] - S[1][0] * S[2][2]) * inv_det;
-  Si[1][1] = (S[0][0] * S[2][2] - S[0][2] * S[2][0]) * inv_det;
-  Si[1][2] = (S[1][0] * S[0][2] - S[0][0] * S[1][2]) * inv_det;
-  Si[2][0] = (S[1][0] * S[2][1] - S[1][1] * S[2][0]) * inv_det;
-  Si[2][1] = (S[2][0] * S[0][1] - S[0][0] * S[2][1]) * inv_det;
-  Si[2][2] = (S[0][0] * S[1][1] - S[1][0] * S[0][1]) * inv_det;
 
   float K[7][3];
   for (int i = 0; i < 7; i++)
