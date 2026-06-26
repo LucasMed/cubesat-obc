@@ -54,6 +54,7 @@ if(NOT PICO_BUILD)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
+    target_link_libraries(test_w25q64 lib_lib)
     add_test(NAME w25q64_test COMMAND test_w25q64)
 
     # PR-gate: Flash layout — compile-time region assertions.
@@ -80,6 +81,7 @@ if(NOT PICO_BUILD)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
+    target_link_libraries(test_imu_calib_flash lib_lib)
     add_test(NAME imu_calib_flash_test COMMAND test_imu_calib_flash)
 
     add_executable(test_payload_manager
@@ -231,7 +233,7 @@ if(NOT PICO_BUILD)
         ../../src/control/quaternion.c
     )
     target_include_directories(test_post PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_post m)
+    target_link_libraries(test_post m lib_lib)
     add_test(NAME post_test COMMAND test_post)
 
     # Deploy Monitor — test includes deploy_monitor.c directly so FreeRTOS
@@ -245,7 +247,7 @@ if(NOT PICO_BUILD)
         ../../src/control/quaternion.c
     )
     target_include_directories(test_deploy_monitor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
-    target_link_libraries(test_deploy_monitor m)
+    target_link_libraries(test_deploy_monitor m lib_lib)
     add_test(NAME deploy_monitor_test COMMAND test_deploy_monitor)
 
     # PR-4 gate: Fault Manager — table, severity, auto-clear, CRITICAL side-effects.
@@ -715,10 +717,10 @@ if(NOT PICO_BUILD)
     # T-CRC32-01..05: Known vector, empty, single-byte, incremental, consistency
     add_executable(test_crc32
         test_crc32.c
-        ../../bootloader/crc32.c
+        ../../src/lib/crc32.c
     )
     target_include_directories(test_crc32 PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bootloader
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
     add_test(NAME crc32_test COMMAND test_crc32)
 

@@ -16,6 +16,7 @@
 #include "post.h"
 
 #include "bh1750.h"
+#include "crc32.h"
 #include "data_layer.h"
 #include "drivers/imu/mpu6050.h"
 #include "drivers/mag/hmc5883l.h"
@@ -34,51 +35,6 @@
 #ifdef PICO_BUILD
   #include "hardware/watchdog.h"
 #endif
-
-/* ------------------------------------------------------------------ */
-/* CRC-32 lookup table (polynomial 0xEDB88320, reflected)              */
-/* ------------------------------------------------------------------ */
-
-static uint32_t s_crc32_table[256];
-static bool s_crc32_table_initialised = false;
-
-static void post_crc32_init_table(void)
-{
-  for (uint32_t i = 0; i < 256; i++)
-  {
-    uint32_t crc = i;
-    for (uint32_t j = 0; j < 8; j++)
-    {
-      if (crc & 1u)
-      {
-        crc = (crc >> 1u) ^ 0xEDB88320u;
-      }
-      else
-      {
-        crc >>= 1u;
-      }
-    }
-    s_crc32_table[i] = crc;
-  }
-  s_crc32_table_initialised = true;
-}
-
-static uint32_t post_crc32(const void *data, size_t len)
-{
-  if (!s_crc32_table_initialised)
-  {
-    post_crc32_init_table();
-  }
-
-  uint32_t crc = 0xFFFFFFFFu;
-  const uint8_t *bytes = (const uint8_t *)data;
-  for (size_t i = 0; i < len; i++)
-  {
-    uint8_t idx = (uint8_t)((crc ^ bytes[i]) & 0xFFu);
-    crc = (crc >> 8u) ^ s_crc32_table[idx];
-  }
-  return crc ^ 0xFFFFFFFFu;
-}
 
 /* ------------------------------------------------------------------ */
 /* Boot reason detection                                               */
@@ -420,7 +376,7 @@ void post_run(post_record_t *record)
    * post_record_t layout: magic(4) + boot_count(4) + boot_reason(4)
    * + timestamp_rtc(4) + test_bitmap(4) + test_detail(4) + task_name(12)
    * = 36 bytes total. */
-  record->crc32 = post_crc32(record, offsetof(post_record_t, crc32));
+  record->crc32 = crc32_compute(record, offsetof(post_record_t, crc32));
 
   /* ---- 6. Persist to flash ring buffer ---- */
 #ifdef PICO_BUILD
@@ -504,7 +460,7 @@ void post_read_last(post_record_t *record)
   /* Validate CRC32 */
   uint32_t expected_crc = record->crc32;
   record->crc32 = 0; /* temporarily zero for CRC computation */
-  uint32_t computed_crc = post_crc32(record, offsetof(post_record_t, crc32));
+  uint32_t computed_crc = crc32_compute(record, offsetof(post_record_t, crc32));
   record->crc32 = expected_crc;
 
   if (computed_crc != expected_crc)

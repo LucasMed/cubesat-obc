@@ -51,6 +51,7 @@
 
   #include "flash_backend.h"
 
+  #include "crc32.h"
   #include "hardware/flash.h"
   #include "hardware/sync.h"
   #include "logger.h"
@@ -92,31 +93,6 @@
 
   /** Maximum payload that fits in one sector after the header. */
   #define LOG_PAYLOAD_MAX (FLASH_SECTOR_SIZE - LOG_HEADER_SIZE)
-
-/* ------------------------------------------------------------------ */
-/* CRC-32/ISO-HDLC (polynomial 0xEDB88320, reflected)                 */
-/* ------------------------------------------------------------------ */
-
-static uint32_t crc32_compute(const uint8_t *data, size_t len)
-{
-  uint32_t crc = 0xFFFFFFFFu;
-  for (size_t i = 0u; i < len; i++)
-  {
-    crc ^= (uint32_t)data[i];
-    for (unsigned bit = 0u; bit < 8u; bit++)
-    {
-      if ((crc & 1u) != 0u)
-      {
-        crc = (crc >> 1u) ^ 0xEDB88320u;
-      }
-      else
-      {
-        crc >>= 1u;
-      }
-    }
-  }
-  return crc ^ 0xFFFFFFFFu;
-}
 
 /* ------------------------------------------------------------------ */
 /* Module state                                                        */

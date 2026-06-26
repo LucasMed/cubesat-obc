@@ -91,6 +91,8 @@ if(PICO_BUILD)
 endif()
 
 
+target_link_libraries(drivers_lib PUBLIC lib_lib)
+
 if(PICO_BUILD)
     target_link_libraries(drivers_lib PUBLIC 
         pico_stdlib 

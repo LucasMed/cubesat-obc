@@ -85,7 +85,7 @@ if(NOT PICO_BUILD)
     target_include_directories(test_deploy_seq PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     )
-    target_link_libraries(test_deploy_seq m)
+    target_link_libraries(test_deploy_seq m lib_lib)
     add_test(NAME deploy_seq_test COMMAND test_deploy_seq)
 
 else()

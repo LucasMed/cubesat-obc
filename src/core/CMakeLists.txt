@@ -15,8 +15,8 @@ target_include_directories(core_lib PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../config)
 
 if(PICO_BUILD)
-    target_link_libraries(core_lib PUBLIC FreeRTOS-Kernel csp pico_stdlib hardware_flash)
+    target_link_libraries(core_lib PUBLIC FreeRTOS-Kernel csp pico_stdlib hardware_flash lib_lib)
 else()
     target_sources(core_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../control/quaternion.c)
-    target_link_libraries(core_lib PUBLIC csp m)
+    target_link_libraries(core_lib PUBLIC csp m lib_lib)
 endif()

@@ -13,6 +13,7 @@
 
 #include "w25q64.h"
 
+#include "crc32.h"
 #include "drivers/imu/imu_calib.h"
 #include "spi_payload.h"
 
@@ -347,27 +348,6 @@ bool w25q64_is_present(void)
 /* IMU calibration persistence                                         */
 /* ------------------------------------------------------------------ */
 
-static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
-{
-  uint32_t crc = 0xFFFFFFFF;
-  for (uint32_t i = 0; i < len; i++)
-  {
-    crc ^= data[i];
-    for (int j = 0; j < 8; j++)
-    {
-      if (crc & 1)
-      {
-        crc = (crc >> 1) ^ 0xEDB88320;
-      }
-      else
-      {
-        crc >>= 1;
-      }
-    }
-  }
-  return ~crc;
-}
-
 w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
 {
   if (!cal)
@@ -404,7 +384,7 @@ w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
   buf[offset++] = cal->calibrated ? 1 : 0;
 
   /* CRC32 over payload (4 bytes) */
-  uint32_t crc = imu_calib_crc32(buf, offset);
+  uint32_t crc = crc32_compute(buf, offset);
   memcpy(&buf[offset], &crc, 4);
   offset += 4;
 
@@ -470,7 +450,7 @@ w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
   /* CRC32 check */
   uint32_t crc_stored;
   memcpy(&crc_stored, &buf[offset], 4);
-  uint32_t crc_computed = imu_calib_crc32(buf, offset);
+  uint32_t crc_computed = crc32_compute(buf, offset);
   if (crc_stored != crc_computed)
   {
     printf("[w25q64] IMU calib: CRC mismatch (stored=0x%08X computed=0x%08X)\n", crc_stored,
@@ -612,27 +592,6 @@ bool w25q64_is_present(void)
 static uint8_t s_imu_calib_buf[W25Q64_IMU_CALIB_SIZE];
 static bool s_imu_calib_valid = false;
 
-static uint32_t imu_calib_crc32(const uint8_t *data, uint32_t len)
-{
-  uint32_t crc = 0xFFFFFFFF;
-  for (uint32_t i = 0; i < len; i++)
-  {
-    crc ^= data[i];
-    for (int j = 0; j < 8; j++)
-    {
-      if (crc & 1)
-      {
-        crc = (crc >> 1) ^ 0xEDB88320;
-      }
-      else
-      {
-        crc >>= 1;
-      }
-    }
-  }
-  return ~crc;
-}
-
 w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
 {
   if (!cal)
@@ -668,7 +627,7 @@ w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
   s_imu_calib_buf[offset++] = cal->calibrated ? 1 : 0;
 
   /* CRC32 (4 bytes) */
-  uint32_t crc = imu_calib_crc32(s_imu_calib_buf, offset);
+  uint32_t crc = crc32_compute(s_imu_calib_buf, offset);
   memcpy(&s_imu_calib_buf[offset], &crc, 4);
 
   s_imu_calib_valid = true;
@@ -720,7 +679,7 @@ w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
   /* CRC32 check */
   uint32_t crc_stored;
   memcpy(&crc_stored, &s_imu_calib_buf[offset], 4);
-  uint32_t crc_computed = imu_calib_crc32(s_imu_calib_buf, offset);
+  uint32_t crc_computed = crc32_compute(s_imu_calib_buf, offset);
   if (crc_stored != crc_computed)
   {
     return W25Q64_ERR_INIT;
