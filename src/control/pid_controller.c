@@ -8,11 +8,24 @@ void pid_init(pid_ctrl_t *p, float kp, float ki, float kd)
   p->kd = kd;
   p->integral = 0.0f;
   p->last_error = 0.0f;
+  p->intg_limit = 100.0f; /**< Default anti-windup clamp */
 }
 
 float pid_update(pid_ctrl_t *p, float error, float dt)
 {
   p->integral += error * dt;
+
+  /* Anti-windup: clamp integral term to prevent overshoot on large
+   * setpoint changes or sustained errors. */
+  if (p->integral > p->intg_limit)
+  {
+    p->integral = p->intg_limit;
+  }
+  else if (p->integral < -p->intg_limit)
+  {
+    p->integral = -p->intg_limit;
+  }
+
   float derivative = 0.0f;
   if (dt > 0.0f)
   {
