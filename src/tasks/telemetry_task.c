@@ -209,9 +209,9 @@ static void telemetry_build_binary_frame(const dl_snapshot_t *snap,
   bin.solar_ma = (int16_t)((snap->state.solar_current_ua < 0)
                                ? (int16_t)(-(snap->state.solar_current_ua / 1000))
                                : (int16_t)(snap->state.solar_current_ua / 1000));
-  bin.solar_mw = (int16_t)((snap->state.solar_power_uw < 0)
-                               ? (int16_t)(-(snap->state.solar_power_uw / 1000))
-                               : (int16_t)(snap->state.solar_power_uw / 1000));
+  bin.solar_mw =
+      (int16_t)((snap->state.solar_power_uw < 0) ? (int16_t)(-(snap->state.solar_power_uw / 1000))
+                                                 : (int16_t)(snap->state.solar_power_uw / 1000));
   bin.sun_x = (int16_t)(tlm->sun_x * 100.0f);
   bin.sun_y = (int16_t)(tlm->sun_y * 100.0f);
 
@@ -247,8 +247,7 @@ static void telemetry_build_binary_frame(const dl_snapshot_t *snap,
 /**
  * Store the current telemetry record to W25Q64 flash for later recovery.
  */
-static void telemetry_store_record(const dl_snapshot_t *snap,
-                                   const csp_telemetry_packet_t *tlm)
+static void telemetry_store_record(const dl_snapshot_t *snap, const csp_telemetry_packet_t *tlm)
 {
   telemetry_record_t record;
   record.timestamp = tlm->timestamp_ms / 1000;  // Convert ms to seconds

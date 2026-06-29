@@ -20,7 +20,7 @@
 #define CRC32_POLY 0xEDB88320u
 
 static uint32_t s_crc32_table[256];
-static int      s_crc32_initialised = 0;
+static int s_crc32_initialised = 0;
 
 static void crc32_build_table(void)
 {
