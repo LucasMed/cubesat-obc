@@ -160,10 +160,143 @@ void gps_reset_stats(void)
 
 // Mock UART (for text command testing)
 #include <stdbool.h>
-void uart1_puts_safe(const char *str) { (void)str; }
+#include <string.h>
+#include <stdio.h>
+
+/* UART output capture buffer for approval tests */
+#define UART_OUTPUT_BUF_SIZE 4096
+static char s_uart_output[UART_OUTPUT_BUF_SIZE];
+static size_t s_uart_output_len = 0;
+
+void uart1_puts_safe(const char *str)
+{
+  size_t len = strlen(str);
+  if (s_uart_output_len + len < UART_OUTPUT_BUF_SIZE)
+  {
+    memcpy(s_uart_output + s_uart_output_len, str, len);
+    s_uart_output_len += len;
+  }
+}
+
+const char *test_get_uart_output(void)
+{
+  s_uart_output[s_uart_output_len] = '\0';
+  return s_uart_output;
+}
+
+void test_clear_uart_output(void)
+{
+  s_uart_output_len = 0;
+  s_uart_output[0] = '\0';
+}
+
 void uart1_acquire_lock(void) {}
 void uart1_release_lock(void) {}
-void uart1_write_unsafe(const char *str) { (void)str; }
+
+void uart1_write_unsafe(const char *str)
+{
+  /* Also capture to the output buffer for STATUS (which uses write_unsafe) */
+  size_t len = strlen(str);
+  if (s_uart_output_len + len < UART_OUTPUT_BUF_SIZE)
+  {
+    memcpy(s_uart_output + s_uart_output_len, str, len);
+    s_uart_output_len += len;
+  }
+}
+
+/* PICO hardware stubs for text command testing */
+#include "pico_stubs.h"
+
+/* Type declarations for stubs below.  These headers are also included
+   via command_task.c (common section) when PICO_BUILD is active, but
+   test_command.c is a separate translation unit and needs them directly. */
+#include "ina219.h"
+#include "mag_calib.h"
+#include "drivers/imu/imu_calib.h"
+
+/* watchdog_reboot — provided by include/host/hardware/watchdog.h but we
+   need a strong symbol for the linker. */
+void watchdog_reboot(uint32_t pc, uint32_t sp, uint32_t delay_ms)
+{
+  (void)pc; (void)sp; (void)delay_ms;
+}
+
+/* uart1 extern — satisfied here since pico_stubs.h declares the type */
+uart_inst_t *const uart1 = NULL;
+
+/* I2C bus stubs */
+int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
+{
+  (void)start_addr; (void)end_addr;
+  return 0; /* no devices found */
+}
+
+int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len,
+                       uint8_t *rx, size_t rx_len)
+{
+  (void)addr; (void)tx; (void)tx_len;
+  memset(rx, 0, rx_len);
+  return 0;
+}
+
+/* INA219 power monitor stubs */
+bool ina219_read_power(ina219_data_t *data)
+{
+  if (data)
+  {
+    data->bus_voltage_mv = 3300;
+    data->shunt_voltage_uv = 5000;
+    data->current_ua = 100000;
+    data->power_uw = 330000;
+  }
+  return true;
+}
+
+bool ina219_solar_read_power(ina219_data_t *data)
+{
+  if (data)
+  {
+    data->bus_voltage_mv = 4200;
+    data->shunt_voltage_uv = 10000;
+    data->current_ua = 50000;
+    data->power_uw = 210000;
+  }
+  return true;
+}
+
+/* Mag calibration stubs */
+static mag_calib_t s_mag_cal = {{0.5f, 0.3f, -0.2f}, {1.0f, 1.0f, 1.0f}, true};
+
+void mag_calib_start(void) { s_mag_cal.calibrated = false; }
+void mag_calib_finish(void) { s_mag_cal.calibrated = true; }
+bool mag_calib_is_valid(void) { return s_mag_cal.calibrated; }
+void mag_calib_get(mag_calib_t *out) { if (out) memcpy(out, &s_mag_cal, sizeof(s_mag_cal)); }
+
+/* IMU calibration stubs */
+static imu_calib_t s_imu_cal = {
+  .accel_offset = {0.01f, 0.02f, -0.01f},
+  .accel_scale = {1.0f, 1.0f, 1.0f},
+  .gyro_offset_raw = {0, 0, 0},
+  .gyro_bias_rads = {0.001f, -0.002f, 0.0005f},
+  .calibrated = true
+};
+
+void imu_calib_start(void) { s_imu_cal.calibrated = false; }
+void imu_calib_finish(void) { s_imu_cal.calibrated = true; }
+bool imu_calib_is_valid(void) { return s_imu_cal.calibrated; }
+void imu_calib_get(imu_calib_t *out) { if (out) memcpy(out, &s_imu_cal, sizeof(s_imu_cal)); }
+void imu_calib_save_to_flash(void) {}
+void imu_calib_load_from_flash(void) {}
+
+/* GPS cold start stub */
+void gps_cold_start(void) {}
+
+/* GPS satellites-in-view stub */
+uint8_t gps_get_satellites_in_view(void) { return 8; }
+
+/* BH1750 — the #include "bh1750.h" in the PICO section provides the
+   BH1750_ADDR_DEFAULT and BH1750_CMD_OT_H_RES2 macros.  The header is
+   already included in common section so just ensure the types are seen. */
 
 // Mock DS3231 RTC (for SETTIME tests)
 static bool s_ds3231_set_time_ret = true;
@@ -818,9 +951,450 @@ void test_settime_too_few_fields(void)
   printf("test_settime_too_few_fields PASS\n");
 }
 
+/* ================================================================ *
+ *  TEXT COMMAND REGRESSION TESTS — comprehensive coverage of ALL    *
+ *  process_text_command() branches.  These are APPROVAL TESTS that  *
+ *  capture current behavior BEFORE the if-else → table refactor.    *
+ * ================================================================ */
+
+/* Helper: run a text command and return the UART output string */
+static const char *run_cmd(const char *cmd)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  test_run_text_command(cmd);
+  return test_get_uart_output();
+}
+
+/* Standard/system commands */
+void test_text_echo(void)
+{
+  const char *out = run_cmd("ECHO");
+  assert(strstr(out, "ECHO OK") != NULL);
+  printf("test_text_echo PASS\n");
+}
+
+void test_text_reboot(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  /* REBOOT calls watchdog_reboot + vTaskDelay.  The uart output should
+     contain the REBOOT OK message BEFORE the reboot call. */
+  test_run_text_command("REBOOT");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "REBOOT OK") != NULL);
+  assert(last_delay == pdMS_TO_TICKS(100));
+  printf("test_text_reboot PASS\n");
+}
+
+void test_text_status(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  /* Set up POST record so STATUS includes POST summary */
+  post_record_t post_rec;
+  memset(&post_rec, 0, sizeof(post_rec));
+  post_rec.magic = POST_MAGIC;
+  post_rec.boot_count = 42;
+  post_rec.boot_reason = POST_BOOT_POWER_ON;
+  post_rec.test_bitmap = (1u << 10) - 1u;
+  data_layer_set_post_last(&post_rec);
+
+  test_run_text_command("STATUS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "SYSTEM:") != NULL);
+  assert(strstr(out, "GPS:") != NULL);
+  assert(strstr(out, "POST:") != NULL);
+  assert(strstr(out, "boot=42") != NULL);
+  printf("test_text_status PASS\n");
+}
+
+void test_text_faults(void)
+{
+  const char *out = run_cmd("FAULTS");
+  assert(strstr(out, "FAULTS:") != NULL);
+  assert(strstr(out, "OK") != NULL);
+  printf("test_text_faults PASS\n");
+}
+
+void test_text_capture(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  test_run_text_command("CAPTURE");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "CAPTURE OK") != NULL);
+  /* Should have notified payload task */
+  assert(last_notified_value == PAYLOAD_NOTIFY_CAPTURE_IMAGE);
+  printf("test_text_capture PASS\n");
+}
+
+void test_text_imgdump(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  test_run_text_command("IMGDUMP");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "IMGDUMP OK") != NULL);
+  assert(last_notified_value == PAYLOAD_NOTIFY_DUMP_IMAGE);
+  printf("test_text_imgdump PASS\n");
+}
+
+/* MODE command variants */
+void test_text_mode_equals_name(void)
+{
+  const char *out = run_cmd("MODE=DETUMBLE");
+  assert(last_requested_mode == FM_DETUMBLE);
+  assert(strstr(out, "MODE=2 OK") != NULL);
+  printf("test_text_mode_equals_name PASS\n");
+}
+
+void test_text_mode_space_name(void)
+{
+  const char *out = run_cmd("MODE NOMINAL");
+  assert(last_requested_mode == FM_NOMINAL);
+  assert(strstr(out, "MODE=3 OK") != NULL);
+  printf("test_text_mode_space_name PASS\n");
+}
+
+void test_text_mode_equals_number(void)
+{
+  const char *out = run_cmd("MODE=5");
+  assert(last_requested_mode == FM_PAYLOAD);
+  assert(strstr(out, "MODE=5 OK") != NULL);
+  printf("test_text_mode_equals_number PASS\n");
+}
+
+void test_text_mode_space_number(void)
+{
+  const char *out = run_cmd("MODE 4");
+  assert(last_requested_mode == FM_DIAGNOSTIC);
+  assert(strstr(out, "MODE=4 OK") != NULL);
+  printf("test_text_mode_space_number PASS\n");
+}
+
+void test_text_mode_invalid_name(void)
+{
+  const char *out = run_cmd("MODE=hyperdrive");
+  assert(last_requested_mode == FM_BOOT); /* unchanged from reset */
+  assert(strstr(out, "unknown mode name") != NULL);
+  printf("test_text_mode_invalid_name PASS\n");
+}
+
+void test_text_mode_invalid_number(void)
+{
+  const char *out = run_cmd("MODE=99");
+  assert(last_requested_mode == FM_BOOT);
+  assert(strstr(out, "MODE INVALID") != NULL);
+  printf("test_text_mode_invalid_number PASS\n");
+}
+
+void test_text_mode_non_numeric(void)
+{
+  reset_mocks();
+  last_requested_mode = FM_DIAGNOSTIC; /* sentinel */
+  test_run_text_command("MODE=abc");
+  /* After the strtol fix, non-numeric stays at sentinel, not FM_BOOT */
+  assert(last_requested_mode == FM_DIAGNOSTIC);
+  printf("test_text_mode_non_numeric PASS\n");
+}
+
+void test_text_mode_parse_zero(void)
+{
+  reset_mocks();
+  last_requested_mode = FM_DIAGNOSTIC; /* sentinel */
+  test_run_text_command("MODE=0");
+  assert(last_requested_mode == FM_BOOT); /* MODE=0 is valid numeric 0 */
+  printf("test_text_mode_parse_zero PASS\n");
+}
+
+/* GPS commands */
+void test_text_gps_with_fix(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  /* Default mock has a valid fix */
+  test_run_text_command("GPS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "GPS:") != NULL);
+  assert(strstr(out, "lat=") != NULL);
+  assert(strstr(out, "GPS STATS:") != NULL);
+  printf("test_text_gps_with_fix PASS\n");
+}
+
+void test_text_gps_no_fix(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  /* Force GPS fix to be invalid (mock is static, accessible in this file) */
+  mock_gps_fix.valid = false;
+
+  test_run_text_command("GPS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "no fix") != NULL);
+  assert(strstr(out, "sats=") != NULL);
+
+  /* Restore for other tests */
+  mock_gps_fix.valid = true;
+  printf("test_text_gps_no_fix PASS\n");
+}
+
+void test_text_gpsstats(void)
+{
+  const char *out = run_cmd("GPSSTATS");
+  assert(strstr(out, "GPS stats:") != NULL);
+  assert(strstr(out, "rx=") != NULL);
+  assert(strstr(out, "last fix:") != NULL);
+  printf("test_text_gpsstats PASS\n");
+}
+
+void test_text_resetgps(void)
+{
+  const char *out = run_cmd("RESETGPS");
+  assert(strstr(out, "RESET GPS OK") != NULL);
+  printf("test_text_resetgps PASS\n");
+}
+
+void test_text_resetgps_cold(void)
+{
+  /* NOTE: existing code has a bug — cmd+8 for "RESETGPS COLD" points to
+     " COLD" (leading space), so strncmp(cmd+8, "COLD",4) never matches.
+     The else branch fires: gps_reset_stats(). This test documents the
+     CURRENT behavior, not the intended behavior. */
+  const char *out = run_cmd("RESETGPS COLD");
+  assert(strstr(out, "RESET GPS OK") != NULL);
+  printf("test_text_resetgps_cold PASS\n");
+}
+
+void test_text_reset_usage(void)
+{
+  const char *out = run_cmd("RESET");
+  assert(strstr(out, "RESET: usage:") != NULL);
+  printf("test_text_reset_usage PASS\n");
+}
+
+/* Calibration commands */
+void test_text_mag_cal_start(void)
+{
+  const char *out = run_cmd("MAG-CAL-START");
+  assert(strstr(out, "MAG-CAL: started") != NULL);
+  assert(mag_calib_is_valid() == false); /* start invalidates cal */
+  printf("test_text_mag_cal_start PASS\n");
+}
+
+void test_text_mag_cal_stop(void)
+{
+  /* First start (invalidates), then finish */
+  test_clear_uart_output();
+  reset_mocks();
+  mag_calib_start(); /* invalidate */
+  test_run_text_command("MAG-CAL-STOP");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "MAG-CAL: finished") != NULL);
+  assert(mag_calib_is_valid() == true);
+  printf("test_text_mag_cal_stop PASS\n");
+}
+
+void test_text_mag_cal_status_valid(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  /* Ensure cal is valid */
+  mag_calib_finish();
+
+  test_run_text_command("MAG-CAL-STATUS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "MAG-CAL: VALID") != NULL);
+  assert(strstr(out, "offsets=") != NULL);
+  printf("test_text_mag_cal_status_valid PASS\n");
+}
+
+void test_text_mag_cal_status_invalid(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mag_calib_start(); /* invalidate */
+
+  test_run_text_command("MAG-CAL-STATUS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "MAG-CAL: NOT CALIBRATED") != NULL);
+  printf("test_text_mag_cal_status_invalid PASS\n");
+}
+
+void test_text_imu_cal_start(void)
+{
+  const char *out = run_cmd("IMU-CAL-START");
+  assert(strstr(out, "IMU-CAL: started") != NULL);
+  assert(imu_calib_is_valid() == false);
+  printf("test_text_imu_cal_start PASS\n");
+}
+
+void test_text_imu_cal_stop(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  imu_calib_start();
+  test_run_text_command("IMU-CAL-STOP");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "IMU-CAL: finished") != NULL);
+  assert(imu_calib_is_valid() == true);
+  printf("test_text_imu_cal_stop PASS\n");
+}
+
+void test_text_imu_cal_status_valid(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  imu_calib_finish();
+
+  test_run_text_command("IMU-CAL-STATUS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "IMU-CAL: VALID") != NULL);
+  assert(strstr(out, "gyro_bias=") != NULL);
+  printf("test_text_imu_cal_status_valid PASS\n");
+}
+
+void test_text_imu_cal_status_invalid(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  imu_calib_start();
+
+  test_run_text_command("IMU-CAL-STATUS");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "IMU-CAL: NOT CALIBRATED") != NULL);
+  printf("test_text_imu_cal_status_invalid PASS\n");
+}
+
+void test_text_imu_cal_save(void)
+{
+  const char *out = run_cmd("IMU-CAL-SAVE");
+  assert(strstr(out, "IMU-CAL: saved to flash") != NULL);
+  printf("test_text_imu_cal_save PASS\n");
+}
+
+void test_text_imu_cal_load(void)
+{
+  const char *out = run_cmd("IMU-CAL-LOAD");
+  assert(strstr(out, "IMU-CAL: loaded from flash") != NULL);
+  printf("test_text_imu_cal_load PASS\n");
+}
+
+/* Diagnostic / test commands */
+void test_text_i2cscan(void)
+{
+  const char *out = run_cmd("I2CSCAN");
+  assert(strstr(out, "I2C: scanning") != NULL);
+  assert(strstr(out, "found 0 device") != NULL);
+  printf("test_text_i2cscan PASS\n");
+}
+
+void test_text_bh1750_test(void)
+{
+  const char *out = run_cmd("BH1750_TEST");
+  assert(strstr(out, "BH1750:") != NULL);
+  printf("test_text_bh1750_test PASS\n");
+}
+
+void test_text_bh1750_test_5c(void)
+{
+  /* NOTE: existing code has off-by-one — cmd[12] is 'C' not '5', so
+     addr=0x5C branch is never reached. Default 0x23 is used instead.
+     This test documents CURRENT behavior. */
+  const char *out = run_cmd("BH1750_TEST5C");
+  assert(strstr(out, "BH1750:") != NULL);
+  assert(strstr(out, "0x23") != NULL);
+  printf("test_text_bh1750_test_5c PASS\n");
+}
+
+void test_text_power_test(void)
+{
+  const char *out = run_cmd("POWER_TEST");
+  assert(strstr(out, "POWER:") != NULL);
+  assert(strstr(out, "V=") != NULL);
+  assert(strstr(out, "3300 mV") != NULL);
+  printf("test_text_power_test PASS\n");
+}
+
+void test_text_solar_test(void)
+{
+  const char *out = run_cmd("SOLAR_TEST");
+  assert(strstr(out, "SOLAR:") != NULL);
+  assert(strstr(out, "V=") != NULL);
+  assert(strstr(out, "4200 mV") != NULL);
+  printf("test_text_solar_test PASS\n");
+}
+
+void test_text_sht31_test(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  /* mock_snapshot already has temp_valid=true, humidity_valid=true */
+  test_run_text_command("SHT31_TEST");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "SHT31:") != NULL);
+  assert(strstr(out, "temp=") != NULL);
+  assert(strstr(out, "humidity=") != NULL);
+  printf("test_text_sht31_test PASS\n");
+}
+
+void test_text_rtc_test(void)
+{
+  const char *out = run_cmd("RTC_TEST");
+  assert(strstr(out, "RTC:") != NULL);
+  assert(strstr(out, "no data") != NULL || strstr(out, "RTC:") != NULL);
+  printf("test_text_rtc_test PASS\n");
+}
+
+/* Misc commands */
+void test_text_log(void)
+{
+  const char *out = run_cmd("LOG");
+  assert(strstr(out, "LOG: dump not implemented") != NULL);
+  printf("test_text_log PASS\n");
+}
+
+void test_text_help(void)
+{
+  const char *out = run_cmd("HELP");
+  assert(strstr(out, "System") != NULL);
+  assert(strstr(out, "Mode") != NULL);
+  assert(strstr(out, "GPS") != NULL);
+  assert(strstr(out, "Calibration") != NULL);
+  assert(strstr(out, "Tests") != NULL);
+  assert(strstr(out, "Misc") != NULL);
+  assert(strstr(out, "REBOOT") != NULL);
+  assert(strstr(out, "STATUS") != NULL);
+  assert(strstr(out, "HELP") != NULL);
+  printf("test_text_help PASS\n");
+}
+
+void test_text_unknown(void)
+{
+  const char *out = run_cmd("BOGUS_COMMAND_XYZ");
+  assert(strstr(out, "UNKNOWN CMD") != NULL);
+  printf("test_text_unknown PASS\n");
+}
+
+void test_text_empty(void)
+{
+  const char *out = run_cmd("");
+  /* Empty command — no match, should fall through to UNKNOWN */
+  assert(strstr(out, "UNKNOWN CMD") != NULL);
+  printf("test_text_empty PASS\n");
+}
+
 int main()
 {
   printf("Running Command Task tests...\n");
+
+  /* CSP packet command tests (existing) */
   test_command_echo();
   test_command_reboot();
   test_command_invalid();
@@ -835,12 +1409,14 @@ int main()
   test_command_telemetry_req();
   test_command_log_dump();
   test_command_packet_not_freed_after_default();
+  test_command_status_post();
+
+  /* Text command regression tests (existing) */
   test_text_deploy_from_boot();
   test_text_deploy_from_nominal();
   test_text_deploy_clear();
   test_text_mode_name();
   test_text_mode_range();
-  test_command_status_post();
   test_text_deploy_from_safe();
   test_text_mode_atoi_non_numeric_rejected();
   test_text_mode_numeric_zero_parsed_correctly();
@@ -852,6 +1428,56 @@ int main()
   test_settime_minute_out_of_range();
   test_settime_second_out_of_range();
   test_settime_too_few_fields();
+
+  /* Text command regression tests (new — comprehensive coverage) */
+  test_text_echo();
+  test_text_reboot();
+  test_text_status();
+  test_text_faults();
+  test_text_capture();
+  test_text_imgdump();
+
+  test_text_mode_equals_name();
+  test_text_mode_space_name();
+  test_text_mode_equals_number();
+  test_text_mode_space_number();
+  test_text_mode_invalid_name();
+  test_text_mode_invalid_number();
+  test_text_mode_non_numeric();
+  test_text_mode_parse_zero();
+
+  test_text_gps_with_fix();
+  test_text_gps_no_fix();
+  test_text_gpsstats();
+  test_text_resetgps();
+  test_text_resetgps_cold();
+  test_text_reset_usage();
+
+  test_text_mag_cal_start();
+  test_text_mag_cal_stop();
+  test_text_mag_cal_status_valid();
+  test_text_mag_cal_status_invalid();
+
+  test_text_imu_cal_start();
+  test_text_imu_cal_stop();
+  test_text_imu_cal_status_valid();
+  test_text_imu_cal_status_invalid();
+  test_text_imu_cal_save();
+  test_text_imu_cal_load();
+
+  test_text_i2cscan();
+  test_text_bh1750_test();
+  test_text_bh1750_test_5c();
+  test_text_power_test();
+  test_text_solar_test();
+  test_text_sht31_test();
+  test_text_rtc_test();
+
+  test_text_log();
+  test_text_help();
+  test_text_unknown();
+  test_text_empty();
+
   printf("All tests passed!\n");
   return 0;
 }
