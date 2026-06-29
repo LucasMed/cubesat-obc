@@ -599,10 +599,6 @@ static void test_timing_statistics_count(void)
 
   for (int iter = 0; iter < 120; iter++)
   {
-    if (samples > 0)
-    {
-      /* measurement would happen here */
-    }
     samples++;
 
     if (samples >= 101)
