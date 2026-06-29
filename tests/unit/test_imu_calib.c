@@ -369,6 +369,63 @@ void test_ic_collect_before_start_is_noop(void)
 }
 
 /* ================================================================== */
+/* T-IC-13: imu_calib_finish with zero-range on an axis logs warning   */
+/* ================================================================== */
+void test_ic_zero_range_axis(void)
+{
+    /* Simulate stationary sensor: X axis never varies (range = 0) */
+    imu_calib_start();
+    float gyro[3] = {1.0f, 0.5f, -0.3f};
+    for (int i = 0; i < 100; i++)
+    {
+        /* X always 0.5: min=max=0.5 → range=0 */
+        float accel[3] = {0.5f, (float)(i % 3) - 1.0f, (float)(i % 2)};
+        imu_calib_collect(accel, gyro);
+    }
+    imu_calib_finish();
+
+    /* Calibration should still be valid (other axes are fine) */
+    TEST_ASSERT_TRUE(imu_calib_is_valid());
+
+    imu_calib_t cal;
+    imu_calib_get(&cal);
+
+    /* Zero-range axis: scale should be 1.0f (safe default with warning) */
+    FLOAT_CLOSE(cal.accel_scale[0], 1.0f, 1e-6f);
+
+    /* Other axes should have normal calibration */
+    TEST_ASSERT_TRUE(cal.accel_scale[1] > 0.5f);
+    TEST_ASSERT_TRUE(cal.accel_scale[2] > 0.5f);
+}
+
+/* ================================================================== */
+/* T-IC-14: imu_calib_finish with all axes zero-range handles gracefully */
+/* ================================================================== */
+void test_ic_zero_range_all_axes(void)
+{
+    imu_calib_start();
+    float gyro[3] = {0.0f, 0.0f, 0.0f};
+    float accel[3] = {1.0f, 1.0f, 1.0f};
+    for (int i = 0; i < 100; i++)
+    {
+        imu_calib_collect(accel, gyro);
+    }
+    imu_calib_finish();
+
+    /* Should still produce a valid calibration (not crash) */
+    TEST_ASSERT_TRUE(imu_calib_is_valid());
+
+    imu_calib_t cal;
+    imu_calib_get(&cal);
+
+    /* All axes should have safe defaults */
+    for (int i = 0; i < 3; i++)
+    {
+        FLOAT_CLOSE(cal.accel_scale[i], 1.0f, 1e-6f);
+    }
+}
+
+/* ================================================================== */
 /* T-IC-12: imu_calib_finish handles mpu6050_write_gyro_offset failure */
 /* ================================================================== */
 void test_ic_write_gyro_offset_failure(void)
@@ -403,6 +460,8 @@ int main(void)
     RUN_TEST(test_ic_restart_resets_state);
     RUN_TEST(test_ic_collect_before_start_is_noop);
     RUN_TEST(test_ic_write_gyro_offset_failure);
+    RUN_TEST(test_ic_zero_range_axis);
+    RUN_TEST(test_ic_zero_range_all_axes);
 
     return UNITY_END();
 }

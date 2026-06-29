@@ -245,7 +245,10 @@ w25q64_status_t w25q64_write_page(uint32_t addr, const uint8_t *buf, uint32_t le
   }
   cs_deselect();
 
-  w25q64_wait_ready(100);
+  if (w25q64_wait_ready(100) != W25Q64_OK)
+  {
+    return W25Q64_ERR_TIMEOUT;
+  }
 
   return W25Q64_OK;
 }
@@ -546,9 +549,17 @@ w25q64_status_t w25q64_read(uint32_t addr, uint8_t *buf, uint32_t len)
 
 w25q64_status_t w25q64_write_page(uint32_t addr, const uint8_t *buf, uint32_t len)
 {
+  if (!buf || len == 0 || len > 256)
+  {
+    return W25Q64_ERR_WRITE;
+  }
   (void)addr;
-  (void)buf;
-  (void)len;
+
+  if (w25q64_wait_ready(100) != W25Q64_OK)
+  {
+    return W25Q64_ERR_TIMEOUT;
+  }
+
   return W25Q64_OK;
 }
 

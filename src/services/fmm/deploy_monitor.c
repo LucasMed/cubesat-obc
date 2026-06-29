@@ -93,6 +93,10 @@ void deploy_monitor_step(void)
       {
         data_layer_set_deploy_in_progress(true);
       }
+      else
+      {
+        printf("[deploy_monitor] WARNING: BOOT->DETUMBLE transition failed\n");
+      }
     }
   }
 
@@ -133,6 +137,10 @@ void deploy_monitor_step(void)
       {
         data_layer_set_deploy_in_progress(false);
         s_detumble_stable_count = 0;
+      }
+      else
+      {
+        printf("[deploy_monitor] WARNING: DETUMBLE->NOMINAL transition failed\n");
       }
     }
   }

@@ -120,7 +120,11 @@ void imu_calib_finish(void)
     }
     else
     {
+      printf("[imu_calib] WARNING: axis %d has zero range (min=%f, max=%f), "
+             "skipping calibration for this axis\n",
+             i, (double)s_accel_min[i], (double)s_accel_max[i]);
       g_calib.accel_scale[i] = 1.0f;
+      g_calib.accel_offset[i] = 0.0f;
     }
   }
 

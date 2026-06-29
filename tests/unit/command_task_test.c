@@ -48,10 +48,16 @@ extern BaseType_t xTaskNotify_Stub(TaskHandle_t xTask, uint32_t ulValue, eNotify
 #include "../../src/tasks/command_task.c"
 
 /* Test wrapper — implements the text-command parsing for the subset of
- * commands exercised by the test suite (DEPLOY, DEPLOYCLEAR, MODE=).
+ * commands exercised by the test suite (DEPLOY, DEPLOYCLEAR, MODE=, SETTIME).
  * This replicates the production logic from process_text_command() but
  * without the PICO_BUILD dependency, so the unit test can compile on
  * host.  Production code paths are identical — same API calls. */
+
+/* Forward declaration of ds3231_set_time mock (defined in test_command.c) */
+#include <stdbool.h>
+extern bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day,
+                            uint8_t hour, uint8_t minute, uint8_t second);
+
 void test_run_text_command(const char *cmd)
 {
   if (strncmp(cmd, "DEPLOYCLEAR", 11) == 0)
@@ -92,11 +98,59 @@ void test_run_text_command(const char *cmd)
     }
     else
     {
-      mode = atoi(arg);
+      char *endptr = NULL;
+      long val = strtol(arg, &endptr, 10);
+      if (endptr == arg || *endptr != '\0')
+      {
+        mode = -1;
+      }
+      else
+      {
+        mode = (int)val;
+      }
     }
     if (mode >= 0 && mode < FM_COUNT)
     {
       fmm_request_transition((flight_mode_t)mode);
+    }
+  }
+  if (strncmp(cmd, "SETTIME ", 8) == 0)
+  {
+    /* Format: SETTIME YYYY MM DD HH MM SS */
+    int year, month, day, hour, minute, second;
+    int n = sscanf(cmd + 8, "%d %d %d %d %d %d", &year, &month, &day, &hour, &minute, &second);
+    if (n == 6)
+    {
+      /* Range validation (mirrors production process_text_command) */
+      if (year < 2000 || year > 2100)
+      {
+        /* rejected — do not call ds3231_set_time */
+      }
+      else if (month < 1 || month > 12)
+      {
+        /* rejected */
+      }
+      else if (day < 1 || day > 31)
+      {
+        /* rejected */
+      }
+      else if (hour < 0 || hour > 23)
+      {
+        /* rejected */
+      }
+      else if (minute < 0 || minute > 59)
+      {
+        /* rejected */
+      }
+      else if (second < 0 || second > 59)
+      {
+        /* rejected */
+      }
+      else
+      {
+        ds3231_set_time((uint16_t)year, (uint8_t)month, (uint8_t)day,
+                        (uint8_t)hour, (uint8_t)minute, (uint8_t)second);
+      }
     }
   }
 }

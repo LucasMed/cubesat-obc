@@ -76,10 +76,17 @@ void vPayloadTask_Step(void)
 
             char filename[32];
             snprintf(filename, sizeof(filename), "/IMAGES/img_%lu.jpg", (unsigned long)s_counter);
-            storage_status_t st = storage_write_image(filename, s_img_buffer, read_len);
-            printf("[PayloadTask] Image saved: %s (%lu bytes)\n", filename,
-                   (unsigned long)read_len);
-            (void)st;
+            storage_status_t st = storage_write_image(filename, s_img_buffer, img_size);
+            if (st == STORAGE_OK)
+            {
+              printf("[PayloadTask] Image saved: %s (%lu bytes)\n", filename,
+                     (unsigned long)img_size);
+            }
+            else
+            {
+              printf("[PayloadTask] ERROR: storage_write_image failed for %s (status=%d)\n",
+                     filename, (int)st);
+            }
           }
           else
           {

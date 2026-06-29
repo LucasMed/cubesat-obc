@@ -153,10 +153,10 @@ void test_imu_null_both(void)
 
   int ret = mpu6050_read_raw(NULL, NULL);
 
-  CHECK(ret == 0, "mpu6050_read_raw should return 0 when both params NULL");
+  CHECK(ret == -1, "mpu6050_read_raw should return -1 when both params are NULL");
   CHECK(g_i2c_calls == 0, "I2C should not be called when both params are NULL");
 
-  PASS("T-IMU-EXT-03: mpu6050_read_raw handles both NULL");
+  PASS("T-IMU-EXT-03: mpu6050_read_raw returns error when both pointers are NULL");
 }
 
 /* ------------------------------------------------------------------ */

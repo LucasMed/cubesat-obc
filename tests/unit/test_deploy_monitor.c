@@ -50,6 +50,13 @@ void fault_report(uint16_t fault_id, fault_level_t level)
   (void)level;
 }
 
+/* Override weak default in flight_mode_manager.c — configurable per test */
+static fault_level_t s_mock_fault_level = FAULT_LEVEL_NONE;
+fault_level_t fault_get_highest_level(void)
+{
+  return s_mock_fault_level;
+}
+
 /* Include the unit under test directly so FreeRTOS mocks apply */
 #include "../../src/services/fmm/deploy_monitor.c"
 #include "../../include/data_layer.h"
@@ -133,6 +140,7 @@ static void reset_transition_test(void)
   data_layer_init();
   deploy_monitor_init();
   s_tick = 0;
+  s_mock_fault_level = FAULT_LEVEL_NONE;
   /* Set mode entry tick so elapsed time is controlled */
   data_layer_set_mode_entry_tick(0);
 }
@@ -329,6 +337,71 @@ static void test_detumble_stable_counter_accumulates(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test: Boot→DETUMBLE transition failure when fault blocks            */
+/* ------------------------------------------------------------------ */
+
+static void test_boot_to_detumble_transition_failure(void)
+{
+  /* Valid POST + IMU */
+  post_record_t post_rec;
+  memset(&post_rec, 0, sizeof(post_rec));
+  post_rec.magic = POST_MAGIC;
+  post_rec.test_bitmap = (1u << 0) | (1u << 4) | (1u << 8);
+  data_layer_set_post_last(&post_rec);
+  float att[3] = {0}, rates[3] = {0};
+  data_layer_write_imu(att, rates);
+  data_layer_set_flight_mode(FM_BOOT);
+  data_layer_set_deploy_in_progress(false);
+  data_layer_set_mode_entry_tick(0);
+  s_tick = pdMS_TO_TICKS(DEPLOY_BOOT_SETTLE_MS + 100);
+
+  /* Block all transitions via CRITICAL fault */
+  s_mock_fault_level = FAULT_LEVEL_CRITICAL;
+
+  deploy_monitor_step();
+
+  /* Mode should still be BOOT — transition was blocked */
+  flight_mode_t mode = data_layer_get_flight_mode();
+  bool deploy = data_layer_get_deploy_in_progress();
+  CHECK(mode == FM_BOOT, "BOOT→DETUMBLE must be blocked by CRITICAL fault");
+  CHECK(deploy == false, "deploy flag must remain false when transition is blocked");
+
+  printf("test_boot_to_detumble_transition_failure: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test: DETUMBLE→NOMINAL transition failure when fault blocks        */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_to_nominal_transition_failure(void)
+{
+  data_layer_init();
+  deploy_monitor_init();
+  s_detumble_stable_count = 0;
+
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  float att[3] = {0.0f, 0.0f, 0.0f};
+  float rates[3] = {0.01f, 0.0f, 0.0f}; /* omega < threshold */
+  data_layer_write_imu(att, rates);
+
+  /* Accumulate enough stable samples to trigger transition */
+  s_detumble_stable_count = DEPLOY_STABLE_SAMPLES;
+
+  /* Block all transitions via CRITICAL fault */
+  s_mock_fault_level = FAULT_LEVEL_CRITICAL;
+
+  deploy_monitor_step();
+
+  /* State must remain unchanged — transition was blocked */
+  flight_mode_t mode = data_layer_get_flight_mode();
+  CHECK(mode == FM_DETUMBLE, "DETUMBLE→NOMINAL must be blocked by CRITICAL fault");
+  CHECK(s_detumble_stable_count == DEPLOY_STABLE_SAMPLES,
+        "stable_count must NOT be reset on transition failure");
+
+  printf("test_detumble_to_nominal_transition_failure: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -344,6 +417,8 @@ int main(void)
   test_detumble_high_omega_hard_reset();
   test_detumble_medium_omega_leaky_decrement();
   test_detumble_stable_counter_accumulates();
+  test_boot_to_detumble_transition_failure();
+  test_detumble_to_nominal_transition_failure();
 
   if (g_failures == 0)
   {
