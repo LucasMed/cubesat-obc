@@ -145,6 +145,8 @@ if(NOT PICO_BUILD)
     )
     target_include_directories(test_command PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include/host
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/libcsp/include
         ${CMAKE_BINARY_DIR}/third_party/libcsp/include
     )

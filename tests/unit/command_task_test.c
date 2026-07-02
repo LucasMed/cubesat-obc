@@ -34,6 +34,12 @@ void gps_reset_stats(void);
  * suppressed; the real body lives in test_command.c. */
 extern void vTaskDelay(uint32_t ticks);
 
+/* ------------------------------------------------------------------ */
+/*  PICO_BUILD stubs — allow process_text_command() to be compiled     */
+/*  on the host for comprehensive regression testing.                  */
+/* ------------------------------------------------------------------ */
+#include "pico_stubs.h"
+
 #define CSP_MOCK
 
 #include "payload_task.h"
@@ -45,112 +51,18 @@ extern TaskHandle_t xTaskGetHandle(const char *pcName);
 extern BaseType_t xTaskNotify_Stub(TaskHandle_t xTask, uint32_t ulValue, eNotifyAction eAction);
 #define xTaskNotify xTaskNotify_Stub
 
+/* Define PICO_BUILD so that process_text_command() gets compiled
+   (the uart1_listen() function also becomes available but is not called
+    by the tests — the linker still needs its symbols; they are satisfied
+    by the pico_stubs.h / test_command.c stubs). */
+#define PICO_BUILD
+
 #include "../../src/tasks/command_task.c"
 
-/* Test wrapper — implements the text-command parsing for the subset of
- * commands exercised by the test suite (DEPLOY, DEPLOYCLEAR, MODE=, SETTIME).
- * This replicates the production logic from process_text_command() but
- * without the PICO_BUILD dependency, so the unit test can compile on
- * host.  Production code paths are identical — same API calls. */
-
-/* Forward declaration of ds3231_set_time mock (defined in test_command.c) */
-#include <stdbool.h>
-extern bool ds3231_set_time(uint16_t year, uint8_t month, uint8_t day,
-                            uint8_t hour, uint8_t minute, uint8_t second);
-
+/* Test wrapper for text commands — delegates to the REAL
+ * process_text_command() from command_task.c now that PICO_BUILD
+ * makes it available in host mode. */
 void test_run_text_command(const char *cmd)
 {
-  if (strncmp(cmd, "DEPLOYCLEAR", 11) == 0)
-  {
-    data_layer_set_deploy_in_progress(false);
-  }
-  else if (strncmp(cmd, "DEPLOY", 6) == 0)
-  {
-    flight_mode_t m = fmm_get_mode();
-    if (m == FM_BOOT || m == FM_SAFE)
-    {
-      fmm_result_t r = fmm_request_transition(FM_DETUMBLE);
-      if (r == FMM_OK)
-      {
-        data_layer_set_deploy_in_progress(true);
-      }
-    }
-    else if (m != FM_DETUMBLE)
-    {
-      /* Rejected from non-deployable modes */
-    }
-  }
-  else if (strncmp(cmd, "MODE=", 5) == 0)
-  {
-    int mode = -1;
-    const char *arg = cmd + 5;
-    size_t arg_len = strlen(arg);
-    if (arg_len > 0 && (arg[0] < '0' || arg[0] > '9'))
-    {
-      for (int i = 0; i < FM_COUNT; i++)
-      {
-        if (strcasecmp(arg, fmm_mode_name((flight_mode_t)i)) == 0)
-        {
-          mode = i;
-          break;
-        }
-      }
-    }
-    else
-    {
-      char *endptr = NULL;
-      long val = strtol(arg, &endptr, 10);
-      if (endptr == arg || *endptr != '\0')
-      {
-        mode = -1;
-      }
-      else
-      {
-        mode = (int)val;
-      }
-    }
-    if (mode >= 0 && mode < FM_COUNT)
-    {
-      fmm_request_transition((flight_mode_t)mode);
-    }
-  }
-  if (strncmp(cmd, "SETTIME ", 8) == 0)
-  {
-    /* Format: SETTIME YYYY MM DD HH MM SS */
-    int year, month, day, hour, minute, second;
-    int n = sscanf(cmd + 8, "%d %d %d %d %d %d", &year, &month, &day, &hour, &minute, &second);
-    if (n == 6)
-    {
-      /* Range validation (mirrors production process_text_command) */
-      if (year < 2000 || year > 2100)
-      {
-        /* rejected — do not call ds3231_set_time */
-      }
-      else if (month < 1 || month > 12)
-      {
-        /* rejected */
-      }
-      else if (day < 1 || day > 31)
-      {
-        /* rejected */
-      }
-      else if (hour < 0 || hour > 23)
-      {
-        /* rejected */
-      }
-      else if (minute < 0 || minute > 59)
-      {
-        /* rejected */
-      }
-      else if (second < 0 || second > 59)
-      {
-        /* rejected */
-      }
-      else
-      {
-        ds3231_set_time((uint16_t)year, (uint8_t)month, (uint8_t)day,
-                        (uint8_t)hour, (uint8_t)minute, (uint8_t)second);
-      }
-    }
-  }
+  process_text_command(cmd);
 }
