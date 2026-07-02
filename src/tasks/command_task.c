@@ -506,7 +506,7 @@ static void cmd_reset(const char *cmd)
   if (strncmp(cmd + 5, "GPS", 3) == 0)
   {
     // Check if it's COLD START (RESETGPS COLD)
-    if (strncmp(cmd + 9, "COLD", 4) == 0)
+    if (strlen(cmd) > 9 && strncmp(cmd + 9, "COLD", 4) == 0)
     {
       gps_cold_start();
       uart1_puts_safe("[CMD] RESET GPS COLD START OK\r\n");

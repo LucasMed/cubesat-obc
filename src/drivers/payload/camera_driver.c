@@ -25,11 +25,13 @@
 #include "spi_payload.h"
 
 #if defined(PICO_BUILD)
+  #include "FreeRTOS.h"
   #include "hardware/clocks.h"
   #include "hardware/gpio.h"
   #include "hardware/i2c.h"
   #include "hardware/spi.h"
   #include "pico/time.h"
+  #include "semphr.h"
 #endif
 
 #include <stdio.h>
@@ -562,15 +564,18 @@ static const ov2640_reg_t *const RES_TABLES[] = {
 /* ------------------------------------------------------------------ */
 /* Internal Helpers                                                    */
 /* ------------------------------------------------------------------ */
-
 #if defined(PICO_BUILD)
 
+static SemaphoreHandle_t s_cam_i2c_mutex = NULL;
+
 /*
+
  * I2C1 (GPIO2/3 SDA/SCL) — OV2640 SCCB register access.
  * The OV2640 uses SCCB which is compatible with I2C at address 0x30.
  */
 static bool cam_i2c_write(uint8_t reg, uint8_t val)
 {
+  xSemaphoreTake(s_cam_i2c_mutex, portMAX_DELAY);
   /*
    * Match official ArduCAM PICO SDK protocol exactly:
    *   write_reg(addr, val) uses i2c_write_blocking(..., buf, 2, true)
@@ -581,21 +586,30 @@ static bool cam_i2c_write(uint8_t reg, uint8_t val)
    * Ref: RPI-Pico-Cam/tflmicro/Arducam/src/arducam.c
    */
   uint8_t buf[2] = {reg, val};
-  return i2c_write_blocking(I2C1_PORT, OV2640_I2C_ADDR, buf, 2, true) == 2;
+  bool ok = i2c_write_blocking(I2C1_PORT, OV2640_I2C_ADDR, buf, 2, true) == 2;
+  xSemaphoreGive(s_cam_i2c_mutex);
+  return ok;
 }
 
 static bool cam_i2c_read(uint8_t reg, uint8_t *val)
 {
+  xSemaphoreTake(s_cam_i2c_mutex, portMAX_DELAY);
   /*
    * Match official ArduCAM PICO SDK protocol:
    *   rdSensorReg8_8 uses nostop=true for the write phase (repeated start),
    *   then nostop=false for the read phase.
    */
+  bool ok = true;
   if (i2c_write_blocking(I2C1_PORT, OV2640_I2C_ADDR, &reg, 1, true) != 1)
   {
-    return false;
+    ok = false;
   }
-  return i2c_read_blocking(I2C1_PORT, OV2640_I2C_ADDR, val, 1, false) == 1;
+  else if (i2c_read_blocking(I2C1_PORT, OV2640_I2C_ADDR, val, 1, false) != 1)
+  {
+    ok = false;
+  }
+  xSemaphoreGive(s_cam_i2c_mutex);
+  return ok;
 }
 
 /* Forward declaration — cam_sccb_write is defined after cam_spi_read */
@@ -782,6 +796,9 @@ bool camera_init(void)
   gpio_set_function(I2C1_SCL_PIN, GPIO_FUNC_I2C);
   gpio_pull_up(I2C1_SDA_PIN);
   gpio_pull_up(I2C1_SCL_PIN);
+
+  s_cam_i2c_mutex = xSemaphoreCreateMutex();
+  configASSERT(s_cam_i2c_mutex != NULL);
 
   /* CPLD reset + GPIO config (RST=1, PD=0, PWR_EN=1) */
   cam_spi_write(0x07, 0x80);

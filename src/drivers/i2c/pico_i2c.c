@@ -12,8 +12,10 @@
 
 #include <stdio.h>
 
-#ifdef PICO_BUILD
+#if defined(PICO_BUILD)
   #include "../uart/pico_usart.h"
+  #include "FreeRTOS.h"
+  #include "semphr.h"
 #endif
 
 // Define which I2C instance to use (default I2C0)
@@ -21,6 +23,10 @@
 
 /** I2C operation timeout in microseconds (50 ms — generous for 400 kHz bus). */
 #define I2C_TIMEOUT_US 50000
+
+#if defined(PICO_BUILD)
+static SemaphoreHandle_t s_i2c_mutex = NULL;
+#endif
 
 int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
 {
@@ -41,45 +47,59 @@ int i2c_bus_init(uint32_t sda_pin, uint32_t scl_pin, uint32_t baudrate)
    * Spec: MPU6050 POR recovery time ~100ms, we use conservative 10ms here. */
   sleep_ms(10);
 
+#if defined(PICO_BUILD)
+  s_i2c_mutex = xSemaphoreCreateMutex();
+  configASSERT(s_i2c_mutex != NULL);
+#endif
+
   return 0;
 }
 
 int i2c_bus_write(uint8_t addr, const uint8_t *data, size_t len)
 {
+#if defined(PICO_BUILD)
+  xSemaphoreTake(s_i2c_mutex, portMAX_DELAY);
+#endif
   int ret = i2c_write_timeout_us(I2C_INST, addr, data, len, false, I2C_TIMEOUT_US);
-  if (ret < 0)
-  {
-    return ret;
-  }
-  return 0;
+#if defined(PICO_BUILD)
+  xSemaphoreGive(s_i2c_mutex);
+#endif
+  return (ret < 0) ? ret : 0;
 }
 
 int i2c_bus_read(uint8_t addr, uint8_t *data, size_t len)
 {
+#if defined(PICO_BUILD)
+  xSemaphoreTake(s_i2c_mutex, portMAX_DELAY);
+#endif
   int ret = i2c_read_timeout_us(I2C_INST, addr, data, len, false, I2C_TIMEOUT_US);
-  if (ret < 0)
-  {
-    return ret;
-  }
-  return 0;
+#if defined(PICO_BUILD)
+  xSemaphoreGive(s_i2c_mutex);
+#endif
+  return (ret < 0) ? ret : 0;
 }
 
 int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *rx, size_t rx_len)
 {
+#if defined(PICO_BUILD)
+  xSemaphoreTake(s_i2c_mutex, portMAX_DELAY);
+#endif
+
   // Write then read with repeated start
   int ret = i2c_write_timeout_us(I2C_INST, addr, tx, tx_len, true, I2C_TIMEOUT_US);
   if (ret < 0)
   {
+#if defined(PICO_BUILD)
+    xSemaphoreGive(s_i2c_mutex);
+#endif
     return ret;
   }
 
   ret = i2c_read_timeout_us(I2C_INST, addr, rx, rx_len, false, I2C_TIMEOUT_US);
-  if (ret < 0)
-  {
-    return ret;
-  }
-
-  return 0;
+#if defined(PICO_BUILD)
+  xSemaphoreGive(s_i2c_mutex);
+#endif
+  return (ret < 0) ? ret : 0;
 }
 
 /**
@@ -90,6 +110,10 @@ int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *
  */
 int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
 {
+#if defined(PICO_BUILD)
+  xSemaphoreTake(s_i2c_mutex, portMAX_DELAY);
+#endif
+
   int found = 0;
   uint8_t dummy;
 
@@ -114,5 +138,21 @@ int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr)
     }
   }
 
+#if defined(PICO_BUILD)
+  xSemaphoreGive(s_i2c_mutex);
+#endif
+
   return found;
 }
+
+#if defined(PICO_BUILD)
+void i2c_bus_lock(void)
+{
+  xSemaphoreTake(s_i2c_mutex, portMAX_DELAY);
+}
+
+void i2c_bus_unlock(void)
+{
+  xSemaphoreGive(s_i2c_mutex);
+}
+#endif

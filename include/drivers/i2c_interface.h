@@ -60,4 +60,24 @@ int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len, uint8_t *
  */
 int i2c_bus_scan(uint8_t start_addr, uint8_t end_addr);
 
+#if defined(PICO_BUILD)
+/**
+ * @brief Manually lock the I2C bus for multi-transaction atomicity.
+ *
+ * Blocks the calling task until the bus is available.  Must be paired
+ * with i2c_bus_unlock().  Not needed for single i2c_bus_write/read/
+ * write_read calls — the mutex is handled automatically.
+ *
+ * Only available on PICO_BUILD (FreeRTOS target).
+ */
+void i2c_bus_lock(void);
+
+/**
+ * @brief Unlock the I2C bus after a manual lock.
+ *
+ * Only available on PICO_BUILD (FreeRTOS target).
+ */
+void i2c_bus_unlock(void);
+#endif
+
 #endif  // I2C_INTERFACE_H
