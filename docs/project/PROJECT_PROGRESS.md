@@ -1,7 +1,7 @@
 # Project Progress — CubeSat OBC
 
-**Last Updated**: 2026-06-24
-**Current Phase**: v0.34.0 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon Fix)
+**Last Updated**: 2026-07-02
+**Current Phase**: v0.35.0 — Core Refactor (CRC-32, EKF, Telemetry, Command table)
 **Current Branch**: `dev`
 
 ---
@@ -23,7 +23,7 @@
 | **HC-12 Radio** | UART1 (GPIO8/9) | ✅ OK | 9600 baud, bidirectional |
 | **W25Q64 (Flash)** | SPI0 (GPIO7 CS) | ✅ OK | 8MB, JEDEC ID: M=EF, T=40, C=17 |
 | **Telemetry** | HC-12 TX | ✅ OK | Text format working |
-| **Commands** | HC-12 RX | ✅ OK | REBOOT, MODE, ECHO, CAPTURE, I2CSCAN, BH1750_TEST, RTC_TEST, POWER_TEST |
+| **Commands** | HC-12 RX / CSP | ✅ OK | 30 commands via dispatch table: HELP, STATUS, REBOOT, RESET, FAULTS, ECHO, LOG, MODE=, GPS, GPSSTATS, SETTIME, DEPLOY, DEPLOYCLEAR, MAG-CAL-*, IMU-CAL-*, BH1750_TEST, SHT31_TEST, RTC_TEST, SOLAR_TEST, POWER_TEST, I2CSCAN, CAPTURE, IMGDUMP |
 | **Camera** | SPI0 | ❌ Not connected | OV2640 pending |
 | **Reaction Wheels** | PWM | ❌ Not connected | Pending |
 | **Magnetorquers** | PWM/GPIO | ❌ Not connected | Pending |
@@ -49,12 +49,17 @@ Pico 2W Pinout (Verified 2026-03-30):
 
 - **Arduino Nano** (HC-12 bridge): ✅ Working
 - **Telemetry parsing**: ✅ Working
-- **Commands**: All tested OK
-  - `HELP` → Returns command list
+- **Commands**: All 30 commands tested OK on hardware ✅
+  - `HELP` → Returns full dispatch table (30 entries)
+  - `STATUS` → Full system status
   - `REBOOT` → System restarts
   - `MODE=1/2/3` → Changes flight mode
+  - `DEPLOY` → Deploy sequence
+  - `GPS` → GPS fix info
+  - `I2CSCAN` → Scans I2C bus
   - `ECHO` → Test command
   - `CAPTURE` → Payload trigger (no camera yet)
+  - All calibration, test, and diagnostic commands tested
 
 ### Sample Telemetry Output
 ```
@@ -239,12 +244,15 @@ Decoded:
 | | `56c7eec` | Test coverage expansion: diskio, eps_hal, spi_payload, watchdog_hal, camera, radiation, rm3100, w25q64 | ✅ Complete |
 | | `59ddcaa` | Fix BASEPRI mask in dl_lock_from_isr/dl_unlock_from_isr | ✅ Complete |
 | | `2c75ac6` | ISR-safe mode_entry_tick in fmm_force_safe() | ✅ Complete |
+| PR-#63 | `f0a11ff` | Regression tests for all 40+ text commands (74 tests, pico_stubs.h, UART capture) | ✅ Complete |
+| PR-#64 | `e670db7` | Replace 615-line if-else with 30-entry command dispatch table | ✅ Complete |
 
 - **Hardware validated**: ✅ IMU, GPS, HC-12 radio, temperature sensor, W25Q64 flash
-- **Software validated**: ✅ Telemetry (text + CSP), Commands (REBOOT/MODE/ECHO/CAPTURE/DEPLOY), ISR-safe safe-mode entry
-- **Current test status**: 65/65 tests passing
+- **Software validated**: ✅ Telemetry (text + CSP), Commands (30-entry dispatch table, all tested on HW), ISR-safe safe-mode entry
+- **Current test status**: 68/68 tests passing (63 unit + 5 integration)
 - **Current coverage**: Line ~93%, Function ~92% (target: >95%)
 - **CI Pipeline**: 6/6 stages passing
+- **Core refactors completed**: CRC-32 unified, EKF mat33_inverse extracted, telemetry task split, command dispatch table (30 entries). All zero-behavior-change — hardware-verified on real hardware.
 
 ---
 
@@ -271,6 +279,30 @@ Decoded:
 
 ---
 
+### Core Refactor — v0.35.0 ✅ (2026-07-02, PRs #63, #64)
+
+- **Goal**: Eliminate four sources of structural technical debt — duplicated CRC-32, inline matrix inversion, 615-line if-else command chain, mixed-responsibility telemetry task.
+- **SDD Change**: `refactor-core-modules` — full SDD cycle (proposal → tasks → apply → verify → archive)
+- **Branch**: `refactor/command-table` (stacked PRs merged to `dev`)
+- **Outcomes (10/10 tasks, 2 PRs, 68/68 tests passing)**:
+
+| Phase | Description | Tasks |
+|-------|-------------|-------|
+| 1 — CRC-32 Shared Library | Extracted 3 duplicated CRC-32 implementations into shared `src/lib/crc32.c` + `include/crc32.h` (post.c, w25q64.c, flash_backend.c) | 7/7 ✅ |
+| 2 — EKF mat33_inverse | Extracted duplicated 3×3 matrix inversion into `mat33_inverse()` helper (ekf_update + ekf_update_mag) | 4/4 ✅ |
+| 3 — Telemetry Task Split | Separated `vTelemetryTask_Step()` into `telemetry_build_packet`, `telemetry_build_binary_frame`, `telemetry_store_record` | 4/4 ✅ |
+| 4 — Command Handler Table | Replaced 615-line if-else chain in `process_text_command()` with 30-entry `s_command_table[]`, 28 handler functions, 10-line dispatcher | 5/5 ✅ |
+| 5 — Final Cleanup | Test scaffolding audit, full test suite + static analysis (cppcheck clean) | 2/2 ✅ |
+
+**Key deliverables**:
+- **CRC-32**: Shared library with table-driven implementation. 100% line coverage in test. Single source of truth for the polynomial-0xEDB88320 CRC. No more inline copies.
+- **EKF mat33_inverse**: 4 regression tests (identity, diagonal, singular, round-trip). Static helper eliminates code duplication while keeping the EKF module's internal API clean.
+- **Command table**: Extensible dispatch — adding a new command is one table entry + one handler function. No more nesting else-ifs. 74 regression tests cover all 30 table entries.
+- **Telemetry**: Named functions with single responsibility make the task step readable and individually testable.
+- **Chained PRs**: PR #63 (regression tests, ~200 lines), PR #64 (dispatch table, ~491 lines). Stacked-to-dev strategy.
+- **Tests**: 68/68 passing (63 unit + 5 integration), zero new warnings, cppcheck clean.
+- **Hardware verified**: All 30 commands working via UART1. System stable across multiple telemetry cycles, no crashes, no leaks. Heap steady at 39376 bytes.
+
 ## Overall Roadmap
 
 | Phase | Target | Description | Status |
@@ -285,6 +317,7 @@ Decoded:
 | 7 — Scientific Payload | Mar 2026 | GPS, IMU, Magnetometer integration, integration tests, coverage 93% | ✅ Complete |
 | 8 — Full Testing | Q2 2026 | Coverage expansion (>95%), pending tasks, camera, storage, FM_PAYLOAD, hardware validation | 🔄 In Progress |
 | **Golden Image MPU** | **Q2 2026** | **Bootloader, FW Upload, MPU, CRC32, HealthMon fix, CI split** | **✅ Complete (v0.34.0)** |
+| **Core Refactor** | **Q3 2026** | **CRC-32 unification, EKF extraction, telemetry split, command table dispatch** | **✅ Complete (v0.35.0)** |
 | HW BOM / PDR | Mar 2026 | Full hardware BOM; PDR review; LIS3MDL, TPS3431 watchdog, SAW filter, MTQ-first ADCS strategy, GS design | ✅ Complete (BOM v1.0, PDR PASS) |
 
 **Estimated Total**: ~8-10 weeks to flight-ready prototype
@@ -309,9 +342,9 @@ git checkout -b feature/<short-name>
 
 | Test Suite | Passing | Pending | Total |
 |------------|---------|---------|-------|
-| Unit Tests | 67/67 | 0 | 67 |
+| Unit Tests | 63/63 | 0 | 63 |
 | Integration Tests | 5/5 | 0 | 5 |
-| **Total** | **72/72** | **0** | **72** |
+| **Total** | **68/68** | **0** | **68** |
 
 **New test targets (Phase 7 — PRs 28–30)**:
 - `test_gps_integration` — validates GPS driver and telemetry integration

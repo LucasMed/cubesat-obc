@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Build guide**: Updated for CI pipeline (`pico_ci.sh` with 9 stages), bootloader build, combined UF2 generation, AddressSanitizer/UBSan, emulation smoke-test, GCC 15 known issue; test count corrected to 29
 - **Flashing guide**: Rewritten from blink_test to combined UF2 deployment, trust-on-first-boot, three flashing methods, boot verification and troubleshooting
+- **Core modules refactored**: CRC-32 unified into shared `src/lib/crc32.c` + `include/crc32.h` (3 inline copies removed from post.c, w25q64.c, flash_backend.c). EKF `mat33_inverse()` extracted (2 inline copies replaced). Telemetry task split into `telemetry_build_packet`, `telemetry_build_binary_frame`, `telemetry_store_record`. Command dispatch table (30-entry `s_command_table[]`, 10-line dispatcher) replaces 615-line if-else chain. Zero behavior change — 68/68 regression tests pass. (PR #63, #64)
 
 ## [0.34.0] — 2026-06-24 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon)
 

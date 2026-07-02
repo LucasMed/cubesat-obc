@@ -47,6 +47,30 @@
 
 ---
 
+# Core Module Refactor — Lessons Learned (2026-07-02)
+
+## PICO_BUILD Guards Create a Coverage Blind Spot
+
+**Problem**: `command_task.c` and `telemetry_task.c` are PICO_BUILD-guarded, so gcovr reports 0% coverage on host even though behavioral tests pass through `pico_stubs.h` mock wrappers.
+
+**Lesson**: Structural refactors of PICO_BUILD-guarded code can only be verified through behavioral test execution, not coverage data. Accept this limitation for host testing. The stubs approach (`pico_stubs.h`) is the correct pattern — it allows the real dispatch logic to run on host while the hardware-dependent paths are mocked.
+
+## Approval Testing is the Right Pattern for Pure Refactors
+
+**Problem**: When behavior must be preserved 1:1 (no spec changes), TDD's RED-GREEN-REFACTOR cycle needs adaptation — you can't write a failing test for behavior that already works.
+
+**Solution**: Use the approval testing pattern — write comprehensive regression tests that capture current behavior FIRST, then apply the structural refactor, then verify all tests still pass. This satisfies the intent of RED (tests exist before code change) without requiring a failing test.
+
+## Chained PRs Protect Review Quality for Large Refactors
+
+**Lesson**: Stacking CRC-32 extraction (safe, small, easy) + EKF extraction (small, self-contained) + Telemetry split (structural, no behavior change) into one PR and deferring the command table (615-line if-else → table dispatch, regression-test-heavy) to a separate PR kept each diff under 400 lines and made reviews tractable. Splitting by risk profile (safe refactors first, high-risk last) worked better than splitting by module.
+
+## Pre-Refactor Regression Tests Catch Hidden Bugs
+
+**Discovery**: Writing comprehensive regression tests for the command handler before touching dispatch uncovered two pre-existing bugs — `RESETGPS COLD` (off-by-space in `strncmp(cmd+8, "COLD", 4)`) and `BH1750_TEST5C` (off-by-one in command index). These bugs were documented but intentionally not fixed during the refactor to preserve scope discipline. The tests now serve as regression protection for future fixes.
+
+---
+
 # FreeRTOS on Raspberry Pi Pico 2 (Cortex-M33)
 ## Lesson Learned: Context Switching & Hardware Architecture Mismatch
 
