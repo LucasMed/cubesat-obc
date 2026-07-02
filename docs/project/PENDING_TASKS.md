@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.4  
-**Last Updated:** 2026-06-24
+**Version:** 2.5  
+**Last Updated:** 2026-07-02
 **Status:** Active
 
 ---
@@ -103,9 +103,9 @@
 
 | Task | Description | Priority | Effort | Dependencies |
 |------|-------------|----------|--------|--------------|
-| Camera Driver | Implement camera driver for payload capture | High | 16h | Camera hardware selection |
+| Camera Driver | Implement camera driver for payload capture | High | 16h | ❌ Hardware damaged — OV2640 module confirmed faulty (SPI TEST1 readback mismatch). Replacement needed |
 | LIS3MDL Migration | Migrate from HMC5883L (discontinued) to LIS3MDL | High | 12h | PR-18 |
-| FM_PAYLOAD Mode | Payload mode state implementation | High | 8h | Camera driver |
+| FM_PAYLOAD Mode | Payload mode state implementation (image_count tracking, T-PLD-INT-04, GPIO21 rail validation — HW-dependent: camera/RM3100/radiation pending) | High | 8h | ✅ **image_count tracking done, T-PLD-INT-04 done, GPIO21 validated on HW** — camera HW blocked |
 | W25Qxx Integration | External flash storage (W25Qxx) integration | High | 8h | ✅ Done (PR-39) |
 | PWM HAL (Wheels) | PWM HAL for reaction wheels (GPIO6/7/8) | Medium | 6h | ✅ Done |
 | PWM HAL (Torquers) | PWM HAL for magnetorquers (GPIO14/15/16) | Medium | 6h | ✅ Done |
@@ -115,6 +115,10 @@
 | ISR-safe mode_entry_tick | Add mode_entry_tick update in fmm_force_safe() from ISR context | High | 4h | ✅ Done (2c75ac6) |
 | Fix BASEPRI mask in dl_lock_from_isr | Pass saved BASEPRI mask through from_isr lock/unlock | High | 2h | ✅ Done (59ddcaa) |
 | Host test coverage expansion | diskio, eps_hal, spi_payload, watchdog_hal + camera/radiation/rm3100/w25q64 | Medium | 8h | ✅ Done (56c7eec) |
+| I2C bus mutex protection | FreeRTOS mutex for I2C0 + I2C1 (SPI pattern) | High | 6h | ✅ Done (63d563c) |
+| image_count tracking | payload_manager_increment_image_count + T-PLD-INT-04 | Medium | 4h | ✅ Done (bd4a8b0) |
+| deploy_monitor CI fix | Add missing `#include <stdio.h>` in deploy_monitor.c | High | 30m | ✅ Done (bd4a8b0) |
+| RESETGPS COLD / BH1750_TEST5C fix | Off-by-one bugs in text command parser | High | 2h | ✅ Done (63d563c) |
 
 ### 3.2 Phase 8 Effort Summary
 
@@ -222,9 +226,10 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Camera Driver | Deferred | Awaiting camera hardware selection |
-| External Storage | Pending | W25Qxx integration pending |
-| HMC5883L Driver | Partial | Stub implementation, I2C not implemented |
+| Camera Driver | ❌ Hardware damaged | OV2640 module confirmed faulty — `camera_init` fails with SPI TEST1 readback mismatch. All software paths exhausted. Replacement needed |
+| W25Q64 External Flash | ✅ Complete | SPI0, JEDEC ID verified, erase/program/read working |
+| HMC5883L Driver | ✅ Complete | I2C driver with HAL stub, host-testable |
+| I2C Bus Mutex (I2C0 + I2C1) | ✅ Complete | FreeRTOS mutex, SPI pattern, verified |
 | GPS Driver | ✅ Complete | 11 comandos, API por valor, stats, HDOP |
 | **Sun Sensor** | **✅ Complete** | Dual-axis photodiode on GPIO27/28 |
 
@@ -345,6 +350,7 @@ OI-8 (Heap Sizing)
 | 2.2 | 2026-04-24 | System | Sun sensor driver implemented - dual-axis photodiode on GPIO27/28, feat/sun-sensor-driver branch |
 | 2.3 | 2026-06-20 | System | Added ISR-safe mode_entry_tick, BASEPRI fix, test coverage expansion tasks marked done |
 | 2.4 | 2026-06-24 | System | Added Section 9: Bootloader Improvements (watchdog, fsw_confirmed, reset cause, boot status RAM, boot log, UART debug) |
+| 2.5 | 2026-07-02 | System | Updated FM_PAYLOAD status (image_count tracking, T-PLD-INT-04, GPIO21 HW validation done). Added I2C mutex, RESETGPS/BH1750 fixes, deploy_monitor CI fix as completed. Noted OV2640 camera hardware damage. |
 
 ---
 

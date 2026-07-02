@@ -10,11 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Memory map documentation**: `docs/dev/MEMORY_MAP.md` — complete RP2350 flash (4 MB XIP) and SRAM (520 KB) layout, boot metadata format (`boot_meta_t`, `slot_metadata_t`), FreeRTOS heap/stack config, boot flow diagram with POST codes
 - **POST code diagnostic table**: Documented SRAM-based POST codes (`0x20040000`) for boot failure diagnosis without serial console
+- **I2C mutex protection**: FreeRTOS mutex added to I2C0 (`pico_i2c.c`) and I2C1 (`camera_driver.c`) following the existing SPI mutex pattern. Prevents contention between SensorReadTask (10 Hz) and CommandTask (on-demand). (commit `63d563c`)
+- **RESETGPS COLD fix**: Off-by-one error in text parser — `cmd+9` now correctly points to "COLD" (was `cmd+8`). `gps_cold_start()` was unreachable. (commit `63d563c`)
+- **BH1750_TEST5C fix**: Off-by-one in address parsing — `cmd[11]` now correctly checks '5' (was `cmd[12]`). `addr=0x5C` branch was unreachable. (commit `63d563c`)
+- **`image_count` tracking**: Added `payload_manager_increment_image_count()` API, called from `payload_task.c` after successful image storage. Replaces placeholder zero with real counter. (commit `bd4a8b0`)
+- **T-PLD-INT-04 integration test**: Verifies image_count starts at 0, increments to 1 after first capture, to 2 after second. (commit `bd4a8b0`)
+- **GPIO21 hardware validation**: Verified on real OBC hardware — HIGH in FM_PAYLOAD (mode=5), LOW in FM_NOMINAL (mode=3). Rail enable/disable confirmed via serial output logs. No leaks, no crashes, heap stable at ~39 KB.
+
+### Fixed
+- **deploy_monitor.c missing `#include <stdio.h>`**: Pre-existing CI failure in pico-build stage (unrelated to FM_PAYLOAD work). (commit `bd4a8b0`)
 
 ### Changed
 - **Build guide**: Updated for CI pipeline (`pico_ci.sh` with 9 stages), bootloader build, combined UF2 generation, AddressSanitizer/UBSan, emulation smoke-test, GCC 15 known issue; test count corrected to 29
 - **Flashing guide**: Rewritten from blink_test to combined UF2 deployment, trust-on-first-boot, three flashing methods, boot verification and troubleshooting
 - **Core modules refactored**: CRC-32 unified into shared `src/lib/crc32.c` + `include/crc32.h` (3 inline copies removed from post.c, w25q64.c, flash_backend.c). EKF `mat33_inverse()` extracted (2 inline copies replaced). Telemetry task split into `telemetry_build_packet`, `telemetry_build_binary_frame`, `telemetry_store_record`. Command dispatch table (30-entry `s_command_table[]`, 10-line dispatcher) replaces 615-line if-else chain. Zero behavior change — 68/68 regression tests pass. (PR #63, #64)
+
+### Documentation
+- **README.md**: Updated test count to 68/68, version to v0.34.0, last updated to 2026-07-02
 
 ## [0.34.0] — 2026-06-24 — Golden Image MPU (Bootloader + FW Upload + MPU + HealthMon)
 

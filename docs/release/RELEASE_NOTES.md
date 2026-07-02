@@ -1,6 +1,6 @@
 # Release Notes
 
-**Last Updated**: 2026-03-20
+**Last Updated**: 2026-07-02
 
 ---
 
@@ -322,10 +322,90 @@ pinning is gated on HW stability and is tracked for v1.0.0.
 
 ---
 
+## Current Unreleased Work (2026-07-02)
+
+**Status**: 🔄 In Development  
+**Branch**: `dev`
+
+### Highlights
+- **I2C mutex protection**: FreeRTOS mutex added to I2C0 (`pico_i2c.c`) and I2C1 (`camera_driver.c`) following the existing SPI mutex pattern — prevents contention between SensorReadTask (10 Hz) and CommandTask (on-demand)
+- **`image_count` tracking**: `payload_manager_increment_image_count()` API called after successful image storage, replacing placeholder zero with real counter; T-PLD-INT-04 integration test verifies start/increment behaviour
+- **GPIO21 hardware validation**: Verified on real OBC hardware — HIGH in FM_PAYLOAD (mode=5), LOW in FM_NOMINAL (mode=3); rail enable/disable confirmed, heap stable at ~39 KB
+
+### Bug Fixes
+- **RESETGPS COLD fix**: Off-by-one error in text parser — `cmd+9` now correctly points to "COLD" (was `cmd+8`); `gps_cold_start()` was unreachable
+- **BH1750_TEST5C fix**: Off-by-one in address parsing — `cmd[11]` now correctly checks '5' (was `cmd[12]`); `addr=0x5C` branch was unreachable
+- **deploy_monitor.c**: Added missing `#include <stdio.h>` — pre-existing CI failure in pico-build stage
+
+### Components
+| Component | Status |
+|-----------|--------|
+| I2C Mutex Protection | ✅ I2C0 + I2C1 contention-free |
+| image_count Tracking | ✅ `payload_manager_increment_image_count()` |
+| T-PLD-INT-04 Integration Test | ✅ image_count start→1→2 verified |
+| RESETGPS COLD Fix | ✅ Off-by-one corrected |
+| BH1750_TEST5C Fix | ✅ Off-by-one corrected |
+| deploy_monitor CI Fix | ✅ `#include <stdio.h>` added |
+| GPIO21 HW Validation | ✅ Verified on OBC hardware |
+
+---
+
+## v0.35.0 — Core Modules Refactor (2026-07-02)
+
+**Status**: ✅ Released  
+**Branch**: `main`
+
+### Highlights
+- **CRC-32 unification**: 3 inline copies (post.c, w25q64.c, flash_backend.c) consolidated into shared `src/lib/crc32.c` + `include/crc32.h` — single source of truth, zero behaviour change
+- **EKF `mat33_inverse()` extraction**: Duplicated 3×3 matrix inversion replaced with shared utility, 2 callers unified
+- **Telemetry task modular split**: Monolithic packet builder separated into `telemetry_build_packet`, `telemetry_build_binary_frame`, and `telemetry_store_record` for maintainability
+- **Command dispatch table**: 30-entry `s_command_table[]` with 10-line dispatcher replaces 615-line if-else chain — adding new commands requires one table row
+- All 68/68 regression tests pass with zero behaviour change (PR #63, #64)
+
+### Components
+| Component | Status |
+|-----------|--------|
+| CRC-32 Unification | ✅ Shared `src/lib/crc32.c` + `include/crc32.h` |
+| EKF mat33_inverse | ✅ Shared utility, 2 callers |
+| Telemetry Task Split | ✅ 3 packet-building functions |
+| Command Dispatch Table | ✅ 30-entry table, 615→10 lines |
+| Regression Tests | ✅ 68/68 passing |
+
+---
+
+## v0.34.0 — Golden Image MPU (2026-06-24)
+
+**Status**: ✅ Released  
+**Branch**: `main`
+
+### Highlights
+- **Dual-slot golden image bootloader**: Chain-load Slot A → Slot B → golden restore from W25Q64; CRC32 validation before every jump; trust-on-first-boot path for freshly-flashed binaries; 64 KB footprint at flash base (0x10000000)
+- **CSP-driven OTA firmware upload**: 4-phase state machine (START → CHUNK → VERIFY → COMMIT) with 256 B chunk packets via CSP commands 20-25; staging buffer management and slot programming
+- **MPU memory protection**: 3-region configuration (Flash RO/exec/WBWA, SRAM RW/exec/WBWA, Peripherals priv-only/no-exec/Device) verified on RP2350 hardware; activated in `vStartupTask`
+- **Boot info structure**: Cross-reset boot communication (slot ID, boot count, golden validity) with `include/internal_flash_layout.h` as single source of truth for 4 MB flash map
+- **Combined UF2 generation**: `scripts/combine_uf2.py` merges bootloader + firmware into a single flashable image
+- **HealthMonitor fix**: `eps_hal_read()` now reads INA219 (0x40) cached bus voltage instead of floating ADC0 GPIO26 pin — resolves spurious SAFE mode on dev boards without battery
+- Test suite: **72/72 passing** (was 65)
+
+### Components
+| Component | Status |
+|-----------|--------|
+| Golden Image Bootloader | ✅ Dual-slot, CRC32, golden restore |
+| OTA Firmware Upload | ✅ 4-phase CSP state machine |
+| MPU Protection (RP2350) | ✅ 3-region, HW-verified |
+| Boot Info / Flash Layout | ✅ `_Static_assert` guarded |
+| Combined UF2 Build | ✅ Bootloader + firmware merge |
+| EPS HAL / HealthMonitor Fix | ✅ INA219 bus voltage instead of ADC0 |
+| Test Suite | ✅ 72/72 passing |
+
+---
+
 ## v1.0.0 — Flight Ready (TBD)
 
 **Status**: ⏳ Planned — SMP enablement + flight qualification  
 **Target**: Q3 2026
+
+> Bootloader, OTA firmware upload, MPU protection, and command dispatch refactor completed in v0.34.0/v0.35.0.
 
 ### Planned Features
 - Enable SMP dual-core (`configNUMBER_OF_CORES = 2`) with core-affinity pinning
