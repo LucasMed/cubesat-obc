@@ -154,6 +154,7 @@ flight_mode_t fmm_get_mode(void)
 /* ------------------------------------------------------------------ */
 
 void payload_manager_init(void) {}
+void payload_manager_increment_image_count(void) {}
 payload_status_t payload_manager_get_status(void)
 {
   payload_status_t s;

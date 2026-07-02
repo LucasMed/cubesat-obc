@@ -287,6 +287,40 @@ static void test_periodic_logging(void)
   printf("  PASS T-PLD-INT-03 Periodic sampling and logging\n");
 }
 
+/* ========================================================================
+ * T-PLD-INT-04: Image capture increments image_count
+ * ======================================================================== */
+static void test_image_count_increments(void)
+{
+  reset_all();
+  force_to_nominal();
+  fmm_request_transition(FM_PAYLOAD);
+  vPayloadTask_Step(); /* Enable rail */
+
+  CHECK(payload_manager_get_status().rail_enabled, "T-PLD-INT-04 pre: Rail must be ON");
+
+  /* image_count starts at 0 */
+  CHECK(payload_manager_get_status().image_count == 0,
+        "T-PLD-INT-04: image_count starts at 0");
+
+  /* First capture */
+  s_notify_value = PAYLOAD_NOTIFY_CAPTURE_IMAGE;
+  s_notify_pending = true;
+  vPayloadTask_Step();
+  CHECK(g_storage_img_calls >= 1, "T-PLD-INT-04: First image stored");
+  CHECK(payload_manager_get_status().image_count == 1,
+        "T-PLD-INT-04: image_count = 1 after first capture");
+
+  /* Second capture */
+  s_notify_value = PAYLOAD_NOTIFY_CAPTURE_IMAGE;
+  s_notify_pending = true;
+  vPayloadTask_Step();
+  CHECK(payload_manager_get_status().image_count == 2,
+        "T-PLD-INT-04: image_count = 2 after second capture");
+
+  printf("  PASS T-PLD-INT-04 Image capture increments image_count\n");
+}
+
 int main(void)
 {
   printf("=== Payload Integration Tests (WP-7.8) ===\n");
@@ -294,6 +328,7 @@ int main(void)
   test_rail_follows_mode();
   test_capture_image();
   test_periodic_logging();
+  test_image_count_increments();
 
   if (g_failures == 0)
   {

@@ -81,6 +81,7 @@ void vPayloadTask_Step(void)
             {
               printf("[PayloadTask] Image saved: %s (%lu bytes)\n", filename,
                      (unsigned long)img_size);
+              payload_manager_increment_image_count();
             }
             else
             {

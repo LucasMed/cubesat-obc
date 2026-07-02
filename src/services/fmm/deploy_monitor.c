@@ -21,6 +21,7 @@
 #include "task.h"
 
 #include <math.h>
+#include <stdio.h>
 
 /* ------------------------------------------------------------------ */
 /* Internal state                                                      */

@@ -50,6 +50,14 @@ bool payload_manager_health_check(void);
 payload_status_t payload_manager_get_status(void);
 
 /**
+ * @brief Increment the image capture counter by one.
+ *
+ * Called after a successful image storage operation so that
+ * get_status() always reflects the actual count.
+ */
+void payload_manager_increment_image_count(void);
+
+/**
  * @brief Get the cumulative radiation dose estimate.
  *
  * @return Estimated total dose in Gy (placeholder units until calibration).

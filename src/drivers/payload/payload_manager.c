@@ -73,14 +73,17 @@ bool payload_manager_health_check(void)
   return mag_ok && cam_ok;
 }
 
+void payload_manager_increment_image_count(void)
+{
+  s_payload_status.image_count++;
+}
+
 payload_status_t payload_manager_get_status(void)
 {
   /* Fetch latest vector for status */
   rm3100_get_last((rm3100_vector_t *)s_payload_status.last_mag_vector);
 
-  /* Estimate image count from storage if needed (placeholder) */
-  s_payload_status.image_count = 0;
-
+  /* image_count is tracking calls to increment_image_count() */
   return s_payload_status;
 }
 
