@@ -506,7 +506,7 @@ static void cmd_reset(const char *cmd)
   if (strncmp(cmd + 5, "GPS", 3) == 0)
   {
     // Check if it's COLD START (RESETGPS COLD)
-    if (strncmp(cmd + 8, "COLD", 4) == 0)
+    if (strncmp(cmd + 9, "COLD", 4) == 0)
     {
       gps_cold_start();
       uart1_puts_safe("[CMD] RESET GPS COLD START OK\r\n");
@@ -666,7 +666,7 @@ static void cmd_bh1750_test(const char *cmd)
 {
   // Parse optional address argument
   uint8_t addr = BH1750_ADDR_DEFAULT;  // 0x23
-  if (strlen(cmd) > 12 && cmd[12] == '5' && cmd[13] == 'C')
+  if (strlen(cmd) > 11 && cmd[11] == '5' && cmd[12] == 'C')
   {
     addr = 0x5C;
   }

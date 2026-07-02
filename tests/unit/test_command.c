@@ -1163,12 +1163,8 @@ void test_text_resetgps(void)
 
 void test_text_resetgps_cold(void)
 {
-  /* NOTE: existing code has a bug — cmd+8 for "RESETGPS COLD" points to
-     " COLD" (leading space), so strncmp(cmd+8, "COLD",4) never matches.
-     The else branch fires: gps_reset_stats(). This test documents the
-     CURRENT behavior, not the intended behavior. */
   const char *out = run_cmd("RESETGPS COLD");
-  assert(strstr(out, "RESET GPS OK") != NULL);
+  assert(strstr(out, "RESET GPS COLD START OK") != NULL);
   printf("test_text_resetgps_cold PASS\n");
 }
 
@@ -1304,12 +1300,9 @@ void test_text_bh1750_test(void)
 
 void test_text_bh1750_test_5c(void)
 {
-  /* NOTE: existing code has off-by-one — cmd[12] is 'C' not '5', so
-     addr=0x5C branch is never reached. Default 0x23 is used instead.
-     This test documents CURRENT behavior. */
   const char *out = run_cmd("BH1750_TEST5C");
   assert(strstr(out, "BH1750:") != NULL);
-  assert(strstr(out, "0x23") != NULL);
+  assert(strstr(out, "0x5C") != NULL);
   printf("test_text_bh1750_test_5c PASS\n");
 }
 
