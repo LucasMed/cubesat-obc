@@ -24,6 +24,7 @@
 
 #include "pico/stdlib.h"
 #include "hardware/flash.h"
+#include "hardware/watchdog.h"
 #include "hardware/sync.h"
 #include "hardware/structs/scb.h"
 #include "hardware/structs/systick.h"
@@ -33,6 +34,7 @@
 
 #include "internal_flash_layout.h"
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -428,14 +430,24 @@ static void __attribute__((naked)) jump_to_image(uint32_t slot_base)
 
 void bootloader_main(void)
 {
+    /* ── Init UART / USB serial for debug output ── */
+    stdio_init_all();
+
+    printf("[BTLDR] Bootloader started\r\n");
+
     boot_meta_t meta;
     bool meta_valid = boot_meta_read(&meta);
 
     if (!meta_valid)
     {
-        /* First boot or corrupted metadata — initialize */
+        printf("[BTLDR] No valid boot meta — initialising\r\n");
         memset(&meta, 0, sizeof(meta));
         meta.magic = BOOT_META_MAGIC;
+    }
+    else
+    {
+        printf("[BTLDR] Boot meta valid: A=%u failures, B=%u failures\r\n",
+               (unsigned)meta.slot_a_failures, (unsigned)meta.slot_b_failures);
     }
 
     /* ── Try Slot A ── */
@@ -444,6 +456,7 @@ void bootloader_main(void)
         if (validate_slot(SLOT_A_BASE, SLOT_A_SIZE,
                           &meta.slot_a_failures))
         {
+            printf("[BTLDR] Slot A CRC PASS → jumping\r\n");
             meta.current_slot = 0;
             meta.slot_a_failures = 0;
             meta.boot_reason = POST_BOOT_SLOT_A_OK;
@@ -451,17 +464,25 @@ void bootloader_main(void)
             meta.last_crc_result = CRC_RESULT_PASS;
             boot_meta_write(&meta);
             post_code(POST_BOOT_SLOT_A_OK);
+            watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_A_BASE);
         }
         else
         {
+            printf("[BTLDR] Slot A CRC FAIL (failures=%u)\r\n",
+                   (unsigned)(meta.slot_a_failures + 1));
             meta.last_crc_result = CRC_RESULT_FAIL;
             meta.slot_a_failures++;
             meta.boot_reason = POST_BOOT_SLOT_A_FAIL;
             boot_meta_write(&meta);
             post_code(POST_BOOT_SLOT_A_FAIL);
         }
+    }
+    else
+    {
+        printf("[BTLDR] Slot A exhausted (%u failures)\r\n",
+               (unsigned)meta.slot_a_failures);
     }
 
     /* ── Try Slot B ── */
@@ -470,6 +491,7 @@ void bootloader_main(void)
         if (validate_slot(SLOT_B_BASE, SLOT_B_SIZE,
                           &meta.slot_b_failures))
         {
+            printf("[BTLDR] Slot B CRC PASS → jumping\r\n");
             meta.current_slot = 1;
             meta.slot_b_failures = 0;
             meta.boot_reason = POST_BOOT_SLOT_B_OK;
@@ -477,17 +499,25 @@ void bootloader_main(void)
             meta.last_crc_result = CRC_RESULT_PASS;
             boot_meta_write(&meta);
             post_code(POST_BOOT_SLOT_B_OK);
+            watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_B_BASE);
         }
         else
         {
+            printf("[BTLDR] Slot B CRC FAIL (failures=%u)\r\n",
+                   (unsigned)(meta.slot_b_failures + 1));
             meta.last_crc_result = CRC_RESULT_FAIL;
             meta.slot_b_failures++;
             meta.boot_reason = POST_BOOT_SLOT_B_FAIL;
             boot_meta_write(&meta);
             post_code(POST_BOOT_SLOT_B_FAIL);
         }
+    }
+    else
+    {
+        printf("[BTLDR] Slot B exhausted (%u failures)\r\n",
+               (unsigned)meta.slot_b_failures);
     }
 
     /* ── Both slots metadata-invalid — check for fresh binary (.uf2) ── */
@@ -497,6 +527,7 @@ void bootloader_main(void)
     {
         if (valid_image(SLOT_A_BASE))
         {
+            printf("[BTLDR] Slot A fresh binary (trust-on-first-boot) → jumping\r\n");
             meta.current_slot = 0;
             meta.slot_a_failures = 0;
             meta.boot_reason = POST_BOOT_SLOT_A_OK;
@@ -504,12 +535,14 @@ void bootloader_main(void)
             meta.last_crc_result = CRC_RESULT_NONE;
             boot_meta_write(&meta);
             post_code(POST_BOOT_SLOT_A_OK);
+            watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_A_BASE);
         }
 
         if (valid_image(SLOT_B_BASE))
         {
+            printf("[BTLDR] Slot B fresh binary (trust-on-first-boot) → jumping\r\n");
             meta.current_slot = 1;
             meta.slot_b_failures = 0;
             meta.boot_reason = POST_BOOT_SLOT_B_OK;
@@ -517,14 +550,17 @@ void bootloader_main(void)
             meta.last_crc_result = CRC_RESULT_NONE;
             boot_meta_write(&meta);
             post_code(POST_BOOT_SLOT_B_OK);
+            watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_B_BASE);
         }
     }
 
     /* ── Golden restore ── */
+    printf("[BTLDR] Both slots invalid — attempting golden restore\r\n");
     if (golden_restore())
     {
+        printf("[BTLDR] Golden restore OK → jumping to Slot A\r\n");
         meta.slot_a_failures = 0;
         meta.slot_b_failures = 0;
         meta.current_slot = 0;
@@ -533,11 +569,13 @@ void bootloader_main(void)
         meta.last_crc_result = CRC_RESULT_PASS;
         boot_meta_write(&meta);
         post_code(POST_BOOT_GOLDEN_OK);
+        watchdog_enable(30000, true);
         cleanup_before_jump();
         jump_to_image(SLOT_A_BASE);
     }
 
     /* ── Everything failed — halt ── */
+    printf("[BTLDR] All boot paths exhausted — halting\r\n");
     meta.last_crc_result = CRC_RESULT_FAIL;
     boot_meta_write(&meta);
     post_code(POST_BOOT_GOLDEN_CRC);
