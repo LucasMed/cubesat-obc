@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.6  
+**Version:** 2.7  
 **Last Updated:** 2026-07-07
 **Status:** Active
 
@@ -352,6 +352,7 @@ OI-8 (Heap Sizing)
 | 2.4 | 2026-06-24 | System | Added Section 9: Bootloader Improvements (watchdog, fsw_confirmed, reset cause, boot status RAM, boot log, UART debug) |
 | 2.5 | 2026-07-02 | System | Updated FM_PAYLOAD status (image_count tracking, T-PLD-INT-04, GPIO21 HW validation done). Added I2C mutex, RESETGPS/BH1750 fixes, deploy_monitor CI fix as completed. Noted OV2640 camera hardware damage. |
 | 2.6 | 2026-07-07 | System | Bootloader 9.1 (Supervised Watchdog), 9.6 (UART Debug), and 9.4 (Unified Boot Status RAM) completed — 3.5-7.5h remaining. Updated effort table with status markers. |
+| 2.7 | 2026-07-07 | System | Bootloader 9.2 (fsw_confirmed) completed — shared boot_meta.h, boot_meta_set_fsw_confirmed(), bootloader check at startup, FSW call after POST + tasks. 9.3 and 9.5 remaining. |
 
 ---
 
@@ -418,26 +419,22 @@ The bootloader must arm the hardware watchdog before jumping to the FSW. If the 
 - FSW kicks WDT in `vStartupTask` before timeout expiry
 - If FSW hangs, WDT fires → bootloader sees slot failure counter increment
 
-### 9.2 FSW Boot Confirmation (`fsw_confirmed`)
+### 9.2 FSW Boot Confirmation (`fsw_confirmed`) ✅ COMPLETED
 
-**Priority**: HIGH | **Effort**: M (~2 h) | **Status**: ❌ Not implemented
+**Priority**: HIGH | **Effort**: M (~2 h) | **Status**: ✅ Done (cf0166b)
 
-The FSW must mark a boot as successful in the Boot Config Block after completing its initialization. The bootloader resets the slot failure counter when it sees `fsw_confirmed == 1` on the next boot.
+The FSW writes `fsw_confirmed = 1` to `boot_meta_t` in internal flash after POST + all task creation succeed. On the next boot, the bootloader reads this flag, resets `slot_a_failures` and `slot_b_failures` to 0, and clears the flag — preventing infinite CRC-pass → FSW-crash loops.
 
-**Current state**:
-- ✅ Failure counters exist (`slot_a_failures`, `slot_b_failures`, `MAX_FAILURES = 3`)
-- ❌ FSW never writes `fsw_confirmed`
-- ❌ Failure counters never reset → all slots eventually exhaust retries after `MAX_FAILURES × number_of_slots` boot cycles
+**Implementation**:
+- `include/boot_meta.h` — shared `boot_meta_t` with `fsw_confirmed` field (replacing 1 byte of `_pad[3]`), 24 bytes, CRC32-protected
+- `src/core/boot_meta.c` — `boot_meta_set_fsw_confirmed()` using Pico SDK `flash_range_erase/program` (PICO_BUILD) or no-op (host)
+- `bootloader/bootloader.c` — uses shared `boot_meta.h` instead of local struct; checks `fsw_confirmed` at startup before trying slots
+- `src/obc_main.c` — calls `boot_meta_set_fsw_confirmed()` after POST OK + tasks created
 
-**Files**:
-- `bootloader/bootloader.c` — read `fsw_confirmed` from `boot_meta_t`, reset failure counters when set
-- `include/internal_flash_layout.h` — extend `boot_meta_t` with `fsw_confirmed` field
-- `src/obc_main.c` — write `fsw_confirmed = 1` after successful POST + task creation
-
-**Acceptance**:
-- After first successful boot, `fsw_confirmed = 1` persists in flash
-- On subsequent boots, the bootloader resets `slot_a_failures = 0` when `fsw_confirmed == 1`
-- A slot with simulated CRC failure exhausts `MAX_FAILURES` attempts before fallback
+**Acceptance verified**:
+- FSW writes `fsw_confirmed = 1` after successful init, persists in flash across resets
+- Bootloader resets failure counters when `fsw_confirmed == 1` on next boot
+- Slot with simulated CRC failure correctly exhausts `MAX_FAILURES` attempts before fallback
 
 ### 9.3 Reset Cause Detection
 
@@ -513,12 +510,12 @@ Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot f
 | Task | Priority | Effort | Hours |
 |------|----------|--------|-------|
 | 9.1 Supervised Watchdog | HIGH | XS | ~30 min | ✅ |
-| 9.2 FSW Boot Confirmation | HIGH | M | ~2 h | ⬜ |
+| 9.2 FSW Boot Confirmation | HIGH | M | ~2 h | ✅ |
 | 9.3 Reset Cause Detection | MEDIUM | S | ~30 min | ⬜ |
 | 9.4 Unified Boot Status RAM | MEDIUM | M | ~1 h | ✅ |
 | 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h | ⬜ |
 | 9.6 Bootloader UART Output | LOW | XS | ~15 min | ✅ |
-| **Total** | | | **~3.5-7.5 h remaining** | |
+| **Total** | | | **~5-15.5 h remaining** | |
 
 ### 9.8 Dependency Graph
 
