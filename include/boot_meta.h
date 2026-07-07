@@ -49,7 +49,8 @@ extern "C"
     uint32_t last_jump_addr;   /**< Last successful jump address      */
     uint8_t  last_crc_result;  /**< CRC_RESULT_*                      */
     uint8_t  fsw_confirmed;    /**< 1 if FSW confirmed successful boot*/
-    uint8_t  _pad[2];          /**< Reserved                          */
+    uint8_t  reset_cause;      /**< RP2350 reset cause (RAW reason)   */
+    uint8_t  _pad[1];          /**< Reserved                          */
     uint32_t crc32;            /**< CRC32 over magic.._pad fields     */
   } boot_meta_t;
 

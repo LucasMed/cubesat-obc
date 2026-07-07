@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.7  
+**Version:** 2.8  
 **Last Updated:** 2026-07-07
 **Status:** Active
 
@@ -353,6 +353,7 @@ OI-8 (Heap Sizing)
 | 2.5 | 2026-07-02 | System | Updated FM_PAYLOAD status (image_count tracking, T-PLD-INT-04, GPIO21 HW validation done). Added I2C mutex, RESETGPS/BH1750 fixes, deploy_monitor CI fix as completed. Noted OV2640 camera hardware damage. |
 | 2.6 | 2026-07-07 | System | Bootloader 9.1 (Supervised Watchdog), 9.6 (UART Debug), and 9.4 (Unified Boot Status RAM) completed — 3.5-7.5h remaining. Updated effort table with status markers. |
 | 2.7 | 2026-07-07 | System | Bootloader 9.2 (fsw_confirmed) completed — shared boot_meta.h, boot_meta_set_fsw_confirmed(), bootloader check at startup, FSW call after POST + tasks. 9.3 and 9.5 remaining. |
+| 2.8 | 2026-07-07 | System | Bootloader 9.3 (Reset Cause Detection) completed — reads watchdog_hw->reason at startup, stores in boot_meta_t + boot_status_t. Codes: 1=POR/pin, 2=WDT, 3=SW forced. reset_cause field added to boot_status_t (slot failures shrunk from uint16_t to uint8_t). |
 
 ---
 
@@ -436,19 +437,23 @@ The FSW writes `fsw_confirmed = 1` to `boot_meta_t` in internal flash after POST
 - Bootloader resets failure counters when `fsw_confirmed == 1` on next boot
 - Slot with simulated CRC failure correctly exhausts `MAX_FAILURES` attempts before fallback
 
-### 9.3 Reset Cause Detection
+### 9.3 Reset Cause Detection ✅ COMPLETED
 
-**Priority**: MEDIUM | **Effort**: S (~30 min) | **Status**: ❌ Not implemented
+**Priority**: MEDIUM | **Effort**: S (~30 min) | **Status**: ✅ Done
 
 The bootloader must read the RP2350 reset cause registers (`watchdog_hw->reason`, PSM registers) to distinguish POR, WDT, Software, Pin reset, and brownout. This information is critical for the FSW to classify anomalies (e.g., WDT in orbit = anomaly, not normal boot).
 
-**Current state**:
-- ✅ FSW has `post_detect_boot_reason()` reading `watchdog_hw->scratch[0]`
-- ❌ Bootloader does not read or propagate reset cause
+**What was done**:
+- Reads `watchdog_hw->reason` at `bootloader_main()` start to detect: POR/pin (clean), WDT, or SW forced
+- Stores in `boot_meta_t.reset_cause` (persists in flash as a `_pad` byte replaced) and `boot_status_t.reset_cause`
+- `build_boot_status()` propagates `meta->reset_cause` into the SRAM struct
+- RP2350 codes: 1=POR/pin, 2=WDT, 3=SW forced. Raw `watchdog_hw->reason` printed for debug.
 
-**Implementation**:
-- Read `watchdog_hw->reason` and PSM registers in `bootloader_main()`
-- Propagate via `BootStatus_t` in SRAM (see 9.4) or via `boot_meta_t`
+**Files changed**:
+- `bootloader/bootloader.c` — reads `watchdog_hw->reason`, sets `meta.reset_cause`, passes to `build_boot_status()`
+- `include/boot_info.h` — `boot_status_t.reset_cause` (uint8_t), `slot_a/b_failures` shrunk to uint8_t
+- `include/boot_meta.h` — `boot_meta_t.reset_cause` replaces one `_pad` byte
+- `src/core/boot_info.c` — reads `reset_cause` field
 
 ### 9.4 Unified Boot Status RAM Region ✅ COMPLETED
 
@@ -456,7 +461,7 @@ The bootloader must read the RP2350 reset cause registers (`watchdog_hw->reason`
 
 The bootloader now writes `boot_status_t` at `BOOT_STATUS_ADDR` (0x2007FF00) at every jump/error decision point. The FSW reads it via `boot_status_read()`. `boot_info_t` is preserved as a typedef to `boot_status_t` with inline wrappers — existing callers unchanged.
 
-**Struct fields** (24 bytes):
+**Struct fields** (24 bytes, v2.8):
 | Offset | Field | Type | Description |
 |--------|-------|------|-------------|
 | 0 | magic | uint32_t | `0xB007B007` |
@@ -467,8 +472,10 @@ The bootloader now writes `boot_status_t` at `BOOT_STATUS_ADDR` (0x2007FF00) at 
 | 11 | flags | uint8_t | `CRC_OK`, `WDT_ARMED`, `FALLBACK`, `GOLDEN` |
 | 12 | last_crc_computed | uint32_t | CRC computed by bootloader |
 | 16 | last_crc_expected | uint32_t | CRC from slot metadata |
-| 20 | slot_a_failures | uint16_t | Consecutive failures slot A |
-| 22 | slot_b_failures | uint16_t | Consecutive failures slot B |
+| 20 | reset_cause | uint8_t | 1=POR, 2=WDT, 3=SW forced |
+| 21 | slot_a_failures | uint8_t | Consecutive failures slot A |
+| 22 | slot_b_failures | uint8_t | Consecutive failures slot B |
+| 23 | _pad | uint8_t | Reserved |
 
 **Files changed**:
 - `include/boot_info.h` — new `boot_status_t` + `BOOT_STATUS_MAGIC` + `BOOT_STATUS_FLAG_*` defines, legacy typedef
@@ -511,11 +518,11 @@ Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot f
 |------|----------|--------|-------|
 | 9.1 Supervised Watchdog | HIGH | XS | ~30 min | ✅ |
 | 9.2 FSW Boot Confirmation | HIGH | M | ~2 h | ✅ |
-| 9.3 Reset Cause Detection | MEDIUM | S | ~30 min | ⬜ |
+| 9.3 Reset Cause Detection | MEDIUM | S | ~30 min | ✅ |
 | 9.4 Unified Boot Status RAM | MEDIUM | M | ~1 h | ✅ |
 | 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h | ⬜ |
 | 9.6 Bootloader UART Output | LOW | XS | ~15 min | ✅ |
-| **Total** | | | **~5-15.5 h remaining** | |
+| **Total** | | | **~4.5-12 h remaining** | |
 
 ### 9.8 Dependency Graph
 

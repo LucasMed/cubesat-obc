@@ -118,6 +118,7 @@ static void build_boot_status(boot_status_t *status,
     status->golden_valid      = (meta != NULL) ? (meta->last_crc_result == CRC_RESULT_PASS) ? 1u : 0u : 0u;
     status->last_crc_computed = 0;  /* computed inline in validate_slot, not persisted */
     status->last_crc_expected = 0;
+    status->reset_cause       = (meta != NULL) ? meta->reset_cause : 0;
     status->slot_a_failures   = (meta != NULL) ? meta->slot_a_failures : 0;
     status->slot_b_failures   = (meta != NULL) ? meta->slot_b_failures : 0;
 
@@ -464,6 +465,18 @@ void bootloader_main(void)
 
     printf("[BTLDR] Bootloader started\r\n");
 
+    /* ── Detect hardware reset cause ── */
+    uint32_t reset_raw = watchdog_hw->reason;
+    uint8_t  reset_cause;
+    if (reset_raw & 1u)       /* WATCHDOG_REASON_TIMER */
+        reset_cause = 2u;     /* WDT timeout */
+    else if (reset_raw & 2u)  /* WATCHDOG_REASON_FORCE */
+        reset_cause = 3u;     /* Software forced */
+    else
+        reset_cause = 1u;     /* POR or RESET pin (clean boot) */
+    printf("[BTLDR] Reset cause: raw=0x%lx (%u)\r\n",
+           (unsigned long)reset_raw, (unsigned)reset_cause);
+
     boot_meta_t meta;
     bool meta_valid = boot_meta_read(&meta);
 
@@ -488,6 +501,9 @@ void bootloader_main(void)
         meta.slot_b_failures = 0;
         boot_meta_write(&meta);
     }
+
+    /* Store reset cause in boot meta (persists across writes) */
+    meta.reset_cause = reset_cause;
 
     /* ── Try Slot A ── */
     if (meta.slot_a_failures < MAX_FAILURES)

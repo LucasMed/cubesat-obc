@@ -47,7 +47,7 @@ extern "C"
 #define BOOT_SLOT_B 2u
 
   /* ------------------------------------------------------------------ */
-  /* Boot status structure                                               */
+  /* Boot status structure (24 bytes)                                    */
   /* ------------------------------------------------------------------ */
 
   typedef struct __attribute__((packed))
@@ -60,8 +60,12 @@ extern "C"
     uint8_t  flags;              /**< BOOT_STATUS_FLAG_* bits           */
     uint32_t last_crc_computed;  /**< CRC32 computed by bootloader      */
     uint32_t last_crc_expected;  /**< CRC32 from FMM slot metadata      */
-    uint16_t slot_a_failures;    /**< Consecutive boot failures slot A  */
-    uint16_t slot_b_failures;    /**< Consecutive boot failures slot B  */
+    uint8_t  reset_cause;        /**< RP2350 reset cause:                */
+                                 /**<  0=unknown, 1=POR, 2=WDT,         */
+                                 /**<  3=SW, 4=PIN, 5=brownout          */
+    uint8_t  slot_a_failures;    /**< Consecutive failures slot A       */
+    uint8_t  slot_b_failures;    /**< Consecutive failures slot B       */
+    uint8_t  _pad;               /**< Reserved                          */
   } boot_status_t;
 
   _Static_assert(sizeof(boot_status_t) == 24,

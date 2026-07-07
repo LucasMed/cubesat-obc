@@ -41,6 +41,7 @@ bool boot_status_read(boot_status_t *status)
   local.flags             = s_boot_status->flags;
   local.last_crc_computed = s_boot_status->last_crc_computed;
   local.last_crc_expected = s_boot_status->last_crc_expected;
+  local.reset_cause       = s_boot_status->reset_cause;
   local.slot_a_failures   = s_boot_status->slot_a_failures;
   local.slot_b_failures   = s_boot_status->slot_b_failures;
 
