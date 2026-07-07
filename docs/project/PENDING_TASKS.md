@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.5  
-**Last Updated:** 2026-07-02
+**Version:** 2.6  
+**Last Updated:** 2026-07-07
 **Status:** Active
 
 ---
@@ -351,6 +351,7 @@ OI-8 (Heap Sizing)
 | 2.3 | 2026-06-20 | System | Added ISR-safe mode_entry_tick, BASEPRI fix, test coverage expansion tasks marked done |
 | 2.4 | 2026-06-24 | System | Added Section 9: Bootloader Improvements (watchdog, fsw_confirmed, reset cause, boot status RAM, boot log, UART debug) |
 | 2.5 | 2026-07-02 | System | Updated FM_PAYLOAD status (image_count tracking, T-PLD-INT-04, GPIO21 HW validation done). Added I2C mutex, RESETGPS/BH1750 fixes, deploy_monitor CI fix as completed. Noted OV2640 camera hardware damage. |
+| 2.6 | 2026-07-07 | System | Bootloader 9.1 (Supervised Watchdog), 9.6 (UART Debug), and 9.4 (Unified Boot Status RAM) completed — 3.5-7.5h remaining. Updated effort table with status markers. |
 
 ---
 
@@ -402,9 +403,9 @@ if (g_snapshot.state != ENERGY_NOMINAL) {
 
 The dual-slot golden image bootloader (`feature/golden-image-mpu`) implements the core chain-load and CRC32 validation. The following tasks extend it to full flight-readiness per CubeSat bootloader best practices.
 
-### 9.1 Supervised Watchdog Before Jump
+### 9.1 Supervised Watchdog Before Jump ✅ COMPLETED
 
-**Priority**: HIGH | **Effort**: XS (~30 min) | **Status**: ❌ Not implemented
+**Priority**: HIGH | **Effort**: XS (~30 min) | **Status**: ✅ Done (a613944)
 
 The bootloader must arm the hardware watchdog before jumping to the FSW. If the FSW fails to kick the watchdog within the timeout, the MCU resets and the bootloader increments the failure counter for that slot.
 
@@ -452,32 +453,30 @@ The bootloader must read the RP2350 reset cause registers (`watchdog_hw->reason`
 - Read `watchdog_hw->reason` and PSM registers in `bootloader_main()`
 - Propagate via `BootStatus_t` in SRAM (see 9.4) or via `boot_meta_t`
 
-### 9.4 Unified Boot Status RAM Region
+### 9.4 Unified Boot Status RAM Region ✅ COMPLETED
 
-**Priority**: MEDIUM | **Effort**: M (~1 h) | **Status**: ❌ Not implemented — address mismatch
+**Priority**: MEDIUM | **Effort**: M (~1 h) | **Status**: ✅ Done (251ec73)
 
-The bootloader writes to `POST_CODE_ADDR` (0x20040000) and `BOOT_META_BASE` (0x10221000, flash). The FSW reads from `BOOT_INFO_ADDR` (0x2007FF00) via `boot_info_read()`. These are **different addresses with different structs** — the bootloader and FSW speak different protocols.
+The bootloader now writes `boot_status_t` at `BOOT_STATUS_ADDR` (0x2007FF00) at every jump/error decision point. The FSW reads it via `boot_status_read()`. `boot_info_t` is preserved as a typedef to `boot_status_t` with inline wrappers — existing callers unchanged.
 
-**Fix**: Define a single `BootStatus_t` struct in a reserved SRAM region:
+**Struct fields** (24 bytes):
+| Offset | Field | Type | Description |
+|--------|-------|------|-------------|
+| 0 | magic | uint32_t | `0xB007B007` |
+| 4 | boot_count | uint32_t | Total boot attempts |
+| 8 | current_slot | uint8_t | `BOOT_SLOT_A/B` |
+| 9 | boot_reason | uint8_t | `POST_BOOT_*` |
+| 10 | golden_valid | uint8_t | 1 if golden image valid |
+| 11 | flags | uint8_t | `CRC_OK`, `WDT_ARMED`, `FALLBACK`, `GOLDEN` |
+| 12 | last_crc_computed | uint32_t | CRC computed by bootloader |
+| 16 | last_crc_expected | uint32_t | CRC from slot metadata |
+| 20 | slot_a_failures | uint16_t | Consecutive failures slot A |
+| 22 | slot_b_failures | uint16_t | Consecutive failures slot B |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `magic` | `uint32_t` | `0xB007B007` — validates BL wrote this |
-| `boot_count` | `uint32_t` | Total boot attempts |
-| `active_image` | `uint8_t` | `0=A, 1=B` |
-| `reset_cause` | `uint8_t` | POR / WDT / SW / PIN |
-| `boot_attempts` | `uint8_t` | Attempts for this image |
-| `flags` | `uint8_t` | Bits: crc_ok, wdt_armed, fallback_used |
-| `fsw_crc_computed` | `uint32_t` | CRC computed by bootloader |
-| `fsw_crc_expected` | `uint32_t` | CRC from slot metadata |
-| `timestamp_ms` | `uint32_t` | Bootloader execution time |
-| `crc_self` | `uint32_t` | CRC32 of this struct |
-
-**Files**:
-- `bootloader/bootloader.c` — replace `post_code()` with `BootStatus_t` write
-- `include/boot_info.h` — replace `boot_info_t` with `BootStatus_t` (or alias)
-- `src/core/boot_info.c` — update read to use new struct and address
-- `include/internal_flash_layout.h` — add `BOOT_STATUS_ADDR` constant
+**Files changed**:
+- `include/boot_info.h` — new `boot_status_t` + `BOOT_STATUS_MAGIC` + `BOOT_STATUS_FLAG_*` defines, legacy typedef
+- `src/core/boot_info.c` — rewritten `boot_status_read()` + `boot_status_clear()`, volatile SRAM read
+- `bootloader/bootloader.c` — `post_code()` replaced by `build_boot_status()` + `boot_status_write()` at all 8 jump/error decision points + 3 golden_restore failure points
 
 ### 9.5 Boot Log Ring Buffer in Flash
 
@@ -503,9 +502,9 @@ typedef struct {
 } __attribute__((packed)) BootLogEntry_t;
 ```
 
-### 9.6 Bootloader UART Debug Output
+### 9.6 Bootloader UART Debug Output ✅ COMPLETED
 
-**Priority**: LOW | **Effort**: XS (~15 min) | **Status**: ❌ Not implemented
+**Priority**: LOW | **Effort**: XS (~15 min) | **Status**: ✅ Done (a613944)
 
 Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot flow: CRC result, slot selected, golden restore trigger, etc. Helps development debugging with zero flight cost (UART can be left disconnected).
 
@@ -513,13 +512,13 @@ Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot f
 
 | Task | Priority | Effort | Hours |
 |------|----------|--------|-------|
-| 9.1 Supervised Watchdog | HIGH | XS | ~30 min |
-| 9.2 FSW Boot Confirmation | HIGH | M | ~2 h |
-| 9.3 Reset Cause Detection | MEDIUM | S | ~30 min |
-| 9.4 Unified Boot Status RAM | MEDIUM | M | ~1 h |
-| 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h |
-| 9.6 Bootloader UART Output | LOW | XS | ~15 min |
-| **Total** | | | **~8.5-12.5 h** |
+| 9.1 Supervised Watchdog | HIGH | XS | ~30 min | ✅ |
+| 9.2 FSW Boot Confirmation | HIGH | M | ~2 h | ⬜ |
+| 9.3 Reset Cause Detection | MEDIUM | S | ~30 min | ⬜ |
+| 9.4 Unified Boot Status RAM | MEDIUM | M | ~1 h | ✅ |
+| 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h | ⬜ |
+| 9.6 Bootloader UART Output | LOW | XS | ~15 min | ✅ |
+| **Total** | | | **~3.5-7.5 h remaining** | |
 
 ### 9.8 Dependency Graph
 
