@@ -1,11 +1,11 @@
 /**
  * @file boot_info.h
- * @brief Boot information passed from bootloader to application.
+ * @brief Boot status passed from bootloader to application via SRAM.
  *
- * The bootloader writes a boot_info_t structure to a NOLOAD section in
- * SRAM before jumping to the application.  The application reads this
- * structure to determine which slot it booted from, boot count, and
- * golden image validity.
+ * The bootloader writes a boot_status_t structure to a reserved SRAM
+ * region (BOOT_STATUS_ADDR) before jumping to the application.  The
+ * application reads this structure to determine which slot it booted
+ * from, boot count, golden image validity, and diagnostic info.
  *
  * Spec ref: bootloader/spec.md, firmware-update/spec.md
  */
@@ -23,11 +23,20 @@ extern "C"
 #endif
 
   /* ------------------------------------------------------------------ */
-  /* Boot-info magic + SRAM address                                      */
+  /* Boot-status magic + SRAM address                                    */
   /* ------------------------------------------------------------------ */
 
-#define BOOT_INFO_MAGIC 0x494E464F /**< "INFO" in ASCII           */
-#define BOOT_INFO_ADDR 0x2007FF00u /**< Reserved at end of SRAM   */
+#define BOOT_STATUS_MAGIC 0xB007B007u /**< Bootloader wrote this        */
+#define BOOT_STATUS_ADDR  0x2007FF00u /**< Reserved at end of SRAM      */
+
+  /* ------------------------------------------------------------------ */
+  /* Boot-status flags                                                   */
+  /* ------------------------------------------------------------------ */
+
+#define BOOT_STATUS_FLAG_CRC_OK      (1u << 0) /**< Last CRC matched    */
+#define BOOT_STATUS_FLAG_WDT_ARMED   (1u << 1) /**< Watchdog armed      */
+#define BOOT_STATUS_FLAG_FALLBACK    (1u << 2) /**< Fallback slot used  */
+#define BOOT_STATUS_FLAG_GOLDEN      (1u << 3) /**< Golden restore done */
 
   /* ------------------------------------------------------------------ */
   /* Slot identifiers                                                    */
@@ -38,42 +47,62 @@ extern "C"
 #define BOOT_SLOT_B 2u
 
   /* ------------------------------------------------------------------ */
-  /* Boot info structure                                                 */
+  /* Boot status structure                                               */
   /* ------------------------------------------------------------------ */
 
   typedef struct __attribute__((packed))
   {
-    uint32_t magic;           /**< BOOT_INFO_MAGIC for validity check   */
-    uint32_t boot_count;      /**< Total boot attempts (from POST)      */
-    uint32_t slot_a_failures; /**< Consecutive boot failures on slot A  */
-    uint32_t slot_b_failures; /**< Consecutive boot failures on slot B  */
-    uint8_t current_slot;     /**< BOOT_SLOT_A / BOOT_SLOT_B           */
-    uint8_t boot_reason;      /**< POST_BOOT_* code from bootloader    */
-    uint8_t golden_valid;     /**< 1 if golden image CRC32 is valid     */
-    uint8_t reserved[5];      /**< Pad to 24 bytes                     */
-  } boot_info_t;
+    uint32_t magic;              /**< BOOT_STATUS_MAGIC for validity    */
+    uint32_t boot_count;         /**< Total boot attempts               */
+    uint8_t  current_slot;       /**< BOOT_SLOT_A / BOOT_SLOT_B        */
+    uint8_t  boot_reason;        /**< POST_BOOT_* code                 */
+    uint8_t  golden_valid;       /**< 1 if golden image CRC32 is valid  */
+    uint8_t  flags;              /**< BOOT_STATUS_FLAG_* bits           */
+    uint32_t last_crc_computed;  /**< CRC32 computed by bootloader      */
+    uint32_t last_crc_expected;  /**< CRC32 from FMM slot metadata      */
+    uint16_t slot_a_failures;    /**< Consecutive boot failures slot A  */
+    uint16_t slot_b_failures;    /**< Consecutive boot failures slot B  */
+  } boot_status_t;
 
-  _Static_assert(sizeof(boot_info_t) == 24,
-                 "boot_info_t must be 24 bytes for deterministic layout");
+  _Static_assert(sizeof(boot_status_t) == 24,
+                 "boot_status_t must be 24 bytes for deterministic layout");
 
   /**
-   * @brief Read boot info from the bootloader-reserved SRAM region.
+   * @brief Read boot status from the bootloader-reserved SRAM region.
    *
    * Checks magic before returning.  If magic is invalid, zeroes the
    * output and returns false.
    *
-   * @param[out] info  Populated boot info (or zeroed on failure).
-   * @return true if boot info was valid.
+   * @param[out] status  Populated boot status (or zeroed on failure).
+   * @return true if boot status was valid (written by bootloader).
    */
-  bool boot_info_read(boot_info_t *info);
+  bool boot_status_read(boot_status_t *status);
 
   /**
-   * @brief Clear boot info (mark as invalid).
+   * @brief Clear boot status (mark as invalid).
    *
-   * Called by the application after reading to prevent stale info
+   * Called by the application after reading to prevent stale status
    * from being read again on warm reset.
    */
-  void boot_info_clear(void);
+  void boot_status_clear(void);
+
+  /**
+   * @brief Legacy wrapper — reads boot status into boot_info-compatible
+   *        subset.  Deprecated, use boot_status_read() directly.
+   */
+  typedef boot_status_t boot_info_t;
+  #define BOOT_INFO_MAGIC   BOOT_STATUS_MAGIC
+  #define BOOT_INFO_ADDR    BOOT_STATUS_ADDR
+
+  static inline bool boot_info_read(boot_info_t *info)
+  {
+    return boot_status_read(info);
+  }
+
+  static inline void boot_info_clear(void)
+  {
+    boot_status_clear();
+  }
 
 #ifdef __cplusplus
 }

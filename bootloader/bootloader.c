@@ -33,6 +33,7 @@
 #include "hardware/regs/psm.h"
 
 #include "internal_flash_layout.h"
+#include "boot_info.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -110,14 +111,52 @@ static bool create_slot_metadata(uint32_t slot_base, uint32_t meta_addr,
 
 #define MAX_FAILURES            3
 
-/* Write a POST code to a known SRAM address for diagnostics */
-#define POST_CODE_ADDR          ((volatile uint32_t *)0x20040000u)
-#define POST_CODE_VALID_ADDR    ((volatile uint32_t *)0x20040004u)
+/* ── Boot status write (replaces legacy post_code) ── */
+/* Writes boot_status_t to BOOT_STATUS_ADDR so the FSW can read it.     */
+/* Safe to call at any point — SRAM write, no interrupt or flash issue. */
 
-static void post_code(uint32_t code)
+static void boot_status_write(const boot_status_t *status)
 {
-    *POST_CODE_ADDR = code;
-    *POST_CODE_VALID_ADDR = 0x504F5354u;  /* "POST" */
+    volatile boot_status_t *dst = (volatile boot_status_t *)BOOT_STATUS_ADDR;
+    dst->magic             = status->magic;
+    dst->boot_count        = status->boot_count;
+    dst->current_slot      = status->current_slot;
+    dst->boot_reason       = status->boot_reason;
+    dst->golden_valid      = status->golden_valid;
+    dst->flags             = status->flags;
+    dst->last_crc_computed = status->last_crc_computed;
+    dst->last_crc_expected = status->last_crc_expected;
+    dst->slot_a_failures   = status->slot_a_failures;
+    dst->slot_b_failures   = status->slot_b_failures;
+}
+
+/* Helper: build boot_status_t from current context + extras */
+static void build_boot_status(boot_status_t *status,
+                               const boot_meta_t *meta,
+                               uint8_t reason, uint8_t slot)
+{
+    memset(status, 0, sizeof(*status));
+    status->magic             = BOOT_STATUS_MAGIC;
+    status->boot_count        = 0;
+    status->current_slot      = slot;  /* 0=A, 1=B — mapped to BOOT_SLOT_A/B below */
+    status->boot_reason       = reason;
+    status->golden_valid      = (meta != NULL) ? (meta->last_crc_result == CRC_RESULT_PASS) ? 1u : 0u : 0u;
+    status->last_crc_computed = 0;  /* computed inline in validate_slot, not persisted */
+    status->last_crc_expected = 0;
+    status->slot_a_failures   = (meta != NULL) ? meta->slot_a_failures : 0;
+    status->slot_b_failures   = (meta != NULL) ? meta->slot_b_failures : 0;
+
+    /* Map bootloader slot index (0=A, 1=B) to BOOT_SLOT_A/B */
+    if (slot == 0)
+        status->current_slot = BOOT_SLOT_A;
+    else if (slot == 1)
+        status->current_slot = BOOT_SLOT_B;
+    else
+        status->current_slot = BOOT_SLOT_UNKNOWN;
+
+    /* Set flags from last_crc_result */
+    if (meta != NULL && meta->last_crc_result == CRC_RESULT_PASS)
+        status->flags |= BOOT_STATUS_FLAG_CRC_OK;
 }
 
 /* ------------------------------------------------------------------ */
@@ -271,11 +310,18 @@ static bool golden_restore(void)
     /* Read golden image from W25Q64 into SRAM, then program Slot A */
     uint8_t buf[SRAM_BUF_SIZE] __attribute__((aligned(4)));
 
-    post_code(POST_BOOT_GOLDEN_FAIL);  /* Default to fail until proven OK */
+    /* Default to fail until proven OK */
+    {
+        boot_status_t bs;
+        build_boot_status(&bs, NULL, POST_BOOT_GOLDEN_FAIL, 0);
+        boot_status_write(&bs);
+    }
 
     if (!spi_flash_init())
     {
-        post_code(POST_BOOT_GOLDEN_FAIL);
+        boot_status_t bs;
+        build_boot_status(&bs, NULL, POST_BOOT_GOLDEN_FAIL, 0);
+        boot_status_write(&bs);
         return false;
     }
 
@@ -290,7 +336,9 @@ static bool golden_restore(void)
     {
         if (!spi_flash_read(W25Q64_GOLDEN_OFFSET + off, buf, SRAM_BUF_SIZE))
         {
-            post_code(POST_BOOT_GOLDEN_FAIL);
+            boot_status_t bs;
+            build_boot_status(&bs, NULL, POST_BOOT_GOLDEN_FAIL, 0);
+            boot_status_write(&bs);
             return false;
         }
 
@@ -314,11 +362,17 @@ static bool golden_restore(void)
     /* Validate the programmed image */
     if (!validate_slot(SLOT_A_BASE, SLOT_A_SIZE, &dummy_fail))
     {
-        post_code(POST_BOOT_GOLDEN_CRC);
+        boot_status_t bs;
+        build_boot_status(&bs, NULL, POST_BOOT_GOLDEN_CRC, 0);
+        boot_status_write(&bs);
         return false;
     }
 
-    post_code(POST_BOOT_GOLDEN_OK);
+    {
+        boot_status_t bs;
+        build_boot_status(&bs, NULL, POST_BOOT_GOLDEN_OK, 0);
+        boot_status_write(&bs);
+    }
     return true;
 }
 
@@ -463,7 +517,11 @@ void bootloader_main(void)
             meta.last_jump_addr = SLOT_A_BASE;
             meta.last_crc_result = CRC_RESULT_PASS;
             boot_meta_write(&meta);
-            post_code(POST_BOOT_SLOT_A_OK);
+            {
+                boot_status_t bs;
+                build_boot_status(&bs, &meta, POST_BOOT_SLOT_A_OK, 0);
+                boot_status_write(&bs);
+            }
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_A_BASE);
@@ -476,7 +534,11 @@ void bootloader_main(void)
             meta.slot_a_failures++;
             meta.boot_reason = POST_BOOT_SLOT_A_FAIL;
             boot_meta_write(&meta);
-            post_code(POST_BOOT_SLOT_A_FAIL);
+            {
+                boot_status_t bs;
+                build_boot_status(&bs, &meta, POST_BOOT_SLOT_A_FAIL, 0);
+                boot_status_write(&bs);
+            }
         }
     }
     else
@@ -498,7 +560,11 @@ void bootloader_main(void)
             meta.last_jump_addr = SLOT_B_BASE;
             meta.last_crc_result = CRC_RESULT_PASS;
             boot_meta_write(&meta);
-            post_code(POST_BOOT_SLOT_B_OK);
+            {
+                boot_status_t bs;
+                build_boot_status(&bs, &meta, POST_BOOT_SLOT_B_OK, 1);
+                boot_status_write(&bs);
+            }
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_B_BASE);
@@ -511,7 +577,11 @@ void bootloader_main(void)
             meta.slot_b_failures++;
             meta.boot_reason = POST_BOOT_SLOT_B_FAIL;
             boot_meta_write(&meta);
-            post_code(POST_BOOT_SLOT_B_FAIL);
+            {
+                boot_status_t bs;
+                build_boot_status(&bs, &meta, POST_BOOT_SLOT_B_FAIL, 1);
+                boot_status_write(&bs);
+            }
         }
     }
     else
@@ -534,7 +604,11 @@ void bootloader_main(void)
             meta.last_jump_addr = SLOT_A_BASE;
             meta.last_crc_result = CRC_RESULT_NONE;
             boot_meta_write(&meta);
-            post_code(POST_BOOT_SLOT_A_OK);
+            {
+                boot_status_t bs;
+                build_boot_status(&bs, &meta, POST_BOOT_SLOT_A_OK, 0);
+                boot_status_write(&bs);
+            }
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_A_BASE);
@@ -549,7 +623,11 @@ void bootloader_main(void)
             meta.last_jump_addr = SLOT_B_BASE;
             meta.last_crc_result = CRC_RESULT_NONE;
             boot_meta_write(&meta);
-            post_code(POST_BOOT_SLOT_B_OK);
+            {
+                boot_status_t bs;
+                build_boot_status(&bs, &meta, POST_BOOT_SLOT_B_OK, 1);
+                boot_status_write(&bs);
+            }
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_B_BASE);
@@ -568,7 +646,11 @@ void bootloader_main(void)
         meta.last_jump_addr = SLOT_A_BASE;
         meta.last_crc_result = CRC_RESULT_PASS;
         boot_meta_write(&meta);
-        post_code(POST_BOOT_GOLDEN_OK);
+        {
+            boot_status_t bs;
+            build_boot_status(&bs, &meta, POST_BOOT_GOLDEN_OK, 0);
+            boot_status_write(&bs);
+        }
         watchdog_enable(30000, true);
         cleanup_before_jump();
         jump_to_image(SLOT_A_BASE);
@@ -578,7 +660,11 @@ void bootloader_main(void)
     printf("[BTLDR] All boot paths exhausted — halting\r\n");
     meta.last_crc_result = CRC_RESULT_FAIL;
     boot_meta_write(&meta);
-    post_code(POST_BOOT_GOLDEN_CRC);
+    {
+        boot_status_t bs;
+        build_boot_status(&bs, &meta, POST_BOOT_GOLDEN_CRC, 0);
+        boot_status_write(&bs);
+    }
     while (1)
     {
         __asm("wfi");
