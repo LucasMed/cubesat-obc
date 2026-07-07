@@ -13,6 +13,7 @@
 // Project headers
 #include "attitude_control_task.h"
 #include "bh1750.h"
+#include "boot_meta.h"
 #include "comm_init.h"
 #include "command_task.h"
 #include "config.h"
@@ -306,6 +307,10 @@ static void vStartupTask(void *pvParameters)
 #undef HPTR
 
 #undef CHK
+
+  /* ── Confirm boot to bootloader (fsw_confirmed) ── */
+  /* This writes to internal flash — only on real hardware. */
+  boot_meta_set_fsw_confirmed();
 
   printf("[STARTUP] done — heap=%lu\r\n", (unsigned long)xPortGetFreeHeapSize());
   fflush(stdout);

@@ -7,6 +7,7 @@ add_library(core_lib
     flash_backend.c
     mpu_init.c
     boot_info.c
+    boot_meta.c
     fw_upload.c
 )
 

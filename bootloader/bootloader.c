@@ -68,32 +68,7 @@ static uint32_t slot_meta_addr(uint32_t slot_base)
     return 0;
 }
 
-/* ------------------------------------------------------------------ */
-/* Boot metadata (stored at BOOT_META_BASE, between golden and FMM)     */
-/* ------------------------------------------------------------------ */
-#define BOOT_META_BASE         0x10221000u
-#define BOOT_META_MAGIC        0x424F4F54u  /* "BOOT" */
-
-/** CRC result codes (persisted for diagnostics) */
-#define CRC_RESULT_NONE         0u   /**< CRC not computed (fresh binary)  */
-#define CRC_RESULT_PASS         1u   /**< CRC32 matched                    */
-#define CRC_RESULT_FAIL         2u   /**< CRC32 mismatch                   */
-#define CRC_RESULT_NO_META      3u   /**< No slot metadata found           */
-
-typedef struct __attribute__((packed)) {
-    uint32_t magic;            /**< BOOT_META_MAGIC                         */
-    uint8_t  current_slot;     /**< 0=Slot A, 1=Slot B                     */
-    uint8_t  slot_a_failures;  /**< Consecutive boot failures for Slot A   */
-    uint8_t  slot_b_failures;  /**< Consecutive boot failures for Slot B   */
-    uint8_t  boot_reason;      /**< POST code reason                       */
-    uint32_t timestamp;        /**< Boot timestamp (0 if not available)    */
-    uint32_t last_jump_addr;   /**< Address the bootloader jumped to on    */
-                               /**< the last successful boot.  Persists    */
-                               /**< across resets for diagnostic readback. */
-    uint8_t  last_crc_result;  /**< CRC_RESULT_* from most recent attempt  */
-    uint8_t  _pad[3];          /**< Reserved                                */
-    uint32_t crc32;            /**< CRC32 over magic.._pad fields          */
-} boot_meta_t;
+#include "boot_meta.h"
 
 /* Forward declarations */
 static bool create_slot_metadata(uint32_t slot_base, uint32_t meta_addr,
@@ -502,6 +477,16 @@ void bootloader_main(void)
     {
         printf("[BTLDR] Boot meta valid: A=%u failures, B=%u failures\r\n",
                (unsigned)meta.slot_a_failures, (unsigned)meta.slot_b_failures);
+    }
+
+    /* ── fsw_confirmed: if FSW confirmed previous boot, reset failures ── */
+    if (meta_valid && meta.fsw_confirmed)
+    {
+        printf("[BTLDR] FSW confirmed previous boot — resetting failures\r\n");
+        meta.fsw_confirmed = 0;
+        meta.slot_a_failures = 0;
+        meta.slot_b_failures = 0;
+        boot_meta_write(&meta);
     }
 
     /* ── Try Slot A ── */
