@@ -10,6 +10,7 @@
  */
 
 #include "boot_meta.h"
+
 #include "crc32.h"
 
 #include <string.h>

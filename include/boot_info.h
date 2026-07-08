@@ -27,16 +27,16 @@ extern "C"
   /* ------------------------------------------------------------------ */
 
 #define BOOT_STATUS_MAGIC 0xB007B007u /**< Bootloader wrote this        */
-#define BOOT_STATUS_ADDR  0x2007FF00u /**< Reserved at end of SRAM      */
+#define BOOT_STATUS_ADDR 0x2007FF00u  /**< Reserved at end of SRAM      */
 
   /* ------------------------------------------------------------------ */
   /* Boot-status flags                                                   */
   /* ------------------------------------------------------------------ */
 
-#define BOOT_STATUS_FLAG_CRC_OK      (1u << 0) /**< Last CRC matched    */
-#define BOOT_STATUS_FLAG_WDT_ARMED   (1u << 1) /**< Watchdog armed      */
-#define BOOT_STATUS_FLAG_FALLBACK    (1u << 2) /**< Fallback slot used  */
-#define BOOT_STATUS_FLAG_GOLDEN      (1u << 3) /**< Golden restore done */
+#define BOOT_STATUS_FLAG_CRC_OK (1u << 0)    /**< Last CRC matched    */
+#define BOOT_STATUS_FLAG_WDT_ARMED (1u << 1) /**< Watchdog armed      */
+#define BOOT_STATUS_FLAG_FALLBACK (1u << 2)  /**< Fallback slot used  */
+#define BOOT_STATUS_FLAG_GOLDEN (1u << 3)    /**< Golden restore done */
 
   /* ------------------------------------------------------------------ */
   /* Slot identifiers                                                    */
@@ -52,20 +52,20 @@ extern "C"
 
   typedef struct __attribute__((packed))
   {
-    uint32_t magic;              /**< BOOT_STATUS_MAGIC for validity    */
-    uint32_t boot_count;         /**< Total boot attempts               */
-    uint8_t  current_slot;       /**< BOOT_SLOT_A / BOOT_SLOT_B        */
-    uint8_t  boot_reason;        /**< POST_BOOT_* code                 */
-    uint8_t  golden_valid;       /**< 1 if golden image CRC32 is valid  */
-    uint8_t  flags;              /**< BOOT_STATUS_FLAG_* bits           */
-    uint32_t last_crc_computed;  /**< CRC32 computed by bootloader      */
-    uint32_t last_crc_expected;  /**< CRC32 from FMM slot metadata      */
-    uint8_t  reset_cause;        /**< RP2350 reset cause:                */
-                                 /**<  0=unknown, 1=POR, 2=WDT,         */
-                                 /**<  3=SW, 4=PIN, 5=brownout          */
-    uint8_t  slot_a_failures;    /**< Consecutive failures slot A       */
-    uint8_t  slot_b_failures;    /**< Consecutive failures slot B       */
-    uint8_t  _pad;               /**< Reserved                          */
+    uint32_t magic;             /**< BOOT_STATUS_MAGIC for validity    */
+    uint32_t boot_count;        /**< Total boot attempts               */
+    uint8_t current_slot;       /**< BOOT_SLOT_A / BOOT_SLOT_B        */
+    uint8_t boot_reason;        /**< POST_BOOT_* code                 */
+    uint8_t golden_valid;       /**< 1 if golden image CRC32 is valid  */
+    uint8_t flags;              /**< BOOT_STATUS_FLAG_* bits           */
+    uint32_t last_crc_computed; /**< CRC32 computed by bootloader      */
+    uint32_t last_crc_expected; /**< CRC32 from FMM slot metadata      */
+    uint8_t reset_cause;        /**< RP2350 reset cause:                */
+                                /**<  0=unknown, 1=POR, 2=WDT,         */
+                                /**<  3=SW, 4=PIN, 5=brownout          */
+    uint8_t slot_a_failures;    /**< Consecutive failures slot A       */
+    uint8_t slot_b_failures;    /**< Consecutive failures slot B       */
+    uint8_t _pad;               /**< Reserved                          */
   } boot_status_t;
 
   _Static_assert(sizeof(boot_status_t) == 24,
@@ -95,8 +95,8 @@ extern "C"
    *        subset.  Deprecated, use boot_status_read() directly.
    */
   typedef boot_status_t boot_info_t;
-  #define BOOT_INFO_MAGIC   BOOT_STATUS_MAGIC
-  #define BOOT_INFO_ADDR    BOOT_STATUS_ADDR
+#define BOOT_INFO_MAGIC BOOT_STATUS_MAGIC
+#define BOOT_INFO_ADDR BOOT_STATUS_ADDR
 
   static inline bool boot_info_read(boot_info_t *info)
   {
