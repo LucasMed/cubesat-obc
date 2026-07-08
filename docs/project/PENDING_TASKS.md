@@ -1,7 +1,7 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.8  
+**Version:** 2.9  
 **Last Updated:** 2026-07-07
 **Status:** Active
 
@@ -354,6 +354,7 @@ OI-8 (Heap Sizing)
 | 2.6 | 2026-07-07 | System | Bootloader 9.1 (Supervised Watchdog), 9.6 (UART Debug), and 9.4 (Unified Boot Status RAM) completed — 3.5-7.5h remaining. Updated effort table with status markers. |
 | 2.7 | 2026-07-07 | System | Bootloader 9.2 (fsw_confirmed) completed — shared boot_meta.h, boot_meta_set_fsw_confirmed(), bootloader check at startup, FSW call after POST + tasks. 9.3 and 9.5 remaining. |
 | 2.8 | 2026-07-07 | System | Bootloader 9.3 (Reset Cause Detection) completed — reads watchdog_hw->reason at startup, stores in boot_meta_t + boot_status_t. Codes: 1=POR/pin, 2=WDT, 3=SW forced. reset_cause field added to boot_status_t (slot failures shrunk from uint16_t to uint8_t). |
+| 2.9 | 2026-07-07 | System | Bootloader 9.5 (Boot Log Ring Buffer) completed — dedicated 4 KB sector at 0x10311000, 128 × 32-byte entries with CRC32, sequential ring buffer. Bootloader writes entry before each jump: sequence, reset_cause, image_used, crc_ok, fallback_used, bl_duration_ms. FSW reads via boot_log_read_entry(). All bootloader tasks complete. |
 
 ---
 
@@ -482,29 +483,33 @@ The bootloader now writes `boot_status_t` at `BOOT_STATUS_ADDR` (0x2007FF00) at 
 - `src/core/boot_info.c` — rewritten `boot_status_read()` + `boot_status_clear()`, volatile SRAM read
 - `bootloader/bootloader.c` — `post_code()` replaced by `build_boot_status()` + `boot_status_write()` at all 8 jump/error decision points + 3 golden_restore failure points
 
-### 9.5 Boot Log Ring Buffer in Flash
+### 9.5 Boot Log Ring Buffer in Flash ✅ COMPLETED
 
-**Priority**: LOW | **Effort**: L (~4-8 h) | **Status**: ❌ Not implemented
+**Priority**: LOW | **Effort**: L (~4-8 h) | **Status**: ✅ Done
 
-A ring buffer in a dedicated flash sector (4 KB) stores timestamped boot events. The FSW can download the log via telemetry for post-mortem analysis of anomalies (long eclipses, SEU, etc.).
+A ring buffer in a dedicated flash sector (4 KB, 128 × 32-byte entries) stores timestamped boot events. Written by the bootloader at every jump/fallback, readable by the FSW for telemetry / post-mortem.
 
-**Structure** (per entry, 32 bytes):
+**What was done**:
+- Flash layout: dedicated sector at `BOOT_LOG_BASE` (0x10311000, 4 KB), carved from the reserved region
+- `include/boot_log.h` — `boot_log_entry_t` struct (32 bytes, CRC32-protected), full API
+- `src/core/boot_log.c` — ring buffer implementation with sequential writes: scans for first empty (0xFF) entry, programs via flash page; when full, erases sector and restarts
+- `bootloader/bootloader.c` — captures `time_us_32()` at boot start, calls `write_boot_log()` before every jump path (Slot A/B CRC PASS, fresh binary trust-on-first-boot, golden restore), writing: sequence, reset_cause, image_used, crc_ok, fallback_used, bl_duration_ms
+- FSW can read entries via `boot_log_read_entry(index)` — pure XIP memory read, no flash driver needed
 
-```c
-typedef struct {
-    uint32_t sequence;
-    uint32_t boot_count;
-    uint32_t reset_cause;
-    uint8_t  image_used;
-    uint8_t  crc_ok;
-    uint8_t  fallback_used;
-    uint8_t  pad;
-    uint32_t bl_duration_ms;
-    uint32_t crc_computed;
-    uint32_t crc_expected;
-    uint32_t crc_entry;
-} __attribute__((packed)) BootLogEntry_t;
-```
+**Entry layout** (32 bytes):
+| Offset | Field | Type | Description |
+|--------|-------|------|-------------|
+| 0 | sequence | uint32_t | 1-based, monotonically increasing |
+| 4 | boot_count | uint32_t | From boot_status_t (0 until tracked) |
+| 8 | reset_cause | uint32_t | 1=POR, 2=WDT, 3=SW forced |
+| 12 | image_used | uint8_t | 0=A, 1=B, 2=Golden |
+| 13 | crc_ok | uint8_t | 1 if image CRC passed |
+| 14 | fallback_used | uint8_t | 1 if golden restore triggered |
+| 15 | _pad[1] | uint8_t | Reserved |
+| 16 | bl_duration_ms | uint32_t | Bootloader execution time |
+| 20 | last_crc_computed | uint32_t | CRC computed (0 until tracked) |
+| 24 | last_crc_expected | uint32_t | Expected CRC (0 until tracked) |
+| 28 | crc_entry | uint32_t | CRC32 of bytes [0..27] |
 
 ### 9.6 Bootloader UART Debug Output ✅ COMPLETED
 
@@ -520,9 +525,9 @@ Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot f
 | 9.2 FSW Boot Confirmation | HIGH | M | ~2 h | ✅ |
 | 9.3 Reset Cause Detection | MEDIUM | S | ~30 min | ✅ |
 | 9.4 Unified Boot Status RAM | MEDIUM | M | ~1 h | ✅ |
-| 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h | ⬜ |
+| 9.5 Boot Log Ring Buffer | LOW | L | ~4-8 h | ✅ |
 | 9.6 Bootloader UART Output | LOW | XS | ~15 min | ✅ |
-| **Total** | | | **~4.5-12 h remaining** | |
+| **Total** | | | **~0 h remaining** | |
 
 ### 9.8 Dependency Graph
 

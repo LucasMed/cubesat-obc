@@ -8,6 +8,7 @@ add_library(core_lib
     mpu_init.c
     boot_info.c
     boot_meta.c
+    boot_log.c
     fw_upload.c
 )
 

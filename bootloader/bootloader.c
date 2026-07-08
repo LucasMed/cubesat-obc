@@ -34,6 +34,7 @@
 
 #include "internal_flash_layout.h"
 #include "boot_info.h"
+#include "boot_log.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -85,6 +86,27 @@ static bool create_slot_metadata(uint32_t slot_base, uint32_t meta_addr,
 #define POST_BOOT_GOLDEN_CRC    6
 
 #define MAX_FAILURES            3
+
+/* ── Boot timing base ── */
+static uint32_t g_boot_start_us;
+
+/* ── Boot log write helper ── */
+static void write_boot_log(const boot_meta_t *meta, uint8_t image_used,
+                            uint8_t crc_ok, uint8_t fallback_used)
+{
+    boot_log_entry_t entry;
+    memset(&entry, 0, sizeof(entry));
+    entry.sequence       = (uint32_t)boot_log_max_sequence() + 1u;
+    entry.boot_count     = 0;  /* boot_count not tracked in meta yet */
+    entry.reset_cause    = (meta != NULL) ? meta->reset_cause : 0;
+    entry.image_used     = image_used;
+    entry.crc_ok         = crc_ok;
+    entry.fallback_used  = fallback_used;
+    entry.bl_duration_ms = (time_us_32() - g_boot_start_us) / 1000u;
+    entry.last_crc_computed = 0;
+    entry.last_crc_expected = 0;
+    boot_log_write(&entry);
+}
 
 /* ── Boot status write (replaces legacy post_code) ── */
 /* Writes boot_status_t to BOOT_STATUS_ADDR so the FSW can read it.     */
@@ -465,6 +487,9 @@ void bootloader_main(void)
 
     printf("[BTLDR] Bootloader started\r\n");
 
+    /* Capture boot start time for bl_duration_ms */
+    g_boot_start_us = time_us_32();
+
     /* ── Detect hardware reset cause ── */
     uint32_t reset_raw = watchdog_hw->reason;
     uint8_t  reset_cause;
@@ -523,6 +548,7 @@ void bootloader_main(void)
                 build_boot_status(&bs, &meta, POST_BOOT_SLOT_A_OK, 0);
                 boot_status_write(&bs);
             }
+            write_boot_log(&meta, BOOT_LOG_SLOT_A, 1, 0);
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_A_BASE);
@@ -566,6 +592,7 @@ void bootloader_main(void)
                 build_boot_status(&bs, &meta, POST_BOOT_SLOT_B_OK, 1);
                 boot_status_write(&bs);
             }
+            write_boot_log(&meta, BOOT_LOG_SLOT_B, 1, 0);
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_B_BASE);
@@ -610,6 +637,7 @@ void bootloader_main(void)
                 build_boot_status(&bs, &meta, POST_BOOT_SLOT_A_OK, 0);
                 boot_status_write(&bs);
             }
+            write_boot_log(&meta, BOOT_LOG_SLOT_A, 0, 0);
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_A_BASE);
@@ -629,6 +657,7 @@ void bootloader_main(void)
                 build_boot_status(&bs, &meta, POST_BOOT_SLOT_B_OK, 1);
                 boot_status_write(&bs);
             }
+            write_boot_log(&meta, BOOT_LOG_SLOT_B, 0, 0);
             watchdog_enable(30000, true);
             cleanup_before_jump();
             jump_to_image(SLOT_B_BASE);
@@ -652,6 +681,7 @@ void bootloader_main(void)
             build_boot_status(&bs, &meta, POST_BOOT_GOLDEN_OK, 0);
             boot_status_write(&bs);
         }
+        write_boot_log(&meta, BOOT_LOG_SLOT_A, 1, 1);
         watchdog_enable(30000, true);
         cleanup_before_jump();
         jump_to_image(SLOT_A_BASE);

@@ -12,7 +12,8 @@
  *   0x10210000 – 0x10210FFF: Golden meta (4 KB)
  *   0x10211000 – 0x1030FFFF: Golden img  (956 KB)
  *   0x10310000 – 0x10310FFF: FMM meta    (4 KB)
- *   0x10311000 – 0x103FFFFF: Reserved     (956 KB)
+ *   0x10311000 – 0x10311FFF: Boot log    (4 KB)
+ *   0x10312000 – 0x103FFFFF: Reserved     (952 KB)
  *
  * Spec ref: Golden Image + Dual Boot SDD, bootloader/spec.md
  */
@@ -75,9 +76,13 @@ extern "C"
 #define RP2350_SRAM_BASE 0x20000000u
 #define RP2350_SRAM_SIZE 0x00082000u /* 520 KB — RP2350A full SRAM */
 
+/* Boot log ring buffer — 128 entries × 32 bytes, one erase block      */
+#define BOOT_LOG_BASE       0x10311000u
+#define BOOT_LOG_SIZE       0x00001000u /* 4 KB / one sector */
+
 /* Reserved for future use                                             */
-#define INTERNAL_FLASH_RESERVED 0x10311000u
-#define INTERNAL_FLASH_RESERVED_SZ 0x000EF000u /* 957 KB */
+#define INTERNAL_FLASH_RESERVED (BOOT_LOG_BASE + BOOT_LOG_SIZE)
+#define INTERNAL_FLASH_RESERVED_SZ 0x000EE000u /* 952 KB */
 
   /* ------------------------------------------------------------------ */
   /* Image slot metadata structure (per slot)                             */
@@ -121,8 +126,10 @@ extern "C"
   _Static_assert(GOLDEN_IMAGE_BASE + GOLDEN_IMAGE_SIZE <= FMM_METADATA_BASE,
                  "internal_flash_layout: golden image must not overlap FMM metadata");
 
-  _Static_assert(FMM_METADATA_BASE + FMM_METADATA_SIZE == INTERNAL_FLASH_RESERVED,
-                 "internal_flash_layout: FMM metadata must directly precede reserved region");
+  _Static_assert(FMM_METADATA_BASE + FMM_METADATA_SIZE == BOOT_LOG_BASE,
+                 "internal_flash_layout: FMM metadata must directly precede boot log");
+  _Static_assert(BOOT_LOG_BASE + BOOT_LOG_SIZE == INTERNAL_FLASH_RESERVED,
+                 "internal_flash_layout: boot log must directly precede reserved region");
 
   _Static_assert(INTERNAL_FLASH_RESERVED + INTERNAL_FLASH_RESERVED_SZ <=
                      INTERNAL_FLASH_BASE + INTERNAL_FLASH_SIZE,
@@ -136,6 +143,7 @@ extern "C"
                  "internal_flash_layout: bad GOLDEN_METADATA_SIZE");
   _Static_assert(GOLDEN_IMAGE_SIZE == 0x000EF000u, "internal_flash_layout: bad GOLDEN_IMAGE_SIZE");
   _Static_assert(FMM_METADATA_SIZE == 0x00001000u, "internal_flash_layout: bad FMM_METADATA_SIZE");
+  _Static_assert(BOOT_LOG_SIZE == 0x00001000u, "internal_flash_layout: bad BOOT_LOG_SIZE");
 
 #ifdef __cplusplus
 }

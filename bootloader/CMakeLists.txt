@@ -12,6 +12,7 @@ add_executable(cubesat_obc_bootloader
     bootloader.c
     crc32.c
     spi_flash.c
+    ../src/core/boot_log.c
 )
 
 target_compile_definitions(cubesat_obc_bootloader PRIVATE
