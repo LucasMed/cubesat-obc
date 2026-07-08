@@ -77,8 +77,8 @@ extern "C"
 #define RP2350_SRAM_SIZE 0x00082000u /* 520 KB — RP2350A full SRAM */
 
 /* Boot log ring buffer — 128 entries × 32 bytes, one erase block      */
-#define BOOT_LOG_BASE       0x10311000u
-#define BOOT_LOG_SIZE       0x00001000u /* 4 KB / one sector */
+#define BOOT_LOG_BASE 0x10311000u
+#define BOOT_LOG_SIZE 0x00001000u /* 4 KB / one sector */
 
 /* Reserved for future use                                             */
 #define INTERNAL_FLASH_RESERVED (BOOT_LOG_BASE + BOOT_LOG_SIZE)

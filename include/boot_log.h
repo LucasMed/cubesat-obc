@@ -30,25 +30,25 @@
 #ifndef BOOT_LOG_H
 #define BOOT_LOG_H
 
-#include <stdint.h>
-#include <stdbool.h>
-
 #include "internal_flash_layout.h"
+
+#include <stdbool.h>
+#include <stdint.h>
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                            */
 /* ------------------------------------------------------------------ */
 
-#define BOOT_LOG_ENTRY_SIZE    32u
-#define BOOT_LOG_MAX_ENTRIES   (BOOT_LOG_SIZE / BOOT_LOG_ENTRY_SIZE)  /* 128 */
+#define BOOT_LOG_ENTRY_SIZE 32u
+#define BOOT_LOG_MAX_ENTRIES (BOOT_LOG_SIZE / BOOT_LOG_ENTRY_SIZE) /* 128 */
 
 /* Sentinel for unused/full scan result */
 #define BOOT_LOG_INDEX_INVALID 0xFFFFFFFFu
 
 /* Image-used constants (matches BOOT_SLOT_A/B convention) */
-#define BOOT_LOG_SLOT_A        0u
-#define BOOT_LOG_SLOT_B        1u
-#define BOOT_LOG_GOLDEN        2u
+#define BOOT_LOG_SLOT_A 0u
+#define BOOT_LOG_SLOT_B 1u
+#define BOOT_LOG_GOLDEN 2u
 
 /* ------------------------------------------------------------------ */
 /* Entry structure                                                      */
@@ -56,17 +56,17 @@
 
 typedef struct __attribute__((packed))
 {
-    uint32_t sequence;         /**< 1-based, monotonically increasing   */
-    uint32_t boot_count;       /**< From boot_status_t.boot_count      */
-    uint32_t reset_cause;      /**< 1=POR, 2=WDT, 3=SW forced          */
-    uint8_t  image_used;       /**< BOOT_LOG_SLOT_A/B/GOLDEN           */
-    uint8_t  crc_ok;           /**< 1 if image CRC passed              */
-    uint8_t  fallback_used;    /**< 1 if golden restore was triggered   */
-    uint8_t  _pad[1];          /**< Reserved                           */
-    uint32_t bl_duration_ms;   /**< Bootloader execution time in ms    */
-    uint32_t last_crc_computed;/**< CRC computed by bootloader          */
-    uint32_t last_crc_expected;/**< Expected CRC from slot metadata     */
-    uint32_t crc_entry;        /**< CRC32 of bytes [0..27]             */
+  uint32_t sequence;          /**< 1-based, monotonically increasing   */
+  uint32_t boot_count;        /**< From boot_status_t.boot_count      */
+  uint32_t reset_cause;       /**< 1=POR, 2=WDT, 3=SW forced          */
+  uint8_t image_used;         /**< BOOT_LOG_SLOT_A/B/GOLDEN           */
+  uint8_t crc_ok;             /**< 1 if image CRC passed              */
+  uint8_t fallback_used;      /**< 1 if golden restore was triggered   */
+  uint8_t _pad[1];            /**< Reserved                           */
+  uint32_t bl_duration_ms;    /**< Bootloader execution time in ms    */
+  uint32_t last_crc_computed; /**< CRC computed by bootloader          */
+  uint32_t last_crc_expected; /**< Expected CRC from slot metadata     */
+  uint32_t crc_entry;         /**< CRC32 of bytes [0..27]             */
 } boot_log_entry_t;
 
 _Static_assert(sizeof(boot_log_entry_t) == BOOT_LOG_ENTRY_SIZE,
