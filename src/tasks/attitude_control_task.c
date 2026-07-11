@@ -74,7 +74,10 @@ void vAttitudeControlTask_Step(void)
       B[2] = 0.0f;
     }
     float dipole[3] = {0.0f, 0.0f, 0.0f};
-    momentum_dump_step(&g_mdump, B, snap.state.rates, dipole);
+    if (momentum_dump_needed(snap.state.rates, MOMENTUM_DUMP_THRESHOLD))
+    {
+      momentum_dump_step(&g_mdump, B, snap.state.rates, dipole);
+    }
     magnetorquer_set_moment(&g_mtq, dipole[0], dipole[1], dipole[2]);
     return;
   }

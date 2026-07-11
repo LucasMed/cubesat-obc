@@ -26,6 +26,14 @@
 /** Momentum-dump gain for FM_DETUMBLE [A·m²·s / (kg·m²)] */
 #define DETUMBLE_K_DUMP 0.01f
 
+/** Momentum dump threshold [kg·m²/s].
+ *  Derived from RW max angular momentum × 80% safety margin.
+ *  H_max = RW_INERTIA * RW_MAX_OMEGA_RPM * 2π/60
+ *        = 0.001 * 4000 * 0.10472 ≈ 0.419 kg·m²/s
+ *  Threshold = H_max * 0.80 = 0.335 kg·m²/s
+ */
+#define MOMENTUM_DUMP_THRESHOLD 0.335f
+
 /**
  * Magnetic declination for the launch site [rad].
  *

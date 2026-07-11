@@ -19,6 +19,7 @@
  *   9.  (T-ACT-09) FM_NOMINAL + imu_ekf_valid → lqr_compute called, not PID
  *  10.  (T-ACT-10) FM_NOMINAL + !imu_ekf_valid → PID called (fallback)
  *  11.  (T-ACT-11) FM_DIAGNOSTIC + imu_ekf_valid → PID called (not LQR)
+ *  15.  (T-ACT-15) FM_DETUMBLE + rates below threshold → no dump
  */
 
 #include "../../include/attitude_control.h"
@@ -141,9 +142,8 @@ void momentum_dump_step(const momentum_dump_t *md, const float B[3], const float
 
 bool momentum_dump_needed(const float L_rw[3], float threshold)
 {
-  (void)L_rw;
-  (void)threshold;
-  return false;
+  float mag = sqrtf(L_rw[0] * L_rw[0] + L_rw[1] * L_rw[1] + L_rw[2] * L_rw[2]);
+  return mag > threshold;
 }
 
 void magnetorquer_init(magnetorquer_t *mq)
@@ -253,7 +253,7 @@ static void test_skip_in_fm_safe(void)
 static void test_skip_in_fm_detumble(void)
 {
   float att[3] = {0};
-  float rates[3] = {0};
+  float rates[3] = {10.0f, 0.0f, 0.0f}; /* |rates| = 10 > MOMENTUM_DUMP_THRESHOLD */
   reset_stubs();
   set_dla_state(FM_DETUMBLE, true, att, rates);
   vAttitudeControlTask_Step();
@@ -447,7 +447,7 @@ static void test_skip_in_fm_payload(void)
 static void test_detumble_with_mag_valid(void)
 {
   float att[3] = {0};
-  float rates[3] = {0.1f, 0.0f, 0.0f};
+  float rates[3] = {10.0f, 0.0f, 0.0f}; /* |rates| = 10 > MOMENTUM_DUMP_THRESHOLD */
   reset_stubs();
   data_layer_init();
   data_layer_set_flight_mode(FM_DETUMBLE);
@@ -471,7 +471,7 @@ static void test_detumble_with_mag_valid(void)
 static void test_detumble_with_mag_invalid(void)
 {
   float att[3] = {0};
-  float rates[3] = {0.1f, 0.0f, 0.0f};
+  float rates[3] = {10.0f, 0.0f, 0.0f}; /* |rates| = 10 > MOMENTUM_DUMP_THRESHOLD */
   reset_stubs();
   data_layer_init();
   data_layer_set_flight_mode(FM_DETUMBLE);
@@ -483,6 +483,29 @@ static void test_detumble_with_mag_invalid(void)
   CHECK(s_dump_calls == 1, "momentum_dump_step must be called once (B=0)");
   CHECK(s_mtq_set_calls == 1, "magnetorquer_set_moment must be called once (zero dipole)");
   printf("test_detumble_with_mag_invalid: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Test 15 (T-ACT-15): FM_DETUMBLE + rates below threshold → no dump  */
+/* ------------------------------------------------------------------ */
+
+static void test_detumble_below_threshold(void)
+{
+  float att[3] = {0};
+  float rates[3] = {0.1f, 0.1f, 0.1f}; /* |rates| ≈ 0.173 < 0.335 */
+  reset_stubs();
+  data_layer_init();
+  data_layer_set_flight_mode(FM_DETUMBLE);
+  data_layer_write_imu(att, rates);
+  float mag[3] = {12.5f, -3.2f, 45.8f};
+  data_layer_write_mag(mag);
+
+  vAttitudeControlTask_Step();
+  CHECK(s_dump_calls == 0, "momentum_dump_step must NOT be called when below threshold");
+  CHECK(s_mtq_set_calls == 1, "magnetorquer_set_moment must still be called with zero dipole");
+  CHECK(FPEQ(s_mtq_moment[0], 0.0f) && FPEQ(s_mtq_moment[1], 0.0f) && FPEQ(s_mtq_moment[2], 0.0f),
+        "magnetorquer must receive zero dipole when below threshold");
+  printf("test_detumble_below_threshold: OK\n");
 }
 
 /* ------------------------------------------------------------------ */
@@ -505,6 +528,7 @@ int main(void)
   test_skip_in_fm_payload();
   test_detumble_with_mag_valid();
   test_detumble_with_mag_invalid();
+  test_detumble_below_threshold();
 
   if (g_failures == 0)
   {

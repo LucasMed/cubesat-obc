@@ -11,6 +11,8 @@
 
 #include "momentum_dump.h"
 
+#include "config.h"
+
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -141,6 +143,45 @@ static void test_mtm_gain_scaling(void)
 }
 
 /* ========================================================================
+ * T-MTM-06  Threshold gate — momentum above MOMENTUM_DUMP_THRESHOLD
+ *
+ * rates = {100, 0, 0} → |rates| = 100 > 0.335 → must return true
+ * ======================================================================== */
+static void test_threshold_gate_above(void)
+{
+  float rates[3] = {100.0f, 0.0f, 0.0f};
+  CHECK(momentum_dump_needed(rates, MOMENTUM_DUMP_THRESHOLD) == true,
+        "needed() must return true when |rates| > MOMENTUM_DUMP_THRESHOLD");
+  printf("  PASS T-MTM-06 threshold gate above (|rates|=100 > 0.335)\n");
+}
+
+/* ========================================================================
+ * T-MTM-07  Threshold gate — momentum below MOMENTUM_DUMP_THRESHOLD
+ *
+ * rates = {0.1, 0.1, 0.1} → |rates| ≈ 0.173 < 0.335 → must return false
+ * ======================================================================== */
+static void test_threshold_gate_below(void)
+{
+  float rates[3] = {0.1f, 0.1f, 0.1f};
+  CHECK(momentum_dump_needed(rates, MOMENTUM_DUMP_THRESHOLD) == false,
+        "needed() must return false when |rates| < MOMENTUM_DUMP_THRESHOLD");
+  printf("  PASS T-MTM-07 threshold gate below (|rates|≈0.173 < 0.335)\n");
+}
+
+/* ========================================================================
+ * T-MTM-08  Threshold gate — zero momentum
+ *
+ * rates = {0, 0, 0} → |rates| = 0 < 0.335 → must return false
+ * ======================================================================== */
+static void test_threshold_gate_zero(void)
+{
+  float rates[3] = {0.0f, 0.0f, 0.0f};
+  CHECK(momentum_dump_needed(rates, MOMENTUM_DUMP_THRESHOLD) == false,
+        "needed() must return false when rates is zero");
+  printf("  PASS T-MTM-08 threshold gate zero momentum\n");
+}
+
+/* ========================================================================
  * main
  * ======================================================================== */
 int main(void)
@@ -152,6 +193,9 @@ int main(void)
   test_mtm_cross_product();
   test_mtm_needed();
   test_mtm_gain_scaling();
+  test_threshold_gate_above();
+  test_threshold_gate_below();
+  test_threshold_gate_zero();
 
   if (g_failures == 0)
   {
