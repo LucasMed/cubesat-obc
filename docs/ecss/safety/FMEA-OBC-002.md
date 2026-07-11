@@ -411,7 +411,7 @@ All software components shall comply with CODING_STANDARDS.md requirements:
 
 | ID | Description | Category | Owner | Target |
 |----|-------------|----------|-------|--------|
-| OI-SW-1 | QMC5883L clone detection for HMC5883L — verify IC markings before procurement | II | Hardware Lead | Pre-flight — deferred to HW procurement; design reviewed at CDR, HW verification planned before flight |
+| OI-SW-1 (Closed) | QMC5883L clone detection for HMC5883L — verify IC markings before procurement | II | Hardware Lead | ✅ **CLOSED** — Software detection implemented in hmc5883l.c v1.2 (QMC5883L ID register validated against 0xFF, HMC5883L register-map fingerprint on probe); HW verification still required before flight |
 | OI-SW-2 (Closed) | ISR-safe fmm_force_safe() path (FMM-DES-001 OI-5) | III | Software Lead | ✅ Implemented in v0.33.0 — fmm_force_safe() now uses taskENTER_CRITICAL_FROM_ISR() via data_layer_set_flight_mode_from_isr(). No separate _from_isr variant needed. BASEPRI mask properly saved/restored. OI-5 / OI-SW-2 closed. |
 | OI-SW-3 | FreeRTOS priority inheritance evaluation | III | Software Lead | ✅ Implemented (CDR-SAF-02) — `docs/ecss/safety/priority_inheritance.md` PI-OBC-001 |
 | OI-SW-4 | Coverity static analysis integration in CI pipeline | III | DevOps | ✅ Implemented (CDR-SAF-05) — `vapier/coverity-scan-action@v1` in CI; local script `scripts/coverity_scan.sh` |

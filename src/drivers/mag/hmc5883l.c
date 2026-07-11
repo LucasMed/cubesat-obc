@@ -68,7 +68,14 @@ static int probe_hmc5883l(void)
 {
   uint8_t data[2];
 
-  /* Try HMC5883L at 0x1E */
+  /* Try HMC5883L at 0x1E.
+   * OI-SW-1: HMC5883L has no ID register — detection is purely behavioral:
+   *   1. Write CRA (reg 0x00) = 0x70 (sample rate, range config)
+   *   2. Write MODE (reg 0x02) = 0x00 (continuous measurement)
+   *   3. Read MODE back — must read 0x00
+   * This acts as a register-map fingerprint: QMC5883L register 0x00 is
+   * DATA_X_L (not CRA), so a QMC5883L at this address would not respond
+   * correctly to CRA writes, and the MODE read-back would differ. */
   data[0] = HMC5883L_CRA;
   data[1] = HMC5883L_CRA_CONFIG;
   if (i2c_bus_write(HMC5883L_ADDR, data, 2u) == 0)
@@ -104,12 +111,18 @@ static int probe_qmc5883l(uint8_t addr)
     data[1] = 0x01; /* Enable */
     if (i2c_bus_write(addr, data, 2u) == 0)
     {
-      /* Verify by reading ID register */
+      /* OI-SW-1: Read and validate ID register — reject clones with wrong ID */
       uint8_t id;
       if (i2c_bus_write_read(addr, (uint8_t[]){QMC5883L_ID}, 1, &id, 1) == 0)
       {
-        (void)printf("    qmc5883l: probe addr 0x%02X, ID=0x%02X\r\n", addr, id);
-        /* ID might not be 0xFF on all clones, just check if we can read */
+        (void)printf("    qmc5883l: probe addr 0x%02X, ID=0x%02X", addr, id);
+        /* Validate against known QMC5883L ID value (0xFF) */
+        if (id != QMC5883L_ID_VALUE)
+        {
+          (void)printf(" — WARNING: expected 0x%02X, rejecting\r\n", QMC5883L_ID_VALUE);
+          return 0;
+        }
+        (void)printf(" — matched\r\n");
         return 1;
       }
     }
