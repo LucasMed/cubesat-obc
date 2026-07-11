@@ -14,6 +14,7 @@ extern "C" {
 #endif
 bool nmea_buffer_push(unsigned char byte);
 double nmea_deg_min_to_dec(const char *str, char hemisphere);
+bool gps_rtc_delta_check(uint32_t gps_epoch, uint32_t rtc_epoch);
 #ifdef __cplusplus
 }
 #endif
@@ -480,6 +481,48 @@ void test_gps_cold_start(void) {
     gps_deinit();
 }
 
+/* ------------------------------------------------------------------ */
+/*  FR-19: GPS→RTC sync guard (gps_rtc_delta_check) tests             */
+/* ------------------------------------------------------------------ */
+
+/* 2000-01-01 00:00:00 UTC — boundary for GPS_EPOCH_MIN_VALID */
+#define EPOCH_2000_01_01 946684800u
+
+void test_gps_rtc_delta_same_epoch(void) {
+    /* Same epoch → must pass (delta = 0) */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01, EPOCH_2000_01_01);
+    assert(ok == true);
+    printf("test_gps_rtc_delta_same_epoch PASS\n");
+}
+
+void test_gps_rtc_delta_gps_1s_ahead(void) {
+    /* GPS 1 second ahead of RTC → delta 1s > 0s threshold → must fail */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01 + 1, EPOCH_2000_01_01);
+    assert(ok == false);
+    printf("test_gps_rtc_delta_gps_1s_ahead PASS\n");
+}
+
+void test_gps_rtc_delta_rtc_1s_ahead(void) {
+    /* RTC 1 second ahead of GPS → delta 1s > 0s threshold → must fail */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01, EPOCH_2000_01_01 + 1);
+    assert(ok == false);
+    printf("test_gps_rtc_delta_rtc_1s_ahead PASS\n");
+}
+
+void test_gps_rtc_delta_rtc_uninitialized(void) {
+    /* RTC epoch 0 (uninitialized) → must always pass */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01 + 99999, 0u);
+    assert(ok == true);
+    printf("test_gps_rtc_delta_rtc_uninitialized PASS\n");
+}
+
+void test_gps_rtc_delta_rtc_at_boundary(void) {
+    /* RTC exactly at GPS_EPOCH_MIN_VALID (2000-01-01) → not uninitialized → must pass */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01, EPOCH_2000_01_01);
+    assert(ok == true);
+    printf("test_gps_rtc_delta_rtc_at_boundary PASS\n");
+}
+
 int main(void) {
     printf("Testing real NEO-7M GPS NMEA parser...\n");
     test_parse_valid_gpgga();
@@ -540,6 +583,12 @@ int main(void) {
     gps_deinit();
     test_gps_cold_start();
     gps_deinit();
+    /* FR-19: GPS→RTC sync guard tests */
+    test_gps_rtc_delta_same_epoch();
+    test_gps_rtc_delta_gps_1s_ahead();
+    test_gps_rtc_delta_rtc_1s_ahead();
+    test_gps_rtc_delta_rtc_uninitialized();
+    test_gps_rtc_delta_rtc_at_boundary();
     printf("All NMEA parser tests passed.\n");
     return 0;
 }

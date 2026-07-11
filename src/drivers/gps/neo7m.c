@@ -12,6 +12,40 @@
 #include <stdlib.h>
 #include <string.h>
 
+// --- FR-19: GPS→RTC sync safety guard ---
+
+/** @brief Maximum acceptable GPS-RTC time delta for safe sync (seconds).
+ *  Both GPS epoch and RTC epoch are in whole-seconds resolution.
+ *  0 s threshold = must be within the same second (well within ±500 ms).
+ */
+#define GPS_RTC_SYNC_MAX_DELTA_S 0u
+
+/** @brief Minimum valid Unix epoch (2000-01-01 00:00:00 UTC).
+ *  RTC values below this are treated as uninitialized.
+ */
+#define GPS_EPOCH_MIN_VALID 946684800u
+
+/** @brief Check if GPS-RTC time delta is within safe sync threshold.
+ *  @param gps_epoch  GPS UTC time as Unix epoch seconds
+ *  @param rtc_epoch  Current RTC time as Unix epoch seconds
+ *  @return true if |delta| <= GPS_RTC_SYNC_MAX_DELTA_S, false otherwise
+ *  @note When RTC is uninitialized (epoch < GPS_EPOCH_MIN_VALID), always returns true.
+ */
+#ifdef GPS_TEST
+bool gps_rtc_delta_check(uint32_t gps_epoch, uint32_t rtc_epoch)
+#else
+static bool gps_rtc_delta_check(uint32_t gps_epoch, uint32_t rtc_epoch)
+#endif
+{
+  if (rtc_epoch < GPS_EPOCH_MIN_VALID)
+  {
+    return true;  /* RTC uninitialized — allow sync */
+  }
+
+  uint32_t delta = (gps_epoch > rtc_epoch) ? (gps_epoch - rtc_epoch) : (rtc_epoch - gps_epoch);
+  return delta <= GPS_RTC_SYNC_MAX_DELTA_S;
+}
+
 #ifdef PICO_BUILD
   #include "hardware/irq.h"
   #include "hardware/uart.h"
@@ -595,6 +629,25 @@ static void nmea_parse_gprmc_and_sync_rtc(const char *sentence)
       else
       {
         year += 2000;
+      }
+    }
+    /* FR-19: Validate GPS-RTC time delta before sync (safety guard).
+     * Read current RTC, convert both to epoch, and reject if delta exceeds threshold.
+     * If ds3231_read_time() fails (RTC not initialized), proceed with sync. */
+    {
+      uint16_t rtc_year;
+      uint8_t rtc_mon, rtc_day, rtc_h, rtc_m, rtc_s;
+      if (ds3231_read_time(&rtc_year, &rtc_mon, &rtc_day, &rtc_h, &rtc_m, &rtc_s))
+      {
+        uint32_t rtc_epoch = ds3231_to_epoch(rtc_year, rtc_mon, rtc_day, rtc_h, rtc_m, rtc_s);
+        uint32_t gps_epoch = ds3231_to_epoch((uint16_t)year, (uint8_t)mon, (uint8_t)day,
+                                              (uint8_t)h, (uint8_t)m, (uint8_t)s);
+        if (!gps_rtc_delta_check(gps_epoch, rtc_epoch))
+        {
+          printf("[GPS] GPRMC sync rejected: GPS epoch %lu outside safe delta of RTC epoch %lu\r\n",
+                 (unsigned long)gps_epoch, (unsigned long)rtc_epoch);
+          return;  /* Skip sync — delta too large */
+        }
       }
     }
     ds3231_set_time((uint16_t)year, (uint8_t)mon, (uint8_t)day, (uint8_t)h, (uint8_t)m, (uint8_t)s);
