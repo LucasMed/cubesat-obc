@@ -153,7 +153,11 @@ flight_mode_t fmm_get_mode(void)
 /* Payload manager stubs                                               */
 /* ------------------------------------------------------------------ */
 
-void payload_manager_init(void) {}
+static int s_payload_manager_init_calls = 0;
+void payload_manager_init(void)
+{
+  s_payload_manager_init_calls++;
+}
 void payload_manager_increment_image_count(void) {}
 payload_status_t payload_manager_get_status(void)
 {
@@ -228,6 +232,8 @@ static void reset_all(void)
   s_last_write_size = 0;
   s_storage_write_ret = STORAGE_OK;
   (void)memset(s_last_write_filename, 0, sizeof(s_last_write_filename));
+
+  s_payload_manager_init_calls = 0;
 
   payload_task_reset();
 }
@@ -402,6 +408,146 @@ static void test_storage_failure_does_not_crash(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* T-PAYLOAD-05: camera_capture fail in CAPTURE path does not write    */
+/* ------------------------------------------------------------------ */
+
+static void test_capture_capture_fail(void)
+{
+  reset_all();
+
+  s_camera_init_ret = true;
+  s_camera_capture_ret = false;
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = PAYLOAD_NOTIFY_CAPTURE_IMAGE;
+
+  vPayloadTask_Step();
+
+  if (s_storage_write_calls == 0)
+  {
+    PASS("T-PAYLOAD-05 no storage write on camera_capture failure");
+  }
+  else
+  {
+    FAIL("T-PAYLOAD-05", "storage_write_image called despite camera_capture failure");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* T-PAYLOAD-06: payload_task_init calls payload_manager_init          */
+/* ------------------------------------------------------------------ */
+
+static void test_payload_task_init(void)
+{
+  reset_all();
+
+  payload_task_init();
+
+  if (s_payload_manager_init_calls > 0)
+  {
+    PASS("T-PAYLOAD-06 payload_task_init called payload_manager_init");
+  }
+  else
+  {
+    FAIL("T-PAYLOAD-06", "payload_manager_init was NOT called");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* T-PAYLOAD-07: DUMP_IMAGE path succeeds with all camera ops OK       */
+/* ------------------------------------------------------------------ */
+
+static void test_dump_image_success(void)
+{
+  reset_all();
+
+  /* Small JPEG so hex dump loop finishes quickly */
+  build_test_jpeg(32);
+  s_camera_init_ret = true;
+  s_camera_capture_ret = true;
+  s_camera_fifo_read_ret = true;
+
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = PAYLOAD_NOTIFY_DUMP_IMAGE;
+
+  vPayloadTask_Step();
+
+  /* No assertion hooks for hex dump — just verify no crash */
+  PASS("T-PAYLOAD-07 DUMP_IMAGE success path completed without crash");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-PAYLOAD-08: DUMP_IMAGE handles camera_init failure                */
+/* ------------------------------------------------------------------ */
+
+static void test_dump_image_init_fail(void)
+{
+  reset_all();
+
+  s_camera_init_ret = false;
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = PAYLOAD_NOTIFY_DUMP_IMAGE;
+
+  vPayloadTask_Step();
+
+  PASS("T-PAYLOAD-08 DUMP_IMAGE init failure handled without crash");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-PAYLOAD-09: DUMP_IMAGE handles camera_capture failure             */
+/* ------------------------------------------------------------------ */
+
+static void test_dump_image_capture_fail(void)
+{
+  reset_all();
+
+  s_camera_init_ret = true;
+  s_camera_capture_ret = false;
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = PAYLOAD_NOTIFY_DUMP_IMAGE;
+
+  vPayloadTask_Step();
+
+  PASS("T-PAYLOAD-09 DUMP_IMAGE capture failure handled without crash");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-PAYLOAD-10: DUMP_IMAGE handles FIFO read failure                  */
+/* ------------------------------------------------------------------ */
+
+static void test_dump_image_fifo_fail(void)
+{
+  reset_all();
+
+  s_camera_init_ret = true;
+  s_camera_capture_ret = true;
+  s_camera_fifo_read_ret = false;
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = PAYLOAD_NOTIFY_DUMP_IMAGE;
+
+  vPayloadTask_Step();
+
+  PASS("T-PAYLOAD-10 DUMP_IMAGE FIFO failure handled without crash");
+}
+
+/* ------------------------------------------------------------------ */
+/* T-PAYLOAD-11: unknown notify value is handled gracefully            */
+/* ------------------------------------------------------------------ */
+
+static void test_unknown_notify_value(void)
+{
+  reset_all();
+
+  /* A bit pattern that matches neither CAPTURE_IMAGE (bit 0) nor
+   * DUMP_IMAGE (bit 2) — use bit 1 only */
+  s_notify_wait_ret = pdTRUE;
+  s_notify_writeme = 0x2;
+
+  vPayloadTask_Step();
+
+  PASS("T-PAYLOAD-11 unknown notify value handled without crash");
+}
+
+/* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -413,6 +559,13 @@ int main(void)
   test_no_storage_on_init_fail();
   test_no_storage_on_fifo_read_fail();
   test_storage_failure_does_not_crash();
+  test_capture_capture_fail();
+  test_payload_task_init();
+  test_dump_image_success();
+  test_dump_image_init_fail();
+  test_dump_image_capture_fail();
+  test_dump_image_fifo_fail();
+  test_unknown_notify_value();
 
   if (g_failures == 0)
   {

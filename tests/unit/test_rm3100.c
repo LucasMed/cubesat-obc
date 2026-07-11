@@ -29,6 +29,8 @@
 static int      g_spi_write_calls = 0;
 static int      g_spi_read_calls  = 0;
 static int      g_drdy_state      = 1;  /* 1 = DRDY high (data ready) */
+static bool     s_spi_fail        = false;  /* force SPI read/write to fail */
+static uint8_t  s_revid_return    = 0x22;   /* mock REVID value */
 
 /* Simulated measurement: X = 0x001234, Y = 0xFFEDCB (negative), Z = 0x000001 */
 static const uint8_t k_raw_sim[9] = {
@@ -41,6 +43,7 @@ int spi_write_blocking(void *spi, const uint8_t *src, size_t len)
 {
   (void)spi; (void)src;
   g_spi_write_calls++;
+  if (s_spi_fail) return 0;
   return (int)len;
 }
 
@@ -48,13 +51,14 @@ int spi_read_blocking(void *spi, uint8_t filler, uint8_t *dst, size_t len)
 {
   (void)spi; (void)filler;
   g_spi_read_calls++;
+  if (s_spi_fail) return 0;
   if (len == 9)
   {
     for (size_t i = 0; i < 9; i++) { dst[i] = k_raw_sim[i]; }
   }
   else if (len == 1)
   {
-    dst[0] = 0x22; /* REVID */
+    dst[0] = s_revid_return; /* REVID — controllable for test */
   }
   return (int)len;
 }
@@ -74,6 +78,8 @@ void setUp(void)
   g_spi_write_calls = 0;
   g_spi_read_calls  = 0;
   g_drdy_state      = 1;
+  s_spi_fail        = false;
+  s_revid_return    = 0x22;
 }
 void tearDown(void) {}
 
@@ -153,6 +159,84 @@ void test_T_PLD_MAG_05_get_last_null_ptr(void)
   rm3100_get_last(NULL);
 }
 
+/* ================================================================== */
+/* T-PLD-MAG-06a: init fails on SPI read failure (L149)               */
+/* ================================================================== */
+
+void test_T_PLD_MAG_06a_init_spi_fail(void)
+{
+  /* Force SPI read to fail before REVID check — hits L149 */
+  s_spi_fail = true;
+  bool ok = rm3100_init();
+  TEST_ASSERT_FALSE(ok);
+}
+
+/* ================================================================== */
+/* T-PLD-MAG-06b: init fails on REVID mismatch (not L149, but tests   */
+/*                the revid != EXPECTED return path)                   */
+/* ================================================================== */
+
+void test_T_PLD_MAG_06b_init_revid_mismatch(void)
+{
+  /* Make the REVID register return an unexpected value */
+  s_revid_return = 0xFF;
+  bool ok = rm3100_init();
+  TEST_ASSERT_FALSE(ok);
+}
+
+/* ================================================================== */
+/* T-PLD-MAG-07: config_cmm fails when SPI write fails (L166)         */
+/* ================================================================== */
+
+void test_T_PLD_MAG_07_config_cmm_write_fail(void)
+{
+  bool ok = rm3100_init();
+  TEST_ASSERT_TRUE(ok);
+
+  s_spi_fail = true;
+  ok = rm3100_config_cmm(200);
+  TEST_ASSERT_FALSE(ok);
+}
+
+/* ================================================================== */
+/* T-PLD-MAG-08: read_vector with NULL vec returns false (L178)       */
+/* ================================================================== */
+
+void test_T_PLD_MAG_08_read_vector_null(void)
+{
+  bool ok = rm3100_read_vector(NULL, 0);
+  TEST_ASSERT_FALSE(ok);
+}
+
+/* ================================================================== */
+/* T-PLD-MAG-09: read_vector loops on DRDY poll (L192)                */
+/* ================================================================== */
+
+void test_T_PLD_MAG_09_drdy_poll_loop(void)
+{
+  g_drdy_state = 0;  /* DRDY low — read will busy-wait then time out */
+  rm3100_vector_t vec;
+
+  /* timeout_ms=5: loop runs L192 (elapsed++) until elapsed >= 5 */
+  bool ok = rm3100_read_vector(&vec, 5);
+  TEST_ASSERT_FALSE(ok);
+}
+
+/* ================================================================== */
+/* T-PLD-MAG-10: read_vector SPI read failure (L198)                  */
+/* ================================================================== */
+
+void test_T_PLD_MAG_10_read_vector_spi_fail(void)
+{
+  /* Ensure DRDY is high so we pass the poll loop */
+  g_drdy_state = 1;
+
+  rm3100_vector_t vec;
+  s_spi_fail = true;
+  bool ok = rm3100_read_vector(&vec, 0);
+  TEST_ASSERT_FALSE(ok);
+}
+
 /* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
@@ -165,5 +249,11 @@ int main(void)
   RUN_TEST(test_T_PLD_MAG_03_drdy_gating);
   RUN_TEST(test_T_PLD_MAG_04_get_last);
   RUN_TEST(test_T_PLD_MAG_05_get_last_null_ptr);
+  RUN_TEST(test_T_PLD_MAG_06a_init_spi_fail);
+  RUN_TEST(test_T_PLD_MAG_06b_init_revid_mismatch);
+  RUN_TEST(test_T_PLD_MAG_07_config_cmm_write_fail);
+  RUN_TEST(test_T_PLD_MAG_08_read_vector_null);
+  RUN_TEST(test_T_PLD_MAG_09_drdy_poll_loop);
+  RUN_TEST(test_T_PLD_MAG_10_read_vector_spi_fail);
   return UNITY_END();
 }

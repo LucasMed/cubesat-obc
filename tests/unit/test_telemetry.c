@@ -85,6 +85,7 @@ void csp_sendto(uint8_t prio, uint16_t dest, uint8_t dport, uint8_t sport, uint3
 /* ---- Stub globals (from telemetry_storage_stub.c) ---------------------- */
 extern telemetry_record_t g_telemetry_storage_last_record;
 extern bool g_telemetry_storage_store_called;
+extern bool g_telemetry_storage_store_fail;
 
 /* ---- Helpers ------------------------------------------------------------ */
 static int g_failures = 0;
@@ -533,6 +534,51 @@ _Static_assert(TLM_PACKET_SIZE == 64,
 _Static_assert(sizeof(telemetry_record_t) == 76,
                "telemetry_record_t must be 76 bytes after FR-17");
 
+/* ========================================================================
+ * T-TLM-14  Battery voltage populated when EPS monitor is initialised
+ * ======================================================================== */
+static void test_tlm_battery_voltage_read(void)
+{
+  int failures_before = g_failures;
+  reset_all();
+
+  /* eps_monitor_init() sets g_initialised=true and snapshot.vbatt=7.6 V */
+  eps_monitor_init();
+
+  set_state(FM_NOMINAL, ENERGY_NOMINAL, 0, 0, 0, 0, 0, 0, 20.0f, 0, 0);
+  vTelemetryTask_Step();
+
+  csp_telemetry_packet_t *tl = (csp_telemetry_packet_t *)s_send_pkt->data;
+  /* eps_monitor_init sets vbatt = 7.6 V → battery_mv = 7600 */
+  CHECK(tl->battery_mv == 7600, "battery_mv must be 7600 with default init values");
+
+  printf("[T-TLM-14] test_tlm_battery_voltage_read: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
+/* ========================================================================
+ * T-TLM-15  Store failure — telemetry_storage_store returns false
+ * ======================================================================== */
+static void test_tlm_flash_record_store_fail(void)
+{
+  int failures_before = g_failures;
+  reset_all();
+  g_telemetry_storage_store_fail = true;
+  g_telemetry_storage_store_called = false;
+
+  set_state(FM_NOMINAL, ENERGY_NOMINAL, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 25.0f, 1, 1);
+  vTelemetryTask_Step();
+
+  /* Store was called but returned false — no crash */
+  CHECK(g_telemetry_storage_store_called, "store was called even when fail flag set");
+
+  /* Reset for next test */
+  g_telemetry_storage_store_fail = false;
+
+  printf("[T-TLM-15] test_tlm_flash_record_store_fail: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
 /* ======================================================================== */
 int main(void)
 {
@@ -550,6 +596,8 @@ int main(void)
   test_tlm_energy_overflow();
   test_tlm_flags_all_bits();
   test_tlm_flags_no_validity();
+  test_tlm_battery_voltage_read();
+  test_tlm_flash_record_store_fail();
   printf("=================================\n");
   if (g_failures == 0)
   {

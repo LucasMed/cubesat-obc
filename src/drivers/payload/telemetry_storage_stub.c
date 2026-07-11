@@ -13,6 +13,9 @@ telemetry_record_t g_telemetry_storage_last_record;
 /** @brief Set true on each telemetry_storage_store() call (test instrumentation) */
 bool g_telemetry_storage_store_called = false;
 
+/** @brief Set true to make telemetry_storage_store() return false (test instrumentation) */
+bool g_telemetry_storage_store_fail = false;
+
 bool telemetry_storage_init(void)
 {
   return true;
@@ -25,7 +28,7 @@ bool telemetry_storage_store(const telemetry_record_t *record)
     g_telemetry_storage_last_record = *record;
     g_telemetry_storage_store_called = true;
   }
-  return true;
+  return !g_telemetry_storage_store_fail;
 }
 
 bool telemetry_storage_read(uint32_t address, telemetry_record_t *record)

@@ -16,6 +16,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 void setUp(void) {
     /* Robust cleanup of host test directories */
@@ -56,8 +58,60 @@ void test_storage_lifecycle(void) {
     TEST_ASSERT_TRUE(free_sp > 0);
 }
 
+void test_storage_append_log_null_filename(void) {
+    /* Should return STORAGE_ERR_WRITE when filename is NULL */
+    const char data[] = "test_data";
+    TEST_ASSERT_EQUAL_INT(STORAGE_ERR_WRITE, storage_append_log(NULL, data, sizeof(data)));
+}
+
+void test_storage_write_image_null_filename(void) {
+    /* Should return STORAGE_ERR_WRITE when filename is NULL */
+    uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
+    TEST_ASSERT_EQUAL_INT(STORAGE_ERR_WRITE, storage_write_image(NULL, data, sizeof(data)));
+}
+
+void test_storage_append_log_fopen_failure(void) {
+    /* Should return STORAGE_ERR_OPEN when parent directory doesn't exist */
+    setUp();
+    TEST_ASSERT_EQUAL_INT(STORAGE_OK, storage_init());
+    const char data[] = "test_data";
+    /* Path with non-existent parent directory -> fopen fails (host) */
+    TEST_ASSERT_EQUAL_INT(STORAGE_ERR_OPEN,
+        storage_append_log("/NONEXISTENT_DIR/test.dat", data, sizeof(data)));
+}
+
+void test_storage_write_image_fopen_failure(void) {
+    /* Should return STORAGE_ERR_OPEN when parent directory doesn't exist */
+    setUp();
+    TEST_ASSERT_EQUAL_INT(STORAGE_OK, storage_init());
+    uint8_t img_data[4] = {0xFF, 0xD8, 0xFF, 0xD9};
+    /* Path with non-existent parent directory -> fopen fails (host) */
+    TEST_ASSERT_EQUAL_INT(STORAGE_ERR_OPEN,
+        storage_write_image("/NONEXISTENT_DIR/test.jpg", img_data, sizeof(img_data)));
+}
+
+void test_mkdir_logs_failure(void) {
+    /* Force mkdir("LOGS") to fail with EACCES by removing write permission
+     * from the current directory. After the call, restore permission. */
+    setUp();
+    chmod(".", 0555);
+    /* mkdir("LOGS") will fail with EACCES, errno != EEXIST -> perror called */
+    storage_status_t st = storage_init();
+    chmod(".", 0755);
+    /* storage_init still returns OK (the perror is non-fatal) */
+    TEST_ASSERT_EQUAL_INT(STORAGE_OK, st);
+    /* Clean up LOGS/IMAGES for subsequent tests */
+    system("rm -rf LOGS IMAGES");
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_storage_lifecycle);
+    RUN_TEST(test_storage_append_log_null_filename);
+    RUN_TEST(test_storage_write_image_null_filename);
+    RUN_TEST(test_storage_append_log_fopen_failure);
+    RUN_TEST(test_storage_append_log_fopen_failure);
+    RUN_TEST(test_storage_write_image_fopen_failure);
+    RUN_TEST(test_mkdir_logs_failure);
     return UNITY_END();
 }

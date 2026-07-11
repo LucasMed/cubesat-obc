@@ -70,6 +70,15 @@ void test_camera_init_fails_on_bad_chip_id(void)
    * This is a placeholder for when we have configurable mocks. */
 }
 
+void test_camera_init_twice_skips_reinit(void)
+{
+  /* First call performs full init */
+  TEST_ASSERT_TRUE(camera_init());
+
+  /* Second call hits the "already initialized" skip path */
+  TEST_ASSERT_TRUE(camera_init());
+}
+
 void test_camera_set_resolution_valid(void)
 {
   TEST_ASSERT_TRUE(camera_set_resolution(CAM_RES_640x480));
@@ -155,6 +164,7 @@ int main(void)
   UNITY_BEGIN();
   RUN_TEST(test_camera_init_success);
   RUN_TEST(test_camera_init_fails_on_bad_chip_id);
+  RUN_TEST(test_camera_init_twice_skips_reinit);
   RUN_TEST(test_camera_set_resolution_valid);
   RUN_TEST(test_camera_set_resolution_invalid);
   RUN_TEST(test_camera_capture_logic);

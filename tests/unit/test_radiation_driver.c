@@ -141,6 +141,17 @@ void test_T_PLD_RAD_04_read_dose(void)
   TEST_ASSERT_TRUE(dose > 0.0f);
 }
 
+/* ================================================================== */
+/* T-PLD-RAD-05: get_and_reset handles NULL pointer gracefully          */
+/* ================================================================== */
+
+void test_T_PLD_RAD_05_get_and_reset_null(void)
+{
+  radiation_get_and_reset(NULL);
+  /* Must not crash */
+  TEST_ASSERT_TRUE(true);
+}
+
 /* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
@@ -152,5 +163,6 @@ int main(void)
   RUN_TEST(test_T_PLD_RAD_02_accumulation_and_reset);
   RUN_TEST(test_T_PLD_RAD_03_driver_init);
   RUN_TEST(test_T_PLD_RAD_04_read_dose);
+  RUN_TEST(test_T_PLD_RAD_05_get_and_reset_null);
   return UNITY_END();
 }

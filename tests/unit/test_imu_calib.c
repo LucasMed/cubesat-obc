@@ -41,6 +41,7 @@ int mpu6050_write_gyro_offset(const int16_t offset[3])
  * Keep them thin; the real flash round-trip is tested in test_imu_calib_flash.c. */
 static bool s_stub_has_calib = false;
 static imu_calib_t s_stub_calib = {0};
+static w25q64_status_t s_stub_write_ret = W25Q64_OK;  /* control for save failure test */
 
 w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
 {
@@ -49,7 +50,7 @@ w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
         s_stub_calib = *cal;
         s_stub_has_calib = true;
     }
-    return W25Q64_OK;
+    return s_stub_write_ret;
 }
 
 w25q64_status_t w25q64_read_imu_calib(imu_calib_t *cal)
@@ -97,6 +98,7 @@ void setUp(void)
     s_gyro_write_ret = 0;
     s_stub_has_calib = false;
     memset(&s_stub_calib, 0, sizeof(s_stub_calib));
+    s_stub_write_ret = W25Q64_OK;
     s_ekf_initialised = false;
     memset(&s_ekf, 0, sizeof(s_ekf));
 }
@@ -442,6 +444,52 @@ void test_ic_write_gyro_offset_failure(void)
 }
 
 /* ================================================================== */
+/* T-IC-15: imu_calib_load seeds EKF when s_ekf_initialised is true   */
+/* ================================================================== */
+void test_ic_load_ekf_seeding(void)
+{
+    /* Prepare a valid calibration */
+    imu_calib_t cal;
+    memset(&cal, 0, sizeof(cal));
+    cal.calibrated = true;
+    cal.gyro_bias_rads[0] = 0.01f;
+    cal.gyro_bias_rads[1] = -0.02f;
+    cal.gyro_bias_rads[2] = 0.03f;
+
+    /* Enable EKF so the seeding branch (L212-216) is entered */
+    s_ekf_initialised = true;
+    memset(&s_ekf, 0, sizeof(s_ekf));
+
+    imu_calib_load(&cal);
+
+    /* Verify EKF bias states were seeded */
+    FLOAT_CLOSE(s_ekf.x[4], 0.01f, 1e-6f);
+    FLOAT_CLOSE(s_ekf.x[5], -0.02f, 1e-6f);
+    FLOAT_CLOSE(s_ekf.x[6], 0.03f, 1e-6f);
+
+    /* imu_calib_is_valid should also reflect loaded calibration */
+    TEST_ASSERT_TRUE(imu_calib_is_valid());
+}
+
+/* ================================================================== */
+/* T-IC-16: imu_calib_save_to_flash with flash write failure          */
+/* ================================================================== */
+void test_ic_save_to_flash_failure(void)
+{
+    /* Run a normal calibration first */
+    imu_calib_start();
+    collect_n_samples(100, 1.0f, 0.5f, -0.3f, 0.0f, 0.0f, 1.0f);
+    imu_calib_finish();
+    TEST_ASSERT_TRUE(imu_calib_is_valid());
+
+    /* Force w25q64_write_imu_calib stub to return an error */
+    s_stub_write_ret = W25Q64_ERR_WRITE;
+
+    /* Must not crash; the error path (L232) prints a warning */
+    imu_calib_save_to_flash();
+}
+
+/* ================================================================== */
 /* Runner                                                              */
 /* ================================================================== */
 int main(void)
@@ -462,6 +510,8 @@ int main(void)
     RUN_TEST(test_ic_write_gyro_offset_failure);
     RUN_TEST(test_ic_zero_range_axis);
     RUN_TEST(test_ic_zero_range_all_axes);
+    RUN_TEST(test_ic_load_ekf_seeding);
+    RUN_TEST(test_ic_save_to_flash_failure);
 
     return UNITY_END();
 }

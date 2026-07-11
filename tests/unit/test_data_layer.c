@@ -433,6 +433,31 @@ void test_write_lux(void)
   PASS("T-DL-EXT-18: data_layer_write_lux");
 }
 
+void test_read_null(void)
+{
+  setup();
+  /* data_layer_read(NULL) — must return silently (L104 in data_layer.c) */
+  data_layer_read(NULL);
+  /* Must reach here without crash */
+  PASS("T-DL-EXT-22: data_layer_read(NULL) safe");
+}
+
+void test_get_post_last_null(void)
+{
+  setup();
+  /* data_layer_get_post_last(NULL) — must return silently (L426 in data_layer.c) */
+  data_layer_get_post_last(NULL);
+  PASS("T-DL-EXT-23: data_layer_get_post_last(NULL) safe");
+}
+
+void test_get_gps_fix_null(void)
+{
+  setup();
+  /* data_layer_get_gps_fix(NULL) — must return silently (L481 in data_layer.c) */
+  data_layer_get_gps_fix(NULL);
+  PASS("T-DL-EXT-24: data_layer_get_gps_fix(NULL) safe");
+}
+
 /* ------------------------------------------------------------------ */
 /* Main                                                               */
 /* ------------------------------------------------------------------ */
@@ -464,6 +489,11 @@ int main(void)
   test_set_rtc_avail();
   test_deploy_in_progress_roundtrip();
   test_set_flight_mode_from_isr();
+
+  /* NULL-getter coverage */
+  test_read_null();
+  test_get_post_last_null();
+  test_get_gps_fix_null();
 
   printf("\n=== Summary ===\n");
   if (g_failures == 0)

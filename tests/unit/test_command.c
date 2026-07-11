@@ -38,10 +38,11 @@ void vTaskDelay(uint32_t ticks)
 #include "flight_mode.h"
 static flight_mode_t last_requested_mode = FM_BOOT;
 static flight_mode_t mock_current_mode = FM_NOMINAL;
+static fmm_result_t mock_fmm_result = FMM_OK;
 fmm_result_t fmm_request_transition(flight_mode_t target)
 {
   last_requested_mode = target;
-  return FMM_OK;
+  return mock_fmm_result;
 }
 
 flight_mode_t fmm_get_mode(void)
@@ -64,6 +65,22 @@ const char *fmm_mode_name(flight_mode_t mode)
 }
 
 void fmm_force_safe(void) {}
+
+// Mock boot_info (must be before data_layer and fw_upload)
+#include "boot_info.h"
+static bool mock_boot_status_valid = false;
+static boot_status_t mock_boot_status = {0};
+bool boot_status_read(boot_status_t *status)
+{
+  if (status && mock_boot_status_valid)
+  {
+    memcpy(status, &mock_boot_status, sizeof(*status));
+    return true;
+  }
+  if (status) memset(status, 0, sizeof(*status));
+  return false;
+}
+void boot_status_clear(void) { mock_boot_status_valid = false; }
 
 // Mock Data Layer
 #include "data_layer.h"
@@ -114,7 +131,8 @@ uint32_t data_layer_get_seq(void) { return mock_snapshot.seq; }
 
 // Mock Fault Manager
 #include "fault_manager.h"
-fault_level_t fault_get_highest_level(void) { return FAULT_LEVEL_NONE; }
+static fault_level_t mock_fault_level = FAULT_LEVEL_NONE;
+fault_level_t fault_get_highest_level(void) { return mock_fault_level; }
 void fault_manager_init(void) {}
 void fault_manager_tick(void) {}
 bool fault_get_event(uint16_t id, fault_event_t *out) { (void)id; (void)out; return false; }
@@ -240,8 +258,15 @@ int i2c_bus_write_read(uint8_t addr, const uint8_t *tx, size_t tx_len,
 }
 
 /* INA219 power monitor stubs */
+static bool s_ina219_fail = false;
+static bool s_ina219_solar_fail = false;
+
 bool ina219_read_power(ina219_data_t *data)
 {
+  if (s_ina219_fail)
+  {
+    return false;
+  }
   if (data)
   {
     data->bus_voltage_mv = 3300;
@@ -254,6 +279,10 @@ bool ina219_read_power(ina219_data_t *data)
 
 bool ina219_solar_read_power(ina219_data_t *data)
 {
+  if (s_ina219_solar_fail)
+  {
+    return false;
+  }
   if (data)
   {
     data->bus_voltage_mv = 4200;
@@ -416,6 +445,9 @@ void reset_mocks()
   last_requested_mode = FM_BOOT;
   last_notified_value = 0;
   mock_current_mode = FM_NOMINAL;
+  mock_fmm_result = FMM_OK;
+  s_ina219_fail = false;
+  s_ina219_solar_fail = false;
   last_deploy_flag = false;
   memset(&mock_post_rec, 0, sizeof(mock_post_rec));
   s_ds3231_set_time_ret = true;
@@ -423,6 +455,9 @@ void reset_mocks()
   s_last_set_year = 0;
   s_last_set_month = 0;
   s_last_set_day = 0;
+  mock_fault_level = FAULT_LEVEL_NONE;
+  mock_boot_status_valid = false;
+  memset(&mock_boot_status, 0, sizeof(mock_boot_status));
 }
 
 void test_command_echo()
@@ -510,6 +545,64 @@ void test_command_set_mode()
   assert(last_requested_mode == FM_PAYLOAD);
   assert(last_freed == 1);
   printf("test_command_set_mode PASS\n");
+}
+
+void test_cmd_set_mode_not_allowed()
+{
+  reset_mocks();
+  mock_fmm_result = FMM_ERR_NOT_ALLOWED;
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_SET_MODE;
+  cmd->payload[0] = FM_PAYLOAD;
+  pkt->length = 1 + 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* CSP handler ignores the FMM result, but last_requested_mode must be set */
+  assert(last_requested_mode == FM_PAYLOAD);
+  assert(last_freed == 1);
+  printf("test_cmd_set_mode_not_allowed PASS\n");
+}
+
+void test_cmd_set_mode_fault_block()
+{
+  reset_mocks();
+  mock_fmm_result = FMM_ERR_FAULT_BLOCK;
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_SET_MODE;
+  cmd->payload[0] = FM_DETUMBLE;
+  pkt->length = 1 + 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_requested_mode == FM_DETUMBLE);
+  assert(last_freed == 1);
+  printf("test_cmd_set_mode_fault_block PASS\n");
+}
+
+void test_cmd_set_mode_failed()
+{
+  reset_mocks();
+  mock_fmm_result = (fmm_result_t)99;
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_SET_MODE;
+  cmd->payload[0] = FM_SAFE;
+  pkt->length = 1 + 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_requested_mode == FM_SAFE);
+  assert(last_freed == 1);
+  printf("test_cmd_set_mode_failed PASS\n");
 }
 
 void test_command_payload_capture()
@@ -738,6 +831,65 @@ void test_text_deploy_clear()
   printf("test_text_deploy_clear PASS\n");
 }
 
+/* ---- Text DEPLOY transition failed (FMM error) ---- */
+
+void test_text_deploy_transition_failed(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_current_mode = FM_BOOT;
+  mock_fmm_result = (fmm_result_t)99;
+
+  test_run_text_command("DEPLOY");
+
+  assert(last_requested_mode == FM_DETUMBLE); /* still called fmm_request_transition */
+  assert(last_deploy_flag == false);          /* flag NOT set when transition fails */
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "transition failed") != NULL);
+  printf("test_text_deploy_transition_failed PASS\n");
+}
+
+/* ---- Text DEPLOY already in progress (mode = DETUMBLE) ---- */
+
+void test_text_deploy_already_in_progress(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_current_mode = FM_DETUMBLE;
+
+  test_run_text_command("DEPLOY");
+
+  assert(last_requested_mode == FM_BOOT); /* unchanged from reset */
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "already in progress") != NULL);
+  printf("test_text_deploy_already_in_progress PASS\n");
+}
+
+/* ---- CSP DEPLOY with FMM error (handler ignores result, but cover the call) ---- */
+
+void test_command_csp_deploy_fmm_error(void)
+{
+  reset_mocks();
+  mock_current_mode = FM_BOOT;
+  mock_fmm_result = FMM_ERR_FAULT_BLOCK;
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_DEPLOY;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* CSP handler always sends a response even when transition fails */
+  assert(last_csp_sent != NULL);
+  assert(last_requested_mode == FM_DETUMBLE);
+  /* Note: CSP handler still sets deploy flag regardless of FMM result */
+  assert(last_deploy_flag == true);
+  printf("test_command_csp_deploy_fmm_error PASS\n");
+}
+
 /* ---- Text MODE name parsing ---- */
 
 void test_text_mode_name()
@@ -807,6 +959,40 @@ void test_command_status_post()
   assert(resp->post_total_count == 10);
   assert(resp->boot_reason == POST_BOOT_WATCHDOG);
   printf("test_command_status_post PASS\n");
+}
+
+/* ---- CSP CMD_STATUS with RTC valid ---- */
+
+void test_command_status_rtc_valid()
+{
+  reset_mocks();
+
+  /* Set RTC valid with a known timestamp */
+  mock_snapshot.state.rtc_valid = true;
+  mock_snapshot.state.rtc_timestamp = 1234567890u;
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_STATUS;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* Response must have been sent */
+  assert(last_csp_sent != NULL);
+  /* Even though rtc_valid/rtc_timestamp don't appear in system_status_response_t,
+   * exercising data_layer_read with non-default state values covers the code path. */
+  csp_command_packet_t *resp_pkt = (csp_command_packet_t *)last_response_data;
+  system_status_response_t *resp = (system_status_response_t *)resp_pkt->payload;
+  /* Default mock has imu_valid=true in the snapshot */
+  assert(resp->flags & 0x01); /* imu_valid bit */
+  printf("test_command_status_rtc_valid PASS\n");
+
+  /* Clean up RTC state for subsequent tests */
+  mock_snapshot.state.rtc_valid = false;
+  mock_snapshot.state.rtc_timestamp = 0;
 }
 
 /* ---- Text DEPLOY from SAFE ---- */
@@ -1112,6 +1298,44 @@ void test_text_mode_parse_zero(void)
   printf("test_text_mode_parse_zero PASS\n");
 }
 
+/* ---- Text MODE FMM error paths ---- */
+
+void test_text_mode_not_allowed(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_fmm_result = FMM_ERR_NOT_ALLOWED;
+
+  test_run_text_command("MODE=3");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "NOT ALLOWED") != NULL);
+  printf("test_text_mode_not_allowed PASS\n");
+}
+
+void test_text_mode_fault_block(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_fmm_result = FMM_ERR_FAULT_BLOCK;
+
+  test_run_text_command("MODE=PAYLOAD");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "BLOCKED BY FAULT") != NULL);
+  printf("test_text_mode_fault_block PASS\n");
+}
+
+void test_text_mode_failed(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_fmm_result = (fmm_result_t)99;
+
+  test_run_text_command("MODE=DETUMBLE");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "FAILED") != NULL);
+  printf("test_text_mode_failed PASS\n");
+}
+
 /* GPS commands */
 void test_text_gps_with_fix(void)
 {
@@ -1324,6 +1548,32 @@ void test_text_solar_test(void)
   printf("test_text_solar_test PASS\n");
 }
 
+void test_text_power_test_fail(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  s_ina219_fail = true;
+
+  test_run_text_command("POWER_TEST");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "POWER:") != NULL);
+  assert(strstr(out, "read failed") != NULL);
+  printf("test_text_power_test_fail PASS\n");
+}
+
+void test_text_solar_test_fail(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  s_ina219_solar_fail = true;
+
+  test_run_text_command("SOLAR_TEST");
+  const char *out = test_get_uart_output();
+  assert(strstr(out, "SOLAR:") != NULL);
+  assert(strstr(out, "read failed") != NULL);
+  printf("test_text_solar_test_fail PASS\n");
+}
+
 void test_text_sht31_test(void)
 {
   test_clear_uart_output();
@@ -1383,6 +1633,296 @@ void test_text_empty(void)
   printf("test_text_empty PASS\n");
 }
 
+/* ================================================================ *
+ *  CSP NEW COVERAGE TESTS                                          *
+ * ================================================================ */
+
+/* ---- CMD_FAULT_LIST with active faults (L973-977) ---- */
+
+void test_command_fault_list_with_faults(void)
+{
+  reset_mocks();
+  mock_fault_level = FAULT_LEVEL_WARNING;
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FAULT_LIST;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  /* Response: copy of fault_entry_t[4] starts at cmd->payload (= data + 1) */
+  fault_entry_t *resp_faults = (fault_entry_t *)(last_response_data + 1);
+  assert(resp_faults[0].fault_id == 0xFF);
+  assert(resp_faults[0].level == FAULT_LEVEL_WARNING);
+  assert(resp_faults[0].count == 1);
+  printf("test_command_fault_list_with_faults PASS\n");
+}
+
+/* ---- CMD_LOG_DUMP count clamping (L1005-1006) ---- */
+
+void test_command_log_dump_clamp_zero(void)
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_LOG_DUMP;
+  cmd->payload[0] = 0;  /* count=0 should clamp to 8 */
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  assert(last_response_data[1] == 8);
+  printf("test_command_log_dump_clamp_zero PASS\n");
+}
+
+void test_command_log_dump_clamp_high(void)
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_LOG_DUMP;
+  cmd->payload[0] = 20;  /* count=20 > 16 should clamp to 8 */
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  assert(last_response_data[1] == 8);
+  printf("test_command_log_dump_clamp_high PASS\n");
+}
+
+void test_command_log_dump_no_clamp(void)
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_LOG_DUMP;
+  cmd->payload[0] = 5;  /* count=5 within [1,16] — kept as-is */
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  assert(last_response_data[1] == 5);
+  printf("test_command_log_dump_no_clamp PASS\n");
+}
+
+/* ---- CMD_SENSOR_RESET invalid sensor_id (L1029-1030) ---- */
+
+void test_command_sensor_reset_invalid(void)
+{
+  reset_mocks();
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_SENSOR_RESET;
+  cmd->payload[0] = 99;  /* invalid sensor_id — result=0 */
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  assert(last_response_data[1] == 0);
+  printf("test_command_sensor_reset_invalid PASS\n");
+}
+
+/* ---- CMD_TELEMETRY_DUMP — no records (L1082-1086) ---- */
+
+void test_command_telemetry_dump_no_records(void)
+{
+  reset_mocks();
+  /* telemetry_storage_stub returns 0 for all read functions */
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_TELEMETRY_DUMP;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  /* telemetry_dump_response_t is 88 bytes — larger than payload[32],
+   * proving the buffer-overflow fix (memcpy to packet->data) works.
+   * The test asserts we received that many bytes back. */
+  assert(last_response_len >= sizeof(telemetry_dump_response_t));
+  telemetry_dump_response_t *resp = (telemetry_dump_response_t *)last_response_data;
+  assert(resp->total_records == 0);
+  assert(resp->current_seq == 0);
+  assert(resp->last_seq == 0);
+  printf("test_command_telemetry_dump_no_records PASS\n");
+}
+
+/* ---- CMD_FW_UPLOAD_START (L1107-1121) ---- */
+
+void test_command_fw_upload_start(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FW_UPLOAD_START;
+
+  uint32_t total_size = 1024;
+  uint32_t expected_crc = 0x12345678;
+  memcpy(pkt->data + 1, &total_size, sizeof(total_size));
+  memcpy(pkt->data + 5, &expected_crc, sizeof(expected_crc));
+  pkt->length = 1 + sizeof(uint32_t) * 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_fw_upload_start PASS\n");
+}
+
+/* ---- CMD_FW_UPLOAD_CHUNK (L1124-1142) ---- */
+
+void test_command_fw_upload_chunk(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+  fw_upload_start(1024, 0x12345678, BOOT_SLOT_B);
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FW_UPLOAD_CHUNK;
+
+  uint32_t seq = 0;
+  memcpy(pkt->data + 1, &seq, sizeof(seq) - 1);
+  uint8_t chunk_data[64];
+  memset(chunk_data, 0xAB, sizeof(chunk_data));
+  memcpy(pkt->data + 5, chunk_data, sizeof(chunk_data));
+  pkt->length = 1 + 4 + sizeof(chunk_data);
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_fw_upload_chunk PASS\n");
+}
+
+/* ---- CMD_FW_UPLOAD_VERIFY (L1144-1154) ---- */
+
+void test_command_fw_upload_verify(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+  fw_upload_start(64, 0xDEADBEEF, BOOT_SLOT_B);
+  uint8_t verify_data[64];
+  memset(verify_data, 0xA5, sizeof(verify_data));
+  fw_upload_write_chunk(0, verify_data, sizeof(verify_data));
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FW_UPLOAD_VERIFY;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_fw_upload_verify PASS\n");
+}
+
+/* ---- CMD_FW_UPLOAD_COMMIT (L1156-1166) ---- */
+
+void test_command_fw_upload_commit(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+  fw_upload_start(64, 0xCAFEBABE, BOOT_SLOT_B);
+  uint8_t commit_data[64];
+  memset(commit_data, 0x5A, sizeof(commit_data));
+  fw_upload_write_chunk(0, commit_data, sizeof(commit_data));
+  fw_upload_verify();
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FW_UPLOAD_COMMIT;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  printf("test_command_fw_upload_commit PASS\n");
+}
+
+/* ---- CMD_FW_UPLOAD_ABORT (L1168-1178) ---- */
+
+void test_command_fw_upload_abort(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+  fw_upload_start(64, 0x12345678, BOOT_SLOT_B);
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FW_UPLOAD_ABORT;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  assert(last_response_data[1] == 0);
+  printf("test_command_fw_upload_abort PASS\n");
+}
+
+/* ---- CMD_FW_BOOT_INFO (L1182-1214) ---- */
+
+void test_command_fw_boot_info(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+
+  mock_boot_status_valid = true;
+  mock_boot_status.magic = BOOT_STATUS_MAGIC;
+  mock_boot_status.current_slot = BOOT_SLOT_A;
+  mock_boot_status.boot_count = 7;
+  mock_boot_status.golden_valid = 1;
+
+  fw_upload_start(1024, 0x12345678, BOOT_SLOT_B);
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_FW_BOOT_INFO;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  /* Response at packet->data (full buffer via mock_csp_send copy) */
+  fw_boot_info_response_t *resp = (fw_boot_info_response_t *)last_response_data;
+  assert(resp->current_slot == BOOT_SLOT_A);
+  assert(resp->boot_count == 7);
+  assert(resp->golden_valid == 1);
+  assert(resp->upload_state == FW_STATE_RECEIVING);
+  printf("test_command_fw_boot_info PASS\n");
+}
+
 int main()
 {
   printf("Running Command Task tests...\n");
@@ -1393,8 +1933,12 @@ int main()
   test_command_invalid();
   test_command_short_packet();
   test_command_set_mode();
+  test_cmd_set_mode_not_allowed();
+  test_cmd_set_mode_fault_block();
+  test_cmd_set_mode_failed();
   test_command_payload_capture();
   test_command_csp_deploy();
+  test_command_csp_deploy_fmm_error();
   test_command_gps_status();
   test_command_fault_list();
   test_command_sensor_reset();
@@ -1403,11 +1947,28 @@ int main()
   test_command_log_dump();
   test_command_packet_not_freed_after_default();
   test_command_status_post();
+  test_command_status_rtc_valid();
+
+  /* CSP new coverage tests */
+  test_command_fault_list_with_faults();
+  test_command_log_dump_clamp_zero();
+  test_command_log_dump_clamp_high();
+  test_command_log_dump_no_clamp();
+  test_command_sensor_reset_invalid();
+  test_command_telemetry_dump_no_records();
+  test_command_fw_upload_start();
+  test_command_fw_upload_chunk();
+  test_command_fw_upload_verify();
+  test_command_fw_upload_commit();
+  test_command_fw_upload_abort();
+  test_command_fw_boot_info();
 
   /* Text command regression tests (existing) */
   test_text_deploy_from_boot();
   test_text_deploy_from_nominal();
   test_text_deploy_clear();
+  test_text_deploy_transition_failed();
+  test_text_deploy_already_in_progress();
   test_text_mode_name();
   test_text_mode_range();
   test_text_deploy_from_safe();
@@ -1438,6 +1999,9 @@ int main()
   test_text_mode_invalid_number();
   test_text_mode_non_numeric();
   test_text_mode_parse_zero();
+  test_text_mode_not_allowed();
+  test_text_mode_fault_block();
+  test_text_mode_failed();
 
   test_text_gps_with_fix();
   test_text_gps_no_fix();
@@ -1462,7 +2026,9 @@ int main()
   test_text_bh1750_test();
   test_text_bh1750_test_5c();
   test_text_power_test();
+  test_text_power_test_fail();
   test_text_solar_test();
+  test_text_solar_test_fail();
   test_text_sht31_test();
   test_text_rtc_test();
 

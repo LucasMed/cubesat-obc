@@ -237,6 +237,22 @@ void test_w25q64_erase_chip(void)
     TEST_ASSERT_EQUAL_INT(W25Q64_OK, st);
 }
 
+void test_w25q64_write_page_invalid_params(void)
+{
+    /* NULL buffer -> W25Q64_ERR_WRITE (L534 in w25q64.c host section) */
+    w25q64_status_t status = w25q64_write_page(0, NULL, 10);
+    TEST_ASSERT_EQUAL_INT(W25Q64_ERR_WRITE, status);
+
+    /* Zero length -> W25Q64_ERR_WRITE */
+    uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
+    status = w25q64_write_page(0, data, 0);
+    TEST_ASSERT_EQUAL_INT(W25Q64_ERR_WRITE, status);
+
+    /* Over 256 bytes -> W25Q64_ERR_WRITE */
+    status = w25q64_write_page(0, data, 257);
+    TEST_ASSERT_EQUAL_INT(W25Q64_ERR_WRITE, status);
+}
+
 void test_w25q64_write_page_timeout(void)
 {
     /* Simulate busy flash device — write should return timeout */
@@ -268,6 +284,7 @@ int main(void)
     RUN_TEST(test_w25q64_wait_ready_success_after_busy_clears);
     /* Read-empty and null-params must run BEFORE any write to verify uninitialized state */
     RUN_TEST(test_w25q64_erase_chip);
+    RUN_TEST(test_w25q64_write_page_invalid_params);
     RUN_TEST(test_w25q64_write_page_timeout);
     RUN_TEST(test_w25q64_imu_calib_read_empty);
     RUN_TEST(test_w25q64_imu_calib_null_params);

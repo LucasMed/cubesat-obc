@@ -5,9 +5,9 @@
 | **Document ID**  | FSW-SDD-001                                        |
 | **Title**        | Flight Software Design Description                 |
 | **Project**      | CubeSat OBC — RP2350 / Pico 2W                     |
-| **Version**      | 0.3                                                |
-| **Status**       | Released — PDR Alignment Baseline                  |
-| **Date**         | 2026-03-11                                         |
+| **Version**      | 0.5                                                |
+| **Status**       | Released — CDR Baseline                            |
+| **Date**         | 2026-07-08                                         |
 | **Author**       | OBC Systems Team                                   |
 | **Review Level** | CDR                                                |
 | **Standard**     | ECSS-E-ST-40C §5.5, ECSS-Q-ST-80C                 |
@@ -22,6 +22,7 @@
 | 0.2     | 2026-03-09 | OBC Systems Team | Address CDR review observations: SRAM regions table (§13.2), CPU budget estimate (§14), FMM transition conditions (§8.1), EPS execution context (§8.3, §7.7), logger flash driver target (§8.4), HK packet table (§7.5), Command ACK format (§7.6), OI-2/OI-4 clarifications, new OI-8 (heap sizing) |
 | 0.3     | 2026-03-11 | OBC Systems Team | PDR Alignment: harmonize I2C pins, update EKF to 7-state quaternion baseline, close resolved OI-1, OI-2 |
 | 0.4     | 2026-05-15 | OBC Systems Team | v0.29.0 release: resolve OI-8 (heap 60 KB → 128 KB, verified sufficient) |
+| 0.5     | 2026-07-08 | OBC Systems Team | CDR alignment: close OI-1 (I2C pins resolved + HW validated), OI-3 (WCET profiler implemented all 7 tasks), OI-6 (FMEA-OBC-001 v1.0, FMEA-OBC-002 v1.1); update OI-4 (single-core CDR baseline), OI-7 (ALIVE loop rationale documented); SVVP baseline → CDR |
 
 ---
 
@@ -1025,13 +1026,13 @@ Full traceability matrix is in `RTM-OBC-001`.
 
 | OI | Description | Priority | Linked Doc | Status |
 |----|-------------|----------|------------|--------|
-| OI-1 | I²C pin conflict: `config.h` (GPIO 16/17) vs. `pico_pins.h` (GPIO 4/5) — must resolve before hardware validation | High | OBC-DES-001 OI-6 | Open |
+| OI-1 | I²C pin conflict: `config.h` (GPIO 16/17) vs. `pico_pins.h` (GPIO 4/5) — ~~must resolve before hardware validation~~ **RESOLVED**: GPIO 4/5 confirmed as I2C0 on hardware-verified `pico_pins.h` (2026-03-11). HW validation completed (2026-04-08) — all I2C sensors functional on GPIO 4/5. See §8.2.3. | High | OBC-DES-001 OI-6 | **CLOSED** |
 | OI-2 | Flash backend implemented in `src/core/flash_backend.c` (SRR-OBC-001 ACT-16, 2026-03-10): Pico SDK `hardware_flash`, 4-sector round-robin at `0x1FC000`, CRC-32 header, `flash_backend_recover()` for boot replay. SYS-F-304 → `[IMPL]`. | High | OBC-DES-001 OI-4, DL-DES-001 | **CLOSED** |
-| OI-3 | `AttitudeCtrl` WCET not yet measured via DWT cycle counter; required for timing budget sign-off | High | OBC-DES-001 OI-3 | Open |
-| OI-4 | SMP (Core 1) disabled pending HIL boot stability test; **CDR baseline = single-core operation on Core 0**; dual-core enable planned for v1.0.0 | Medium | OBC-DES-001 OI-1, RMP-OBC-001 RISK-SW-001 | Open |
+| OI-3 | ~~`AttitudeCtrl` WCET not yet measured via DWT cycle counter; required for timing budget sign-off~~ **RESOLVED**: `wcet_profiler_pico.c` with DWT->CYCCNT (133 MHz) implemented and instrumented in all 7 FreeRTOS tasks (SensorRead, AttitudeCtrl, Telemetry, Command, HealthMon, GPS, Payload). DWT init in `obc_main.c`. See RTM CDR-HW-06. Hardware WCET data collection and timing budget sign-off pending HIL campaign (ACT-14). | High | OBC-DES-001 OI-3 | **CLOSED** |
+| OI-4 | SMP (Core 1) disabled; **CDR baseline = single-core operation on Core 0**. Dual-core (SMP) enable planned for v1.0.0 pending HIL boot stability test. ~80 MIPS headroom on Core 0 against 133 MHz rated frequency. | Medium | OBC-DES-001 OI-1, RMP-OBC-001 RISK-SW-001 | Open (v1.0.0) |
 | OI-5 | Momentum dump trigger threshold not formally verified against RW saturation spec | Medium | ADCS-DES-001 | Open |
-| OI-6 | FMEA-OBC-001 not yet written; fault table in fault_ids.h is the interim hazard input source | Medium | MRD-OBC-001 §6.2.1 | Open |
-| OI-7 | `vStartupTask` ALIVE loop remains alive post-init at priority 1 — should be replaced by a proper idle monitor or deleted; tracked for v1.0.0 | Low | SAD-OBC-001 | Open |
+| OI-6 | ~~FMEA-OBC-001 not yet written~~ **RESOLVED**: `docs/ecss/safety/FMEA-OBC-001.md` published as v1.0 Approved (2026-03-21). Hardware FMEA covers all subsystems. Software FMEA `docs/ecss/safety/FMEA-OBC-002.md` v1.1 (2026-06-20) with OI-SW-1..5 tracked (4/5 closed, OI-SW-1 deferred to HW procurement). | Medium | MRD-OBC-001 §6.2.1 | **CLOSED** |
+| OI-7 | `vStartupTask` ALIVE loop at priority (1+Idle) — diagnostic heartbeat + stack HWM logger every 5 s. ~~Should be replaced by a proper idle monitor or deleted~~ **ACCEPTED**: `vTaskDelete(NULL)` avoided per comment (line 318-320) — RP2350 SMP task-deletion code path has known issues even on single-core config. ALIVE loop doubles as diagnostic logger. Proper resolution tracked for v1.0.0. | Low | SAD-OBC-001 | Open (v1.0.0) |
 | OI-8 | ~~Pico hardware build requires ~82 KB FreeRTOS heap (10 tasks × 8 KB + TCBs + CSP ~4 KB) but `configTOTAL_HEAP_SIZE = 60 KB`; host build unaffected (5 tasks, heap_3).~~ **RESOLVED**: `configTOTAL_HEAP_SIZE` increased to 128 KB (131072) — 56% margin above the 82 KB requirement | **High** | config/FreeRTOSConfig.h | **CLOSED** |
 
 ---

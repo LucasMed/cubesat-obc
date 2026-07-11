@@ -319,6 +319,28 @@ static void test_get_event_unknown(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 13: table full — fill all slots, then drop                    */
+/* ------------------------------------------------------------------ */
+
+static void test_table_full(void)
+{
+  reset();
+
+  /* Fill all FAULT_TABLE_CAPACITY (32) slots with unique IDs */
+  for (uint16_t id = 1u; id <= 32u; id++)
+  {
+    fault_report(id, FAULT_LEVEL_WARNING);
+  }
+
+  /* 33rd report must find no free slot → L147-148 (table full, drop) */
+  fault_report(33u, FAULT_LEVEL_WARNING);
+  /* Should not crash. Highest level must still be WARNING. */
+  CHECK(fault_get_highest_level() == FAULT_LEVEL_WARNING,
+        "highest must be WARNING after table full and drop");
+  printf("test_table_full: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -336,6 +358,7 @@ int main(void)
   test_reraise_after_clear();
   test_none_level_noop();
   test_get_event_unknown();
+  test_table_full();
 
   if (g_failures == 0)
   {

@@ -294,6 +294,41 @@ static void test_null_output_returns_zero(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 13: Overflow when ring full — oldest non-CRITICAL overwritten  */
+/* ------------------------------------------------------------------ */
+
+static void test_overflow_oldest_not_critical(void)
+{
+  logger_init(); /* 1 Class-C boot event */
+
+  /* Clear all so ring starts empty */
+  log_clear_info();
+
+  /* Fill ring with Class-B (OPERATIONAL) events so we control the
+   * class of every occupied slot.  RING_CAP entries exactly fill it. */
+  for (uint32_t i = 0u; i < RING_CAP; i++)
+  {
+    log_event(LOG_EVT_MODE_CHANGE, LOG_CLASS_OPERATIONAL, NULL, 0u);
+  }
+
+  /* Ring is now full with all Class-B.  The oldest entry is Class-B
+   * (not CRITICAL), so the overflow branch falls through to ring_push
+   * which overwrites it. */
+  log_event(LOG_EVT_CMD_CLASS_B, LOG_CLASS_INFO, NULL, 0u);
+
+  /* Read back — should still return RING_CAP events (oldest overwritten) */
+  log_event_t buf[RING_CAP];
+  size_t n = log_read_recent(buf, RING_CAP);
+  CHECK(n == RING_CAP, "overflow when oldest not CRITICAL must preserve ring count");
+
+  /* Newest event must be the one we just added */
+  CHECK(buf[0].event_id == LOG_EVT_CMD_CLASS_B,
+        "newest event after overflow must be CMD_CLASS_B");
+
+  printf("test_overflow_oldest_not_critical: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -311,6 +346,7 @@ int main(void)
   test_zero_event_id_rejected();
   test_subsystem_field();
   test_null_output_returns_zero();
+  test_overflow_oldest_not_critical();
 
   if (g_failures == 0)
   {

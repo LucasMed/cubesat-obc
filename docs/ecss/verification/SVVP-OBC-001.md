@@ -2,8 +2,8 @@
 
 **Document ID**: SVVP-OBC-001
 **Version**: 1.0
-**Date**: 2026-03-07
-**Status**: Approved — SRR Baseline
+**Date**: 2026-07-08
+**Status**: Approved — CDR Baseline
 **Standard**: ECSS-E-ST-40C §5.6, ECSS-E-ST-10-02C (Verification)
 **Project**: CubeSat OBC Flight Software (RP2350 / Pico 2W)
 

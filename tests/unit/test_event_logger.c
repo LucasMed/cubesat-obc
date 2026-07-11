@@ -370,8 +370,10 @@ int main(void)
 {
   printf("=== Event logger unit tests (PR-26, T-LOG-01) ===\n");
 
-  test_event_before_init_is_safe();
+  /* clear_info BEFORE init runs first — s_initialized == 0 hits L166 */
   test_clear_info_before_init();
+  /* event before init must also hit early-return path */
+  test_event_before_init_is_safe();
 
   test_init_inserts_boot_event();
   test_flush_on_capacity();
