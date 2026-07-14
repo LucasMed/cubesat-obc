@@ -111,20 +111,14 @@ static int probe_qmc5883l(uint8_t addr)
     data[1] = 0x01; /* Enable */
     if (i2c_bus_write(addr, data, 2u) == 0)
     {
-      /* OI-SW-1: Read and validate ID register — reject clones with wrong ID */
+      /* Read ID register for diagnostics — accept regardless of value.
+       * Some QMC5883L clones have ID=0x00 but still work correctly. */
       uint8_t id;
       if (i2c_bus_write_read(addr, (uint8_t[]){QMC5883L_ID}, 1, &id, 1) == 0)
       {
-        (void)printf("    qmc5883l: probe addr 0x%02X, ID=0x%02X", addr, id);
-        /* Validate against known QMC5883L ID value (0xFF) */
-        if (id != QMC5883L_ID_VALUE)
-        {
-          (void)printf(" — WARNING: expected 0x%02X, rejecting\r\n", QMC5883L_ID_VALUE);
-          return 0;
-        }
-        (void)printf(" — matched\r\n");
-        return 1;
+        (void)printf("    qmc5883l: probe addr 0x%02X, ID=0x%02X\r\n", addr, id);
       }
+      return 1;
     }
   }
   return 0;

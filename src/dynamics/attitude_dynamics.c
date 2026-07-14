@@ -59,5 +59,19 @@ void attitude_dynamics_step(attitude_dyn_t *ad, const float torque[3], float dt)
   {
     ad->attitude[i] = ad->attitude[i] + dt * rates_mid[i];
     ad->rates[i] = ad->rates[i] + dt * (torque[i] / ad->inertia[i]);
+
+    /* Clamp rates to prevent unbounded accumulation when persistent
+     * corrective torque is applied (e.g. LQR yaw correction without
+     * magnetometer convergence).  Rates beyond ±1000 rad/s serve no
+     * simulation purpose and could trigger FPU overflow or infinity
+     * propagation on resource-constrained microcontrollers. */
+    if (ad->rates[i] > 1000.0f)
+    {
+      ad->rates[i] = 1000.0f;
+    }
+    if (ad->rates[i] < -1000.0f)
+    {
+      ad->rates[i] = -1000.0f;
+    }
   }
 }
