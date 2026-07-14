@@ -14,6 +14,7 @@
 
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 /* =========================================================================
@@ -129,6 +130,48 @@ void ekf_init(ekf_t *ekf)
   ekf->r_mag = EKF_R_MAG;
 }
 
+/* =========================================================================
+ * Diagnostic — NaN/INF sanity check
+ * ========================================================================= */
+
+/**
+ * @brief Validate EKF state for numerical divergence.
+ *
+ * Checks every state element and the covariance diagonal.
+ * Prints diagnostics and re-initialises the filter on failure.
+ * Returns true  if the filter is numerically sound.
+ * Returns false if NaN/INF/bad covariance was found and the filter
+ *               was reset.
+ */
+static bool ekf_check_sane(ekf_t *ekf, const char *tag)
+{
+  for (int i = 0; i < 7; i++)
+  {
+    if (isnan(ekf->x[i]) || isinf(ekf->x[i]))
+    {
+      printf("[EKF-DIAG] %s: NaN/INF in x[%d]=%e\r\n", tag, i, (double)ekf->x[i]);
+      goto fail;
+    }
+    if (isnan(ekf->P[i][i]) || isinf(ekf->P[i][i]) || ekf->P[i][i] < 0.0f)
+    {
+      printf("[EKF-DIAG] %s: bad P[%d][%d]=%e\r\n", tag, i, i, (double)ekf->P[i][i]);
+      goto fail;
+    }
+  }
+  return true;
+
+fail:
+  printf("[EKF-DIAG] %s: x=[%e,%e,%e,%e,%e,%e,%e]\r\n", tag, (double)ekf->x[0], (double)ekf->x[1],
+         (double)ekf->x[2], (double)ekf->x[3], (double)ekf->x[4], (double)ekf->x[5],
+         (double)ekf->x[6]);
+  printf("[EKF-DIAG] %s: P_diag=[%e,%e,%e,%e,%e,%e,%e]\r\n", tag, (double)ekf->P[0][0],
+         (double)ekf->P[1][1], (double)ekf->P[2][2], (double)ekf->P[3][3], (double)ekf->P[4][4],
+         (double)ekf->P[5][5], (double)ekf->P[6][6]);
+  ekf_init(ekf);
+  printf("[EKF-DIAG] %s: filter re-initialised\r\n", tag);
+  return false;
+}
+
 void ekf_predict(ekf_t *ekf, const float gyro[3], float dt)
 {
   float q0 = ekf->x[0];
@@ -220,6 +263,8 @@ void ekf_predict(ekf_t *ekf, const float gyro[3], float dt)
       ekf->P[i][j] += ekf->Q[i][j];
     }
   }
+
+  (void)ekf_check_sane(ekf, __func__);
 }
 
 /* ------------------------------------------------------------------ */
@@ -395,6 +440,8 @@ void ekf_update(ekf_t *ekf, const float accel[3])
     }
   }
   (void)memcpy(ekf->P, P_new, sizeof(P_new));
+
+  (void)ekf_check_sane(ekf, __func__);
 }
 
 void ekf_get_quaternion(const ekf_t *ekf, float q[4])
@@ -582,4 +629,6 @@ void ekf_update_mag(ekf_t *ekf, const float mag_field_uT[3], float declination_r
     }
   }
   (void)memcpy(ekf->P, P_new, sizeof(P_new));
+
+  (void)ekf_check_sane(ekf, __func__);
 }

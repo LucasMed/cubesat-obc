@@ -181,7 +181,7 @@ void test_ekf_invalid_mag_reading_nan(void) {
     float q[4];
     ekf_get_quaternion(&s_ekf, q);
     int q_valid = !isnan(q[0]) && !isnan(q[1]) && !isnan(q[2]) && !isnan(q[3]);
-    test_case("NaN input corrupts EKF state (no guard in EKF)", q_valid == 0);
+    test_case("EKF NaN guard detects and recovers from NaN input", q_valid == 1);
 }
 
 void test_ekf_invalid_mag_reading_inf(void) {
