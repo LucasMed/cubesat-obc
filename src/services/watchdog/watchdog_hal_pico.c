@@ -5,9 +5,9 @@
  * Uses the RP2350 hardware watchdog peripheral via the Pico SDK
  * hardware/watchdog.h API.  Selected by CMake when PICO_BUILD=ON.
  *
- * The watchdog is configured with a timeout of 3 000 ms.  The health
- * monitor task feeds it every 500 ms, so any task stall > 3 s triggers
- * a hardware reset.
+ * The watchdog timeout is configured by the caller (watchdog_hal_init(ms))
+ * — currently 15 000 ms from obc_main.c.  The health monitor task feeds
+ * it every 5 s, so any task stall > 15 s triggers a hardware reset.
  *
  * Spec ref: SYS-REQ-4 (fault-tolerant safe-mode re-entry via watchdog).
  */

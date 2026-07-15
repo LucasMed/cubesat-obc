@@ -44,6 +44,7 @@
   #include "mpu_init.h"
   #include "pico/cyw43_arch.h"
   #include "pico/stdlib.h"
+  #include "watchdog_hal.h"
 
 // LED Blink Helper (for diagnostics on hardware)
 void vLedBlinkTask(void *pvParameters)
@@ -391,6 +392,12 @@ int main(void)
   /* Create ONE startup task — all subsystem init happens inside it after
    * the scheduler starts and SMP spinlocks are fully initialised.        */
   xTaskCreate(vStartupTask, "Startup", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
+
+  /* Enable hardware watchdog before starting any tasks.
+   * Timeout: 15 000 ms — allows 3 missed health-monitor ticks (5 s each)
+   * before a forced reset.  Configured BEFORE vTaskStartScheduler so the
+   * watchdog counts from boot, not from the first health-monitor feed. */
+  watchdog_hal_init(15000);
 
   printf("[BOOT] starting scheduler...\r\n");
   fflush(stdout);

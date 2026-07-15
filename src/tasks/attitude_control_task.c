@@ -192,9 +192,10 @@ void vAttitudeControlTask(void *pvParameters)
 
     if (samples >= 101)
     {  // 100 samples for 10Hz (~10 seconds)
-      printf("[attitude_control_task] Timing (200 samples): min=%llu, max=%llu, avg=%llu us\n",
-             (unsigned long long)min_int, (unsigned long long)max_int,
-             (unsigned long long)(sum_int / 200));
+      uint32_t n = samples - 1;
+      printf("[attitude_control_task] Timing (%u samples): min=%llu, max=%llu, avg=%llu us\n",
+             (unsigned int)n, (unsigned long long)min_int, (unsigned long long)max_int,
+             n > 0 ? (unsigned long long)(sum_int / n) : 0ULL);
       min_int = 0xFFFFFFFFFFFFFFFF;
       max_int = 0;
       sum_int = 0;
