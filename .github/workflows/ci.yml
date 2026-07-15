@@ -123,41 +123,39 @@ jobs:
           category: "/language:cpp"
 
   # =============================================================================
-  # Coverity Scan — DISABLED (in maintenance mode, replaced by CodeQL above)
+  # Coverity Scan
   # =============================================================================
-  # To re-enable:
-  #   1. Sign up at https://scan.coverity.com/projects/cubesat-obc
-  #   2. Add COVERITY_SCAN_EMAIL and COVERITY_SCAN_TOKEN secrets
-  #   3. Uncomment the job below
+  # Requires COVERITY_SCAN_EMAIL and COVERITY_SCAN_TOKEN secrets configured in
+  # the GitHub repository settings.
   # =============================================================================
-  # coverity-scan:
-  #   needs: build-test-analyze
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-  #   permissions:
-  #     contents: read
-  #   steps:
-  #     - name: Checkout repo with submodules
-  #       uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
-  #         fetch-depth: 0
-  #     - name: Apply libcsp patches
-  #       run: bash scripts/apply_patches.sh
-  #     - name: Configure CMake for Coverity
-  #       run: |
-  #         cmake -S . -B build_cov \
-  #           -G "Unix Makefiles" \
-  #           -DCMAKE_BUILD_TYPE=Debug \
-  #           -DPICO_ENABLED=OFF \
-  #           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  #           -Wno-dev
-  #     - name: Run Coverity Scan
-  #       uses: vapier/coverity-scan-action@v1
-  #       with:
-  #         email: ${{ secrets.COVERITY_SCAN_EMAIL }}
-  #         token: ${{ secrets.COVERITY_SCAN_TOKEN }}
-  #         project: cubesat-obc
-  #         command: make
-  #         working-directory: build_cov
-  #         description: "CubeSat OBC ${{ github.ref_name }} @ ${{ github.sha }}"
+  coverity-scan:
+    needs: build-test-analyze
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Apply libcsp patches
+        run: bash scripts/apply_patches.sh
+      - name: Configure CMake for Coverity
+        run: |
+          cmake -S . -B build_cov \
+            -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DPICO_ENABLED=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -Wno-dev
+      - name: Run Coverity Scan
+        uses: vapier/coverity-scan-action@v1
+        with:
+          email: ${{ secrets.COVERITY_SCAN_EMAIL }}
+          token: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          project: cubesat-obc
+          command: make
+          working-directory: build_cov
+          description: "CubeSat OBC ${{ github.ref_name }} @ ${{ github.sha }}"
