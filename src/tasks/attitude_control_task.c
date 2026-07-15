@@ -195,7 +195,7 @@ void vAttitudeControlTask(void *pvParameters)
       uint32_t n = samples - 1;
       printf("[attitude_control_task] Timing (%u samples): min=%llu, max=%llu, avg=%llu us\n",
              (unsigned int)n, (unsigned long long)min_int, (unsigned long long)max_int,
-             n > 0 ? (unsigned long long)(sum_int / n) : 0ULL);
+             (unsigned long long)(sum_int / n));
       min_int = 0xFFFFFFFFFFFFFFFF;
       max_int = 0;
       sum_int = 0;
