@@ -68,6 +68,14 @@
 
 // Synchronization primitives
 #define configUSE_MUTEXES 1              // Enable mutex support
+                                         //   FreeRTOS mutexes use priority inheritance by
+                                         //   default (built into the kernel, no separate
+                                         //   config flag required).  The standard mutex API
+                                         //   (xSemaphoreCreateMutex) always implements
+                                         //   priority inheritance to prevent unbounded
+                                         //   priority inversion — this is the recommended
+                                         //   choice for all mutex-protected resources.
+                                         //   (CDR-RTOS-03 / CDR-SAF-02, OI-SW-3)
 #define configUSE_RECURSIVE_MUTEXES 0    // Simplified mutex (no recursion)
 #define configUSE_SEMAPHORES 1           // Enable semaphores
 #define configUSE_COUNTING_SEMAPHORES 1  // Enable counting semaphores
