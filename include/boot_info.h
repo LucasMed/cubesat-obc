@@ -90,23 +90,8 @@ extern "C"
    */
   void boot_status_clear(void);
 
-  /**
-   * @brief Legacy wrapper — reads boot status into boot_info-compatible
-   *        subset.  Deprecated, use boot_status_read() directly.
-   */
-  typedef boot_status_t boot_info_t;
-#define BOOT_INFO_MAGIC BOOT_STATUS_MAGIC
-#define BOOT_INFO_ADDR BOOT_STATUS_ADDR
-
-  static inline bool boot_info_read(boot_info_t *info)
-  {
-    return boot_status_read(info);
-  }
-
-  static inline void boot_info_clear(void)
-  {
-    boot_status_clear();
-  }
+  /* Legacy synonyms removed — use boot_status_t / boot_status_read()
+   * directly.  These were removed in commit ae4979c (CDR-COD-03). */
 
 #ifdef __cplusplus
 }

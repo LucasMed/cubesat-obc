@@ -1187,8 +1187,8 @@ void process_command_packet(csp_conn_t *conn, csp_packet_t *packet)
     memset(&resp, 0, sizeof(resp));
 
     /* Read boot info from bootloader-reserved SRAM */
-    boot_info_t bi = {0};
-    if (boot_info_read(&bi))
+    boot_status_t bi = {0};
+    if (boot_status_read(&bi))
     {
       resp.current_slot = bi.current_slot;
       resp.boot_count = bi.boot_count;

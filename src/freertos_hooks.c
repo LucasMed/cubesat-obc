@@ -61,14 +61,14 @@ void vApplicationMallocFailedHook(void)
 {
   /* Mark FMM metadata: write a failure record at the end of SRAM
    * so the bootloader or next application boot can read it. */
-  boot_info_t bi;
-  boot_info_read(&bi);
+  boot_status_t bi;
+  boot_status_read(&bi);
   bi.boot_reason = POST_BOOT_STACK_OVERFLOW; /* closest match for OOM */
 
   /* Write a simple failure marker — in a full implementation this would
    * go to the FMM metadata ring in internal flash.  For now, write to
-   * the end of the boot_info region to signal the failure. */
-  *(volatile uint32_t *)(BOOT_INFO_ADDR + 128) = 0xFADE0F1Eu;
+   * the end of the boot_status region to signal the failure. */
+  *(volatile uint32_t *)(BOOT_STATUS_ADDR + 128) = 0xFADE0F1Eu;
 
   watchdog_enable(1, false); /* triggers reset in 1 ms */
   for (;;)
@@ -108,7 +108,7 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, char *pcTaskName)
   }
 
   /* 2.1 Also mark FMM metadata region for post-mortem analysis. */
-  *(volatile uint32_t *)(BOOT_INFO_ADDR + 128) = 0xDEAD0001u;
+  *(volatile uint32_t *)(BOOT_STATUS_ADDR + 128) = 0xDEAD0001u;
 
   /* 3. Force a watchdog reset in 1 ms.  On reboot, main() will check
    *    scratch[0] and print the saved task name before re-initialising. */
