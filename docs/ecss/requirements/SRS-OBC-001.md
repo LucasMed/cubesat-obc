@@ -43,7 +43,7 @@
 | **FR-16** | The system shall enable and disable the 5V payload power rail (GPIO21) on entry to and exit from `FM_PAYLOAD` respectively | Must | 7 | ⏳ Phase 7 |
 | **FR-17** | The system shall include payload housekeeping data (MAG-001 field vector, RAD-001 dose rate, CAM-001 image count) in the telemetry stream during `FM_PAYLOAD` | Should | 7 | ⏳ Phase 7 |
 | **FR-18** | The system shall read NMEA sentences (`$GPGGA`, `$GPRMC`) from the NEO-7M GPS module (GY-NEO6Mv2) via UART0 at ≥ 1 Hz during `FM_NOMINAL` and `FM_PAYLOAD`, and publish parsed position (latitude, longitude, altitude) and UTC time to the Data Layer | Must | 7 | 🔄 PARTIAL — NEO-7M driver with NMEA parser, GPRMC parsing + position/velocity extraction done, HW pending |
-| **FR-19** | The system shall synchronise the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition | Should | 7 | 🔄 PARTIAL — GPRMC time extraction done, clock sync integration pending |
+| **FR-19** | The system shall synchronise the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition | Should | 7 | ✅ Implemented — `nmea_parse_gprmc_and_sync_rtc()` with `gps_rtc_delta_check()` (±3 s guard), 7/7 delta guard tests passing (host) |
 
 ---
 

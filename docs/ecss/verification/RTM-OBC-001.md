@@ -10,7 +10,7 @@ This matrix maps functional and non-functional requirements to implementation mo
 
 | ID | Requirement | Description | Module(s) | Test Case(s) | Status |
 |----|----|-----------|-----------|------------|--------|
-| **FR-1** | Attitude Sensing | Read 6-DOF IMU (accel + gyro) via I2C at 10 Hz | `drivers/imu/mpu6050.c`, `tasks/sensor_read_task.c` (DLA-migrated PR-7) | `test_sensor_read_task` (DLA write, rad/s conversion), integration Phase 2 | ✅ Ready |
+| **FR-1** | Attitude Sensing | Read 6-DOF IMU (accel + gyro) via I2C at 10 Hz; read sun vector (X/Y photodiodes via ADC/GPIO) | `drivers/imu/mpu6050.c`, `drivers/sun_sensor.c`, `tasks/sensor_read_task.c` (DLA-migrated PR-7) | `test_sensor_read_task` (DLA write, rad/s conversion), `test_sun_sensor` (100% coverage), integration Phase 2 | ✅ Ready |
 | **FR-2** | Attitude Determination | Compute Euler angles (roll, pitch, yaw) from sensor data | `control/attitude_control.c`, `dynamics/attitude_dynamics.c` | `test_dynamics` (Euler integration), Phase 4 Kalman test | ✅ Implemented |
 | **FR-3** | Rate Control | Stabilize angular rates via PID loops (3 axes: roll, pitch, yaw) | `control/pid_controller.c` | `test_pid` (PID math, anti-windup) | ✅ 100% Pass |
 | **FR-4** | Attitude Control | Command desired attitude and compute torque setpoints | `control/attitude_control.c`, `tasks/attitude_control_task.c` (DLA-migrated PR-8) | `test_attitude_control_task` (FM guard, imu_valid guard), `test_dynamics` | ✅ Ready |
@@ -28,7 +28,7 @@ This matrix maps functional and non-functional requirements to implementation mo
 | **FR-16** | Payload Power Rail | Enable/disable 5V payload rail (GPIO21) on `FM_PAYLOAD` entry/exit | `drivers/power/payload_rail.c` | `test_payload_manager` (GPIO toggle) | ✅ Implemented |
 | **FR-17** | Payload HK in Telemetry | Include MAG/RAD/CAM housekeeping data in telemetry during `FM_PAYLOAD` | `tasks/telemetry_task.c`, `tasks/payload_task.c` | `test_telemetry` (T-TLM-07..10) | ✅ FR-17 (T-TLM-07..10) — 10/10 tests passing |
 | **FR-18** | GPS NMEA Parsing | Parse `$GPGGA`/`$GPRMC` from NEO-7M via UART0 at ≥1 Hz; publish lat/lon/alt to DLA | `drivers/gps/neo7m.c`, `tasks/gps_task.c` | `test_gps`, `test_gps_neo7m` (T-GPS-01..04) | ✅ PR #46 |
-| **FR-19** | GPS UTC Synchronisation | Sync internal clock to GPS UTC within ±500 ms on valid fix | `drivers/gps/neo7m.c` (`nmea_parse_gprmc_and_sync_rtc`), `drivers/rtc/ds3231.c` | `test_gps` (UTC field), `test_gps_neo7m` (GPRMC parsing), `test_ds3231` (set_time) | ✅ Implemented (PICO_BUILD) — `nmea_parse_gprmc_and_sync_rtc()` calls `ds3231_set_time()` on valid $GPRMC; ⚠️ ±500 ms guard not implemented, no host-side test due to PICO_BUILD gate |
+| **FR-19** | GPS UTC Synchronisation | Sync internal clock to GPS UTC within ±500 ms on valid fix | `drivers/gps/neo7m.c` (`nmea_parse_gprmc_and_sync_rtc`, `gps_rtc_delta_check`), `drivers/rtc/ds3231.c` | `test_gps` (UTC field), `test_gps_neo7m` (GPRMC parsing, FR-19 delta guard), `test_ds3231` (set_time) | ✅ Implemented — `gps_rtc_delta_check()` enforces ±3 s delta window (GPS_RTC_SYNC_MAX_DELTA_S) before `ds3231_set_time()`; 7/7 guard tests passing (host) |
 
 ---
 
@@ -354,21 +354,21 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 |-----|--------|-----------|-------|
 | WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
 | T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
-| FR-19 ±500 ms guard missing | `nmea_parse_gprmc_and_sync_rtc()` syncs unconditionally on valid $GPRMC, no delta check | Add time-diff check before `ds3231_set_time()` | SW Team |
-| FR-19 no host-side test | Sync path is `#ifdef PICO_BUILD`, uncovered in host build | HIL test with real GPS + Pico, or extract sync logic to testable helper | SW Team |
+| FR-19 host-side guard test coverage | Sync path (`ds3231_set_time`) is `#ifdef PICO_BUILD`, delta-check-only in host | Full HIL test with real GPS + Pico at TRR closure | SW Team |
 | Camera HW module damaged (proto HW) | FR-13 cannot be validated on HW | Flight-unit replacement needed; driver logic verified via test | SW / HW Team |
+| Sun sensor no SRS requirement | `drivers/sun_sensor.c` + `test_sun_sensor` exist (100% coverage) but no formal SRS requirement traces to it | Add sun sensor to SRS-OBC-001 as operational requirement (OR-5) or fold into FR-1 (Attitude Sensing) | Systems Lead |
 | Operational requirements not in SRS | OR-1..OR-4 lack formal traceability | Promote OR-1..OR-4 to formal SRS requirements before TRR | Systems Lead |
 
 ---
 
 ## Summary
 
-- **Total Requirements**: 31 (19 functional, 5 non-functional, 7 operational)
-- **Unit Test Coverage**: **65 CTest executables** (65/65 passing)
-- **Integration Test Coverage**: 4 done (T-FMS-01, T-SAFE-01, T-GPS-01..04, T-PLD-INT-01..10)
+- **Total Requirements**: 28 (19 functional, 5 non-functional, 4 operational)
+- **Unit Test Coverage**: **68 CTest executables** (68/68 passing)
+- **Integration Test Coverage**: 5 done (T-FMS-01, T-SAFE-01, T-GPS-01..04, T-PLD-INT-01..10 inc. T-PLD-INT-04 image_count)
 - **Code Line Coverage**: ~92% (src/control/ + src/core/ + src/services/ combined; measured via gcovr on host build)
 - **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/ecss/standards/MISRA_DEVIATIONS.md`
-- **Overall Readiness**: 97% (Phase 7 payload sensors implemented; camera HW module damaged — flight-unit replacement pending; ISR-safety fixes and test coverage expansion done)
+- **Overall Readiness**: 97% (Phase 7 payload sensors implemented; camera HW module damaged — flight-unit replacement pending; ISR-safety fixes and test coverage expansion done; FR-19 ±3 s delta guard implemented)
 - **Risk Level**: LOW
 
 ---

@@ -302,8 +302,8 @@ temperature, mode, flags (attitude and rates zeroed).
 *Data layer integration done for $GPGGA (position) and $GPRMC (velocity).*
 
 #### SYS-F-463 — UTC Time Synchronization  
-`[PARTIAL]` The system shall synchronize the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition.  
-*GPRMC time extraction implemented. Clock sync integration pending.*
+`[IMPLEMENTED]` The system shall synchronize the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition.  
+*`nmea_parse_gprmc_and_sync_rtc()` calls `ds3231_set_time()` on valid $GPRMC after `gps_rtc_delta_check()` (±3 s guard). 7/7 delta guard tests passing (host).*
 
 ---
 

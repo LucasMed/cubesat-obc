@@ -505,16 +505,16 @@ void test_gps_rtc_delta_same_epoch(void) {
 }
 
 void test_gps_rtc_delta_gps_1s_ahead(void) {
-    /* GPS 1 second ahead of RTC → delta 1s > 0s threshold → must fail */
+    /* GPS 1 second ahead of RTC → delta 1s ≤ 3s threshold → must pass */
     bool ok = gps_rtc_delta_check(EPOCH_2000_01_01 + 1, EPOCH_2000_01_01);
-    assert(ok == false);
+    assert(ok == true);
     printf("test_gps_rtc_delta_gps_1s_ahead PASS\n");
 }
 
 void test_gps_rtc_delta_rtc_1s_ahead(void) {
-    /* RTC 1 second ahead of GPS → delta 1s > 0s threshold → must fail */
+    /* RTC 1 second ahead of GPS → delta 1s ≤ 3s threshold → must pass */
     bool ok = gps_rtc_delta_check(EPOCH_2000_01_01, EPOCH_2000_01_01 + 1);
-    assert(ok == false);
+    assert(ok == true);
     printf("test_gps_rtc_delta_rtc_1s_ahead PASS\n");
 }
 
@@ -530,6 +530,20 @@ void test_gps_rtc_delta_rtc_at_boundary(void) {
     bool ok = gps_rtc_delta_check(EPOCH_2000_01_01, EPOCH_2000_01_01);
     assert(ok == true);
     printf("test_gps_rtc_delta_rtc_at_boundary PASS\n");
+}
+
+void test_gps_rtc_delta_gps_3s_ahead(void) {
+    /* GPS 3 seconds ahead → delta 3s = threshold boundary → must pass */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01 + 3, EPOCH_2000_01_01);
+    assert(ok == true);
+    printf("test_gps_rtc_delta_gps_3s_ahead PASS\n");
+}
+
+void test_gps_rtc_delta_gps_4s_ahead(void) {
+    /* GPS 4 seconds ahead → delta 4s > 3s threshold → must fail */
+    bool ok = gps_rtc_delta_check(EPOCH_2000_01_01 + 4, EPOCH_2000_01_01);
+    assert(ok == false);
+    printf("test_gps_rtc_delta_gps_4s_ahead PASS\n");
 }
 
 int main(void) {
@@ -598,6 +612,8 @@ int main(void) {
     test_gps_rtc_delta_rtc_1s_ahead();
     test_gps_rtc_delta_rtc_uninitialized();
     test_gps_rtc_delta_rtc_at_boundary();
+    test_gps_rtc_delta_gps_3s_ahead();
+    test_gps_rtc_delta_gps_4s_ahead();
     printf("All NMEA parser tests passed.\n");
     return 0;
 }

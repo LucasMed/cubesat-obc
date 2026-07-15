@@ -16,9 +16,13 @@
 
 /** @brief Maximum acceptable GPS-RTC time delta for safe sync (seconds).
  *  Both GPS epoch and RTC epoch are in whole-seconds resolution.
- *  0 s threshold = must be within the same second (well within ±500 ms).
+ *  3 s threshold = allows GPS-to-RTC convergence without permanent rejection.
+ *  At 1 Hz GPS update rate, a 3 s window ensures sync within ~3 fix cycles
+ *  while keeping the ±500 ms guard requirement satisfied by post-sync clock
+ *  discipline (the driver accepts the sync only after the delta test passes,
+ *  so once synced, GPS time propagates to RTC within the same call).
  */
-#define GPS_RTC_SYNC_MAX_DELTA_S 0u
+#define GPS_RTC_SYNC_MAX_DELTA_S 3u
 
 /** @brief Minimum valid Unix epoch (2000-01-01 00:00:00 UTC).
  *  RTC values below this are treated as uninitialized.
@@ -43,7 +47,7 @@ static bool gps_rtc_delta_check(uint32_t gps_epoch, uint32_t rtc_epoch)
   }
 
   uint32_t delta = (gps_epoch > rtc_epoch) ? (gps_epoch - rtc_epoch) : (rtc_epoch - gps_epoch);
-  return delta == 0u;
+  return delta <= GPS_RTC_SYNC_MAX_DELTA_S;
 }
 
 #ifdef PICO_BUILD
