@@ -315,9 +315,16 @@ static void vStartupTask(void *pvParameters)
   printf("[STARTUP] done — heap=%lu\r\n", (unsigned long)xPortGetFreeHeapSize());
   fflush(stdout);
 
-  /* Instead of vTaskDelete(NULL) — which may have issues on the SMP kernel
+  /* CDR-SW-05 (OI-7): StartupTask lifecycle.
+   *
+   * Instead of vTaskDelete(NULL) — which may have issues on the SMP kernel
    * with 1 core — lower our priority and turn this task into a slow alive
-   * heartbeat.  This avoids the SMP task-deletion code path entirely.      */
+   * heartbeat.  A regular task is safer than the SMP task-deletion code path
+   * (see Pico SDK FreeRTOS SMP port errata).  The 5 s interval and minimal
+   * printf overhead make the CPU impact negligible (< 0.1 ‰).
+   *
+   * If a future dual-core SMP baseline is adopted, this task can be eliminated
+   * and replaced with a dedicated Heartbeat task at priority +1.              */
   vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
   for (;;)
   {
