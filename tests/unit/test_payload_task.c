@@ -270,6 +270,11 @@ static size_t build_test_jpeg(uint32_t extra_bytes)
     s_camera_fifo_data[pos++] = (uint8_t)(i & 0xFF);
   }
 
+  if (pos >= sizeof(s_camera_fifo_data) - 2)
+  {
+    s_camera_fifo_data_len = 0;
+    return 0;
+  }
   s_camera_fifo_data[pos++] = 0xFF;
   s_camera_fifo_data[pos++] = 0xD9; /* EOI */
 

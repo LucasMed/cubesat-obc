@@ -236,7 +236,7 @@ void test_crc8_consistency_stress(void)
 {
   printf("[%s]\n", __func__);
 
-  srand(42);  /* Deterministic seed */
+  srand(42);  /* Deterministic seed — coverity[risky_function] */
 
   for (int trial = 0; trial < 100; trial++)
   {

@@ -146,7 +146,7 @@ void test_crc32_consistency(void)
 {
   printf("[%s]\n", __func__);
 
-  srand(42);  /* Deterministic seed */
+  srand(42);  /* Deterministic seed — coverity[risky_function] */
 
   for (int trial = 0; trial < 100; trial++)
   {

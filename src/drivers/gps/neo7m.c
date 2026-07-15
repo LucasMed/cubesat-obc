@@ -411,8 +411,12 @@ double nmea_deg_min_to_dec(const char *str, char hemisphere)
   if (hemisphere == 'N' || hemisphere == 'S')
   {
     // Latitude: 2 digits degrees
+    // Coverity CID 1663941/1663930/1663942: strncpy does not null-terminate
+    // when src >= n.  Initialise buffer to {0} and then explicitly terminate
+    // after the copy so string ops do not read past the buffer.
     char deg_str[3] = {0};
     strncpy(deg_str, str, 2);
+    deg_str[2] = '\0';
     long d = strtol(deg_str, &endptr, 10);
     if (endptr == deg_str || *endptr != '\0')
     {
@@ -428,8 +432,12 @@ double nmea_deg_min_to_dec(const char *str, char hemisphere)
   else if (hemisphere == 'E' || hemisphere == 'W')
   {
     // Longitude: 3 digits degrees
+    // Coverity CID 1663938/1663932: same null-termination guard as
+    // the latitude path above — strncpy does not null-terminate when
+    // src >= n, so we must explicitly terminate.
     char deg_str[4] = {0};
     strncpy(deg_str, str, 3);
+    deg_str[3] = '\0';
     long d = strtol(deg_str, &endptr, 10);
     if (endptr == deg_str || *endptr != '\0')
     {

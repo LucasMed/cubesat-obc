@@ -94,7 +94,9 @@ void test_mkdir_logs_failure(void) {
     /* Force mkdir("LOGS") to fail with EACCES by removing write permission
      * from the current directory. After the call, restore permission. */
     setUp();
-    chmod(".", 0555);
+    /* Coverity CID 1663936: check chmod return value so we don't silently
+     * skip the failure test. */
+    TEST_ASSERT_EQUAL_INT(0, chmod(".", 0555));
     /* mkdir("LOGS") will fail with EACCES, errno != EEXIST -> perror called */
     storage_status_t st = storage_init();
     chmod(".", 0755);

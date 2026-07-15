@@ -183,13 +183,18 @@ void test_nmea_buffer_full(void) {
     /* Fill buffer with 2047 bytes (NMEA_RX_BUFFER_SIZE = 2048,
      * so full condition is (head+1) % size == tail, i.e. 2047 pushes). */
     for (size_t i = 0; i < 2047; i++) {
-        volatile bool ok = nmea_buffer_push((unsigned char)'A');
+        /* Coverity CID 1663931: volatile read inside assert() is a side
+         * effect that disappears when NDEBUG is defined.  Capture the
+         * volatile result first, then assert on a plain bool copy. */
+        volatile bool ok_vol = nmea_buffer_push((unsigned char)'A');
+        bool ok = ok_vol;
         assert(ok == true);
         (void)ok;
     }
     /* 2048th push should fail — buffer full (line 85) */
     {
-        volatile bool ok = nmea_buffer_push((unsigned char)'B');
+        volatile bool ok_vol = nmea_buffer_push((unsigned char)'B');
+        bool ok = ok_vol;
         assert(ok == false);
         (void)ok;
     }
@@ -462,7 +467,11 @@ void test_gps_get_last_fix_null(void) {
     /* NULL out parameter should return false (line 661) */
     gps_init();
     {
-        volatile bool result = gps_get_last_fix(NULL);
+        /* Coverity CID 1663929: volatile read inside assert() is a side
+         * effect that disappears when NDEBUG is defined.  Capture the
+         * volatile result first, then assert on a plain bool copy. */
+        volatile bool result_vol = gps_get_last_fix(NULL);
+        bool result = result_vol;
         assert(result == false);
         (void)result;
     }

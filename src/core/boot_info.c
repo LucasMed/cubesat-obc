@@ -31,8 +31,9 @@ bool boot_status_read(boot_status_t *status)
     return false;
   }
 
-  /* Read with volatile semantics (written by bootloader) */
-  boot_status_t local;
+  /* Read with volatile semantics (written by bootloader).
+   * Zero-initialise so Coverity does not flag _pad as uninitialised. */
+  boot_status_t local = {0};
   local.magic = s_boot_status->magic;
   local.boot_count = s_boot_status->boot_count;
   local.current_slot = s_boot_status->current_slot;

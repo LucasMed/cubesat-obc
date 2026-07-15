@@ -249,7 +249,8 @@ static void telemetry_build_binary_frame(const dl_snapshot_t *snap,
  */
 static void telemetry_store_record(const dl_snapshot_t *snap, const csp_telemetry_packet_t *tlm)
 {
-  telemetry_record_t record;
+  /* Zero-initialise so Coverity does not flag _reserved as uninitialised. */
+  telemetry_record_t record = {0};
   record.timestamp = tlm->timestamp_ms / 1000;  // Convert ms to seconds
   record.sequence = 0;                          // Will be auto-incremented by storage
   record.roll = tlm->attitude[0];
