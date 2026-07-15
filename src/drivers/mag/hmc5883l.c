@@ -126,8 +126,7 @@ static int probe_qmc5883l(uint8_t addr)
         }
         else
         {
-          (void)printf("    qmc5883l: probe addr 0x%02X, ID=0x%02X (genuine)\r\n",
-                       addr, id);
+          (void)printf("    qmc5883l: probe addr 0x%02X, ID=0x%02X (genuine)\r\n", addr, id);
         }
       }
       return 1;
