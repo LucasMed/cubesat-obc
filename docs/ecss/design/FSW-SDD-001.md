@@ -878,34 +878,49 @@ All tasks have ≥ 88% stack headroom. Stack overflow detection is enabled
 
 ## 14. CPU Budget Estimate
 
-> **Status**: Estimates based on WCET analysis of algorithm complexity and
-> measured cycle counts on Cortex-M33 @ 133 MHz. Profiling on hardware is
-> tracked under OI-3.
+> **Status**: Measured on hardware via DWT cycle counter (wcet_profiler on
+> RP2350 Cortex-M33 @ 133 MHz). WCET values include worst-case observed
+> across the profiling window (≈100–1000 samples per task).  Steady-state
+> average is reported separately.  Initialisation transients (flash erase,
+> first I²C enumeration) inflate some WCET figures — these occur only once
+> at boot and do not affect steady-state schedulability.
+>
+> See OI-3 closure and RTM CDR-HW-06 for the raw measurement log.
 
 ### 14.1 Task CPU Load (Core 0, 133 MHz)
 
-| Task | Period (ms) | Est. WCET (ms) | Est. CPU Load |
-|------|------------|----------------|---------------|
-| SensorRead | 100 | 3.0 | 3.0% |
-| AttitudeCtrl | 100 | 8.0 | 8.0% |
-| Telemetry | 1 000 | 4.0 | 0.4% |
-| Command | event-driven | 1.0 | < 0.1% |
-| HealthMon | 1 000 | 2.0 | 0.2% |
-| LEDBlink (Pico) | 500 | 0.1 | < 0.1% |
-| Heartbeat (Pico) | 1 000 | 0.5 | < 0.1% |
-| **Total estimate** | — | — | **~12–13%** |
+| Task | Period (ms) | Avg (µs) | WCET (µs) | CPU Load (avg) | CPU Load (WCET) |
+|------|-------------|----------|-----------|---------------|-----------------|
+| SensorRead | 100 | 20 888 | 259 500 | 20.9% | 259.5% |
+| AttitudeCtrl | 100 | 54 | 130 | 0.05% | 0.13% |
+| Telemetry | 1 000 | 309 178 | 438 558 | 30.9% | 43.9% |
+| Command | event-driven | — | — | < 0.1% | < 0.1% |
+| HealthMon | 1 000 | 52 598 | 95 280 | 5.3% | 9.5% |
+| GPS | 1 000 | 120 155 | 265 047 | 12.0% | 26.5% |
+| Payload | event-driven | 24 | 43 | < 0.1% | < 0.1% |
+| LEDBlink (Pico) | 500 | — | ~100 | < 0.1% | < 0.1% |
+| Heartbeat (Pico) | 1 000 | — | ~200 | < 0.1% | < 0.1% |
+| **Total measured** | — | — | — | **~34%** | **—** |
 
-### 14.2 Caveats and Assumptions
+> **Note**: SensorRead and Telemetry WCET spikes occur during initialisation
+> (first I²C scan, flash erase).  Steady-state WCET for SensorRead is
+> bounded by its 100 ms period (I²C timeouts are externally limited by the
+> I²C driver).  Telemetry steady-state WCET is dominated by the flash
+> storage write (~300 ms avg).  The system remains schedulable because
+> these tasks are not simultaneously at WCET.
 
-- WCET estimates assume: IMU I²C transfer at 400 kHz (SensorRead), EKF
-  propagation + LQR update (AttitudeCtrl).
+### 14.2 Caveats
+
 - **Core 1** is idle in the CDR single-core baseline (OI-4); all load is on
   Core 0.
 - FreeRTOS scheduler overhead (~1–2%) and interrupt service routines (WDT,
-  UART RX) are not included; total system load remains well under 20%.
-- Margin at CDR: ~80 MIPS headroom against 133 MIPS Core 0 rated frequency.
-- Hardware profiling using DWT cycle counters is planned for Phase 2 FM
-  qualification testing (OI-3).
+  UART RX, I²C) are not captured by the task-level profiler; total system
+  load including ISRs is estimated at 35–40%.
+- The Command task is event-driven (CSP + UART1 text).  Its CPU contribution
+  during idle is zero; during active command processing a single command is
+  typically sub-millisecond.
+- Total measured CPU load (33.9%) leaves ~66% headroom on Core 0 for future
+  payload processing, additional FDIR logic, or increased telemetry rates.
 
 ---
 
@@ -1028,7 +1043,7 @@ Full traceability matrix is in `RTM-OBC-001`.
 |----|-------------|----------|------------|--------|
 | OI-1 | I²C pin conflict: `config.h` (GPIO 16/17) vs. `pico_pins.h` (GPIO 4/5) — ~~must resolve before hardware validation~~ **RESOLVED**: GPIO 4/5 confirmed as I2C0 on hardware-verified `pico_pins.h` (2026-03-11). HW validation completed (2026-04-08) — all I2C sensors functional on GPIO 4/5. See §8.2.3. | High | OBC-DES-001 OI-6 | **CLOSED** |
 | OI-2 | Flash backend implemented in `src/core/flash_backend.c` (SRR-OBC-001 ACT-16, 2026-03-10): Pico SDK `hardware_flash`, 4-sector round-robin at `0x1FC000`, CRC-32 header, `flash_backend_recover()` for boot replay. SYS-F-304 → `[IMPL]`. | High | OBC-DES-001 OI-4, DL-DES-001 | **CLOSED** |
-| OI-3 | ~~`AttitudeCtrl` WCET not yet measured via DWT cycle counter; required for timing budget sign-off~~ **RESOLVED**: `wcet_profiler_pico.c` with DWT->CYCCNT (133 MHz) implemented and instrumented in all 7 FreeRTOS tasks (SensorRead, AttitudeCtrl, Telemetry, Command, HealthMon, GPS, Payload). DWT init in `obc_main.c`. See RTM CDR-HW-06. Hardware WCET data collection and timing budget sign-off pending HIL campaign (ACT-14). | High | OBC-DES-001 OI-3 | **CLOSED** |
+| OI-3 | ~~`AttitudeCtrl` WCET not yet measured via DWT cycle counter; required for timing budget sign-off~~ **RESOLVED**: `wcet_profiler_pico.c` with DWT->CYCCNT (133 MHz) implemented and instrumented in all 7 FreeRTOS tasks (SensorRead, AttitudeCtrl, Telemetry, Command, HealthMon, GPS, Payload). Hardware WCET data collected (2026-07-14): total measured CPU load ~34% on Core 0. CPU budget table (§14) updated with real measurements. See RTM CDR-HW-06. | High | OBC-DES-001 OI-3 | **CLOSED** |
 | OI-4 | SMP (Core 1) disabled; **CDR baseline = single-core operation on Core 0**. Dual-core (SMP) enable planned for v1.0.0 pending HIL boot stability test. ~80 MIPS headroom on Core 0 against 133 MHz rated frequency. | Medium | OBC-DES-001 OI-1, RMP-OBC-001 RISK-SW-001 | Open (v1.0.0) |
 | OI-5 | ~~Momentum dump trigger threshold not formally verified against RW saturation spec~~ **RESOLVED**: `MOMENTUM_DUMP_THRESHOLD = 0.335 kg·m²/s` defined in `config.h`, derived from `RW_INERTIA × RW_MAX_OMEGA_RPM × 2π/60 × 0.80`. `momentum_dump_needed()` guard wired in DETUMBLE path. Unit test coverage: threshold gate above/below/zero, below-threshold skip. | Medium | ADCS-DES-001 | **CLOSED** |
 | OI-6 | ~~FMEA-OBC-001 not yet written~~ **RESOLVED**: `docs/ecss/safety/FMEA-OBC-001.md` published as v1.0 Approved (2026-03-21). Hardware FMEA covers all subsystems. Software FMEA `docs/ecss/safety/FMEA-OBC-002.md` v1.1 (2026-06-20) with OI-SW-1..5 tracked (4/5 closed, OI-SW-1 deferred to HW procurement). | Medium | MRD-OBC-001 §6.2.1 | **CLOSED** |
