@@ -45,6 +45,26 @@ void watchdog_hal_init(uint32_t timeout_ms)
   s_scratch4_at_boot = watchdog_hw->scratch[4];
   s_scratch4_saved = true;
 
+  /* ── CRITICAL: Start the watchdog tick generator ───────────────────
+   *
+   * On RP2350 (Pico 2 / 2W) the watchdog tick generator is DISABLED at
+   * reset (TICKS_WATCHDOG_CTRL_ENABLE=0 in the TICKS peripheral block).
+   * The SDK exposes watchdog_start_tick() to start it, but it is NOT
+   * called automatically by watchdog_enable() — that function only
+   * configures the load and sets the ENABLE bit in the watchdog CTRL.
+   *
+   * Without an active tick the watchdog counter never decrements,
+   * making the timeout useless and any freeze unrecoverable.
+   *
+   * watchdog_start_tick(0) = tick at full clk_tick rate (~1-2 MHz),
+   * giving the fastest watchdog response for the configured load value.
+   * MUST be called BEFORE watchdog_enable() because the watchdog needs
+   * the tick to already be running when its ENABLE bit is set.
+   *
+   * On RP2040 this call is a no-op (the tick always runs on that chip).
+   * ────────────────────────────────────────────────────────────────── */
+  watchdog_start_tick(0);
+
   /* Enable the hardware watchdog with pause_on_debug = false.
    *
    * pause_on_debug=true is unsafe on RP2350 single-core (OI-4):
