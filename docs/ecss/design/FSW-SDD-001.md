@@ -874,6 +874,58 @@ From hardware measurement (OBC-DES-001 §15). HWM = remaining free words
 All tasks have ≥ 88% stack headroom. Stack overflow detection is enabled
 (`configCHECK_FOR_STACK_OVERFLOW = 2`).
 
+### 13.5 Flash Memory Budget
+
+> **Status**: Measured from the Pico Pico 2W binary (`artifacts/cubesat_obc_pico.elf`,
+> built with GCC arm-none-eabi 13.3.1, `-Os -flto`).  External storage flash
+> (W25Q64, 8 MB) budget is defined by `flash_layout.h`.
+
+#### 13.5.1 On-Chip XIP Flash (W25Q32, 4 MB)
+
+The RP2350 executes firmware directly from the W25Q32 XIP flash.
+Two consumers share the 4 MB space:
+
+| Consumer | Start | Size | Notes |
+|----------|-------|------|-------|
+| Firmware image | `0x10010000` | **~424 KB** | `.text` + `.rodata` + `.data` init + `.flash_end` |
+| Persistent log | `0x1FC000` | **16 KB** | 4 round-robin sectors, flash_backend.c |
+| **Flash free** | — | **~3.56 MB** | Firmware growth + future storage regions |
+
+**Firmware section breakdown (from ELF sections):**
+
+| Section | VMA (Flash) | Size | Contents |
+|---------|------------|------|----------|
+| `.text` | `0x10010000` | **164 KB** (167 900 B) | Code, vector table, `__patch_table` |
+| `.rodata` | `0x10038BE0` | **248 KB** (254 284 B) | Constants, string literals, CSP config |
+| `.data` init | `0x10076B60` | **9 KB** (9 424 B) | Initialised globals (copied to SRAM at boot) |
+| `.flash_end` | `0x10079030` | **20 B** | End-of-binary marker |
+| **Total** | — | **~424 KB** | — |
+
+**Key notes:**
+
+- 92% of flash free (3.56 MB out of 4 MB) — ample margin for Phase 2/3
+  FM qualification features.
+- The `.rodata` section is the single largest consumer (248 KB) driven by
+  the CSP protocol table, task config structs, and static string constants.
+- The persistent log region at `0x1FC000` uses the 4 topmost KB-sector
+  boundaries.  Its offset is computed as `PICO_FLASH_SIZE_BYTES - (4 × 4 KB)`
+  and is defined in `flash_backend.c`.
+
+#### 13.5.2 External Storage Flash (W25Q64, 8 MB)
+
+Defined in `flash_layout.h` — shared with the NVM POST subsystem:
+
+| Region | Offset | Size | Consumer |
+|--------|--------|------|----------|
+| Free / unallocated | `0x000000` – `0x6FFFFF` | **~7 MB** | Reserved for future use (telemetry archive, software FDIR logs, config parameters) |
+| POST ring buffer | `0x700000` | **4 KB** | Power-On Self-Test results |
+| IMU calibration | `0x7F0000` | **4 KB** | Factory calibration data |
+| Reserved | `0x7F1000` – `0x7FFFFF` | **60 KB** | Future allocation |
+
+> **Note**: The external flash is not used for code storage — all code
+> executes from the internal XIP flash.  External flash regions are
+> updated via CSP memory write commands to the dedicated flash backend.
+
 ---
 
 ## 14. CPU Budget Estimate
