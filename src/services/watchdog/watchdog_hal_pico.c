@@ -45,9 +45,16 @@ void watchdog_hal_init(uint32_t timeout_ms)
   s_scratch4_at_boot = watchdog_hw->scratch[4];
   s_scratch4_saved = true;
 
-  /* Enable the hardware watchdog.  The second argument (pause_on_debug)
-   * stops the countdown while a debugger is attached. */
-  watchdog_enable((int)timeout_ms, /* pause_on_debug */ true);
+  /* Enable the hardware watchdog with pause_on_debug = false.
+   *
+   * pause_on_debug=true is unsafe on RP2350 single-core (OI-4):
+   * the PAUSE_DBG1 bit pauses the watchdog when core 1 is halted,
+   * and core 1 is never released in single-core mode.  This would
+   * effectively disable the watchdog on every boot.
+   *
+   * With pause_on_debug=false the watchdog always counts regardless
+   * of debug state, which is correct for flight hardware. */
+  watchdog_enable((int)timeout_ms, /* pause_on_debug */ false);
 }
 
 void watchdog_hal_feed(void)

@@ -394,10 +394,11 @@ int main(void)
   xTaskCreate(vStartupTask, "Startup", 2048, NULL, configMAX_PRIORITIES - 1, NULL);
 
   /* Enable hardware watchdog before starting any tasks.
-   * Timeout: 15 000 ms — allows 3 missed health-monitor ticks (5 s each)
+   * Timeout: 8 000 ms — allows ~1.5 missed health-monitor ticks (5 s each)
    * before a forced reset.  Configured BEFORE vTaskStartScheduler so the
-   * watchdog counts from boot, not from the first health-monitor feed. */
-  watchdog_hal_init(15000);
+   * watchdog counts from boot, not from the first health-monitor feed.
+   * pause_on_debug=false inside the HAL so single-core RP2350 WDT works. */
+  watchdog_hal_init(8000);
 
   printf("[BOOT] starting scheduler...\r\n");
   fflush(stdout);
