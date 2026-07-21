@@ -592,6 +592,28 @@ bool w25q64_is_present(void)
 static uint8_t s_imu_calib_buf[W25Q64_IMU_CALIB_SIZE];
 static bool s_imu_calib_valid = false;
 
+  #ifdef W25Q64_TEST_HELPERS
+/* Test-only: corrupt internal calib buffer to exercise error paths */
+void w25q64_host_corrupt_calib_magic(void)
+{
+  s_imu_calib_buf[0] = 0xFF; /*破坏 magic byte */
+}
+
+void w25q64_host_corrupt_calib_crc(void)
+{
+  /* Corrupt a data byte after a valid write — magic stays valid but CRC breaks */
+  if (s_imu_calib_valid && W25Q64_IMU_CALIB_SIZE > 10)
+  {
+    s_imu_calib_buf[10] ^= 0xFF;
+  }
+}
+
+void w25q64_host_reset_calib_valid(void)
+{
+  s_imu_calib_valid = false;
+}
+  #endif
+
 w25q64_status_t w25q64_write_imu_calib(const imu_calib_t *cal)
 {
   if (!cal)

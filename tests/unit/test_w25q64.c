@@ -11,6 +11,11 @@
 /* Host-only test helper declared extern (defined in w25q64.c host section) */
 extern void w25q64_host_set_busy(bool busy);
 
+/* Test-only calib corruption helpers (compiled with W25Q64_TEST_HELPERS) */
+extern void w25q64_host_corrupt_calib_magic(void);
+extern void w25q64_host_corrupt_calib_crc(void);
+extern void w25q64_host_reset_calib_valid(void);
+
 void setUp(void)
 {
 }
@@ -231,6 +236,48 @@ void test_w25q64_imu_calib_overwrite(void)
     TEST_ASSERT_TRUE(2.0f == cal_out.accel_offset[0]);
 }
 
+void test_w25q64_imu_calib_magic_mismatch(void)
+{
+    /* Write valid data first, then corrupt magic byte */
+    imu_calib_t cal_in;
+    memset(&cal_in, 0, sizeof(cal_in));
+    cal_in.accel_offset[0] = 1.0f;
+    cal_in.calibrated = true;
+    TEST_ASSERT_EQUAL_INT(W25Q64_OK, w25q64_write_imu_calib(&cal_in));
+
+    /* Corrupt the magic number in the internal buffer */
+    w25q64_host_corrupt_calib_magic();
+
+    /* Read should fail — magic mismatch */
+    imu_calib_t cal_out;
+    memset(&cal_out, 0, sizeof(cal_out));
+    TEST_ASSERT_EQUAL_INT(W25Q64_ERR_INIT, w25q64_read_imu_calib(&cal_out));
+
+    /* Restore for subsequent tests */
+    w25q64_host_reset_calib_valid();
+}
+
+void test_w25q64_imu_calib_crc_mismatch(void)
+{
+    /* Write valid data first, then corrupt a data byte */
+    imu_calib_t cal_in;
+    memset(&cal_in, 0, sizeof(cal_in));
+    cal_in.accel_offset[0] = 3.0f;
+    cal_in.calibrated = true;
+    TEST_ASSERT_EQUAL_INT(W25Q64_OK, w25q64_write_imu_calib(&cal_in));
+
+    /* Corrupt a data byte — magic stays valid but CRC breaks */
+    w25q64_host_corrupt_calib_crc();
+
+    /* Read should fail — CRC mismatch */
+    imu_calib_t cal_out;
+    memset(&cal_out, 0, sizeof(cal_out));
+    TEST_ASSERT_EQUAL_INT(W25Q64_ERR_INIT, w25q64_read_imu_calib(&cal_out));
+
+    /* Restore for subsequent tests */
+    w25q64_host_reset_calib_valid();
+}
+
 void test_w25q64_erase_chip(void)
 {
     w25q64_status_t st = w25q64_erase_chip();
@@ -290,6 +337,8 @@ int main(void)
     RUN_TEST(test_w25q64_imu_calib_null_params);
     RUN_TEST(test_w25q64_imu_calib_write_read);
     RUN_TEST(test_w25q64_imu_calib_overwrite);
+    RUN_TEST(test_w25q64_imu_calib_magic_mismatch);
+    RUN_TEST(test_w25q64_imu_calib_crc_mismatch);
 
     return UNITY_END();
 }

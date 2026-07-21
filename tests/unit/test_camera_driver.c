@@ -38,6 +38,19 @@ extern uint8_t s_mock_i2c_regs[256];
  */
 #define TEST_REG_END 0xFF
 
+/* ov2640_reg_t and cam_write_reg_table are defined inside camera_driver.c.
+ * Forward-declare here so tests can exercise the max_entries path. */
+typedef struct
+{
+  uint8_t reg;
+  uint8_t val;
+} ov2640_reg_t;
+
+bool cam_write_reg_table(const ov2640_reg_t *table, size_t max_entries);
+
+/* Provided by camera_driver.c (host build) to reset the idempotency guard. */
+void camera_init_reset(void);
+
 /* ------------------------------------------------------------------ */
 /* Unity Boilerplate                                                   */
 /* ------------------------------------------------------------------ */
@@ -45,6 +58,12 @@ extern uint8_t s_mock_i2c_regs[256];
 void setUp(void)
 {
   memset(s_mock_i2c_regs, 0, sizeof(s_mock_i2c_regs));
+  /* Default chip ID values — camera_init() expects these.
+   * Tests that want to simulate a mismatch override them. */
+  s_mock_i2c_regs[0x0A] = 0x26; /* OV2640_CHIPID_HIGH */
+  s_mock_i2c_regs[0x0B] = 0x42; /* OV2640_CHIPID_LOW  */
+  /* Reset the idempotency guard so camera_init() runs fully. */
+  camera_init_reset();
 }
 
 void tearDown(void) {}
@@ -151,12 +170,65 @@ void test_camera_read_sensor_reg(void)
 {
   uint8_t val = 0;
   TEST_ASSERT_TRUE(camera_read_sensor_reg(0x12, &val));
-  TEST_ASSERT_EQUAL_INT(0xFF, val); /* sentinel for host stubs */
+  /* Host mock reads from s_mock_i2c_regs[0x12] which is 0 after setUp.
+   * Set a known value first, then verify round-trip. */
+  s_mock_i2c_regs[0x12] = 0x55;
+  TEST_ASSERT_TRUE(camera_read_sensor_reg(0x12, &val));
+  TEST_ASSERT_EQUAL_HEX8(0x55, val);
 }
 
 void test_camera_read_sensor_reg_null_val(void)
 {
   TEST_ASSERT_FALSE(camera_read_sensor_reg(0x12, NULL));
+}
+
+/* ------------------------------------------------------------------ */
+/* Batch B: Logic Gap Closure tests                                    */
+/* ------------------------------------------------------------------ */
+
+void test_cam_i2c_read_non_chipid(void)
+{
+  /* Write a non-chipID register, then read it back. */
+  s_mock_i2c_regs[0x42] = 0xAB;
+  uint8_t val = 0;
+  TEST_ASSERT_TRUE(camera_read_sensor_reg(0x42, &val));
+  TEST_ASSERT_EQUAL_HEX8(0xAB, val);
+}
+
+void test_cam_write_reg_table_max_entries(void)
+{
+  /* Create a local register table with 4 entries + terminator. */
+  static const ov2640_reg_t test_table[] = {
+      {0x10, 0xAA},
+      {0x20, 0xBB},
+      {0x30, 0xCC},
+      {0x40, 0xDD},
+      {TEST_REG_END, TEST_REG_END},
+  };
+
+  /* Apply with max_entries=2 — only first 2 should be written. */
+  TEST_ASSERT_TRUE(cam_write_reg_table(test_table, 2));
+  TEST_ASSERT_EQUAL_HEX8(0xAA, s_mock_i2c_regs[0x10]);
+  TEST_ASSERT_EQUAL_HEX8(0xBB, s_mock_i2c_regs[0x20]);
+  /* Index 2 (0x30) should NOT have been touched by this call. */
+  TEST_ASSERT_EQUAL_HEX8(0x00, s_mock_i2c_regs[0x30]);
+  TEST_ASSERT_EQUAL_HEX8(0x00, s_mock_i2c_regs[0x40]);
+}
+
+void test_cam_pidh_mismatch(void)
+{
+  /* Override PIDH to a wrong value — camera_init() must detect the
+   * mismatch and return false. */
+  s_mock_i2c_regs[0x0A] = 0xFF; /* wrong PIDH */
+  TEST_ASSERT_FALSE(camera_init());
+}
+
+void test_cam_pidl_mismatch(void)
+{
+  /* PIDH correct, PIDL wrong (not 0x42 or 0x41). */
+  s_mock_i2c_regs[0x0A] = 0x26; /* correct PIDH */
+  s_mock_i2c_regs[0x0B] = 0xFF; /* wrong PIDL */
+  TEST_ASSERT_FALSE(camera_init());
 }
 
 int main(void)
@@ -176,5 +248,9 @@ int main(void)
   RUN_TEST(test_camera_write_sensor_reg);
   RUN_TEST(test_camera_read_sensor_reg);
   RUN_TEST(test_camera_read_sensor_reg_null_val);
+  RUN_TEST(test_cam_i2c_read_non_chipid);
+  RUN_TEST(test_cam_write_reg_table_max_entries);
+  RUN_TEST(test_cam_pidh_mismatch);
+  RUN_TEST(test_cam_pidl_mismatch);
   return UNITY_END();
 }

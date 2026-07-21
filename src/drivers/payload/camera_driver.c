@@ -728,22 +728,15 @@ static bool cam_i2c_write(uint8_t reg, uint8_t val)
 
 static bool cam_i2c_read(uint8_t reg, uint8_t *val)
 {
-  if (reg == 0x0A) /* PIDH */
-  {
-    *val = OV2640_CHIPID_HIGH;
-  }
-  else if (reg == 0x0B) /* PIDL */
-  {
-    *val = OV2640_CHIPID_LOW;
-  }
-  else
-  {
-    *val = s_mock_i2c_regs[reg];
-  }
+  /* All registers (including PIDH/PIDL at 0x0A/0x0B) are read from
+   * s_mock_i2c_regs[] so tests can inject chip-ID mismatches.
+   * setUp() must initialise the correct chip ID values. */
+  *val = s_mock_i2c_regs[reg];
   return true;
 }
 
-static bool cam_write_reg_table(const ov2640_reg_t *table, size_t max_entries)
+/* Non-static so tests can exercise the max_entries early-exit path. */
+bool cam_write_reg_table(const ov2640_reg_t *table, size_t max_entries)
 {
   size_t count = 0;
   for (const ov2640_reg_t *p = table; !REG_END_PAIR(p->reg, p->val); p++)
@@ -778,6 +771,14 @@ static uint8_t cam_spi_read(uint8_t addr)
 
 /** Idempotency guard — camera_init() skips full init if already done. */
 static bool s_camera_inited = false;
+
+#ifndef PICO_BUILD
+/** Reset the init guard so tests can re-exercise camera_init(). */
+void camera_init_reset(void)
+{
+  s_camera_inited = false;
+}
+#endif
 
 bool camera_init(void)
 {
@@ -1085,9 +1086,8 @@ bool camera_write_sensor_reg(uint8_t reg, uint8_t val)
   sleep_ms(2);
   return cam_i2c_write(reg, val);
 #else
-  (void)reg;
-  (void)val;
-  return true;
+  /* Host build: write to mock register array. */
+  return cam_i2c_write(reg, val);
 #endif
 }
 
@@ -1104,8 +1104,7 @@ bool camera_read_sensor_reg(uint8_t reg, uint8_t *val)
   sleep_ms(2);
   return cam_i2c_read(reg, val);
 #else
-  (void)reg;
-  *val = 0xFF; /* sentinel for host tests */
-  return true;
+  /* Host build: read from mock register array (including PIDH/PIDL). */
+  return cam_i2c_read(reg, val);
 #endif
 }

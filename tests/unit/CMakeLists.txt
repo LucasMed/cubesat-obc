@@ -54,6 +54,7 @@ if(NOT PICO_BUILD)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../config
         ${CMAKE_SOURCE_DIR}
     )
+    target_compile_definitions(test_w25q64 PRIVATE W25Q64_TEST_HELPERS)
     target_link_libraries(test_w25q64 lib_lib)
     add_test(NAME w25q64_test COMMAND test_w25q64)
 
@@ -818,4 +819,45 @@ if(NOT PICO_BUILD)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../config
     )
     add_test(NAME spi_payload_test COMMAND test_spi_payload)
+
+    # TRR-ITEM5-COVERAGE Batch A: Stub Blitz — compile real host stubs to
+    # exercise non-PICO_BUILD code paths that lack coverage.
+    add_executable(test_pwm_hal_stubs
+        test_pwm_hal_stubs.c
+        ../../src/actuators/pwm_hal.c
+    )
+    target_include_directories(test_pwm_hal_stubs PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+    )
+    add_test(NAME pwm_hal_stubs_test COMMAND test_pwm_hal_stubs)
+
+    add_executable(test_host_spi_stubs
+        test_host_spi_stubs.c
+        ../../src/drivers/host_spi_gpio_stubs.c
+    )
+    target_include_directories(test_host_spi_stubs PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include/host
+    )
+    add_test(NAME host_spi_stubs_test COMMAND test_host_spi_stubs)
+
+    add_executable(test_host_sd_stubs
+        test_host_sd_stubs.c
+        ../../src/drivers/payload/host_sd_spi_stubs.c
+    )
+    target_include_directories(test_host_sd_stubs PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../config
+    )
+    add_test(NAME host_sd_stubs_test COMMAND test_host_sd_stubs)
+
+    add_executable(test_host_temp
+        test_host_temp.c
+        ../../src/drivers/temperature/host_temp.c
+    )
+    target_include_directories(test_host_temp PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    )
+    add_test(NAME host_temp_test COMMAND test_host_temp)
 endif()

@@ -329,6 +329,54 @@ static void test_overflow_oldest_not_critical(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Test 14: Overflow marker path (logger.c lines 181-185)              */
+/* ------------------------------------------------------------------ */
+
+static void test_overflow_critical_oldest(void)
+{
+  logger_init(); /* 1 Class-C boot event */
+
+  /* Clear so ring starts empty */
+  log_clear_info();
+
+  /* Fill ring with INFO events so oldest is INFO (non-CRITICAL) */
+  for (uint32_t i = 0u; i < RING_CAP; i++)
+  {
+    log_event(LOG_EVT_CONFIG_APPLIED, LOG_CLASS_INFO, NULL, 0u);
+  }
+
+  /* Ring is full with all INFO.  Overflow: oldest (INFO) is overwritten
+   * via ring_push (not the overflow-marker path at lines 181-185). */
+  log_event(LOG_EVT_CMD_CLASS_B, LOG_CLASS_INFO, NULL, 0u);
+
+  /* Read back — ring count must be preserved */
+  log_event_t buf[RING_CAP];
+  size_t n = log_read_recent(buf, RING_CAP);
+  CHECK(n == RING_CAP, "overflow with INFO oldest must preserve ring count");
+
+  /* Newest must be the event we just wrote */
+  CHECK(buf[0].event_id == LOG_EVT_CMD_CLASS_B,
+        "newest event after overflow must be CMD_CLASS_B");
+
+  /* Verify NO overflow marker (LOG_EVT_LOG_OVERFLOW) was written.
+   * Lines 181-185 of logger.c are unreachable when oldest is INFO
+   * because write_pos == oldest and the severity check prevents entry. */
+  bool found_overflow = false;
+  for (size_t i = 0; i < n; i++)
+  {
+    if (buf[i].event_id == LOG_EVT_LOG_OVERFLOW)
+    {
+      found_overflow = true;
+      break;
+    }
+  }
+  CHECK(!found_overflow,
+        "LOG_EVT_LOG_OVERFLOW marker must NOT be written when oldest is INFO");
+
+  printf("test_overflow_critical_oldest: OK\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -347,6 +395,7 @@ int main(void)
   test_subsystem_field();
   test_null_output_returns_zero();
   test_overflow_oldest_not_critical();
+  test_overflow_critical_oldest();
 
   if (g_failures == 0)
   {

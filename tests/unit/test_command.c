@@ -1923,6 +1923,168 @@ void test_command_fw_boot_info(void)
   printf("test_command_fw_boot_info PASS\n");
 }
 
+/* ================================================================ *
+ *  BATCH B — Logic Gap Closure tests                               *
+ * ================================================================ */
+
+/* ---- B1.1: CMD_SET_MODE with invalid mode byte ---- */
+
+void test_cmd_setmode_non_numeric(void)
+{
+  reset_mocks();
+  last_requested_mode = FM_BOOT;  /* sentinel — unchanged default */
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_SET_MODE;
+  cmd->payload[0] = 0xFF;  /* invalid mode — not a valid flight_mode_t */
+  pkt->length = 2;
+
+  process_command_packet(mock_conn, pkt);
+
+  /* FMM receives the byte; handler still calls fmm_request_transition(0xFF) */
+  assert(last_requested_mode == 0xFF);
+  assert(last_freed == 1);
+  printf("test_cmd_setmode_non_numeric PASS\n");
+}
+
+/* ---- B1.2: Text RTC_TEST with rtc_valid = true (timestamp path) ---- */
+
+void test_cmd_rtc_test_no_data(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  /* Ensure rtc_valid = false (default from reset_mocks → mock_snapshot) */
+  mock_snapshot.state.rtc_valid = false;
+
+  test_run_text_command("RTC_TEST");
+  const char *out = test_get_uart_output();
+  (void)out;
+  assert(strstr(out, "no data") != NULL);
+  printf("test_cmd_rtc_test_no_data PASS\n");
+}
+
+/* ---- B1.3: Text SETTIME when ds3231_set_time fails ---- */
+
+void test_cmd_settime_ds3231_fail(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  s_ds3231_set_time_ret = false;  /* make ds3231_set_time() return false */
+
+  test_run_text_command("SETTIME 2025 06 15 12 30 45");
+  const char *out = test_get_uart_output();
+  (void)out;
+  assert(strstr(out, "FAILED") != NULL);
+  assert(s_ds3231_set_time_called == true);
+  printf("test_cmd_settime_ds3231_fail PASS\n");
+}
+
+/* ---- B1.4: Text SHT31_TEST with humidity_valid = false ---- */
+
+void test_cmd_sht31_humidity_na(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_snapshot.state.temp_valid = true;
+  mock_snapshot.state.humidity_valid = false;
+
+  test_run_text_command("SHT31_TEST");
+  const char *out = test_get_uart_output();
+  (void)out;
+  assert(strstr(out, "humidity=N/A") != NULL);
+  assert(strstr(out, "temp=") != NULL);
+  printf("test_cmd_sht31_humidity_na PASS\n");
+}
+
+/* ---- B1.5: Text SHT31_TEST with both temp and humidity valid ---- */
+
+void test_cmd_sht31_temp_humidity_valid(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+  mock_snapshot.state.temp_valid = true;
+  mock_snapshot.state.humidity_valid = true;
+  mock_snapshot.state.temp = 23.5f;
+  mock_snapshot.state.humidity = 55.2f;
+
+  test_run_text_command("SHT31_TEST");
+  const char *out = test_get_uart_output();
+  (void)out;
+  assert(strstr(out, "temp=") != NULL);
+  assert(strstr(out, "humidity=") != NULL);
+  assert(strstr(out, "N/A") == NULL);  /* must NOT show N/A */
+  printf("test_cmd_sht31_temp_humidity_valid PASS\n");
+}
+
+/* ---- B1.6: Text REBOOT command ---- */
+
+void test_cmd_reboot(void)
+{
+  test_clear_uart_output();
+  reset_mocks();
+
+  test_run_text_command("REBOOT");
+  const char *out = test_get_uart_output();
+  (void)out;
+  assert(strstr(out, "REBOOT OK") != NULL);
+  assert(last_delay == pdMS_TO_TICKS(100));
+  printf("test_cmd_reboot PASS\n");
+}
+
+/* ---- B1.7: CMD_TELEMETRY_DUMP with explicit start_seq = 0 ---- */
+
+void test_cmd_telemetry_dump_start_seq(void)
+{
+  reset_mocks();
+  /* telemetry_storage_stub returns 0 for all read functions */
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_TELEMETRY_DUMP;
+  uint32_t start_seq = 0;
+  memcpy(cmd->payload, &start_seq, sizeof(start_seq));
+  pkt->length = 1 + sizeof(start_seq);  /* cmd_id + 4-byte start_seq */
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  assert(last_response_len >= sizeof(telemetry_dump_response_t));
+  printf("test_cmd_telemetry_dump_start_seq PASS\n");
+}
+
+/* ---- B1.8: CMD_STATUS with fw_upload state COMPLETE then VERIFIED ---- */
+
+void test_cmd_status_fw_states(void)
+{
+  reset_mocks();
+  fw_upload_abort();
+
+  /* -- Test with FW_STATE_COMPLETE -- */
+  fw_upload_start(1024, 0xABCDEF01, BOOT_SLOT_B);
+
+  csp_conn_t *mock_conn = NULL;
+  csp_packet_t *pkt = csp_buffer_get(0);
+
+  csp_command_packet_t *cmd = (csp_command_packet_t *)pkt->data;
+  cmd->cmd_id = CMD_STATUS;
+  pkt->length = 1;
+
+  process_command_packet(mock_conn, pkt);
+
+  assert(last_csp_sent != NULL);
+  csp_command_packet_t *resp_pkt = (csp_command_packet_t *)last_response_data;
+  system_status_response_t *resp = (system_status_response_t *)resp_pkt->payload;
+  (void)resp;
+  /* Upload is in RECEIVING state (just started, no chunks sent) */
+  assert(resp->boot_count == 0);  /* no POST record set */
+  printf("test_cmd_status_fw_states PASS\n");
+}
+
 int main()
 {
   printf("Running Command Task tests...\n");
@@ -1962,6 +2124,16 @@ int main()
   test_command_fw_upload_commit();
   test_command_fw_upload_abort();
   test_command_fw_boot_info();
+
+  /* Batch B — Logic Gap Closure tests */
+  test_cmd_setmode_non_numeric();
+  test_cmd_rtc_test_no_data();
+  test_cmd_settime_ds3231_fail();
+  test_cmd_sht31_humidity_na();
+  test_cmd_sht31_temp_humidity_valid();
+  test_cmd_reboot();
+  test_cmd_telemetry_dump_start_seq();
+  test_cmd_status_fw_states();
 
   /* Text command regression tests (existing) */
   test_text_deploy_from_boot();

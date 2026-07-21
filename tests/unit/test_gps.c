@@ -168,12 +168,30 @@ void test_fault_recovery(void)
   assert(gps_is_fix_valid());
 }
 
+void test_gps_get_stats_and_reset(void)
+{
+  /* Call gps_get_stats — returns pointer to internal stats struct */
+  const GpsStats_t *stats = gps_get_stats();
+  assert(stats != NULL && "gps_get_stats must return non-NULL");
+
+  /* Call gps_reset_stats — should not crash */
+  gps_reset_stats();
+
+  /* Verify call counts include these new calls */
+  assert(gps_mock_get_call_count("gps_get_stats") >= 1);
+  assert(gps_mock_get_call_count("gps_reset_stats") >= 1);
+}
+
 void test_null_safety(void)
 {
-  // gps_read_fix(NULL) and gps_get_last_fix(NULL) are not supported in this stub API
-  // so we just check that the stub does not crash if passed NULL to gps_mock_set_data
   gps_mock_set_data(NULL);
   assert(gps_read_fix() != NULL);
+
+  /* Cover gps_get_last_fix(NULL) — returns false */
+  assert(gps_get_last_fix(NULL) == false);
+
+  /* Cover lookup_func_index fallthrough — unknown function name returns 0 */
+  assert(gps_mock_get_call_count("nonexistent_function") == 0);
 }
 
 void test_data_layer_gps_fix(void)
@@ -218,6 +236,7 @@ int main(void)
   test_stale_mode();
   test_get_last_fix();
   test_fault_recovery();
+  test_gps_get_stats_and_reset();
   test_null_safety();
   test_data_layer_gps_fix();
   test_gps_task_integration();

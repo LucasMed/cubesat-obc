@@ -579,6 +579,52 @@ static void test_tlm_flash_record_store_fail(void)
          g_failures == failures_before ? "PASS" : "FAIL");
 }
 
+/* ========================================================================
+ * T-TLM-16  Cover remaining telemetry_storage_stub functions
+ * ======================================================================== */
+static void test_tlm_telemetry_storage_remaining(void)
+{
+  int failures_before = g_failures;
+
+  /* telemetry_storage_init */
+  CHECK(telemetry_storage_init(), "telemetry_storage_init returns true");
+
+  /* telemetry_storage_read — returns true, no-op */
+  telemetry_record_t rec;
+  CHECK(telemetry_storage_read(0, &rec), "telemetry_storage_read returns true");
+
+  /* telemetry_storage_get_stats — fills struct */
+  telemetry_storage_stats_t stats;
+  telemetry_storage_get_stats(&stats);
+  CHECK(stats.initialized, "telemetry_storage_get_stats sets initialized");
+
+  /* telemetry_storage_available */
+  (void)telemetry_storage_available();
+
+  /* telemetry_storage_is_available */
+  CHECK(telemetry_storage_is_available(), "telemetry_storage_is_available returns true");
+
+  /* telemetry_storage_clear */
+  CHECK(telemetry_storage_clear(), "telemetry_storage_clear returns true");
+
+  /* telemetry_storage_get_base_addr */
+  (void)telemetry_storage_get_base_addr();
+
+  /* telemetry_storage_get_record_count */
+  (void)telemetry_storage_get_record_count();
+
+  /* telemetry_storage_get_last_sequence */
+  (void)telemetry_storage_get_last_sequence();
+
+  /* telemetry_storage_read_batch — returns 0 (no records) */
+  telemetry_record_t batch[1];
+  uint32_t n = telemetry_storage_read_batch(0, batch, 1);
+  (void)n;
+
+  printf("[T-TLM-16] test_tlm_telemetry_storage_remaining: %s\n",
+         g_failures == failures_before ? "PASS" : "FAIL");
+}
+
 /* ======================================================================== */
 int main(void)
 {
@@ -598,6 +644,7 @@ int main(void)
   test_tlm_flags_no_validity();
   test_tlm_battery_voltage_read();
   test_tlm_flash_record_store_fail();
+  test_tlm_telemetry_storage_remaining();
   printf("=================================\n");
   if (g_failures == 0)
   {

@@ -177,6 +177,58 @@ static int test_finite_values(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* T-DYN-06: Rate clamp positive — persistent torque must saturate     */
+/*           rates[0] at +1000.0f.                                     */
+/* ------------------------------------------------------------------ */
+static int test_rate_clamp_positive(void)
+{
+  attitude_dyn_t dyn;
+  attitude_dynamics_init(&dyn);
+
+  /* Apply 100 N·m around x-axis — far above normal, ensures clamping. */
+  float torque[3] = {100.0f, 0.0f, 0.0f};
+  const float dt = 0.02f;
+  for (int i = 0; i < 100; i++)
+  {
+    attitude_dynamics_step(&dyn, torque, dt);
+  }
+
+  if (dyn.rates[0] != 1000.0f)
+  {
+    printf("  rates[0] = %f (expected 1000.0)\n", dyn.rates[0]);
+    FAIL("T-DYN-06: positive rate clamp failed");
+  }
+  PASS("T-DYN-06: rates clamped at +1000.0f under persistent torque");
+  return 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* T-DYN-07: Rate clamp negative — persistent negative torque must     */
+/*           saturate rates[0] at -1000.0f.                            */
+/* ------------------------------------------------------------------ */
+static int test_rate_clamp_negative(void)
+{
+  attitude_dyn_t dyn;
+  attitude_dynamics_init(&dyn);
+
+  /* Apply -100 N·m around x-axis. */
+  float torque[3] = {-100.0f, 0.0f, 0.0f};
+  const float dt = 0.02f;
+  for (int i = 0; i < 100; i++)
+  {
+    attitude_dynamics_step(&dyn, torque, dt);
+  }
+
+  if (dyn.rates[0] != -1000.0f)
+  {
+    printf("  rates[0] = %f (expected -1000.0)\n", dyn.rates[0]);
+    FAIL("T-DYN-07: negative rate clamp failed");
+  }
+  PASS("T-DYN-07: rates clamped at -1000.0f under persistent negative torque");
+  return 0;
+}
+
+/* ------------------------------------------------------------------ */
 
 int main(void)
 {
@@ -186,6 +238,8 @@ int main(void)
   result |= test_energy_conservation();
   result |= test_multiaxis_independence();
   result |= test_finite_values();
+  result |= test_rate_clamp_positive();
+  result |= test_rate_clamp_negative();
 
   if (result == 0)
   {
