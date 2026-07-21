@@ -141,3 +141,5 @@ allocated to Phase 7 and are baselined at Phase 7 PDR.
 | **Overall** | **91.9%** | **82.5%** | ✅ Meets ≥85% target |
 
 *Coverage measured via `pytest` + `gcov` on host build. Target: ≥85% line coverage per SYS-NF-002.*
+
+> **Note 2026-07-21**: The 91.9% figure above is from a different measurement scope (earlier baseline with different gcovr configuration and exclusion filters). Current measured coverage is **90.0% lines / 90.6% functions** (72/72 tests, gcovr with current exclusions per SVVP-OBC-001 §12.2). The 91.9% figure was higher primarily because it included driver stub files that are now excluded per SVVP-OBC-001 policy. The actual ≥90% target is now met under the current measurement scope.

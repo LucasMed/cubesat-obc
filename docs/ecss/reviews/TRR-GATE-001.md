@@ -1,5 +1,7 @@
 # ECSS TRR Gate Report — 2026-07-15
 
+> **⚠️ SUPERSEDED by TRR-GATE-002.md (2026-07-21)**. This TRR was granted GO-IF on 2026-07-15 with 5 conditions. All 5 conditions have been resolved (including coverage reaching ≥90%) in TRR-GATE-002, which supersedes this document. See [TRR-GATE-002.md](./TRR-GATE-002.md) for the current status.
+
 ## Decision: **GO-IF**
 
 **Gate**: TRR (Test Readiness Review)

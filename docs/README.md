@@ -49,8 +49,8 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 | DL-DES-001 | Data Layer / Storage Design Document | ✅ v0.1 — Draft | [ecss/design/DL-DES-001.md](ecss/design/DL-DES-001.md) |
 | RTM-OBC-001 | Requirements Traceability Matrix | ⚠️ | [ecss/verification/RTM-OBC-001.md](ecss/verification/RTM-OBC-001.md) |
 | STP-OBC-001 / TEST-PLAN-001 | Software Test Plan | ⚠️ **TODO**: exists as `TST-001 v3.0` (321 lines) but uses informal ID and lacks ECSS-E-ST-40C §5.7 structure (no SVVP, entry/exit criteria, test levels). Needs formalisation. | [ecss/verification/STP-OBC-001.md](ecss/verification/STP-OBC-001.md) |
-| ADCS-SIM-001 | ADCS Simulation & Verification Document | ❌ **TODO**: not created. Codebase has `closed_loop_sim.h` / `cls_*` infrastructure — needs design document covering simulation architecture, test scenarios, and verification results. | — |
-| FMEA-OBC-001 | FMEA Preliminary (software faults) | ❌ | — |
+| ADCS-SIM-001 | ADCS Simulation & Verification Document | ✅ v1.0 — Draft | [ecss/design/ADCS-SIM-001.md](ecss/design/ADCS-SIM-001.md) |
+| FMEA-OBC-001 | FMEA Preliminary (software faults) | ✅ v0.1 — Draft | [ecss/design/FMEA-OBC-001.md](ecss/design/FMEA-OBC-001.md) |
 
 ---
 
@@ -72,9 +72,9 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
-| ITP-OBC-001 | Integration Test Plan | ❌ | — |
-| ATP-OBC-001 | Acceptance Test Procedure | ❌ | — |
-| STR-OBC-001 | Software Test Report | ❌ | — |
+| ITP-OBC-001 | Integration Test Plan | ✅ v1.0 — Released | [ecss/test_plans/ITP-OBC-001.md](ecss/test_plans/ITP-OBC-001.md) |
+| ATP-OBC-001 | Acceptance Test Procedure | ✅ v1.0 — Released | [ecss/test_plans/ATP-OBC-001.md](ecss/test_plans/ATP-OBC-001.md) |
+| STR-OBC-001 | Software Test Report | ✅ v1.0 — Released | [ecss/test_plans/STR-OBC-001.md](ecss/test_plans/STR-OBC-001.md) |
 
 ---
 

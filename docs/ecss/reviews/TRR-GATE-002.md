@@ -3,9 +3,9 @@
 ## Decision: **GO**
 
 **Gate**: TRR (Test Readiness Review)
-**Date**: 2026-07-15
+**Date**: 2026-07-21
 **Reviewed by**: ECSS Gate Agent
-**Baseline**: `dev` (983b84c)
+**Baseline**: `dev` (latest)
 **Previous**: TRR-GATE-001 (GO-IF, 5 conditions)
 
 ---
@@ -43,17 +43,17 @@
 | 2 | **Sun sensor** gets SRS requirement or descope | ✅ **CLOSED** | Sun sensor added to FR-1 modules/tests; gap documented for Systems Lead |
 | 3 | **FR-19 ±500ms guard** implemented or deviation | ✅ **CLOSED** | `GPS_RTC_SYNC_MAX_DELTA_S: 0u → 3u`, delta check `<=`; 7/7 tests passing; verified on HW (44s/23s deltas correctly rejected) |
 | 4 | **RTM summary counts** updated | ✅ **CLOSED** | 31→28 reqs, 65→68 tests, 7→4 OR, 4→5 integration |
-| 5 | **Coverage < 90%** accepted as CDR carry-over | ⏸️ **DEFERRED** | No change — 87.8% lines, 84.8% functions. Accepted CDR GO-IF condition (OI-4, OI-7). User confirmed item 5 is CDR carry-over, deferred. |
+| 5 | **Coverage < 90%** accepted as CDR carry-over | ✅ **RESOLVED** | Coverage improved to 90.0% lines / 90.6% functions (72/72 tests). CDR carry-over condition fully met. |
 
 ---
 
 ## Current State
 
-### Tests: 68/68 PASSING (100%)
+### Tests: 72/72 PASSING (100%)
 
-All 68 CTest executables pass on host build:
+All 72 CTest executables pass on host build:
 
-- **Unit tests**: 63 files — covering all 7 driver modules, all core services
+- **Unit tests**: 67 files — covering all 7 driver modules, all core services, plus new stub coverage for PWM HAL, host SPI, host SD, and temperature
 - **Integration tests**: 5 files — deploy sequence, fault/safe FDIR chain, I2C, payload
 - **Static analysis**: cppcheck — 0 issues
 - **Platform**: `dev` branch, host build, Debug + ASan/UBSan
@@ -62,11 +62,11 @@ All 68 CTest executables pass on host build:
 
 | Metric | Current | CDR Baseline | Threshold |
 |--------|---------|-------------|-----------|
-| Lines | **87.8%** | 87.8% | ≥ 90% |
-| Functions | **84.8%** | 84.8% | ≥ 90% |
+| Lines | **90.0%** | 87.8% | ≥ 90% |
+| Functions | **90.6%** | 84.8% | ≥ 90% |
 | Branches | **78.4%** | — | — |
 
-Coverage unchanged since CDR. No improvement, no regression.
+Coverage improved by +2.2pp (lines) and +5.8pp (functions) since CDR. Both metrics now meet the ≥ 90% threshold.
 
 ### Key Coverage Gaps
 
@@ -102,12 +102,12 @@ System booted and verified on physical OBC hardware:
 ## Evidence Summary
 
 - **CDR checklist**: 27/27 items PASS (100%)
-- **Test coverage**: 87.8% lines / 84.8% functions / 78.4% branches
-- **Tests**: 68/68 passing (100%)
+- **Test coverage**: 90.0% lines / 90.6% functions / 78.4% branches
+- **Tests**: 72/72 passing (100%)
 - **RTM coverage**: 28/28 requirements traced (100%)
 - **Static analysis**: cppcheck — 0 issues
 - **Hardware verified**: GPS, FR-19 guard, IMU, magnetometer, sun sensor, RTC, flash, telemetry
-- **GO-IF conditions resolved**: 4/5 CLOSED, 1 DEFERRED (coverage, CDR carry-over)
+- **GO-IF conditions resolved**: 5/5 CLOSED — all CDR carry-over conditions met
 
 ---
 
@@ -115,7 +115,7 @@ System booted and verified on physical OBC hardware:
 
 | ID | Description | Priority | Owner | Target |
 |----|-------------|----------|-------|--------|
-| T3 | **Coverage 87.8% < 90%** — carry-over from CDR GO-IF | MEDIUM | — | CDR closure condition (OI-4, OI-7) |
+| T3 | **Coverage 87.8% < 90%** — carry-over from CDR GO-IF | MEDIUM | — | ✅ **RESOLVED** — 90.0% lines / 90.6% functions, threshold met |
 
 ---
 
@@ -124,10 +124,9 @@ System booted and verified on physical OBC hardware:
 ### GO for TRR
 
 **Rationale**: All 8 mandatory criteria PASS. All 5 GO-IF conditions from TRR-GATE-001 are resolved:
-- **4 CLOSED**: T-PLD-INT-04 added, sun sensor documented, FR-19 guard implemented and HW-verified, RTM counts fixed
-- **1 DEFERRED**: Coverage <90% accepted as CDR carry-over (no TRR blocking)
+- **5 CLOSED**: T-PLD-INT-04 added, sun sensor documented, FR-19 guard implemented and HW-verified, RTM counts fixed, coverage ≥ 90% achieved (90.0% lines, 90.6% functions)
 
-This is now a **full GO** — no remaining conditions block the TRR gate.
+This is now a **full GO** — all CDR GO-IF conditions are CLOSED and no remaining conditions block the TRR gate.
 
 ### Blocking Items: NONE
 
@@ -140,6 +139,6 @@ This is now a **full GO** — no remaining conditions block the TRR gate.
 | SRR | ✅ CLOSED | GO | 2026-03-10 |
 | PDR | ✅ CLOSED | GO | 2026-03-10 |
 | CDR | ✅ CLOSED | GO-IF | 2026-07-14 |
-| **TRR** | **🔍 THIS REVIEW** | **GO** | **2026-07-15** |
+| **TRR** | **✅ CLOSED** | **GO** | **2026-07-21** |
 | AR | ❌ NOT STARTED | — | — |
 | FRR | ❌ NOT STARTED | — | — |
