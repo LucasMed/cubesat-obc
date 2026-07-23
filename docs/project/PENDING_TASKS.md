@@ -1,8 +1,8 @@
 # CubeSat OBC - Pending Tasks Document
 
 **Document ID:** PENDING_TASKS.md  
-**Version:** 2.9  
-**Last Updated:** 2026-07-07
+**Version:** 3.0
+**Last Updated:** 2026-07-22
 **Status:** Active
 
 ---
@@ -355,6 +355,7 @@ OI-8 (Heap Sizing)
 | 2.7 | 2026-07-07 | System | Bootloader 9.2 (fsw_confirmed) completed — shared boot_meta.h, boot_meta_set_fsw_confirmed(), bootloader check at startup, FSW call after POST + tasks. 9.3 and 9.5 remaining. |
 | 2.8 | 2026-07-07 | System | Bootloader 9.3 (Reset Cause Detection) completed — reads watchdog_hw->reason at startup, stores in boot_meta_t + boot_status_t. Codes: 1=POR/pin, 2=WDT, 3=SW forced. reset_cause field added to boot_status_t (slot failures shrunk from uint16_t to uint8_t). |
 | 2.9 | 2026-07-07 | System | Bootloader 9.5 (Boot Log Ring Buffer) completed — dedicated 4 KB sector at 0x10311000, 128 × 32-byte entries with CRC32, sequential ring buffer. Bootloader writes entry before each jump: sequence, reset_cause, image_used, crc_ok, fallback_used, bl_duration_ms. FSW reads via boot_log_read_entry(). All bootloader tasks complete. |
+| 3.0 | 2026-07-22 | System | Added Section 10: Future Scientific Payloads. Created `docs/proposals/` directory with PROP-001 (Meteorological Station) — BME280 + SHT31, 40 h effort, CSP commands, flash ring buffer. Updated revision history. |
 
 ---
 
@@ -540,6 +541,36 @@ Add `stdio_init_all()` and `printf()` calls in the bootloader for visible boot f
   └── 9.4 (Boot Status RAM) — reset cause propagated via BootStatus_t
 9.6 (UART) — independent, purely dev convenience
 ```
+
+---
+
+## 10. Future Scientific Payloads
+
+Proposals for scientific instruments and payloads that can be implemented on the
+CubeSat OBC platform. See `docs/proposals/` for full design documents.
+
+| ID | Proposal | Status | Effort | Priority | Dependencies |
+|----|----------|--------|--------|----------|--------------|
+| PROP-001 | [Meteorological Station](../proposals/METEO-STATION-001.md) (BME280 + SHT31) | Proposed | 40 h | Medium | I2C0 mutex, DLA extension |
+
+### 10.1 Meteorological Station (PROP-001)
+
+**Objective**: Integrate BME280 pressure/temperature/humidity sensor alongside
+existing SHT31 for redundant meteorological measurements and barometric altitude.
+
+**Key deliverables**:
+- `bme280_driver.c` — I2C driver for Bosch BME280
+- `sht31_driver.c` — I2C driver for Sensirion SHT31
+- `meteo_task.c` — FreeRTOS task at 1 Hz, priority 2
+- Flash ring buffer in 0x7F2000 region (~36 KB, 1,316 records)
+- CSP commands (port 30): READ, STATUS, CONFIG, DUMP, CLEAR, CALIB, RAW
+- UART text commands: `METEO`, `METEO STATUS`, `METEO CONFIG`, `METEO DUMP`
+
+**Hardware**: BME280 (I2C 0x76) + SHT31 (I2C 0x44) on shared I2C0 bus
+**Power impact**: <65 µA average (negligible)
+**Effort**: 40 h (5 phases)
+
+**Status**: ⏳ Awaiting implementation — see [PROP-001](../proposals/METEO-STATION-001.md)
 
 ---
 
