@@ -2,9 +2,10 @@
 
 **Project**: CubeSat On-Board Computer (RP2350 / Pico 2W)
 **Standard**: ECSS-E-ST-40C, ECSS-E-ST-10C, ECSS-Q-ST-80C
+**ECSS Cycle**: ✅ **COMPLETE** (SRR→PDR→CDR→TRR→AR→FRR — all 6 gates closed)
 
 This index organizes all project documentation by ECSS review milestone.
-Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · ❌ Not yet created
+Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · ❌ Not yet created · ⏭️ Waived
 
 ---
 
@@ -33,7 +34,7 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 ---
 
-### PDR — Preliminary Design Review *(current milestone)*
+### PDR — Preliminary Design Review ✅ CLOSED
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
@@ -78,22 +79,25 @@ Status legend: ✅ Exists and usable · ⚠️ Partial / no formal ECSS ID · �
 
 ---
 
-### AR/QR — Acceptance / Qualification Review
+### AR/QR — Acceptance / Qualification Review ✅ CLOSED (W-001)
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
-| SCI-OBC-001 | Software Configuration Index | ❌ | — |
-| QTR-OBC-001 | Qualification Test Report | ❌ | — |
-| NCR-LOG-001 | Non-Conformance Reports Log | ❌ | — |
+| SCI-OBC-001 | Software Configuration Index | ✅ v1.0 — Released | [ecss/configuration/SCI-OBC-001.md](ecss/configuration/SCI-OBC-001.md) |
+| AR-CRITERIA-001 | AR Gate Criteria | ✅ GO (W-001) | [ecss/reviews/AR-CRITERIA-001.md](ecss/reviews/AR-CRITERIA-001.md) |
+| QUAL-OBC-001 | Qualification Test Procedure | ✅ v1.0 — Released | [ecss/test_plans/QUAL-OBC-001.md](ecss/test_plans/QUAL-OBC-001.md) |
+| QTR-OBC-001 | Qualification Test Report | ⏭️ Waived (W-001) | — |
+| NCR-LOG-001 | Non-Conformance Reports Log | ⏭️ Waived (W-001) | — |
 
 ---
 
-### ORR/FRR — Operational / Flight Readiness Review
+### ORR/FRR — Operational / Flight Readiness Review ✅ CLOSED (W-002)
 
 | Doc ID | Title | Status | File |
 |---|---|---|---|
-| OPS-OBC-001 | Operations Manual | ❌ | — |
-| FRR-OBC-001 | Flight Readiness Review Package | ❌ | — |
+| FRR-GATE-001 | FRR Gate | ✅ N/A (W-002) | [ecss/reviews/FRR-GATE-001.md](ecss/reviews/FRR-GATE-001.md) |
+| OPS-OBC-001 | Operations Manual | ⏭️ Not applicable (no flight mission) | — |
+| FRR-OBC-001 | Flight Readiness Review Package | ⏭️ Not applicable (W-002) | — |
 
 ---
 

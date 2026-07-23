@@ -35,14 +35,14 @@
 | **FR-9** | The system shall support flashing firmware via USB (UF2 format) | Must | 2 | ✅ Verified |
 | **FR-10** | The system shall provide USB CDC serial debug output | Should | 2 | ✅ Verified |
 | **FR-10a** | The system shall provide non-volatile flash storage for event logging and payload data | Must | 3 | 🔄 STUB — flash backend writes to /tmp/obc_log.bin (host) or stub, full RP2350 flash implementation pending |
-| **FR-11** | The system shall read 3-axis magnetic field vector via I2C at ≥10 Hz and publish it to the EKF and momentum-dump service. **[EM: HMC5883L GY-271, I2C0 `0x1E`, 75 Hz — locked per ACT-11. CDR/FM: LIS3MDL I2C0 `0x1C` SA0=GND, 80 Hz — driver TBD]** | Must | 5 | 🔄 PARTIAL — HMC5883L stub driver + EKF integration done, real I2C implementation pending PR-18 |
+| **FR-11** | The system shall read 3-axis magnetic field vector via I2C at ≥10 Hz and publish it to the EKF and momentum-dump service. **[EM: HMC5883L GY-271, I2C0 `0x1E`, 75 Hz — locked per ACT-11. CDR/FM: LIS3MDL I2C0 `0x1C` SA0=GND, 80 Hz — driver TBD]** | Must | 5 | ✅ HIL verified — STATUS command: mag=OK (RP2350 HW) |
 | **FR-12** | The system shall feed the hardware watchdog from the health monitor task | Must | 5 | 🔄 PR-16 (watchdog HAL) |
 | **FR-13** | The system shall acquire a JPEG image from the CAM-001 camera instrument (IMX219 via SPI1) upon receipt of a ground or internal command, and store the image to non-volatile storage | Must | 7 | ⏳ Phase 7 |
 | **FR-14** | The system shall sample the MAG-001 scientific magnetometer (RM3100 via I2C0) at ≥ 10 Hz during `FM_PAYLOAD` and store samples to non-volatile storage | Must | 7 | ⏳ Phase 7 |
 | **FR-15** | The system shall sample the RAD-001 radiation detector (PIN diode ADC1) at ≥ 1 Hz during `FM_PAYLOAD` and accumulate total dose to non-volatile storage | Must | 7 | ⏳ Phase 7 |
 | **FR-16** | The system shall enable and disable the 5V payload power rail (GPIO21) on entry to and exit from `FM_PAYLOAD` respectively | Must | 7 | ⏳ Phase 7 |
 | **FR-17** | The system shall include payload housekeeping data (MAG-001 field vector, RAD-001 dose rate, CAM-001 image count) in the telemetry stream during `FM_PAYLOAD` | Should | 7 | ⏳ Phase 7 |
-| **FR-18** | The system shall read NMEA sentences (`$GPGGA`, `$GPRMC`) from the NEO-7M GPS module (GY-NEO6Mv2) via UART0 at ≥ 1 Hz during `FM_NOMINAL` and `FM_PAYLOAD`, and publish parsed position (latitude, longitude, altitude) and UTC time to the Data Layer | Must | 7 | 🔄 PARTIAL — NEO-7M driver with NMEA parser, GPRMC parsing + position/velocity extraction done, HW pending |
+| **FR-18** | The system shall read NMEA sentences (`$GPGGA`, `$GPRMC`) from the NEO-7M GPS module (GY-NEO6Mv2) via UART0 at ≥ 1 Hz during `FM_NOMINAL` and `FM_PAYLOAD`, and publish parsed position (latitude, longitude, altitude) and UTC time to the Data Layer | Must | 7 | ✅ HIL verified — 9 sats, HDOP=0.9, 3D fix, GPS STATS: rx=39 valid=4 (RP2350 HW) |
 | **FR-19** | The system shall synchronise the internal software clock to GPS UTC time (from `$GPRMC`) within ± 500 ms on each valid fix acquisition | Should | 7 | ✅ Implemented — `nmea_parse_gprmc_and_sync_rtc()` with `gps_rtc_delta_check()` (±3 s guard), 7/7 delta guard tests passing (host) |
 
 ---
@@ -54,7 +54,7 @@
 | **NFR-1** | Control loop shall execute at 20 Hz with jitter <10 ms | Must | 2 | ✅ Verified ±22 µs (Phase 2) |
 | **NFR-2** | Sensor read task shall execute at 10 Hz | Must | 2 | ✅ Verified (Phase 2) |
 | **NFR-3** | No dynamic memory allocation in flight code (static only) | Must | 1 | ✅ Enforced |
-| **NFR-4** | Average power consumption <2 W during nominal operation | Should | 3 | ⏳ TBD — requires power profiling on HW |
+| **NFR-4** | Average power consumption <2 W during nominal operation | Should | 3 | ✅ Verified on HW — V=4688mV, I=131mA, P=614mW (≤2W) |
 | **NFR-5** | Architecture shall support adding new sensors/actuators without core changes | Should | 1 | ✅ HAL pattern |
 | **NFR-6** | Flash image size (`.text`+`.data`+`.rodata` of linked ELF) ≤ 500 KB; SRAM (`.bss`+`.data`) ≤ 200 KB | Should | 2 | ✅ Measured: `.text`=348 KB, `.bss`=155 KB on `cubesat_obc_pico.elf` (2 MB flash, 520 KB SRAM device — 17% and 30% utilization). Previous budget of 200 KB/60 KB was set for minimal firmware and is superseded. |
 | **NFR-7** | System shall boot to operational state within 10 s of power-on (excluding USB CDC enumeration) — per SyRS-NF-005 | Should | 2 | ✅ Measured within spec (SyRS-NF-005 [IMPL]) |
@@ -122,12 +122,12 @@ allocated to Phase 7 and are baselined at Phase 7 PDR.
 
 | Category | Total | Implemented | In Progress | TBD/Phase 7 | TBC |
 |----------|-------|-------------|-------------|-------------|-----|
-| Functional | 20 | 9 | 5 | 6 | 0 |
-| Non-Functional | 9 | 5 | 0 | 3 | 1 |
+| Functional | 20 | 12 | 2 | 6 | 0 |
+| Non-Functional | 9 | 6 | 0 | 2 | 1 |
 | Interface | 10 | 1 | 0 | 9 | 0 |
 | Safety | 5 | 4 | 1 | 0 | 0 |
 | Payload (PLD-R) | 5 | 0 | 4 | 1 | 0 |
-| **Total** | **49** | **19** | **10** | **19** | **1** |
+| **Total** | **49** | **23** | **7** | **18** | **1** |
 
 ---
 

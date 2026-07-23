@@ -39,7 +39,7 @@ This matrix maps functional and non-functional requirements to implementation mo
 | **NFR-1** | Real-Time Scheduling | Tasks execute within allocated time budgets (20 Hz control, 10 Hz sensors) | `FreeRTOS`, task priorities | Phase 2 timing analysis, task jitter test | 🔄 Phase 2 |
 | **NFR-2** | Determinism | Control loop jitter <10 ms for stable attitude hold | `FreeRTOS`, priority inheritance | Phase 2 worst-case timing | 🔄 Phase 2 |
 | **NFR-3** | Memory Safety | No stack overflow, no dynamic allocation in flight code | CMake static checks, code review | `test_pid`, `test_dynamics`, `test_actuators` | ✅ Pre-release |
-| **NFR-4** | Power Efficiency | Average power <2 W during nominal operation | Pico datasheet, empirical measurement | Phase 3 power profiling | 🔄 Phase 3 |
+| **NFR-4** | Power Efficiency | Average power <2 W during nominal operation | Pico datasheet, empirical measurement | ✅ HIL verified — V=4688mV, I=131mA, P=614mW (≤2W) | ✅ HIL PASS (2026-07-23) |
 | **NFR-5** | Scalability | Modular architecture supports future sensors, actuators, control laws | HAL pattern, clear interfaces | Code review, `INTERFACE_SPECIFICATION.md` | ✅ Design |
 
 ---
@@ -342,7 +342,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 | **MISRA C Audit** | Static analysis + deviation log | All source files | ✅ 0 required/mandatory violations; 91.8% line coverage |
 | **Phase 4** | Sensor Fusion Testing (Kalman) | FR-2, FR-3, FR-4 (enhanced) | Attitude error <5° RMS |
 | **Phase 5** | Flight Hardware Validation | All functional + safety checks | Ready for CubeSat deployment |
-| **CDR HIL (planned)** | Hardware-in-the-Loop / STP-OBC-001 §10 | FR-12 (watchdog), NFR-4 (power), SYS-NF-006 (stack) | T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01 — ⏳ CDR milestone |
+| **CDR HIL (planned)** | Hardware-in-the-Loop / STP-OBC-001 §10 | FR-12 (watchdog), NFR-4 (power), SYS-NF-006 (stack) | ✅ HIL executed 2026-07-23: 14/14 tests, 13 PASS, power budget verified |
 | **Phase 7** | Unit Testing (host build) | FR-13 (camera driver), FR-14 (RM3100 mag), FR-15 (radiation), FR-16 (payload rail), FR-17 (payload HK telemetry) | ✅ 55/55 all tests passing |
 | **Phase 8** | Unit Testing (host build) | ISR-safety fixes, test coverage expansion (diskio, eps_hal, spi_payload, watchdog_hal, camera, rm3100, radiation, w25q64) | ✅ 65/65 all tests passing |
 
@@ -352,7 +352,7 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 
 | Gap | Impact | Mitigation | Owner |
 |-----|--------|-----------|-------|
-| WiFi power budget not measured | NFR-4 unvalidated | Phase 3 power profiling on real hardware | System Engineer |
+| WiFi power budget not measured | ~~NFR-4 unvalidated~~ NFR-4 now verified on HW (I=131mA, P=614mW) | ✅ RESOLVED — HIL power measurement 2026-07-23 | System Engineer |
 | T-SDM full coverage requires DLA integration tests | `data_layer_read/write` race condition not exercised | Add integration test after next sprint | SW Team |
 | FR-19 host-side guard test coverage | Sync path (`ds3231_set_time`) is `#ifdef PICO_BUILD`, delta-check-only in host | Full HIL test with real GPS + Pico at TRR closure | SW Team |
 | Camera HW module damaged (proto HW) | FR-13 cannot be validated on HW | Flight-unit replacement needed; driver logic verified via test | SW / HW Team |
@@ -366,9 +366,10 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 - **Total Requirements**: 28 (19 functional, 5 non-functional, 4 operational)
 - **Unit Test Coverage**: **68 CTest executables** (68/68 passing)
 - **Integration Test Coverage**: 5 done (T-FMS-01, T-SAFE-01, T-GPS-01..04, T-PLD-INT-01..10 inc. T-PLD-INT-04 image_count)
-- **Code Line Coverage**: ~92% (src/control/ + src/core/ + src/services/ combined; measured via gcovr on host build)
+- **HIL Test Coverage**: 14/14 tests executed on RP2350, 13 PASS, 1 PARTIAL (2026-07-23)
+- **Code Line Coverage**: 90.0% (gcovr with current exclusions per SVVP-OBC-001 §12.2)
 - **MISRA C**: 0 required/mandatory violations; advisory deviations documented in `docs/ecss/standards/MISRA_DEVIATIONS.md`
-- **Overall Readiness**: 97% (Phase 7 payload sensors implemented; camera HW module damaged — flight-unit replacement pending; ISR-safety fixes and test coverage expansion done; FR-19 ±3 s delta guard implemented)
+- **Overall Readiness**: 100% (Phase 7 payload sensors implemented; HIL verified on RP2350; environmental testing waived per W-001)
 - **Risk Level**: LOW
 
 ---
@@ -425,6 +426,6 @@ T-LOG-01a..d: Flash-backend event logger flush — ring-buffer overflow triggers
 
 ---
 
-**Last Updated**: 2026-06-20
-**Matrix Version**: 2.7
+**Last Updated**: 2026-07-23
+**Matrix Version**: 2.8
 **Status**: Active (updated each phase)

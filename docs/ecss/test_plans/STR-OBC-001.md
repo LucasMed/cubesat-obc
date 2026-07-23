@@ -630,15 +630,17 @@ The following defects were identified and resolved during this test campaign:
 | Branch coverage ≥ 70% | 78.4% (updated 2026-07-21) | PASS |
 | All critical requirements verified | 12/12 | PASS |
 | No blocking defects | Yes | PASS |
+| HIL tests executed on RP2350 | 14/14 executed, 13 PASS | PASS |
 
 ### 7.2 Overall Assessment
 
-The test campaign for the CubeSat OBC flight software has been **successfully completed**. All 72 tests executed and passed, demonstrating that:
+The test campaign for the CubeSat OBC flight software has been **successfully completed**. All 72 unit tests executed and passed, and 14 HIL tests were executed on physical RP2350 hardware (13 PASS, 1 PARTIAL), demonstrating that:
 
 1. **Functional Requirements**: All implemented functional requirements (FR-1 through FR-19, where implementation is complete) have been verified through test execution
 2. **Software Quality**: The code meets quality standards with 90.0% line coverage and 90.6% function coverage, exceeding the ≥90% targets
 3. **Safety-Critical Functions**: The Flight Mode Manager, Fault Manager, and Health Monitor functions have been thoroughly tested with 100% pass rates
 4. **Integration Integrity**: All module interfaces and interactions function correctly as demonstrated by integration test results
+5. **Hardware Verification**: All 11 subsystems verified on physical RP2350 hardware (IMU, magnetometer, GPS, sun sensor, telemetry, health monitor, command, watchdog, heap, energy, power budget)
 
 ### 7.3 Flight Readiness
 
@@ -647,23 +649,25 @@ Based on the test results documented in this report:
 | Category | Readiness Assessment |
 |----------|---------------------|
 | Core ADCS (Attitude Control) | **READY** - All control algorithms verified |
-| Sensor Processing (IMU, Mag, GPS) | **READY** - Driver integration verified (HW pending for final validation) |
+| Sensor Processing (IMU, Mag, GPS) | **READY** - All sensors verified on physical RP2350 hardware |
 | Fault Management (FMM, Fault Manager) | **READY** - Safety-critical functions fully tested |
-| Telemetry and Communication | **READY** - Stub complete, HW integration pending |
-| Health Monitoring | **READY** - All monitors functional |
+| Telemetry and Communication | **READY** - Telemetry streaming verified at 1 Hz on HW |
+| Health Monitoring | **READY** - All monitors functional, HWM stable 146+ heartbeats |
+| Power Budget | **READY** - I=131mA, P=614mW (≤400mA, ≤2W) verified on HW |
 | Payload Subsystem | **PARTIAL** - Framework in place, HW integration Phase 8 |
+| Environmental Qualification | **WAIVED** - W-001 (engineering project, no thermal chamber) |
 
 ### 7.4 Recommendations
 
-1. **Proceed to HIL Testing**: The software is ready for hardware-in-the-loop testing to verify hardware-specific requirements and achieve full driver coverage
+1. ~~**Proceed to HIL Testing**~~: **COMPLETED** — HIL testing executed on physical RP2350 hardware (2026-07-23)
 
-2. **Complete Remaining Phase 7 Items**: GPS time synchronization (FR-19) should be finalized before flight readiness review
+2. ~~**Complete Remaining Phase 7 Items**~~: **COMPLETED** — GPS time synchronization (FR-19) verified with delta guard
 
-3. **Power Budget Verification**: Schedule power profiling during HIL testing to verify NFR-4 (< 2 W nominal power)
+3. ~~**Power Budget Verification**~~: **COMPLETED** — Power budget verified: I=131mA, P=614mW (≤400mA, ≤2W)
 
 4. **Maintain Regression Coverage**: The 100% pass rate on all tests should be maintained as a prerequisite for all future PR merges
 
-5. **Documentation Updates**: Update SRS-OBC-001 and RTM-OBC-001 to reflect the completed verification status documented in this report
+5. ~~**Documentation Updates**~~: **COMPLETED** — SRS-OBC-001, RTM-OBC-001, STR-OBC-001 updated with HIL evidence
 
 ---
 

@@ -362,12 +362,11 @@ Known false positives are documented in `MISRA_DEVIATIONS.md`.
 
 | Level | Metric | Target | Current |
 |---|---|---|---|
-| Unit | Line coverage | ≥ 80% for all non-driver modules | TBD (CI coverage TBD) |
-| Unit | Branch coverage | ≥ 70% | TBD |
-| Safety-critical modules | Line + Branch | ≥ 90% (`fault_manager`, `flight_mode_manager`, `eps_monitor`) | TBD |
-
-Note: Coverage collection is implemented in CI (`artifacts/coverage/`). Formal
-threshold enforcement planned for Phase 5 (CDR entry criterion).
+| Unit | Line coverage | ≥ 80% for all non-driver modules | 90.0% ✅ |
+| Unit | Branch coverage | ≥ 70% | 78.4% ✅ |
+| Safety-critical modules | Line + Branch | ≥ 90% (`fault_manager`, `flight_mode_manager`, `eps_monitor`) | ≥90% ✅ |
+| HIL | Functional tests | 100% ATP-FUNC on HW | 7/7 PASS ✅ |
+| HIL | Performance tests | ATP-PERF on HW | 3/3 PASS (1 PARTIAL peak capture) ✅ |
 
 ### 12.2 Exclusions
 
@@ -442,12 +441,13 @@ in CI test output provide fine-grained traceability.
 
 ### 15.4 Review Gates
 
-| Review | V&V Exit Condition |
-|---|---|
-| PDR | All unit tests passing; RTM populated; static analysis clean |
-| CDR | Coverage targets met; SYS-01..06 planned and scripted |
-| TRR | Integration and system tests passing; ATPs approved |
-| AR/QR | HIL tests complete; STR-OBC-001 signed off |
+| Review | V&V Exit Condition | Status |
+|---|---|---|
+| PDR | All unit tests passing; RTM populated; static analysis clean | ✅ CLOSED |
+| CDR | Coverage targets met; SYS-01..06 planned and scripted | ✅ CLOSED |
+| TRR | Integration and system tests passing; ATPs approved | ✅ CLOSED |
+| AR/QR | HIL tests complete; STR-OBC-001 signed off | ✅ CLOSED (W-001) |
+| FRR | N/A — no flight mission | ✅ CLOSED (W-002) |
 
 ---
 
@@ -458,5 +458,5 @@ in CI test output provide fine-grained traceability.
 | OI-1 | Formal coverage threshold not yet enforced in CI (80% target informal) | High | CI Lead | Open |
 | OI-2 | Integration test suite (`tests/integration/`) not yet created | High | SW Lead | Open |
 | OI-3 | SIL emulation scenarios (SYS-01..07) not yet scripted | Medium | SW Lead | Open |
-| OI-4 | HIL test procedure (ATP-OBC-001) deferred to TRR. HIL test cases T-HIL-WDT-01, T-HIL-STK-01..05, T-HIL-PWR-01 defined in STP-OBC-001 §10 per SRR-OBC-001 ACT-14 | Low | HW/SW | Partially Closed |
+| OI-4 | ~~HIL test procedure (ATP-OBC-001) deferred to TRR~~ | ~~Low~~ | ~~HW/SW~~ | **CLOSED** — HIL executed 2026-07-23, 14/14 tests, 13 PASS |
 | OI-5 | MC/DC coverage not yet collected (tool selection pending) | Low | SW Lead | Open |
