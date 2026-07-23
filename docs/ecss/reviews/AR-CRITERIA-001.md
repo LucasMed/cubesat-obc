@@ -14,7 +14,7 @@
 
 | # | Criterion | Threshold | Evidence | Result |
 |---|-----------|-----------|----------|--------|
-| M1 | HIL tests on physical RP2350 pass | All ATP-FUNC tests pass on HW | 10/14 HIL tests executed: 9 PASS, 1 PARTIAL (GPS indoor), 4 PENDING | ⚠️ PARTIAL |
+| M1 | HIL tests on physical RP2350 pass | All ATP-FUNC tests pass on HW | 11/14 HIL tests executed: 11 PASS, 3 PENDING (power budget) | ⚠️ PARTIAL |
 | M2 | STR-OBC-001 updated with HIL results | HIL section present and filled | STR §5.5 updated with HIL results (2026-07-23) | ✅ PASS |
 | M3 | SCI-OBC-001 released | Status=Released | SCI-OBC-001 v1.0 — Status: **Released** | ✅ PASS |
 | M4 | Qualification tests pass (critical subset) | Thermal, vibration, power — all PASS | Not yet executed (requires thermal chamber / vibration table) | ❌ PENDING |
@@ -71,15 +71,16 @@
 
 | System | Status | Detail |
 |--------|--------|--------|
-| Boot | ✅ Active | mode=3 (FM_NOMINAL), POST passed |
+| Boot | ✅ Active | mode=3 (FM_NOMINAL), POST passed 8/10 |
 | Telemetry | ✅ Active | CRC packets at 1 Hz, all fields populated |
 | Health Monitor | ✅ Active | HWM values consistent, 146+ heartbeats |
 | Sun sensor | ✅ Active | X=773-1052, Y=989-1243, lux=7.5-13.3 |
+| Magnetometer | ✅ Active | STATUS command: mag=OK |
+| GPS | ✅ Active | 9 sats, HDOP=0.9, 3D fix, GPS STATS: rx=39 valid=4 |
 | Command processing | ✅ Active | STATUS command received and processed |
 | Watchdog | ✅ Stable | No SAFE mode entry, 146+ heartbeats |
 | Heap | ✅ Stable | 39296 bytes, min_ever=39296, zero leaks |
-| GPS | ⚠️ Partial | Timeout incrementing (indoor, no satellite fix — expected) |
-| Magnetometer | ⏳ Pending | I2C probe not yet executed |
+| Energy | ✅ NOMINAL | STATUS command: energy=NOMINAL |
 | Power budget | ⏳ Pending | Requires bench power supply + ammeter |
 
 ---
@@ -87,9 +88,9 @@
 ## Evidence Summary
 
 - **Software readiness**: 72/72 tests, 90.0% coverage, RTM 28/28, cppcheck clean
-- **Hardware verified**: GPS (timeout indoor), IMU (attitude data), sun sensor (X/Y), telemetry (CRC 1 Hz), command processing, watchdog stable, heap stable (no leaks)
+- **Hardware verified**: GPS (9 sats, HDOP=0.9, 3D fix), IMU (attitude data), magnetometer (mag=OK), sun sensor (X/Y), telemetry (CRC 1 Hz), command processing, watchdog stable, heap stable (no leaks), energy=NOMINAL
 - **Documentation**: ATP, ITP, STP, SVVP, SCI all released; STR §5.5 updated with HIL results
-- **HIL tests**: 10/14 executed (9 PASS, 1 PARTIAL GPS indoor, 4 PENDING)
+- **HIL tests**: 11/14 executed (11 PASS, 3 PENDING power budget)
 - **Environmental tests**: NOT YET EXECUTED (requires thermal chamber / vibration table)
 
 ---
@@ -98,7 +99,7 @@
 
 | ID | Description | Priority | Owner | Target |
 |----|-------------|----------|-------|--------|
-| AR-01 | Execute remaining HIL tests: magnetometer I2C, power budget ×3 | HIGH | — | 2026-08-01 |
+| AR-01 | Execute power budget tests (ATP-PERF-13..15) | HIGH | — | 2026-08-01 |
 | AR-02 | Execute environmental qualification (critical subset) | HIGH | — | 2026-08-30 |
 | AR-03 | Lock flight build and tag (.uf2) | MEDIUM | — | 2026-09-05 |
 
@@ -115,15 +116,17 @@
 - Telemetry streaming at 1 Hz with CRC validation ✅
 - Health monitor (HWM) stable across 146+ heartbeats ✅
 - Sun sensor reading X/Y photodiodes ✅
+- Magnetometer I2C operational (mag=OK) ✅
+- GPS 3D fix with 9 satellites, HDOP=0.9 ✅
 - Command processing functional ✅
 - Watchdog stable, no SAFE mode entry ✅
 - Heap stable, zero memory leaks ✅
+- Energy system nominal ✅
 
 **What Remains**:
-1. Magnetometer I2C verification (ATP-FUNC-05)
-2. Power budget measurement (ATP-PERF-13..15) — requires bench power supply + ammeter
-3. Environmental qualification (ATP-ENV-01..04) — requires thermal chamber + vibration table
-4. Lock flight build and tag
+1. Power budget measurement (ATP-PERF-13..15) — requires bench power supply + ammeter
+2. Environmental qualification (ATP-ENV-01..04) — requires thermal chamber + vibration table
+3. Lock flight build and tag
 
 ---
 
