@@ -16,6 +16,7 @@
 |---------|------------|------------------|----------------------------------------|
 | 1.0     | 2026-03-21 | OBC Systems Team | Initial release following Phase 7 completion |
 | 1.1     | 2026-07-21 | OBC Systems Team | Coverage and test inventory update: 90.0% lines / 90.6% functions, 72 tests, new test files added |
+| 1.2     | 2026-07-23 | OBC Systems Team | Added HIL placeholder sections (§5.5, §5.6) for AR preparation |
 
 ---
 
@@ -538,6 +539,34 @@ The following code is excluded from coverage metrics as per SVVP-OBC-001 §12.2:
 | FR-19 (GPS time sync) | T-GPS-04, T-GPS-INT-02 | PARTIAL |
 | SR-1 (Watchdog) | T-WDT-01..05 | COMPLETE |
 | SR-2 (Safe mode) | T-FMM-01..11, T-FMS-01..12, T-FM-INT-01..03 | COMPLETE |
+
+---
+
+### 5.5 HIL Test Results (TBD)
+
+> **Status**: PENDING — HIL tests not yet executed on physical RP2350 hardware.
+> Will be populated after ATP-OBC-001 execution per QUAL-OBC-001 procedure.
+
+| Test ID | Test Name | Status | Date | Operator | Result |
+|---------|-----------|--------|------|----------|--------|
+| ATP-FUNC-05 | Magnetometer I2C | PENDING | — | — | — |
+| ATP-FUNC-06 | GPS UART | PENDING | — | — | — |
+| ATP-FUNC-07 | B-dot momentum dump | PENDING | — | — | — |
+| ATP-PERF-13 | Power budget 400mA | PENDING | — | — | — |
+| ATP-PERF-14 | Power budget 600mA | PENDING | — | — | — |
+| ATP-PERF-15 | Power budget 2W | PENDING | — | — | — |
+
+### 5.6 Environmental Test Results (TBD)
+
+> **Status**: PENDING — Environmental qualification not yet executed.
+> Will be populated after QUAL-OBC-001 execution.
+
+| Test ID | Test Name | Status | Date | Operator | Result |
+|---------|-----------|--------|------|----------|--------|
+| ATP-ENV-01 | Thermal cycling (-20°C to +50°C) | PENDING | — | — | — |
+| ATP-ENV-02 | Vibration (≥14.1 g_rms) | PENDING | — | — | — |
+| ATP-ENV-03 | Power supply variation (3.0V–5.5V) | PENDING | — | — | — |
+| ATP-ENV-04 | Post-env functional verification | PENDING | — | — | — |
 
 ---
 
