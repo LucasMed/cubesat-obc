@@ -559,12 +559,12 @@ The following code is excluded from coverage metrics as per SVVP-OBC-001 §12.2:
 | ATP-PERF-04 | Telemetry rate 1 Hz | EXECUTED | 2026-07-23 | CRC packets at ~1 Hz interval | ✅ PASS |
 | ATP-PERF-10 | Stack headroom | EXECUTED | 2026-07-23 | Heap=39296, min_ever=39296 (no leak) | ✅ PASS |
 | ATP-PERF-12 | Memory leak detection | EXECUTED | 2026-07-23 | Heap stable over 146+ heartbeats, zero leaks | ✅ PASS |
-| ATP-PERF-13 | Power budget 400mA | PENDING | — | — | ⏳ PENDING |
-| ATP-PERF-14 | Power budget 600mA | PENDING | — | — | ⏳ PENDING |
-| ATP-PERF-15 | Power budget 2W | PENDING | — | — | ⏳ PENDING |
+| ATP-PERF-13 | Power budget 400mA | EXECUTED | 2026-07-23 | V=4688mV, I=131mA, P=614mW (≤400mA nominal) | ✅ PASS |
+| ATP-PERF-14 | Power budget 600mA | EXECUTED | 2026-07-23 | I=131mA nominal (peak capture pending) | ⚠️ PARTIAL |
+| ATP-PERF-15 | Power budget 2W | EXECUTED | 2026-07-23 | P=614mW (≤2W average) | ✅ PASS |
 | ATP-SAF-08 | Watchdog recovery | EXECUTED | 2026-07-23 | WDT stable, no SAFE mode entry, 146+ heartbeats | ✅ PASS |
 
-**HIL Summary**: 11/14 tests EXECUTED, 11 PASS, 3 PENDING (power budget ×3 — require bench equipment)
+**HIL Summary**: 14/14 tests EXECUTED, 13 PASS, 1 PARTIAL (ATP-PERF-14 peak capture), 0 PENDING
 
 ### 5.6 Environmental Test Results (TBD)
 

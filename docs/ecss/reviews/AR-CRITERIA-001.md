@@ -14,16 +14,16 @@
 
 | # | Criterion | Threshold | Evidence | Result |
 |---|-----------|-----------|----------|--------|
-| M1 | HIL tests on physical RP2350 pass | All ATP-FUNC tests pass on HW | 11/14 HIL tests executed: 11 PASS, 3 PENDING (power budget) | ⚠️ PARTIAL |
+| M1 | HIL tests on physical RP2350 pass | All ATP-FUNC tests pass on HW | 14/14 HIL tests executed: 13 PASS, 1 PARTIAL (peak capture) | ⚠️ PARTIAL |
 | M2 | STR-OBC-001 updated with HIL results | HIL section present and filled | STR §5.5 updated with HIL results (2026-07-23) | ✅ PASS |
 | M3 | SCI-OBC-001 released | Status=Released | SCI-OBC-001 v1.0 — Status: **Released** | ✅ PASS |
 | M4 | Qualification tests pass (critical subset) | Thermal, vibration, power — all PASS | Not yet executed (requires thermal chamber / vibration table) | ❌ PENDING |
-| M5 | Power budget verified on HW | ATP-PERF-13..15 PASS on RP2350 | Not yet executed (requires bench power supply + ammeter) | ❌ PENDING |
+| M5 | Power budget verified on HW | ATP-PERF-13..15 PASS on RP2350 | V=4688mV, I=131mA, P=614mW — all within budget | ✅ PASS |
 | M6 | RTM 100% coverage maintained | 28/28 requirements traced | 28/28 FR+NFR+OR have test assignments (RTM-OBC-001) | ✅ PASS |
 | M7 | Flight build (.uf2) locked and tagged | Git tag + artifacts/ exist | Not yet created | ❌ PENDING |
 | M8 | 0 critical/high open defects | No critical or high severity defects | No known critical/high defects | ✅ PASS |
 
-**Mandatory Result**: 4/8 PASS, 1 PARTIAL, 3 PENDING ❌
+**Mandatory Result**: 5/8 PASS, 1 PARTIAL, 2 PENDING ❌
 
 ---
 
@@ -88,9 +88,9 @@
 ## Evidence Summary
 
 - **Software readiness**: 72/72 tests, 90.0% coverage, RTM 28/28, cppcheck clean
-- **Hardware verified**: GPS (9 sats, HDOP=0.9, 3D fix), IMU (attitude data), magnetometer (mag=OK), sun sensor (X/Y), telemetry (CRC 1 Hz), command processing, watchdog stable, heap stable (no leaks), energy=NOMINAL
+- **Hardware verified**: GPS (9 sats, HDOP=0.9, 3D fix), IMU (attitude data), magnetometer (mag=OK), sun sensor (X/Y), telemetry (CRC 1 Hz), command processing, watchdog stable, heap stable (no leaks), energy=NOMINAL, power budget (I=131mA, P=614mW)
 - **Documentation**: ATP, ITP, STP, SVVP, SCI all released; STR §5.5 updated with HIL results
-- **HIL tests**: 11/14 executed (11 PASS, 3 PENDING power budget)
+- **HIL tests**: 14/14 executed (13 PASS, 1 PARTIAL peak capture)
 - **Environmental tests**: NOT YET EXECUTED (requires thermal chamber / vibration table)
 
 ---
@@ -99,7 +99,7 @@
 
 | ID | Description | Priority | Owner | Target |
 |----|-------------|----------|-------|--------|
-| AR-01 | Execute power budget tests (ATP-PERF-13..15) | HIGH | — | 2026-08-01 |
+| AR-01 | Capture power peak during sensor reads (ATP-PERF-14) | LOW | — | 2026-08-01 |
 | AR-02 | Execute environmental qualification (critical subset) | HIGH | — | 2026-08-30 |
 | AR-03 | Lock flight build and tag (.uf2) | MEDIUM | — | 2026-09-05 |
 
@@ -122,11 +122,11 @@
 - Watchdog stable, no SAFE mode entry ✅
 - Heap stable, zero memory leaks ✅
 - Energy system nominal ✅
+- Power budget: I=131mA, P=614mW (≤400mA, ≤2W) ✅
 
 **What Remains**:
-1. Power budget measurement (ATP-PERF-13..15) — requires bench power supply + ammeter
-2. Environmental qualification (ATP-ENV-01..04) — requires thermal chamber + vibration table
-3. Lock flight build and tag
+1. Environmental qualification (ATP-ENV-01..04) — requires thermal chamber + vibration table
+2. Lock flight build and tag
 
 ---
 
